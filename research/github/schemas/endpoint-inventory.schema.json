@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/endpoint-inventory.schema.json",
+  "title": "GHEC Endpoint Inventory Manifest Schema",
+  "type": "object",
+  "required": ["schemaVersion", "apiVersion", "operations"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "enum": ["1.0.0"] },
+    "apiVersion": { "type": "string" },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "method",
+          "path",
+          "apiVersion",
+          "domain",
+          "scope",
+          "disposition",
+          "rationale",
+          "collectorIds",
+          "safety",
+          "permissionVerification",
+          "sources"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "method": { "type": "string", "enum": ["GET"] },
+          "path": { "type": "string" },
+          "apiVersion": { "type": "string" },
+          "domain": { "type": "string" },
+          "scope": { "type": "string" },
+          "openapi": {
+            "type": ["object", "null"],
+            "properties": {
+              "operationId": { "type": "string" },
+              "pointer": { "type": "string" },
+              "summary": { "type": "string" },
+              "deprecated": { "type": "boolean" },
+              "description": { "type": "string" },
+              "parameters": { "type": "array" },
+              "responseCodes": { "type": "array", "items": { "type": "string" } },
+              "responseSchemaPointers": { "type": "object" },
+              "documentation": { "type": "string" }
+            }
+          },
+          "sourceOccurrences": { "type": "array" },
+          "fineGrainedOccurrences": { "type": "array" },
+          "disposition": {
+            "type": "string",
+            "enum": ["Planned", "Deferred", "Excluded", "Unsupported", "Unresolved"]
+          },
+          "rationale": { "type": "string" },
+          "phase": { "type": ["string", "null"] },
+          "collectorIds": { "type": "array", "items": { "type": "string" } },
+          "safety": {
+            "type": "object",
+            "required": ["status", "hazards"],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["schema-screened", "blocked", "unreviewed"]
+              },
+              "hazards": { "type": "array", "items": { "type": "string" } },
+              "review": { "type": "string" }
+            }
+          },
+          "permissionVerification": { "type": "string" },
+          "authentication": { "type": "object" },
+          "sources": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

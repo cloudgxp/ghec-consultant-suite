@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/common-profile.schema.json",
+  "title": "GHEC Collector Common Execution Profile Schema",
+  "type": "object",
+  "required": [
+    "$schema",
+    "id",
+    "title",
+    "description",
+    "version",
+    "outputEnvelope",
+    "privacy",
+    "outcomes",
+    "http"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "version": { "type": "string" },
+    "outputEnvelope": {
+      "type": "object",
+      "required": ["properties"],
+      "properties": {
+        "description": { "type": "string" },
+        "properties": { "type": "object" }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "description",
+        "prohibitedCategories",
+        "prohibitedFieldPatterns",
+        "redactionRules",
+        "invariants"
+      ],
+      "properties": {
+        "description": { "type": "string" },
+        "prohibitedCategories": { "type": "array", "items": { "type": "string" } },
+        "prohibitedFieldPatterns": { "type": "array", "items": { "type": "string" } },
+        "redactionRules": { "type": "object" },
+        "invariants": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "outcomes": {
+      "type": "object",
+      "required": ["description", "states"],
+      "properties": {
+        "description": { "type": "string" },
+        "states": { "type": "object" }
+      }
+    },
+    "http": {
+      "type": "object",
+      "required": [
+        "description",
+        "timeoutSeconds",
+        "maxAttempts",
+        "maxRetrySeconds",
+        "concurrencyLimit",
+        "rateLimiting",
+        "errorHandling"
+      ],
+      "properties": {
+        "description": { "type": "string" },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "maxAttempts": { "type": "integer", "minimum": 1 },
+        "maxRetrySeconds": { "type": "integer", "minimum": 1 },
+        "concurrencyLimit": { "type": "integer", "minimum": 1 },
+        "rateLimiting": { "type": "object" },
+        "errorHandling": { "type": "object" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

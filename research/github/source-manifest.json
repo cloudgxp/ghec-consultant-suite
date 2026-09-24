@@ -1,0 +1,138 @@
+{
+  "$schema": "./schemas/source-manifest.schema.json",
+  "schemaVersion": "1.0.0",
+  "product": "GitHub Enterprise Cloud (GHEC)",
+  "targetApiVersion": "2026-03-10",
+  "generatedAt": "2026-09-17T12:00:00Z",
+  "methodology": "Programmatic extraction of all GET operations from the primary App Permissions seed reference and the pinned GHEC OpenAPI description; reconciliation with fine-grained PAT and classic scope documentation; schema-level privacy hazard screening.",
+  "primarySources": [
+    {
+      "id": "seed-app-permissions",
+      "name": "GitHub App Permissions Seed Reference",
+      "url": "https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps?apiVersion=2026-03-10",
+      "role": "Seed reference table for GitHub App permissions by endpoint; baseline for GET operation extraction.",
+      "apiVersion": "2026-03-10",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/app-permissions.html",
+          "format": "html",
+          "sha256": "c1b17679d615e9338956c4185ad5f1bb0be1b29d19abe85967e00308a82182c6",
+          "sizeBytes": 2001084
+        },
+        {
+          "path": "sources/app-permissions.md",
+          "format": "markdown",
+          "sha256": "32ee3e18bed89a197067f3ef7f3bcaac0dcff5b3d9b877ef92b4adf4c03e4edb",
+          "sizeBytes": 104019
+        }
+      ],
+      "extractedMetrics": {
+        "rawGetOccurrences": 527,
+        "uniqueGetOperations": 503
+      }
+    },
+    {
+      "id": "ghec-openapi",
+      "name": "GitHub Enterprise Cloud REST OpenAPI Description",
+      "url": "https://github.com/github/rest-api-description",
+      "role": "Authoritative OpenAPI 3.0 description of all REST paths, operations, parameters, and response schemas for GitHub Enterprise Cloud.",
+      "apiVersion": "2026-03-10",
+      "gitRevision": "f1c9c4e4958b27996e2b5f451b761fc6c57d6b2c",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/ghec.2026-03-10.json",
+          "format": "json",
+          "sha256": "4f05e42c9670ac2847ac1139412c15833822ca762983d3ae661330141f32c173",
+          "sizeBytes": 14076664
+        }
+      ],
+      "extractedMetrics": {
+        "uniqueGetOperations": 766
+      }
+    },
+    {
+      "id": "fine-grained-pat-reference",
+      "name": "Permissions Required for Fine-Grained Personal Access Tokens",
+      "url": "https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens",
+      "role": "Cross-reference for fine-grained personal access token permissions and resource owner scopes.",
+      "apiVersion": "2026-03-10",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/047f030efe47b8a5.md",
+          "format": "markdown",
+          "sha256": "8f896645965ab0b27f85a8833cb33b61a90849fb7e15a49eeffc0eb0474458a4",
+          "sizeBytes": 94130
+        }
+      ]
+    },
+    {
+      "id": "classic-pat-scopes",
+      "name": "Scopes for OAuth Apps and Classic Personal Access Tokens",
+      "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps",
+      "role": "Cross-reference for classic OAuth scopes required by REST endpoints.",
+      "apiVersion": "2026-03-10",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/f0d89c2d1756987d.md",
+          "format": "markdown",
+          "sha256": "9a11b36b263968641a3024a1bcfb9fc2a326cda371d7771e22f67f118ede68fc",
+          "sizeBytes": 22880
+        }
+      ]
+    },
+    {
+      "id": "billing-lfs-concepts",
+      "name": "Git LFS Concepts and Billing",
+      "url": "https://docs.github.com/en/billing/concepts/product-billing/git-lfs",
+      "role": "Authoritative documentation on Git LFS data storage, bandwidth calculations, and quota constraints.",
+      "apiVersion": "2026-03-10",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/7614ccf40eceaefc.md",
+          "format": "markdown",
+          "sha256": "5d6a59ce64c625db35617f00ac813f60e18dc7606db5b292a4dcaa2301963531",
+          "sizeBytes": 7539
+        }
+      ]
+    },
+    {
+      "id": "enterprise-managed-users",
+      "name": "About Enterprise Managed Users (EMU) and SAML/SCIM",
+      "url": "https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/understanding-iam-for-enterprises/about-enterprise-managed-users",
+      "role": "Documentation of Enterprise Managed Users identity models, SCIM synchronization, and credential authorization.",
+      "apiVersion": "2026-03-10",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/56f4b8f901845920.md",
+          "format": "markdown",
+          "sha256": "d46e3803bed92ea48a198e6372649167dc14fde4e9a9e4e1ee59dbf2bc4c9441",
+          "sizeBytes": 11542
+        }
+      ]
+    },
+    {
+      "id": "audit-log-documentation",
+      "name": "Enterprise Audit Log and Streaming API",
+      "url": "https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/about-the-audit-log-for-your-enterprise",
+      "role": "Documentation of audit log events, retention windows, and streaming endpoint configurations.",
+      "apiVersion": "2026-03-10",
+      "retrievedAt": "2026-09-17T11:53:40Z",
+      "files": [
+        {
+          "path": "sources/6d3dce639a6e07a0.md",
+          "format": "markdown",
+          "sha256": "616126a487502f2d9181e32b8ba9ab810eef741576c4541ea633d5c245ebf034",
+          "sizeBytes": 5319
+        }
+      ]
+    }
+  ],
+  "documentSourcesIndex": "research/github/document-sources.json",
+  "documentSourcesCount": 131
+}

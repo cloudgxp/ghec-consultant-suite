@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+scans/
+reports/
+customer-data/
+ghec-discovery-*.json
+!fixtures/synthetic/ghec-discovery-*.json
+*.log
+*.tmp
+.DS_Store

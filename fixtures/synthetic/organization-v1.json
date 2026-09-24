@@ -1,0 +1,554 @@
+{
+  "schemaVersion": "1.0.0",
+  "synthetic": true,
+  "scan": {
+    "id": "fictional-scan-001",
+    "startedAt": "2026-01-01T12:00:00Z",
+    "completedAt": "2026-01-01T12:00:00Z",
+    "producer": "ghec-consultant-cli",
+    "producerVersion": "0.1.0",
+    "status": "partial"
+  },
+  "configuration": {
+    "modules": [
+      "orgs",
+      "repos",
+      "lfs",
+      "teams",
+      "actions",
+      "actions-secrets",
+      "policies",
+      "security",
+      "integrations",
+      "users",
+      "packages"
+    ],
+    "format": "json",
+    "includeSensitiveMetadata": false,
+    "redactionProfile": "standard",
+    "continueOnError": true
+  },
+  "scope": {
+    "kind": "organization",
+    "organizationId": "org:fictional-north"
+  },
+  "organizations": [
+    {
+      "id": "org:fictional-north",
+      "login": "fictional-north",
+      "displayName": "Fictional North"
+    }
+  ],
+  "collectors": [
+    {
+      "id": "org:fictional-north:orgs",
+      "module": "orgs",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:repos",
+      "module": "repos",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:lfs",
+      "module": "lfs",
+      "organizationId": "org:fictional-north",
+      "status": "partial",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": ["Fictional storage coverage is incomplete"],
+      "errors": [],
+      "coverage": {
+        "state": "partial",
+        "observed": 1,
+        "expected": null,
+        "reason": "Only an LFS indicator is known"
+      }
+    },
+    {
+      "id": "org:fictional-north:teams",
+      "module": "teams",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:actions",
+      "module": "actions",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:actions-secrets",
+      "module": "actions-secrets",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:policies",
+      "module": "policies",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:security",
+      "module": "security",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:integrations",
+      "module": "integrations",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:users",
+      "module": "users",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:packages",
+      "module": "packages",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    }
+  ],
+  "entities": [
+    {
+      "id": "org:fictional-north:repo:demo",
+      "kind": "repository",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "fictional-demo",
+      "visibility": "private",
+      "archived": false,
+      "defaultBranch": "main",
+      "size": {
+        "value": 1048576,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "fork": false
+    },
+    {
+      "id": "org:fictional-north:lfs",
+      "kind": "lfs",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:lfs",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "storage": {
+        "value": null,
+        "unit": "bytes",
+        "availability": "unknown",
+        "reason": "Not measurable from available fictional evidence"
+      },
+      "objectCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "Not measurable from available fictional evidence"
+      },
+      "indicator": "detected"
+    },
+    {
+      "id": "org:fictional-north:team",
+      "kind": "team",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:teams",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "Fictional engineers",
+      "parentTeamId": null,
+      "membershipCount": {
+        "value": 4,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "repositoryAccess": [
+        {
+          "repositoryId": "org:fictional-north:repo:demo",
+          "permission": "write"
+        }
+      ]
+    },
+    {
+      "id": "org:fictional-north:actions",
+      "kind": "actions",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "enabled": true,
+      "workflowCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "runnerCount": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "usage": {
+        "value": null,
+        "unit": "minutes",
+        "availability": "unknown",
+        "reason": "Not measurable from available fictional evidence"
+      },
+      "workflowNames": ["fictional-build", "fictional-check"],
+      "runnerTypes": ["self-hosted"]
+    },
+    {
+      "id": "org:fictional-north:actions-secret",
+      "kind": "actions-secret",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "name": "FICTIONAL_DEPLOY_CREDENTIAL",
+      "configurationKind": "secret",
+      "level": "repository",
+      "updatedAt": "2026-01-01T12:00:00Z"
+    },
+    {
+      "id": "org:fictional-north:policy",
+      "kind": "policy",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:policies",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "policyKind": "ruleset",
+      "name": "Fictional main policy",
+      "enforcement": "active"
+    },
+    {
+      "id": "org:fictional-north:security",
+      "kind": "security",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:security",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "codeScanning": "unknown",
+      "dependabot": "enabled",
+      "openAlertCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "Not measurable from available fictional evidence"
+      }
+    },
+    {
+      "id": "org:fictional-north:integration",
+      "kind": "integration",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:integrations",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "integrationKind": "webhook",
+      "label": "Fictional integration",
+      "active": true
+    },
+    {
+      "id": "org:fictional-north:identity",
+      "kind": "identity",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:users",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "pseudonym": "fictional-person-1",
+      "outsideCollaborator": false,
+      "ssoStatus": "unknown",
+      "membership": "member"
+    },
+    {
+      "id": "org:fictional-north:asset",
+      "kind": "asset",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-north:repo:demo",
+      "assetKind": "release",
+      "name": "fictional-release",
+      "size": {
+        "value": 4096,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "fictional-finding-001",
+      "organizationId": "org:fictional-north",
+      "classification": "advisory",
+      "ruleId": "MIG-LFS-001",
+      "ruleVersion": "0.1.0",
+      "severity": "medium",
+      "title": "Verify LFS storage before migration",
+      "description": "Fictional evidence detects LFS but cannot establish total storage. Request an approved measurement.",
+      "entityIds": ["org:fictional-north:lfs"],
+      "evidenceExecutionIds": ["org:fictional-north:lfs"],
+      "confidence": "low",
+      "limitations": ["No capacity or readiness conclusion can be drawn."]
+    }
+  ],
+  "limitations": [
+    "Entire bundle is fictional; IDs and names refer to no customer.",
+    "No live API behavior or permission requirement is demonstrated.",
+    "LFS coverage is partial; metrics remain unknown."
+  ],
+  "errors": [],
+  "summary": {
+    "organizationCount": 1,
+    "repositoryCount": 1,
+    "completeCollectorCount": 10,
+    "incompleteCollectorCount": 1
+  }
+}

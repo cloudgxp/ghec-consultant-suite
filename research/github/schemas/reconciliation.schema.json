@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/reconciliation.schema.json",
+  "title": "GHEC API Surface Reconciliation Report Schema",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "seedRawGetOccurrences",
+    "seedUniqueGetOperations",
+    "openapiUniqueGetOperations",
+    "overlap",
+    "seedOnly",
+    "openapiOnly",
+    "union",
+    "dispositions",
+    "domains",
+    "plannedCollectors",
+    "permissionAssociationsAtWriteAccess",
+    "additionalPermissionOccurrences",
+    "completeness"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "enum": ["1.0.0"] },
+    "seedRawGetOccurrences": { "type": "integer", "minimum": 0 },
+    "seedUniqueGetOperations": { "type": "integer", "minimum": 0 },
+    "openapiUniqueGetOperations": { "type": "integer", "minimum": 0 },
+    "overlap": { "type": "integer", "minimum": 0 },
+    "seedOnly": { "type": "array", "items": { "type": "string" } },
+    "openapiOnly": { "type": "array", "items": { "type": "string" } },
+    "union": { "type": "integer", "minimum": 0 },
+    "dispositions": {
+      "type": "object",
+      "required": ["Deferred", "Excluded", "Planned", "Unresolved"],
+      "properties": {
+        "Deferred": { "type": "integer", "minimum": 0 },
+        "Excluded": { "type": "integer", "minimum": 0 },
+        "Planned": { "type": "integer", "minimum": 0 },
+        "Unresolved": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "domains": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "plannedCollectors": { "type": "integer", "minimum": 0 },
+    "permissionAssociationsAtWriteAccess": { "type": "integer", "minimum": 0 },
+    "additionalPermissionOccurrences": { "type": "integer", "minimum": 0 },
+    "completeness": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,17 @@
+{
+  "name": "ghec-consultant-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "ghec-consultant-cli": "./bin/ghec-consultant-cli.mjs"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node --import tsx src/index.ts"
+  },
+  "dependencies": {
+    "@ghec/contracts": "0.1.0"
+  }
+}
