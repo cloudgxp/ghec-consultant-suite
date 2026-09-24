@@ -1,0 +1,1479 @@
+[
+  {
+    "id": "f0d89c2d1756987d",
+    "url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fapps%2Foauth-apps%2Fbuilding-oauth-apps%2Fscopes-for-oauth-apps&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fapps%2Foauth-apps%2Fbuilding-oauth-apps%2Fscopes-for-oauth-apps&apiVersion=2026-03-10",
+    "file": "sources/f0d89c2d1756987d.md",
+    "sha256": "9a11b36b263968641a3024a1bcfb9fc2a326cda371d7771e22f67f118ede68fc",
+    "retrievedAt": "2026-09-17T11:53:40.700002+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "6eb91bf61e38b7f8",
+    "url": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fauthentication%2Fkeeping-your-account-and-data-secure%2Fmanaging-your-personal-access-tokens&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fauthentication%2Fkeeping-your-account-and-data-secure%2Fmanaging-your-personal-access-tokens&apiVersion=2026-03-10",
+    "file": "sources/6eb91bf61e38b7f8.md",
+    "sha256": "736da32462a15cd6799fc97eb9b17b09080229ce701b7102fc32b89b437d5abb",
+    "retrievedAt": "2026-09-17T11:53:40.857511+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "7614ccf40eceaefc",
+    "url": "https://docs.github.com/en/billing/concepts/product-billing/git-lfs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fbilling%2Fconcepts%2Fproduct-billing%2Fgit-lfs&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fbilling%2Fconcepts%2Fproduct-billing%2Fgit-lfs&apiVersion=2026-03-10",
+    "file": "sources/7614ccf40eceaefc.md",
+    "sha256": "5d6a59ce64c625db35617f00ac813f60e18dc7606db5b292a4dcaa2301963531",
+    "retrievedAt": "2026-09-17T11:53:40.778927+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "9a01a10d89b9246d",
+    "url": "https://docs.github.com/en/enterprise-cloud@latest/admin/managing-accounts-and-repositories/managing-users-in-your-enterprise/inviting-people-to-manage-your-enterprise",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fenterprise-cloud%40latest%2Fadmin%2Fmanaging-accounts-and-repositories%2Fmanaging-users-in-your-enterprise%2Finviting-people-to-manage-your-enterprise&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fenterprise-cloud%40latest%2Fadmin%2Fmanaging-accounts-and-repositories%2Fmanaging-users-in-your-enterprise%2Finviting-people-to-manage-your-enterprise&apiVersion=2026-03-10",
+    "file": "sources/9a01a10d89b9246d.md",
+    "sha256": "3ce0932ff2defa3c064567da3ea9def584b67450fdcdd3662d71b0b3fc38fd9d",
+    "retrievedAt": "2026-09-17T11:53:40.699217+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "56f4b8f901845920",
+    "url": "https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/understanding-iam-for-enterprises/about-enterprise-managed-users",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fenterprise-cloud%40latest%2Fadmin%2Fmanaging-iam%2Funderstanding-iam-for-enterprises%2Fabout-enterprise-managed-users&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fenterprise-cloud%40latest%2Fadmin%2Fmanaging-iam%2Funderstanding-iam-for-enterprises%2Fabout-enterprise-managed-users&apiVersion=2026-03-10",
+    "file": "sources/56f4b8f901845920.md",
+    "sha256": "d46e3803bed92ea48a198e6372649167dc14fde4e9a9e4e1ee59dbf2bc4c9441",
+    "retrievedAt": "2026-09-17T11:53:40.729924+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "6d3dce639a6e07a0",
+    "url": "https://docs.github.com/en/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/about-the-audit-log-for-your-enterprise",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fenterprise-cloud%40latest%2Fadmin%2Fmonitoring-activity-in-your-enterprise%2Freviewing-audit-logs-for-your-enterprise%2Fabout-the-audit-log-for-your-enterprise&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fenterprise-cloud%40latest%2Fadmin%2Fmonitoring-activity-in-your-enterprise%2Freviewing-audit-logs-for-your-enterprise%2Fabout-the-audit-log-for-your-enterprise&apiVersion=2026-03-10",
+    "file": "sources/6d3dce639a6e07a0.md",
+    "sha256": "616126a487502f2d9181e32b8ba9ab810eef741576c4541ea633d5c245ebf034",
+    "retrievedAt": "2026-09-17T11:53:40.698124+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "90e95fea962e246b",
+    "url": "https://docs.github.com/en/graphql/overview/rate-limits-and-query-limits-for-the-graphql-api",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fgraphql%2Foverview%2Frate-limits-and-query-limits-for-the-graphql-api&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fgraphql%2Foverview%2Frate-limits-and-query-limits-for-the-graphql-api&apiVersion=2026-03-10",
+    "file": "sources/90e95fea962e246b.md",
+    "sha256": "f474d76a74c5b432e0cf08564d0d52464217681664db9202e6e874ab5fa82268",
+    "retrievedAt": "2026-09-17T11:53:40.895386+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "333721d507b53a5d",
+    "url": "https://docs.github.com/en/graphql/reference/objects",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fgraphql%2Freference%2Fobjects&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fgraphql%2Freference%2Fobjects&apiVersion=2026-03-10",
+    "file": "sources/333721d507b53a5d.md",
+    "sha256": "6c6b0a3ba00f0100a4f40777b3432a65bcceaf13f7c09a59eb67ce42981163cf",
+    "retrievedAt": "2026-09-17T11:53:41.049956+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "a55322845abe0337",
+    "url": "https://docs.github.com/en/graphql/reference/queries",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fgraphql%2Freference%2Fqueries&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fgraphql%2Freference%2Fqueries&apiVersion=2026-03-10",
+    "file": "sources/a55322845abe0337.md",
+    "sha256": "6c6b0a3ba00f0100a4f40777b3432a65bcceaf13f7c09a59eb67ce42981163cf",
+    "retrievedAt": "2026-09-17T11:53:40.853328+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "dda3b9f75e6ba9b5",
+    "url": "https://docs.github.com/en/migrations/overview/planning-your-migration-to-github",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fmigrations%2Foverview%2Fplanning-your-migration-to-github&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Fmigrations%2Foverview%2Fplanning-your-migration-to-github&apiVersion=2026-03-10",
+    "file": "sources/dda3b9f75e6ba9b5.md",
+    "sha256": "c47313f0e6a8abd86c44fcf289da7f75085d80db57876a7977d4d2c27da35572",
+    "retrievedAt": "2026-09-17T11:53:40.918301+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "11e621e65cbb65a5",
+    "url": "https://docs.github.com/en/rest/about-the-rest-api/api-versions",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fabout-the-rest-api%2Fapi-versions&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fabout-the-rest-api%2Fapi-versions&apiVersion=2026-03-10",
+    "file": "sources/11e621e65cbb65a5.md",
+    "sha256": "c8e40bd4bbeb96fc37c3366eb466b9071a9bf7bfe02025a0f58af1208360f2a9",
+    "retrievedAt": "2026-09-17T11:53:40.926593+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "047f030efe47b8a5",
+    "url": "https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fauthentication%2Fpermissions-required-for-fine-grained-personal-access-tokens&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fauthentication%2Fpermissions-required-for-fine-grained-personal-access-tokens&apiVersion=2026-03-10",
+    "file": "sources/047f030efe47b8a5.md",
+    "sha256": "8f896645965ab0b27f85a8833cb33b61a90849fb7e15a49eeffc0eb0474458a4",
+    "retrievedAt": "2026-09-17T11:53:41.055563+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "b8838bacfb9b988d",
+    "url": "https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fusing-the-rest-api%2Fbest-practices-for-using-the-rest-api&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fusing-the-rest-api%2Fbest-practices-for-using-the-rest-api&apiVersion=2026-03-10",
+    "file": "sources/b8838bacfb9b988d.md",
+    "sha256": "7628bd49657d1b1f9ac15496aefcdf9104e8054dbd20609ca0b21769554bb5c8",
+    "retrievedAt": "2026-09-17T11:53:41.050314+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "4a04a6e2373e869e",
+    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fusing-the-rest-api%2Frate-limits-for-the-rest-api&apiVersion=2026-03-10",
+    "finalUrl": "https://docs.github.com/api/article/body?pathname=%2Fen%2Frest%2Fusing-the-rest-api%2Frate-limits-for-the-rest-api&apiVersion=2026-03-10",
+    "file": "sources/4a04a6e2373e869e.md",
+    "sha256": "97f2f169fc98314ad6a0de057f9f95bd3c3d0cddfcfb4fefe553bd0bfc330ff3",
+    "retrievedAt": "2026-09-17T11:53:41.069796+00:00",
+    "status": "retrieved"
+  },
+  {
+    "id": "a76aee30a24480cf",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/artifacts",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fartifacts&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "99905b95f1bed0cd",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/cache",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fcache&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "bc9d1a2e329bb9d9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/concurrency-groups",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fconcurrency-groups&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "c67e5d496c4b669b",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/hosted-runners",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fhosted-runners&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "376ab88a03f07a09",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/oidc",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Foidc&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "8850f6ecbe5703ea",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/permissions",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fpermissions&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "d5ec200c82db6b68",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/policies",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fpolicies&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "76988e3445177de5",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fsecrets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "362c4804d3e2ddbe",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/self-hosted-runner-groups",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fself-hosted-runner-groups&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "835e271c40f56c21",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/self-hosted-runners",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fself-hosted-runners&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "227db1742b62e5b2",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/variables",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fvariables&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "b583f699ec39ed1b",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/workflow-jobs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fworkflow-jobs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "abcc1864c618f8e6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/workflow-runs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fworkflow-runs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "aa6787893f75a9d9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/actions/workflows",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factions%2Fworkflows&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "ce9a911d79d37871",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/activity/events",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factivity%2Fevents&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "6f29569e67492148",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/activity/feeds",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factivity%2Ffeeds&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "3b3fb692742fe457",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/activity/notifications",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factivity%2Fnotifications&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "b69e90718191b224",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/activity/starring",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factivity%2Fstarring&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "0354783c851c15d0",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/activity/watching",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Factivity%2Fwatching&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "1fca6fd9931106e4",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/agent-tasks/agent-tasks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fagent-tasks%2Fagent-tasks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "548ad2b48e53749e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/agents/secrets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fagents%2Fsecrets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "65641105fd357e2f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/agents/variables",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fagents%2Fvariables&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "bd2f565868147d79",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/announcement-banners/enterprises",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fannouncement-banners%2Fenterprises&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "4f7670e811a77793",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/announcement-banners/organizations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fannouncement-banners%2Forganizations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "a43081e9378fe4c4",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/apps/apps",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fapps%2Fapps&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "8625aeef0e9ddfce",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/apps/installations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fapps%2Finstallations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "b22a3702f78b6495",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/apps/marketplace",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fapps%2Fmarketplace&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "851d58d071562c85",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/apps/webhooks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fapps%2Fwebhooks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "f2d4402ffc3a6154",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/billing/billing",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbilling%2Fbilling&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "690a1ade852d83b9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/billing/budgets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbilling%2Fbudgets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "7c5cc57a92a06e8d",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/billing/cost-centers",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbilling%2Fcost-centers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "74f70efffdde9eb9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/billing/usage",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbilling%2Fusage&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "81d75382348c16f7",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/billing/usage-reports",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbilling%2Fusage-reports&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "2f39032b7f680104",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/branches/branch-protection",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbranches%2Fbranch-protection&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "441a23d7d56acaa6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/branches/branches",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fbranches%2Fbranches&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "5d35b08b06acd2d9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/campaigns/campaigns",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcampaigns%2Fcampaigns&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "dd8c0e32956f90da",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/checks/runs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fchecks%2Fruns&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "6ddfd722547bb047",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/checks/suites",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fchecks%2Fsuites&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "16cc0c463941d144",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/classroom/classroom",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fclassroom%2Fclassroom&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "194707bdd2a99e9e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/code-quality/code-quality",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcode-quality%2Fcode-quality&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "ffdd21f077c8c050",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/code-scanning/alert-dismissal-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcode-scanning%2Falert-dismissal-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "29d6208db5b2a0d2",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/code-scanning/code-scanning",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcode-scanning%2Fcode-scanning&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "802a3c2d7808bf99",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcode-security%2Fconfigurations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "317c557c7ca0cd94",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codes-of-conduct/codes-of-conduct",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodes-of-conduct%2Fcodes-of-conduct&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "56c50724cb904efc",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codespaces/codespaces",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodespaces%2Fcodespaces&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "2dd1ceb86a7a8d94",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codespaces/machines",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodespaces%2Fmachines&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "23e10038bbad5e7d",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codespaces/organization-secrets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodespaces%2Forganization-secrets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "41c31d4aad43ac19",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codespaces/organizations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodespaces%2Forganizations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "59b69b85809aee8a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codespaces/repository-secrets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodespaces%2Frepository-secrets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "a60fafee5778c73d",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/codespaces/secrets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcodespaces%2Fsecrets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "647dd92921d380ac",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/collaborators/collaborators",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcollaborators%2Fcollaborators&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "f62c2f8e73e48f07",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/collaborators/invitations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcollaborators%2Finvitations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "c8ea8cec84e1850a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/commits/comments",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcommits%2Fcomments&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "b8ee6f70b6c54312",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/commits/commits",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcommits%2Fcommits&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "c12c421a02ed4b6a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/commits/statuses",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcommits%2Fstatuses&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "68c6030369202f60",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot-spaces/collaborators",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot-spaces%2Fcollaborators&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "e116b42a1951ad7b",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot-spaces/copilot-spaces",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot-spaces%2Fcopilot-spaces&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "1c667349ff81807b",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot-spaces/resources",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot-spaces%2Fresources&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "af9308ed5a644104",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot/copilot-cloud-agent-management",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot%2Fcopilot-cloud-agent-management&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "989d426c77e64a58",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot/copilot-coding-agent-management",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot%2Fcopilot-coding-agent-management&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "9df3d720825e40fe",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot/copilot-content-exclusion-management",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot%2Fcopilot-content-exclusion-management&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "ea270ec04a7575c6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot/copilot-custom-agents",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot%2Fcopilot-custom-agents&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "28af2929580fa848",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot/copilot-usage-metrics",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot%2Fcopilot-usage-metrics&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "a7cef97482d93578",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/copilot/copilot-user-management",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fcopilot%2Fcopilot-user-management&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "1dae8ea067ce5848",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/dependabot/alert-dismissal-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdependabot%2Falert-dismissal-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "id": "bbd059c0f8fd8a58",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/dependabot/alerts",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdependabot%2Falerts&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9caf4b68483fec2c",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/dependabot/repository-access",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdependabot%2Frepository-access&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d735ee778871aa23",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/dependabot/secrets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdependabot%2Fsecrets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "cb3870624a1c3af6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/dependency-graph/dependency-review",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdependency-graph%2Fdependency-review&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "773c6b05bdd3354e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/dependency-graph/sboms",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdependency-graph%2Fsboms&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "efc0b13840d334ff",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/deploy-keys/deploy-keys",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdeploy-keys%2Fdeploy-keys&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "cc22ba31aa85ef09",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/deployments/branch-policies",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdeployments%2Fbranch-policies&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "8e4e42f515888e19",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/deployments/deployments",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdeployments%2Fdeployments&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "a6477b7b2fc4fddc",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/deployments/environments",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdeployments%2Fenvironments&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d4d0318c3491f847",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/deployments/protection-rules",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdeployments%2Fprotection-rules&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "22ac70f8a182fb55",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/deployments/statuses",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fdeployments%2Fstatuses&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e3c7aaa12ee7be40",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/emojis/emojis",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Femojis%2Femojis&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "645f9709d0180332",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/admin-stats",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fadmin-stats&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "968b85479e5d0e28",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/audit-log",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Faudit-log&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "8d20cc1ab36e64be",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/bypass-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fbypass-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c4ba55a478979062",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/code-security-and-analysis",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fcode-security-and-analysis&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "dab13ceab3896f15",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/custom-properties",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fcustom-properties&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c5440f7647d3f833",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/custom-properties-for-orgs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fcustom-properties-for-orgs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3d966312587e38b1",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/enterprise-roles",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fenterprise-roles&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "b73f29fb2d1b5219",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/licensing",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Flicensing&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e874edbe51d42542",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/network-configurations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fnetwork-configurations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e86aa34cff8fbf2c",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/organization-installations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Forganization-installations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "254b38e82a3cb8d3",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/rules",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Frules&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "73ff64d6e16a8af6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/scim",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fscim&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3345ea502b7fd566",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/security-advisories",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Fsecurity-advisories&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3be9805c221adfda",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/token-inventory",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-admin%2Ftoken-inventory&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "883ab04545a23f99",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-members",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-teams%2Fenterprise-team-members&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e26e1500177c5caa",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-organizations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-teams%2Fenterprise-team-organizations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e35fa968cc1b559f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/enterprise-teams/enterprise-teams",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fenterprise-teams%2Fenterprise-teams&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d7a42525c533b447",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/gists/comments",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgists%2Fcomments&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "def848d16cfa59aa",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/gists/gists",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgists%2Fgists&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "1169a93a4cc9aed6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/git/blobs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgit%2Fblobs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9820073a71363bcc",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/git/commits",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgit%2Fcommits&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "f82acff9e0d0dcf1",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/git/refs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgit%2Frefs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ba8a540d311f23e6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/git/tags",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgit%2Ftags&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c0235174dbe80f43",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/git/trees",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgit%2Ftrees&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "4cae2883234ec543",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/gitignore/gitignore",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fgitignore%2Fgitignore&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "8b36b7be1bd708e4",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/interactions/orgs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Finteractions%2Forgs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "6c1abc4372192428",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/interactions/repos",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Finteractions%2Frepos&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e99e2ac18bea45bc",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/interactions/user",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Finteractions%2Fuser&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d3bc00ee79b68e4a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/assignees",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fassignees&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "40ffb6ad6283aded",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/comments",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fcomments&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "4f59dbf5998d004a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/events",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fevents&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "74a17534a87d09ee",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/issue-dependencies",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fissue-dependencies&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "f913c27635b4f28f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/issue-field-values",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fissue-field-values&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "bc4daee540d68856",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/issues",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fissues&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "91a57f7b722b0b75",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/labels",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Flabels&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "f00d0f31c2ab7827",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/milestones",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fmilestones&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d2c62a5ba0e4969e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/sub-issues",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Fsub-issues&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "5d0b6230be107ae0",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/issues/timeline",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fissues%2Ftimeline&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "4413d556a5e415f7",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/licenses/licenses",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Flicenses%2Flicenses&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "7677028770fefedb",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/meta/meta",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmeta%2Fmeta&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e07a27c7e15241b7",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/metrics/community",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmetrics%2Fcommunity&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "98df22d4bd847e04",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/metrics/statistics",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmetrics%2Fstatistics&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c5daf0aa660972f7",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/metrics/traffic",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmetrics%2Ftraffic&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "29d0174ef0d19fc5",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/migrations/orgs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmigrations%2Forgs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "45b8bc14ccbb2528",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmigrations%2Fsource-imports&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "14f5012ae99b2ac3",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/migrations/users",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fmigrations%2Fusers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "509e5bbbb8c0fbf8",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/api-insights",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fapi-insights&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d2986c37096fb138",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/artifact-metadata",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fartifact-metadata&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "824c9517fea851ae",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/attestations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fattestations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e759cd24429532d2",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/blocking",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fblocking&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c9604106bafb4803",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/bypass-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fbypass-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "5cdbac65e45a558d",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-properties",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fcustom-properties&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "6e49527111481e49",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-properties-for-orgs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fcustom-properties-for-orgs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c899abbaa647e0a6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fcustom-roles&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "a1368274cc129143",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/issue-fields",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fissue-fields&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "36f7afb5f12f16d6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/issue-types",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fissue-types&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "38017da293d3ecf0",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/members",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fmembers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "c75cb02715885932",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/network-configurations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fnetwork-configurations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "2c2a8f12feada9a1",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/organization-roles",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Forganization-roles&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ea9b130197079329",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/orgs",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Forgs&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "b89e3c9e73e7246f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/outside-collaborators",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Foutside-collaborators&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "5abbfa70b88e57b6",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/personal-access-tokens",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fpersonal-access-tokens&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3b0b117044e6f2af",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/rule-suites",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Frule-suites&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "680ae8cca53619b9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/rules",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Frules&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "a9b3f24f1e0cf570",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/security-managers",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fsecurity-managers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9b84bcbe6ab791cd",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/orgs/webhooks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Forgs%2Fwebhooks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ba3becdcb0df84d8",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/packages/packages",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpackages%2Fpackages&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ca0f1a8b502c50ac",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/pages/pages",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpages%2Fpages&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ab5cf4af8b41f652",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/private-registries/organization-configurations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fprivate-registries%2Forganization-configurations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "cd6c92831a27ae47",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/projects/fields",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fprojects%2Ffields&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3ab14c33a0cce415",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/projects/items",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fprojects%2Fitems&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "17c6bf018ef7d065",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/projects/projects",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fprojects%2Fprojects&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "98f007521b4cb395",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/pulls/comments",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpulls%2Fcomments&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "b8f840d1778ea4ed",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/pulls/pulls",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpulls%2Fpulls&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "6dacf3624531fb31",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/pulls/review-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpulls%2Freview-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "dec6959457e866c3",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/pulls/reviews",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpulls%2Freviews&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "496f2f91af0144dd",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/pulls/stacks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fpulls%2Fstacks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3d5c901d48ec9848",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/rate-limit/rate-limit",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frate-limit%2Frate-limit&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "b9789e9b11e00457",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/reactions/reactions",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Freactions%2Freactions&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "bdd5e29de2923c51",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/releases/assets",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Freleases%2Fassets&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "1f131f47ed4d0b3a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/releases/releases",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Freleases%2Freleases&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "d20b9fc4305466f2",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/attestations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fattestations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "b83a6c7f0c31cb0f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/autolinks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fautolinks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "e097c2c6b0011ca9",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/bypass-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fbypass-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "dee4448f57670f9f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/contents",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fcontents&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "7b17c3968f37b0e1",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/custom-properties",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fcustom-properties&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9be29c61d21f4cf1",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/forks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fforks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "7c612b6e2b189b4c",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/issue-types",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fissue-types&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "f41e86e30ba898a4",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/repos",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Frepos&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "51880a8b31237960",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/rule-suites",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Frule-suites&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "a62261d1877ac286",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/rules",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Frules&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "dd650f82231e94a2",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/repos/webhooks",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Frepos%2Fwebhooks&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "8a25aa0b3e505ebc",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/scim/scim",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fscim%2Fscim&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9f56a855751f4176",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/search/search",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsearch%2Fsearch&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "12c567b6d228ac3d",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/secret-scanning/alert-dismissal-requests",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecret-scanning%2Falert-dismissal-requests&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ee4f7cbfae237b3f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/secret-scanning/custom-patterns",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecret-scanning%2Fcustom-patterns&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "32d157d5d0aefad3",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/secret-scanning/delegated-bypass",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecret-scanning%2Fdelegated-bypass&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "3abd62452f21a8d5",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/secret-scanning/push-protection",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecret-scanning%2Fpush-protection&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "ccc0aaa7a6c4b921",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/secret-scanning/secret-scanning",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecret-scanning%2Fsecret-scanning&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "0eb880638c2a4223",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/security-advisories/global-advisories",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecurity-advisories%2Fglobal-advisories&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "8d388e597e8ee68f",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/security-advisories/repository-advisories",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fsecurity-advisories%2Frepository-advisories&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "fc1c2f98e0c69578",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/teams/external-groups",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fteams%2Fexternal-groups&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "50c6fbf0d38ed0bf",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/teams/members",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fteams%2Fmembers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "848710c7fff85204",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/teams/team-sync",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fteams%2Fteam-sync&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "b0413fea2fd6cf3c",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/teams/teams",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fteams%2Fteams&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "a712dc1e572d2e0a",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/attestations",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fattestations&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9293340e9c38d498",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/blocking",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fblocking&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "9bda58abb0c4ae8e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/emails",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Femails&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "51d440b039f263ca",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/followers",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Ffollowers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "14b8b89aa7a82895",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/gpg-keys",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fgpg-keys&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "78e1892d426bde2e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/keys",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fkeys&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "7c624eef780edc6e",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/social-accounts",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fsocial-accounts&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "f0fc69f249c00c49",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/ssh-signing-keys",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fssh-signing-keys&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  },
+  {
+    "id": "6c34b7cf7ee8b711",
+    "url": "https://docs.github.com/enterprise-cloud@latest/rest/users/users",
+    "retrievalUrl": "https://docs.github.com/api/article/body?pathname=%2Fenterprise-cloud%40latest%2Frest%2Fusers%2Fusers&apiVersion=2026-03-10",
+    "status": "inaccessible",
+    "error": "HTTP Error 429: Fastly rate limiter: Too many requests"
+  }
+]

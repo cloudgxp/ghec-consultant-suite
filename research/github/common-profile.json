@@ -1,0 +1,181 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "common-profile.json",
+  "title": "GHEC Discovery Collector Common Execution Profile",
+  "description": "Normative baseline execution profile and shared requirements for all GHEC discovery collectors.",
+  "version": "1.0.0",
+  "outputEnvelope": {
+    "description": "Common envelope format for normalized evidence records produced by discovery collectors.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Immutable, opaque namespaced identifier for the evidence record."
+      },
+      "scopeRef": {
+        "type": "object",
+        "description": "Hierarchical resource anchor linking the record to its enclosing scope.",
+        "required": ["kind", "id"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["enterprise", "organization", "repository", "team", "environment"]
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier of the parent scope resource."
+          },
+          "slug": {
+            "type": ["string", "null"],
+            "description": "Human-readable routing slug held ephemerally."
+          }
+        }
+      },
+      "collectorExecutionId": {
+        "type": "string",
+        "description": "Identifier of the specific collector execution that observed this record."
+      },
+      "provenance": {
+        "type": "object",
+        "required": ["source", "operation", "observedAt", "apiVersion"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["rest", "graphql", "synthetic"]
+          },
+          "operation": {
+            "type": "string",
+            "description": "Reviewed collector or operation ID (e.g. rest.orgs.get)."
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC 3339 UTC timestamp of observation."
+          },
+          "apiVersion": {
+            "type": ["string", "null"],
+            "description": "Target API version (e.g. 2026-03-10)."
+          }
+        }
+      },
+      "coverage": {
+        "type": "object",
+        "required": ["state", "observed", "expected", "reason"],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["complete", "partial", "unknown", "none"]
+          },
+          "observed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expected": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "reason": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  },
+  "privacy": {
+    "description": "Normative privacy boundaries, prohibited data categories, and redaction rules.",
+    "prohibitedCategories": [
+      "credentials",
+      "secret_values",
+      "variable_values",
+      "private_keys",
+      "webhook_secrets",
+      "passwords",
+      "access_tokens",
+      "refresh_tokens",
+      "client_secrets",
+      "encrypted_values",
+      "repository_contents",
+      "workflow_source_files",
+      "git_blobs",
+      "git_trees",
+      "git_commits_patches",
+      "archive_downloads",
+      "artifact_binaries",
+      "job_logs",
+      "raw_webhook_delivery_payloads",
+      "arbitrary_free_text_bodies",
+      "signed_download_urls"
+    ],
+    "prohibitedFieldPatterns": [
+      "secret",
+      "token",
+      "access_token",
+      "refresh_token",
+      "private_key",
+      "password",
+      "client_secret",
+      "encrypted_value",
+      "body",
+      "body_html",
+      "body_text",
+      "content",
+      "payload",
+      "raw_key",
+      "download_url",
+      "browser_download_url",
+      "archive_download_url"
+    ],
+    "redactionRules": {
+      "pseudonymization": {
+        "method": "HMAC-SHA256",
+        "keyScope": "run-scoped ephemeral key",
+        "targetFields": ["user.id", "actor_id", "subject_id"],
+        "keyRetention": "discard key upon bundle publication; do not persist identity mapping"
+      },
+      "omission": {
+        "method": "field omission",
+        "targetFields": ["email", "user.login", "avatar_url", "runner.name", "runner.labels", "webhook.url", "token_last_eight", "credential_id", "authorization_id"]
+      }
+    },
+    "invariants": [
+      "No collector may execute an endpoint whose response schema contains prohibited data unless a documented metadata-only parameter exists.",
+      "Filtering out prohibited fields in-memory after receiving them from GitHub is strictly forbidden.",
+      "The minimal redaction profile does not bypass prohibited categories.",
+      "Sensitive opt-in metadata flags never permit secret or credential retrieval."
+    ]
+  },
+  "outcomes": {
+    "description": "Standardized terminal outcome taxonomy for collector executions.",
+    "states": {
+      "complete": "All target resources in the scoped denominator were successfully enumerated with full coverage and zero errors.",
+      "partial": "Some target resources were enumerated, but coverage was bounded by pagination limits, partial visibility, or non-fatal errors.",
+      "failed": "The collector encountered a fatal error (e.g. 401 authentication failure, network disconnect) and produced no usable evidence.",
+      "skipped": "The collector was not executed because required parent resource anchors (e.g. repository list) were missing or skipped.",
+      "unavailable": "The target capability is disabled by policy, unsupported on the plan, or inaccessible due to verified permission boundaries."
+    }
+  },
+  "http": {
+    "description": "HTTP transport, error handling, rate limiting, and retry policies.",
+    "timeoutSeconds": 30,
+    "maxAttempts": 4,
+    "maxRetrySeconds": 300,
+    "concurrencyLimit": 2,
+    "rateLimiting": {
+      "primary": "Honor Retry-After and x-ratelimit-reset headers; apply exponential backoff with full jitter.",
+      "secondary": "Detect secondary throttling (403/429 with throttling message); back off immediately with minimum 60-second delay.",
+      "budget": "Halt further requests and finalize collector as partial if operator request budget is exceeded."
+    },
+    "errorHandling": {
+      "200": "Success; parse JSON response according to allowlisted output fields.",
+      "204": "Success with empty body; record presence/absence indicator.",
+      "301": "Follow redirect only within api.github.com domain; never follow redirects to external download URLs.",
+      "302": "Redirect; block if pointing to an archive, binary download, or report generation URL.",
+      "304": "Not modified; valid for conditional/cached requests.",
+      "401": "Unauthorized / Bad credentials; fail scan immediately with sanitized error; do not retry.",
+      "403": "Forbidden; inspect reason (permission denial vs secondary throttle). Never retry permission denials; mark capability unavailable or partial.",
+      "404": "Not found or inaccessible; record as missing/inaccessible resource; do not retry. In enterprise scope, 404 does not prove absence.",
+      "422": "Unprocessable entity; indicates invalid query parameters or unsupported resource state; record sanitized error.",
+      "429": "Too many requests; back off per rate limit policy.",
+      "5xx": "Server error; retry transient failures with exponential backoff up to maxAttempts."
+    }
+  }
+}

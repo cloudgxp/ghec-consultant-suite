@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/collector-registry.schema.json",
+  "title": "GHEC Collector Registry Manifest Schema",
+  "type": "object",
+  "required": ["schemaVersion", "apiVersion", "collectors"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "enum": ["1.0.0"] },
+    "apiVersion": { "type": "string" },
+    "collectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "module",
+          "purpose",
+          "priority",
+          "phase",
+          "implementationStatus",
+          "researchStatus",
+          "scope",
+          "operations",
+          "apiVersion",
+          "sources",
+          "documentation",
+          "inputs",
+          "queryParameters",
+          "dependencies",
+          "executionOrder",
+          "selection",
+          "executable",
+          "runtimeBlockers",
+          "authentication",
+          "output",
+          "privacy",
+          "pagination",
+          "cost",
+          "outcomes",
+          "httpBehavior",
+          "coverage",
+          "limitations",
+          "acceptanceCriteria",
+          "syntheticScenarios",
+          "spec",
+          "commonProfile"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "module": { "type": "string" },
+          "purpose": { "type": "string" },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+          "phase": { "type": "string" },
+          "implementationStatus": { "type": "string", "enum": ["specified", "scaffolded", "implemented", "verified", "blocked"] },
+          "researchStatus": { "type": "string" },
+          "scope": { "type": "string" },
+          "operations": { "type": "array", "items": { "type": "string" } },
+          "apiVersion": { "type": "string" },
+          "sources": { "type": "array", "items": { "type": "string" } },
+          "documentation": { "type": "string" },
+          "inputs": { "type": "array" },
+          "queryParameters": { "type": "array" },
+          "dependencies": { "type": "array", "items": { "type": "string" } },
+          "executionOrder": { "type": "string" },
+          "selection": { "type": "string", "enum": ["default", "optional"] },
+          "executable": { "type": "boolean" },
+          "runtimeBlockers": { "type": "array", "items": { "type": "string" } },
+          "authentication": { "type": "object" },
+          "output": {
+            "type": "object",
+            "required": ["target", "currentReaderCompatible", "recordType", "recordRoot", "fields"],
+            "properties": {
+              "target": { "type": "string" },
+              "currentReaderCompatible": { "type": "boolean" },
+              "reason": { "type": "string" },
+              "recordType": { "type": "string" },
+              "recordRoot": { "type": "string" },
+              "fields": { "type": "array" },
+              "envelope": { "type": "string" },
+              "relationships": { "type": "string" }
+            }
+          },
+          "privacy": {
+            "type": "object",
+            "required": ["allowlist", "prohibited", "sensitivity", "redaction"],
+            "properties": {
+              "allowlist": { "type": "array", "items": { "type": "string" } },
+              "prohibited": { "type": "string" },
+              "sensitivity": { "type": "string" },
+              "redaction": { "type": "string" }
+            }
+          },
+          "pagination": { "type": "object" },
+          "cost": { "type": "object" },
+          "outcomes": { "type": "string" },
+          "httpBehavior": { "type": "object" },
+          "coverage": { "type": "object" },
+          "limitations": { "type": "array", "items": { "type": "string" } },
+          "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+          "syntheticScenarios": { "type": "array" },
+          "spec": { "type": "string" },
+          "commonProfile": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

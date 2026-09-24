@@ -1,0 +1,32 @@
+# Security and privacy
+
+Status: requirements and threat model; end-to-end controls are deferred until live boundaries exist.
+
+## Trust boundaries and threats
+
+| Boundary / threat                                      | Required control                                                                                                       | Verification                                                                    |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Local credential → API adapter: token leakage          | Environment or OS credential mechanism only; never CLI argument, bundle, URL, exception dump or tracked file           | Seed credential sentinels and inspect all diagnostics/files                     |
+| GitHub response → collector: excessive collection      | Per-operation and per-field allowlists; reject unsolicited content and raw payload retention                           | Mock responses include prohibited fields; normalized result omits them          |
+| Bundle → browser: malicious file / resource exhaustion | Size limits, strict parsing, schema/reference checks, no HTML injection or executable URLs, worker budget/cancellation | Invalid/oversize/adversarial fixtures; no network or code execution             |
+| Identity → export: re-identification                   | Run-scoped pseudonyms, minimum necessary fields and approved disclosure                                                | Compare standard/minimal output; preserve links without source identity mapping |
+| Diagnostics → console/files: sensitive traces          | Static error codes/messages, allowlisted counters, sanitized paths; never raw API errors/headers                       | Seed secrets in nested error bodies and parser values                           |
+| Customer bundle/report → disk: accidental sharing      | Ignored output directories, restricted permissions, no overwrite, explicit export                                      | Filesystem tests and review of tracked files                                    |
+| Dependency → runtime: supply-chain compromise          | Committed lockfile, reproducible installs, dependency/license review, no unnecessary services                          | CI install and dependency review; updates retest fixtures                       |
+| CSV/PDF → consumer: formula injection / disclosure     | CSV neutralization, safe local rendering and inherited redaction                                                       | Adversarial cell tests and report inspection                                    |
+
+**SEC-TOKEN-001.** The future credential mechanism accepts `GHEC_TOKEN` or an explicitly selected OS keychain entry. `.env` loading is not automatic in this scaffold; example values are placeholders. Never persist or print a token; validate presence without logging contents. Do not load credentials in the dashboard. AC: help, parse failures, retries, debug diagnostics and exports contain no seeded token.
+
+**SEC-SECRET-001.** Actions secrets collection is metadata-only: approved names, level and available timestamps. Never retrieve, persist, display or log secret values, private keys, webhook secrets or authentication headers. Variable values are also excluded, because variables may contain sensitive content. Avoid operations that return values merely to discard them; if no metadata-safe operation exists, report unsupported pending security review. AC: reviewed operation fixtures prove value-bearing endpoints are not called; `value` fields are rejected by the contract. No workflow file content or log archives are fetched by default.
+
+**SEC-PII-001.** Standard redaction removes person logins, display names, email, profile/avatar URLs, external identity IDs and raw identity assertions, retaining pseudonyms and approved counts. Resource names remain confidential metadata. `minimal` is an explicitly weaker redaction profile, but the initial contract adds no extra identifying fields until stakeholder approval and a versioned allowlist. `--include-sensitive-metadata` requires approved named fields; it is never a bypass for prohibited data. AC: snapshots show precise fields for each profile and preserved references; no undocumented fields appear.
+
+**SEC-LOG-001.** Logs include reviewed operation IDs, timing, counters and sanitized status codes only. Do not retain request/response bodies, full headers, raw stack causes or external URLs containing query strings. Verbose mode does not loosen policy. AC: malicious values in every mocked error channel are absent from output; scanner tests complement (not replace) field allowlists.
+
+**SEC-LOCAL-001.** The dashboard runs locally and uses memory-only data. No telemetry, analytics, accounts, remote font/image fetches, backend persistence or service-worker customer caching. Reports/bundles remain sensitive artifacts under the operator's control. Ignore `scans/`, `reports/`, `customer-data/`, environment files and conventional bundle names; arbitrary output paths still require operator care. AC: browser storage/network review and tracked-file review pass. No promise of secure RAM or SSD erasure.
+
+**SEC-READ-001.** Discovery never mutates GitHub. Review all GraphQL operations to prohibit mutations and REST operations to permit only documented reads. Do not obtain write permissions just to simplify a collector. Where provider APIs require broader permission for a read, document and approve the exact reason before release. AC: operation registry and mocked transport tests reject writes.
+
+**SEC-RETAIN-001.** Do not auto-delete original evidence or auto-upload it. Establish engagement-specific retention, access and approved sharing rules before use on customer data; generated reports inherit bundle sensitivity. AC: CLI README and report footer disclose scope/redaction; no background persistence is introduced.
+
+Residual risks: repository and secret names can be sensitive even without values; customer-supplied files can contain unsafe strings in otherwise valid fields; access may change mid-scan; counts can disclose organizational structure; exports leave application control. A production release needs documented threat-model review, redaction testing and stakeholder approval of the sensitive-metadata allowlist.
