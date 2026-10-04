@@ -14,7 +14,10 @@ import {
   type Entity,
   type PublishableBundle,
 } from '@ghec/contracts';
-import { publishBundle } from '../src/output/publisher.js';
+import {
+  publishBundle,
+  generateBundleFilename,
+} from '../src/output/publisher.js';
 import {
   generateSalt,
   computeSaltDigest,
@@ -456,6 +459,20 @@ test('Pre-publication security scanner catches and neutralizes secret patterns',
   );
 });
 
+test('Secret redactor is resilient against polynomial ReDoS on repeated PEM markers', () => {
+  const pathologicalPem = '-----BEGIN PRIVATE KEY-----\n'.repeat(500);
+  const start = performance.now();
+  const { sanitized, secretDetected } = redactSecretsInString(pathologicalPem);
+  const elapsed = performance.now() - start;
+
+  assert.equal(secretDetected, true);
+  assert.ok(
+    elapsed < 100,
+    `Pathological PEM check took too long: ${elapsed.toFixed(2)}ms`,
+  );
+  assert.doesNotMatch(sanitized, /BEGIN (?:[A-Z]+ )?PRIVATE KEY/);
+});
+
 test('DiscoveryOrchestrator applies salt pseudonymization and records saltDigest in configuration', async () => {
   const tmpDir = mkdtempSync(join(tmpdir(), 'ghec-orch-salt-test-'));
 
@@ -555,4 +572,33 @@ test('DiscoveryOrchestrator applies salt pseudonymization and records saltDigest
   } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test('generateBundleFilename strips trailing Z and formats timestamp correctly', () => {
+  const filenameWithMs = generateBundleFilename({
+    outputPath: '/tmp/output',
+    scopeKind: 'org',
+    scopeName: 'test-org',
+    startedAt: '2026-10-04T16:00:00.000Z',
+    runId: 'run-123',
+  });
+  assert.ok(
+    filenameWithMs.endsWith(
+      'ghec-discovery-org-test-org-20261004T160000-run-123.json',
+    ),
+  );
+
+  const filenameWithoutMs = generateBundleFilename({
+    outputPath: '/tmp/output',
+    scopeKind: 'org',
+    scopeName: 'test-org',
+    startedAt: '2026-10-04T16:00:00Z',
+    runId: 'run-456',
+  });
+  assert.ok(
+    filenameWithoutMs.endsWith(
+      'ghec-discovery-org-test-org-20261004T160000-run-456.json',
+    ),
+  );
+  assert.doesNotMatch(filenameWithoutMs, /Z-run/);
 });

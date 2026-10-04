@@ -25,10 +25,11 @@ export class HttpTargetWriteClient implements TargetWriteClient {
   constructor(options: HttpTargetWriteClientOptions = {}) {
     this.token = options.token;
     this.authProvider = options.authProvider;
-    this.baseUrl = (options.baseUrl ?? 'https://api.github.com').replace(
-      /\/+$/,
-      '',
-    );
+    let base = (options.baseUrl ?? 'https://api.github.com').trim();
+    while (base.endsWith('/')) {
+      base = base.slice(0, -1);
+    }
+    this.baseUrl = base;
     this.apiVersion = options.apiVersion ?? '2026-03-10';
     this.rateLimiter =
       options.rateLimiter ??

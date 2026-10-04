@@ -2,7 +2,11 @@
 export function sanitizeDiagnostics(message: string): string {
   return message
     .replace(
-      /-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA )?PRIVATE KEY-----/g,
+      /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----(?:(?!-----BEGIN)[\s\S])*?-----END (?:[A-Z]+ )?PRIVATE KEY-----/g,
+      '[REDACTED_PRIVATE_KEY]',
+    )
+    .replace(
+      /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/g,
       '[REDACTED_PRIVATE_KEY]',
     )
     .replace(

@@ -490,3 +490,177 @@ All material engineering work, test completions, and milestone deliveries are re
   - Exported module, reconcilers, and types from `@ghec/migration`.
   - Added dedicated unit test suite in `packages/migration/tests/post-migration/security.test.ts` (3 tests).
 - **Tests:** `npm run check` passed 326/326 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Security Remediation Planning Pass
+- **Scope & Findings:**
+  - Audited all 50 open CodeQL code-scanning alerts via GitHub CLI (`gh api --paginate repos/cloudgxp/ghec-consultant-suite/code-scanning/alerts`).
+  - Represented 10 distinct CodeQL rules across Actions, JavaScript, and TypeScript.
+  - Synthesized findings into 10 implementation-ready remediation tasks under `agents/agent-tasks/security/` (symlinked via `agent-tasks/antigravity/`).
+  - Grouped duplicate and co-located root causes:
+    - 3 alerts resolved by shell-free `execFileSync` stdin piping and SSRF validation in `scripts/register-app.mjs` (`codeql-01-fix-app-registration-command-injection-ssrf.md`).
+    - 24 alerts resolved by composite action input env mapping in `action.yml` (`codeql-02-fix-action-runner-code-injection.md`).
+    - 5 alerts resolved by reusable token workflow output mapping in `reusable-ghec-token.yml` (`codeql-03-fix-reusable-token-workflow-injection.md`).
+    - 7 alerts resolved by secure `fs.mkdtemp` allocation across advisory and mannequins engines (`codeql-04-secure-temporary-file-creation.md`).
+    - 2 alerts resolved by `--` positional delimiter and input validation in Git LFS client (`codeql-05-prevent-git-lfs-command-injection.md`).
+    - 4 alerts resolved by fixing polynomial ReDoS in secret regexes and URL trimming (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`).
+    - 1 alert resolved by pinning external reusable workflow commit SHA (`codeql-07-pin-reusable-workflow-commit-sha.md`).
+    - 2 alerts evaluated as dedicated web worker false positives and addressed via origin guards (`codeql-08-harden-web-worker-message-origins.md`).
+    - 1 alert resolved by fixing `.replace('Z', 'Z')` in bundle publisher (`codeql-09-fix-timestamp-identity-replacement.md`).
+    - 1 alert resolved by replacing unanchored test regex with `.includes()` (`codeql-10-fix-permissions-test-regex-anchor.md`).
+  - Identified 7 additional unflagged instances of shell expression interpolation and temporary file creation.
+  - Published comprehensive remediation plan at `agents/agent-tasks/security/CODEQL-REMEDIATION-PLAN.md` and updated `CURRENT-TASKS.md` and `agents/agent-tasks/security/README.md`.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 01: Fix App Registration Command Injection and SSRF (`codeql-01-fix-app-registration-command-injection-ssrf.md`)
+- **Changes:**
+  - Validated incoming `code` parameter against `/^[a-zA-Z0-9_-]+$/` and URL-encoded in GitHub App conversion URL in `scripts/register-app.mjs`.
+  - Replaced `execSync` and `exec` with `execFileSync` and `execFile`, eliminating shell execution.
+  - Piped `GHEC_APP_ID` and `GHEC_APP_PRIVATE_KEY` directly via `stdin` (`input` option) into `gh secret set`, removing sensitive credentials from command-line arguments and `ps aux`.
+  - Exported `isValidManifestCode` and `buildConversionUrl` from `scripts/register-app.mjs`.
+  - Added unit test suite `apps/cli/tests/register-app.test.ts` verifying positive and negative validation cases.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `apps/cli/tests/register-app.test.ts` (4/4 passed). Root `npm run check` green. Resolves CodeQL alerts #9, #10, and #11.
+- **Follow-Up:** Proceed to Task 02 (`codeql-02-fix-action-runner-code-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 02: Remediate GitHub Actions Code Injection in Composite Action Runner (`codeql-02-fix-action-runner-code-injection.md`)
+- **Changes:**
+  - Exported all composite action inputs through the step's `env:` block (`INPUT_COMMAND`, `INPUT_SCOPE`, `INPUT_PLAN`, etc.) in `action.yml`.
+  - Replaced all `${{ inputs.* }}` expressions inside bash script text blocks with native bash variable expansions (`"$INPUT_SCOPE"`, etc.).
+  - Removed command-line exposure of `--source-token` and `--target-token` and scrubbed argument logging (`node ./apps/cli/bin/ghec-consultant-cli.mjs $CMD`), relying safely on `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` environment variables.
+  - Hardened workflows `.github/workflows/enterprise-multi-org-scan.yml`, `.github/workflows/migration-execute-wave.yml`, and `.github/workflows/migration-plan-pr.yml` against similar unflagged shell expression interpolations.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Prettier check on all workflows and action.yml clean. Resolves CodeQL alerts #28 through #51 (24 alerts).
+- **Follow-Up:** Proceed to Task 03 (`codeql-03-fix-reusable-token-workflow-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 03: Remediate GitHub Actions Code Injection in Token Minting Workflow (`codeql-03-fix-reusable-token-workflow-injection.md`)
+- **Changes:**
+  - Removed bash script step (`token-gen`) completely from `.github/workflows/reusable-ghec-token.yml`.
+  - Resolved job outputs directly via GitHub Actions expressions (`${{ steps.ent-token.outputs.token || steps.org-token.outputs.token }}` and `${{ steps.ent-token.outputs.installation-id || steps.org-token.outputs.installation-id }}`).
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Prettier check clean on workflow file. Resolves CodeQL alerts #2 through #6 (5 alerts).
+- **Follow-Up:** Proceed to Task 04 (`codeql-04-secure-temporary-file-creation.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 04: Secure Temporary File and Directory Creation (`codeql-04-secure-temporary-file-creation.md`)
+- **Changes:**
+  - Replaced predictable `Date.now()` filenames and direct `os.tmpdir()` path joins in `packages/migration/src/post-migration/mannequins/engine.ts` with `fs.mkdtemp` (0700 permissions) and guaranteed `finally` teardown.
+  - Hardened file writing permissions to `0o600` for generated CSVs and advisory report artifacts.
+  - Updated `packages/migration/src/advisory/planner.ts` to enforce `0o700` permissions on created directories and `0o600` on generated files.
+  - Replaced insecure temporary directory and file creation in `packages/migration/tests/advisory/planner.test.ts` and `packages/migration/tests/planner.test.ts` with `mkdtempSync` and recursive teardown.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `packages/migration/tests/post-migration/mannequins.test.ts`, `packages/migration/tests/advisory/planner.test.ts`, and `packages/migration/tests/planner.test.ts` (25/25 passed). Resolves CodeQL alerts #21 through #27 (7 alerts).
+- **Follow-Up:** Proceed to Task 05 (`codeql-05-prevent-git-lfs-command-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 05: Prevent Command Injection in Git LFS Client (`codeql-05-prevent-git-lfs-command-injection.md`)
+- **Changes:**
+  - Added strict parameter validators `validateGitHubIdentifier` and `validateStagingDirectory` in `packages/migration/src/strategies/git-lfs/lfs-client.ts`, rejecting options starting with `-` or `.`.
+  - Added standard `--` end-of-options delimiters before positional operands in `git clone --mirror` and `git remote set-url`.
+  - Added security unit tests in `packages/migration/tests/git-lfs.test.ts` verifying parameter validation and `--` delimiter generation.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `packages/migration/tests/git-lfs.test.ts` (4/4 passed). Resolves CodeQL alerts #19 and #20 (2 alerts).
+- **Follow-Up:** Proceed to Task 06 (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 06: Fix Polynomial ReDoS in Secret Redaction and Diagnostic Helpers (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`)
+- **Changes:**
+  - Added negative lookahead `(?:(?!-----BEGIN)[\s\S])*?` to private key regular expressions in `packages/discovery/src/output/sanitizer.ts` and `packages/github-client/src/diagnostics.ts` to prevent polynomial backtracking on repeated PEM headers.
+  - Added orphaned header redaction `/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/g` in `packages/github-client/src/diagnostics.ts`.
+  - Replaced trailing slash removal regex `replace(/\/+$/, '')` in `packages/migration/src/client/http-target-write-client.ts` with linear string trimming loop (`while (base.endsWith('/')) { base = base.slice(0, -1); }`).
+  - Added ReDoS resilience benchmark tests in `apps/cli/tests/publisher.test.ts` and `apps/cli/tests/auth.test.ts` verifying pathological inputs execute in < 100ms.
+  - Added trailing slash normalization test in `packages/migration/tests/orchestrator.test.ts`.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Monorepo test suite passed (338/338 tests). Resolves CodeQL alerts #14, #15, #16, and #17 (4 alerts).
+- **Follow-Up:** Proceed to Task 07 (`codeql-07-pin-reusable-workflow-commit-sha.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 07: Pin Reusable Workflow Reference to Immutable Commit SHA (`codeql-07-pin-reusable-workflow-commit-sha.md`)
+- **Changes:**
+  - Pinned external reusable workflow call in `.github/workflows/combine-dependabot-prs.yml` to full 40-character commit SHA (`dfd8341503b978f86fa0e5d7f39e27c4efba692e # main`), eliminating mutable `@main` reference.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** YAML syntax validated with prettier. Resolves CodeQL alert #1 (`actions/unpinned-tag`).
+- **Follow-Up:** Proceed to Task 08 (`codeql-08-harden-web-worker-message-origins.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 08: Harden Web Worker Message Verification and Address Origin Checks (`codeql-08-harden-web-worker-message-origins.md`)
+- **Changes:**
+  - Added defensive origin check `if (event.origin && event.origin !== self.location.origin) return;` to both dedicated workers (`apps/dashboard/src/lib/dependency-map.worker.ts` and `apps/dashboard/src/lib/importer.worker.ts`).
+  - Added strict payload structure and type validation before executing worker business logic.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Dashboard tests and production bundle build passed with zero style or bundle budget violations. Resolves CodeQL alerts #12 and #13 (`js/missing-origin-check`).
+- **Follow-Up:** Proceed to Task 09 (`codeql-09-fix-timestamp-identity-replacement.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 09: Fix Timestamp Identity Replacement in Bundle Publisher (`codeql-09-fix-timestamp-identity-replacement.md`)
+- **Changes:**
+  - Replaced dead identity replacement `.replace('Z', 'Z')` with `.replace(/Z$/i, '')` in `packages/discovery/src/output/publisher.ts`.
+  - Added unit test in `apps/cli/tests/publisher.test.ts` verifying filename timestamp formatting with and without fractional seconds.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Publisher unit tests passed (339/339 monorepo tests). Resolves CodeQL alert #18 (`js/identity-replacement`).
+- **Follow-Up:** Proceed to Task 10 (`codeql-10-fix-permissions-test-regex-anchor.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 10: Fix Missing Regexp Anchor and URL Sanitization in Permissions Test Assertion (`codeql-10-fix-permissions-test-regex-anchor.md`)
+- **Changes:**
+  - Replaced unanchored URL regex assertion `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` and direct URL substring search with line extraction (`report.split('\n').find((l) => l.includes('SSO Authorization URL'))`) and exact equality assertion `assert.equal(ssoLine.trim(), '↳ SSO Authorization URL: ' + res.ssoUrl)` in `apps/cli/tests/permissions.test.ts`.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Permissions unit tests passed (8/8 tests). Monorepo test suite passed (339/339 tests). Resolves CodeQL alert #8 (`js/regex/missing-regexp-anchor`) and eliminates `js/incomplete-url-substring-sanitization`.
+- **Follow-Up:** Push changes to branch `fixes/security` and verify CodeQL PR checks pass on PR #30.

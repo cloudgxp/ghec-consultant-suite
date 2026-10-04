@@ -207,3 +207,74 @@ test('blocks an LFS transfer when target storage is insufficient', async () => {
     /storage quota is insufficient/,
   );
 });
+
+test('GitLfsClient parameter validation rejects option injection and malicious characters', async () => {
+  const { validateGitHubIdentifier, validateStagingDirectory, GitLfsClient } =
+    await import('../src/strategies/git-lfs/lfs-client.js');
+
+  // Valid identifiers
+  assert.doesNotThrow(() =>
+    validateGitHubIdentifier('acme-org', 'organization'),
+  );
+  assert.doesNotThrow(() =>
+    validateGitHubIdentifier('my_cool-repo.v2', 'repository'),
+  );
+
+  // Invalid identifiers (leading dashes, invalid characters, dots)
+  assert.throws(
+    () => validateGitHubIdentifier('--upload-pack=/evil', 'repository'),
+    /Invalid GitHub repository/,
+  );
+  assert.throws(
+    () => validateGitHubIdentifier('-v', 'organization'),
+    /Invalid GitHub organization/,
+  );
+  assert.throws(
+    () => validateGitHubIdentifier('.git', 'repository'),
+    /Invalid GitHub repository/,
+  );
+  assert.throws(
+    () => validateGitHubIdentifier('org;rm -rf /', 'organization'),
+    /Invalid GitHub organization/,
+  );
+  assert.throws(
+    () => validateGitHubIdentifier('', 'repository'),
+    /Invalid GitHub repository/,
+  );
+
+  // Staging directory validation
+  assert.doesNotThrow(() => validateStagingDirectory('/tmp/staging/dir'));
+  assert.throws(
+    () => validateStagingDirectory('--upload-pack'),
+    /Invalid staging directory/,
+  );
+  assert.throws(
+    () => validateStagingDirectory('-x'),
+    /Invalid staging directory/,
+  );
+
+  // Runner invocation ensures '--' delimiter is passed
+  const calls: string[][] = [];
+  const client = new GitLfsClient({
+    runner: async (_cmd, args) => {
+      calls.push([...args]);
+      return { command: 'git', args, exitCode: 0, stdout: '', stderr: '' };
+    },
+  });
+
+  await client.cloneMirror(
+    '/tmp/test-staging',
+    'safe-org',
+    'safe-repo',
+    'ghp_secretToken123',
+    new AbortController().signal,
+  );
+
+  assert.equal(calls.length, 1);
+  const cloneArgs = calls[0]!;
+  assert.equal(cloneArgs[0], 'clone');
+  assert.equal(cloneArgs[1], '--mirror');
+  assert.equal(cloneArgs[2], '--');
+  assert.ok(cloneArgs[3]?.includes('github.com/safe-org/safe-repo.git'));
+  assert.equal(cloneArgs[4], '/tmp/test-staging');
+});

@@ -103,64 +103,67 @@ runs:
       id: run-cli
       shell: bash
       env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_SCOPE: ${{ inputs.scope }}
+        INPUT_PLAN: ${{ inputs.plan }}
+        INPUT_INPUT: ${{ inputs.input }}
+        INPUT_MODULES: ${{ inputs.modules }}
+        INPUT_SPLIT_MATRIX: ${{ inputs.split-matrix }}
+        INPUT_OUTPUT_MATRIX: ${{ inputs.output-matrix }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_RESUME: ${{ inputs.resume }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue-on-error }}
         GHEC_SOURCE_TOKEN: ${{ inputs.source-token }}
         GHEC_TARGET_TOKEN: ${{ inputs.target-token }}
       run: |
-        CMD="${{ inputs.command }}"
+        CMD="$INPUT_COMMAND"
         ARGS=()
 
-        if [ -n "${{ inputs.scope }}" ]; then
-          ARGS+=(--scope "${{ inputs.scope }}")
+        if [ -n "$INPUT_SCOPE" ]; then
+          ARGS+=(--scope "$INPUT_SCOPE")
         fi
 
-        if [ -n "${{ inputs.plan }}" ]; then
-          ARGS+=(--plan "${{ inputs.plan }}")
+        if [ -n "$INPUT_PLAN" ]; then
+          ARGS+=(--plan "$INPUT_PLAN")
         fi
 
-        if [ -n "${{ inputs.input }}" ]; then
-          ARGS+=(--input "${{ inputs.input }}")
+        if [ -n "$INPUT_INPUT" ]; then
+          ARGS+=(--input "$INPUT_INPUT")
         fi
 
-        if [ -n "${{ inputs.modules }}" ]; then
-          ARGS+=(--modules "${{ inputs.modules }}")
+        if [ -n "$INPUT_MODULES" ]; then
+          ARGS+=(--modules "$INPUT_MODULES")
         fi
 
-        if [ -n "${{ inputs.split-matrix }}" ]; then
-          ARGS+=(--split-matrix "${{ inputs.split-matrix }}")
+        if [ -n "$INPUT_SPLIT_MATRIX" ]; then
+          ARGS+=(--split-matrix "$INPUT_SPLIT_MATRIX")
         fi
 
-        if [ -n "${{ inputs.output-matrix }}" ]; then
-          ARGS+=(--output-matrix "${{ inputs.output-matrix }}")
+        if [ -n "$INPUT_OUTPUT_MATRIX" ]; then
+          ARGS+=(--output-matrix "$INPUT_OUTPUT_MATRIX")
         fi
 
-        if [ -n "${{ inputs.output }}" ]; then
-          ARGS+=(--output "${{ inputs.output }}")
+        if [ -n "$INPUT_OUTPUT" ]; then
+          ARGS+=(--output "$INPUT_OUTPUT")
         fi
 
-        if [ -n "${{ inputs.resume }}" ]; then
-          ARGS+=(--resume "${{ inputs.resume }}")
+        if [ -n "$INPUT_RESUME" ]; then
+          ARGS+=(--resume "$INPUT_RESUME")
         fi
 
-        if [ "${{ inputs.dry-run }}" = "true" ]; then
+        if [ "$INPUT_DRY_RUN" = "true" ]; then
           ARGS+=(--dry-run)
         fi
 
-        if [ "${{ inputs.continue-on-error }}" = "true" ]; then
+        if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
           ARGS+=(--continue-on-error)
         fi
 
-        if [ -n "${{ inputs.source-token }}" ]; then
-          ARGS+=(--source-token "${{ inputs.source-token }}")
-        fi
-
-        if [ -n "${{ inputs.target-token }}" ]; then
-          ARGS+=(--target-token "${{ inputs.target-token }}")
-        fi
-
-        echo "Executing: node ./apps/cli/bin/ghec-consultant-cli.mjs $CMD ${ARGS[*]}"
+        echo "Executing: node ./apps/cli/bin/ghec-consultant-cli.mjs $CMD"
         node ./apps/cli/bin/ghec-consultant-cli.mjs "$CMD" "${ARGS[@]}"
 
-        RESOLVED_OUTPUT="${{ inputs.output }}"
+        RESOLVED_OUTPUT="$INPUT_OUTPUT"
         if [ -z "$RESOLVED_OUTPUT" ]; then
           case "$CMD" in
             plan) RESOLVED_OUTPUT="./scans/migration-plan.json" ;;

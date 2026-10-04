@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, rmSync, existsSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -318,7 +318,8 @@ describe('MigrationPlanner', () => {
   });
 
   it('writes migration plan atomically to disk with non-clobber protection', async () => {
-    const testFile = join(tmpdir(), `test-plan-${Date.now()}.json`);
+    const tempDir = mkdtempSync(join(tmpdir(), 'test-plan-'));
+    const testFile = join(tempDir, 'test-plan.json');
     const plan = {
       schemaVersion: '1.0.0' as const,
       planId: 'test-write',
@@ -341,8 +342,8 @@ describe('MigrationPlanner', () => {
       // Overwrite allowed
       writeMigrationPlanFile(testFile, plan, { overwrite: true });
     } finally {
-      if (existsSync(testFile)) {
-        rmSync(testFile, { force: true });
+      if (existsSync(tempDir)) {
+        rmSync(tempDir, { recursive: true, force: true });
       }
     }
   });
