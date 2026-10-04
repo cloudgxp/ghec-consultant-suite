@@ -160,10 +160,11 @@ test('PermissionChecker detects SAML SSO requirement and stops', async () => {
 
   const report = PermissionChecker.formatReport(res);
   assert.match(report, /SAML SINGLE SIGN-ON \(SSO\) AUTHORIZATION REQUIRED/);
-  assert.ok(
-    report.includes('https://github.com/orgs/acme-corp/sso'),
-    'Report should include SAML SSO authorization URL',
-  );
+  const ssoLine = report
+    .split('\n')
+    .find((line) => line.includes('SSO Authorization URL'));
+  assert.ok(ssoLine, 'Report should include SAML SSO authorization URL');
+  assert.equal(ssoLine.trim(), `↳ SSO Authorization URL: ${res.ssoUrl}`);
 });
 
 test('PermissionChecker identifies missing Classic PAT scopes for requested modules', async () => {

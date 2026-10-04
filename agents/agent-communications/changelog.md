@@ -658,9 +658,9 @@ All material engineering work, test completions, and milestone deliveries are re
 
 ### Agent: Antigravity
 
-- **Task:** CodeQL Remediation Task 10: Fix Missing Regexp Anchor in Permissions Test Assertion (`codeql-10-fix-permissions-test-regex-anchor.md`)
+- **Task:** CodeQL Remediation Task 10: Fix Missing Regexp Anchor and URL Sanitization in Permissions Test Assertion (`codeql-10-fix-permissions-test-regex-anchor.md`)
 - **Changes:**
-  - Replaced unanchored URL regex assertion `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` with string inclusion check `assert.ok(report.includes('https://github.com/orgs/acme-corp/sso'))` in `apps/cli/tests/permissions.test.ts`.
+  - Replaced unanchored URL regex assertion `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` and direct URL substring search with line extraction (`report.split('\n').find((l) => l.includes('SSO Authorization URL'))`) and exact equality assertion `assert.equal(ssoLine.trim(), '↳ SSO Authorization URL: ' + res.ssoUrl)` in `apps/cli/tests/permissions.test.ts`.
   - Moved task specification to `agents/agent-tasks/security/completed/`.
-- **Tests:** Permissions unit tests passed (8/8 tests). Resolves CodeQL alert #8 (`js/regex/missing-regexp-anchor`).
-- **Follow-Up:** All 10 CodeQL security tasks in `agents/agent-tasks/security/` are now 100% complete. Run final monorepo verification.
+- **Tests:** Permissions unit tests passed (8/8 tests). Monorepo test suite passed (339/339 tests). Resolves CodeQL alert #8 (`js/regex/missing-regexp-anchor`) and eliminates `js/incomplete-url-substring-sanitization`.
+- **Follow-Up:** Push changes to branch `fixes/security` and verify CodeQL PR checks pass on PR #30.

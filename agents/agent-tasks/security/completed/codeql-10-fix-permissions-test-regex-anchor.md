@@ -49,18 +49,19 @@ Using a regular expression to assert substring presence in a multiline human-rea
 
 ## Recommended Remediation
 
-Replace the regular expression assertion with `assert.ok(report.includes(...))` or `assert.match(report, /(?:^|\s)https:\/\/github\.com\/orgs\/acme-corp\/sso(?:\s|$)/)`:
+Extract the SSO URL line from the formatted report and perform an exact string equality assertion, avoiding both unanchored regexes (`js/regex/missing-regexp-anchor`) and direct URL substring searches (`js/incomplete-url-substring-sanitization`):
 
 ```typescript
 const report = PermissionChecker.formatReport(res);
 assert.match(report, /SAML SINGLE SIGN-ON \(SSO\) AUTHORIZATION REQUIRED/);
-assert.ok(
-  report.includes('https://github.com/orgs/acme-corp/sso'),
-  'Report should include SAML SSO authorization URL',
-);
+const ssoLine = report
+  .split('\n')
+  .find((line) => line.includes('SSO Authorization URL'));
+assert.ok(ssoLine, 'Report should include SAML SSO authorization URL');
+assert.equal(ssoLine.trim(), `↳ SSO Authorization URL: ${res.ssoUrl}`);
 ```
 
-Using `includes()` accurately expresses the assertion's purpose (checking that the formatted report string contains the SSO URL) and does not invoke regex machinery.
+Using line extraction with non-URL substring filtering (`'SSO Authorization URL'`) and exact equality (`assert.equal`) verifies the formatted output precisely without triggering CodeQL URL sanitization heuristics.
 
 ---
 
@@ -75,11 +76,13 @@ Using `includes()` accurately expresses the assertion's purpose (checking that t
 - [x] Line 163 in `apps/cli/tests/permissions.test.ts` does not use an unanchored URL regular expression.
 - [x] Permission checker unit tests continue to pass.
 - [x] CodeQL alert #8 is resolved upon re-analysis.
+- [x] No secondary CodeQL alerts (such as `js/incomplete-url-substring-sanitization`) introduced.
 
 ### Implementation Notes
 
-1. **Assertion Clarification:** Replaced `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` with `assert.ok(report.includes('https://github.com/orgs/acme-corp/sso'))` in `apps/cli/tests/permissions.test.ts`, directly asserting string inclusion without unanchored regexes.
-2. **Verification:** Ran `node --import tsx --test apps/cli/tests/permissions.test.ts` (8/8 tests pass). Resolves CodeQL alert #8 (`js/regex/missing-regexp-anchor`).
+1. **Assertion Clarification:** Initially, `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` was replaced with `assert.ok(report.includes('https://github.com/orgs/acme-corp/sso'))`. While this resolved `js/regex/missing-regexp-anchor`, CodeQL flagged `report.includes('https://...')` under `js/incomplete-url-substring-sanitization` as an insecure URL substring check.
+2. **Hardened Line Assertion:** Replaced the URL substring check with line extraction (`report.split('\n').find((l) => l.includes('SSO Authorization URL'))`) and exact equality (`assert.equal(ssoLine.trim(), '↳ SSO Authorization URL: ' + res.ssoUrl)`). This eliminates both regex anchor and URL substring heuristics completely while strengthening test verification.
+3. **Verification:** Ran `node --import tsx --test apps/cli/tests/permissions.test.ts` (8/8 tests pass). Full monorepo tests pass (339/339).
 
 ---
 

@@ -72,7 +72,7 @@ Using the GitHub CLI (`gh api --paginate repos/cloudgxp/ghec-consultant-suite/co
 2. **Alert #8: `js/regex/missing-regexp-anchor` in `apps/cli/tests/permissions.test.ts:163`**
    - **Context:** `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/);` is inside a unit test verifying human-readable report formatting.
    - **Technical Reality:** The regex is not validating an untrusted URL origin in production code; it is checking that a formatted multiline text output contains the SSO link.
-   - **Disposition:** Replace with `assert.ok(report.includes('https://github.com/orgs/acme-corp/sso'))`. This clarifies test intent, improves speed, and eliminates the heuristic warning without changing production logic.
+   - **Disposition:** Extract the SSO URL line from `report` and assert exact equality on `ssoLine.trim()` against `'↳ SSO Authorization URL: ' + res.ssoUrl`. This verifies test intent, avoids regex anchor warnings (`js/regex/missing-regexp-anchor`), and prevents URL substring sanitization warnings (`js/incomplete-url-substring-sanitization`).
 
 ---
 
