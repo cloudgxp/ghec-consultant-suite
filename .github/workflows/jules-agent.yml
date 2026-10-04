@@ -147,9 +147,9 @@ jobs:
               }
 
               const commentBody = context.payload.comment?.body || '';
-              const match = /@jules\s*(?:fix)?/i.test(commentBody);
+              const match = /(?:^\s*\/jules\b|\b\/jules\b|^\s*!jules\b|\bjules:\s*fix|\bjules\s+fix\b|@jules\b)/im.test(commentBody);
               if (!match) {
-                core.info('Comment does not invoke @jules. Skipping.');
+                core.info('Comment does not invoke /jules command. Skipping.');
                 setOutput('should_run', 'false');
                 return;
               }

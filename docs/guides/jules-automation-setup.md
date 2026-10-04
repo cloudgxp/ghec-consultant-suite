@@ -11,7 +11,7 @@ Jules is an autonomous, cloud-hosted AI software engineering agent developed by 
 ```mermaid
 flowchart TD
     subgraph Triggers["Trigger Surface"]
-        T1["Issue Labeled 'jules'<br/>or Comment '@jules fix'"]
+        T1["Issue Labeled 'jules'<br/>or Comment '/jules fix'"]
         T2["Monorepo Quality Failure<br/>(workflow_run)"]
         T3["Daily Hygiene Cron<br/>(04:00 UTC)"]
         T4["Manual Dispatch<br/>(workflow_dispatch)"]
@@ -91,15 +91,18 @@ Maintainers can delegate bug fixes, documentation corrections, or minor enhancem
 - **Acknowledgement:** The issue receives an `:eyes:` reaction.
 - **Authorization:** Only repository `OWNER`, `MEMBER`, or `COLLABORATOR` actors can invoke Jules. If an unauthorized user applies the label, the workflow posts an explanatory comment and terminates without consuming quota.
 
-#### 2. Via Issue Comment
+#### 2. Via Issue Comment (Slash Command)
 
 - Post a comment on an open issue containing:
   ```text
-  @jules fix
+  /jules fix
   ```
-  _(or `@jules` followed by specific instructions, e.g. `@jules add unit test for sanitizeFormula`)_
+  _(or `/jules`, `/jules <custom instructions>`, `!jules fix`, or `jules: fix`)_
 - **Workflow:** `.github/workflows/jules-agent.yml` triggers on `issue_comment: created`.
 - **Acknowledgement:** The comment receives a `:rocket:` reaction.
+
+> [!TIP]
+> Always use slash commands like `/jules fix` or `/jules` rather than `@jules`. This triggers the automation without pinging or notifying the external GitHub user named `jules`.
 
 ---
 
