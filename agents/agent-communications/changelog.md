@@ -579,5 +579,21 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** `packages/migration/tests/post-migration/mannequins.test.ts`, `packages/migration/tests/advisory/planner.test.ts`, and `packages/migration/tests/planner.test.ts` (25/25 passed). Resolves CodeQL alerts #21 through #27 (7 alerts).
 - **Follow-Up:** Proceed to Task 05 (`codeql-05-prevent-git-lfs-command-injection.md`).
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 05: Prevent Command Injection in Git LFS Client (`codeql-05-prevent-git-lfs-command-injection.md`)
+- **Changes:**
+  - Added strict parameter validators `validateGitHubIdentifier` and `validateStagingDirectory` in `packages/migration/src/strategies/git-lfs/lfs-client.ts`, rejecting options starting with `-` or `.`.
+  - Added standard `--` end-of-options delimiters before positional operands in `git clone --mirror` and `git remote set-url`.
+  - Added security unit tests in `packages/migration/tests/git-lfs.test.ts` verifying parameter validation and `--` delimiter generation.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `packages/migration/tests/git-lfs.test.ts` (4/4 passed). Resolves CodeQL alerts #19 and #20 (2 alerts).
+- **Follow-Up:** Proceed to Task 06 (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`).
+
+
 
 
