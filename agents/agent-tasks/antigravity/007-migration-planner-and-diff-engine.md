@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -66,4 +66,9 @@ Before making destructive or privileged API calls in production GHEC-EMU enterpr
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Implemented `calculateEntityDiff` pure diff utility in `packages/migration/src/planner/diff.ts` with customizable equality and payload builders.
+- Implemented `MigrationPlanner` engine in `packages/migration/src/planner/planner.ts` supporting both live discovery and cached discovery (`DiscoveryBundle` validation with 0 source network requests).
+- Implemented `writeMigrationPlanFile` for atomic serialization with non-clobber protection.
+- Re-exported planner and diff helpers in `packages/migration/src/index.ts`.
+- Added unit tests in `packages/migration/tests/planner.test.ts` asserting diff calculation, live vs. cached planning, and atomic writing (7/7 tests passing).
+- Verified full quality gate: `npm run check` passes 143/143 tests across all workspaces.

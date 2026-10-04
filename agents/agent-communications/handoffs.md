@@ -115,3 +115,24 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `package-lock.json`
 - **Behavior Notes:** Module IDs must be unique in `ModuleRegistry`. `resolveExecutionPlan` automatically orders dependencies before dependent modules, auto-includes missing prerequisites by default, and throws typed errors on circular or missing dependencies.
 - **Test Evidence:** `npm run check` passes 136/136 tests green.
+
+### [2026-10-04] Task 007 (Migration Planning & Diff Engine) -> Task 008 / 009 / 020
+
+- **From:** Antigravity
+- **To:** Codex / Antigravity
+- **Completed Task:** 007
+- **Unblocked Tasks:** 008, 009, 020
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `MigrationPlanner`, `MigrationPlannerOptions`
+    - `calculateEntityDiff`, `DiffItem`
+    - `writeMigrationPlanFile`
+- **Files Modified / Created:**
+  - `packages/migration/src/planner/diff.ts`
+  - `packages/migration/src/planner/planner.ts`
+  - `packages/migration/src/planner/index.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/planner.test.ts`
+  - `packages/migration/README.md`
+- **Behavior Notes:** `MigrationPlanner` is strictly read-only and never performs target mutations. In cached mode with `cachedDiscoveryBundle`, source network calls are completely bypassed. Emitted plans are guaranteed to conform to `MigrationPlanSchema`.
+- **Test Evidence:** `npm run check` passes 143/143 tests green.
