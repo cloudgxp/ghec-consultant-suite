@@ -14,6 +14,10 @@ import {
   type MigrationExecutionReport,
   type TargetWriteClient,
   writeMigrationExecutionReportFile,
+  buildSummaryFromExecutionReport,
+  writeJsonSummaryFile,
+  formatStepSummaryMarkdown,
+  appendStepSummary,
 } from '@ghec/migration';
 import {
   createMigrationClientsFromConfig,
@@ -30,6 +34,7 @@ export interface MigrateCommandOptions {
   readonly continueOnError: boolean;
   readonly dryRun: boolean;
   readonly outputPath: string;
+  readonly jsonSummaryPath?: string | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
   readonly privateKeyPath?: string | undefined;
@@ -61,6 +66,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       'continue-on-error': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       output: { type: 'string', default: './scans/migration-execution.json' },
+      'json-summary': { type: 'string' },
       verbose: { type: 'boolean', default: false },
       'app-id': { type: 'string' },
       'private-key-path': { type: 'string' },
@@ -90,6 +96,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     continueOnError: values['continue-on-error'] ?? false,
     dryRun: values['dry-run'] ?? false,
     outputPath: values.output || './scans/migration-execution.json',
+    jsonSummaryPath: values['json-summary'],
     verbose: values.verbose,
     appId: values['app-id'],
     privateKeyPath: values['private-key-path'],
@@ -220,6 +227,23 @@ export async function executeMigrateCommand(
       overwrite: true,
     },
   );
+
+  const sourceOrg =
+    scope?.organizations[0]?.source ?? scope?.repositories[0]?.sourceOrg;
+  const targetOrg =
+    scope?.organizations[0]?.target ?? scope?.repositories[0]?.targetOrg;
+
+  const summary = buildSummaryFromExecutionReport(report, {
+    plan,
+    sourceOrg,
+    targetOrg,
+  });
+
+  if (options.jsonSummaryPath) {
+    writeJsonSummaryFile(summary, options.jsonSummaryPath);
+  }
+
+  appendStepSummary(formatStepSummaryMarkdown(summary));
 
   return { report, filePath };
 }

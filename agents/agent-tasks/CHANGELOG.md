@@ -1,13 +1,13 @@
-# Shared Agent Changelog
+# Agent Task Changelog
 
-Codex and Antigravity use this append-only log to record material repository
-work, decisions, verification results, and handoffs. This is an engineering
+Antigravity uses this append-only log to record material repository
+work, decisions, verification results, and milestones. This is an engineering
 work log, not a release changelog.
 
 ## Update Rules
 
-1. Add new entries at the top of **Entries**; do not rewrite another agent's
-   entry. Corrections are new entries that reference the corrected date.
+1. Add new entries at the top of **Entries**. Corrections are new entries that
+   reference the corrected date.
 2. Use an ISO date and identify the agent. Include task IDs when applicable.
 3. Record outcomes, not intentions. List material files or areas changed and
    the exact verification command/result.
@@ -30,6 +30,15 @@ work log, not a release changelog.
 ```
 
 ## Entries
+
+### 2026-10-04 — Antigravity & Codex — TASK-028 & TASK-029 — Complete
+
+- Summary: Completed the final two migration expansion tasks:
+  - Task 028 (CODEOWNERS & Team References Repair Module): Implemented file scanner, team token rewriter, git direct commit and PR branch fallback, and lifecycle module `CodeownersRepairModule`.
+  - Task 029 (GHAS & Security Remediation Reconciliation Strategy): Implemented `GhasSecurityMigrationModule`, feature flag diffing with GHAS license checks, secret scanning alert remediation matching and patching, and optional SARIF code scanning uploads with structured fidelity audit reporting.
+- Files: `packages/migration/src/post-migration/codeowners/**`, `packages/migration/src/post-migration/security/**`, `packages/migration/src/checkpoint/types.ts`, `packages/migration/src/checkpoint/manager.ts`, `packages/migration/src/orchestrator/pipeline.ts`, `packages/migration/src/core/registry.ts`, `packages/migration/src/index.ts`, `packages/migration/tests/post-migration/codeowners.test.ts`, `packages/migration/tests/post-migration/security.test.ts`, `agents/agent-tasks/security/completed/028-codeowners-and-team-references-repair.md`, `agents/agent-tasks/security/completed/029-ghas-and-security-remediation-sync.md`, `agents/agent-tasks/CURRENT-TASKS.md`, `agents/agent-tasks/README.md`.
+- Verification: Full monorepo quality check `npm run check` passing 326/326 tests across 51 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+- Follow-up: All 30 Migration Expansion tasks (001–030) are now complete.
 
 ### 2026-10-04 — Antigravity — RELEASE-LIVE-SMOKE & P1-SHARED — Complete
 

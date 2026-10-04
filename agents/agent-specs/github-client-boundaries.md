@@ -2,7 +2,7 @@
 
 **Specification Status:** Authoritative Architectural Standard  
 **Target:** `@ghec/github-client` Package Architecture  
-**Applicability:** All implementation agents (Antigravity & Codex)
+**Applicability:** All implementation agents (Antigravity)
 
 ---
 

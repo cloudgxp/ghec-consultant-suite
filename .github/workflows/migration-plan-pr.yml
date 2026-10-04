@@ -1,0 +1,164 @@
+name: Migration Plan on Scope PR
+
+on:
+  pull_request:
+    paths:
+      - 'scopes/**.json'
+      - 'scopes/**.yml'
+      - 'scopes/**.yaml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: migration-plan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan-scopes:
+    name: Generate Migration Plans
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Identify Changed Scope Files
+        id: find-scopes
+        shell: bash
+        run: |
+          # Find added or modified files in scopes/
+          CHANGED=$(git diff --name-only -r HEAD~1 HEAD -- 'scopes/*.json' 'scopes/**/*.json' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No JSON scope files changed."
+            echo "has_scopes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed scopes:"
+          echo "$CHANGED"
+          echo "has_scopes=true" >> "$GITHUB_OUTPUT"
+          # Convert newline list to JSON array
+          JSON_ARRAY=$(echo "$CHANGED" | jq -R . | jq -s -c .)
+          echo "scopes_json=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+
+      - name: Execute Migration Planning for Changed Scopes
+        if: ${{ steps.find-scopes.outputs.has_scopes == 'true' }}
+        id: plan
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPES_JSON: ${{ steps.find-scopes.outputs.scopes_json }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p ./scans ./reports
+          COMMENT_BODY="# 📋 Migration Planning Summary for PR #${PR_NUMBER}\n\n"
+          COMMENT_BODY+="Automated pre-migration plan execution completed for modified scopes.\n\n"
+
+          echo "$SCOPES_JSON" | jq -r '.[]' | while read -r SCOPE_FILE; do
+            if [ ! -f "$SCOPE_FILE" ]; then
+              continue
+            fi
+
+            BASENAME=$(basename "$SCOPE_FILE" .json)
+            PLAN_OUTPUT="./scans/${BASENAME}-plan.json"
+
+            echo "Generating plan for $SCOPE_FILE -> $PLAN_OUTPUT"
+
+            # Execute plan CLI
+            node ./apps/cli/bin/ghec-consultant-cli.mjs plan \
+              --scope "$SCOPE_FILE" \
+              --output "$PLAN_OUTPUT" \
+              --source-token "$GHEC_SOURCE_TOKEN" \
+              --target-token "$GHEC_TARGET_TOKEN" || {
+                echo "::error file=$SCOPE_FILE::Migration planning failed for $SCOPE_FILE"
+                exit 1
+              }
+
+            # Extract metrics from plan
+            if [ -f "$PLAN_OUTPUT" ]; then
+              TOTAL_OPS=$(jq '[.modules[].operations | length] | add // 0' "$PLAN_OUTPUT")
+              CREATE_OPS=$(jq '[.modules[].operations[] | select(.operation == "create")] | length' "$PLAN_OUTPUT")
+              UPDATE_OPS=$(jq '[.modules[].operations[] | select(.operation == "update")] | length' "$PLAN_OUTPUT")
+              NOOP_OPS=$(jq '[.modules[].operations[] | select(.operation == "noop")] | length' "$PLAN_OUTPUT")
+              WARNING_COUNT=$(jq '[.modules[].warnings | length] | add // 0' "$PLAN_OUTPUT")
+
+              SECTION="### Scope: \`$SCOPE_FILE\`\n\n"
+              SECTION+="| Total Operations | Creates | Updates | No-ops | Warnings |\n"
+              SECTION+="| :---: | :---: | :---: | :---: | :---: |\n"
+              SECTION+="| **$TOTAL_OPS** | $CREATE_OPS | $UPDATE_OPS | $NOOP_OPS | $WARNING_COUNT |\n\n"
+
+              if [ "$WARNING_COUNT" -gt 0 ]; then
+                SECTION+="> [!WARNING]\n"
+                SECTION+="> **Planning Warnings Detected ($WARNING_COUNT):**\n"
+                WARNINGS=$(jq -r '.modules[].warnings[]?' "$PLAN_OUTPUT" | head -n 5 | sed 's/^/> - /')
+                SECTION+="$WARNINGS\n\n"
+              fi
+
+              echo -e "$SECTION" >> ./reports/pr-comment.md
+            fi
+          done
+
+          if [ -f ./reports/pr-comment.md ]; then
+            cat ./reports/pr-comment.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Migration Plan Artifacts
+        if: ${{ steps.find-scopes.outputs.has_scopes == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-plans-pr-${{ github.event.pull_request.number }}
+          path: ./scans/*-plan.json
+          retention-days: 14
+
+      - name: Post or Update PR Comment
+        if: ${{ steps.find-scopes.outputs.has_scopes == 'true' && hashFiles('./reports/pr-comment.md') != '' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const commentBody = fs.readFileSync('./reports/pr-comment.md', 'utf8');
+            const header = '## 📋 Migration Planning Summary';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes(header)
+            );
+
+            const fullBody = `${header}\n\n${commentBody}\n\n*Generated by GHEC Consultant Suite automated PR preflight.*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: fullBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: fullBody
+              });
+            }

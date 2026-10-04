@@ -493,8 +493,18 @@ export class RepositoryMigrationPipeline {
           `[Stage 6] Executing post-migration reconciliations for ${repoKey}...`,
         );
         const postMigrationTasks: Array<
-          'repo-visibility' | 'webhooks' | 'mannequins' | 'codeowners'
-        > = ['repo-visibility', 'webhooks', 'mannequins', 'codeowners'];
+          | 'repo-visibility'
+          | 'webhooks'
+          | 'mannequins'
+          | 'codeowners'
+          | 'security'
+        > = [
+          'repo-visibility',
+          'webhooks',
+          'mannequins',
+          'codeowners',
+          'security',
+        ];
 
         const postMigrationResults: Record<
           string,
