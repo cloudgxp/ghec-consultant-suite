@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -90,4 +90,7 @@ GitHub Enterprise Importer does **not** transfer custom properties or repository
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+- **Implementation:** Codex implemented `OrgCustomPropertiesMigrationModule` (`org-custom-properties`) and `RepoCustomPropertiesMigrationModule` (`repo-custom-properties`) in `packages/migration/src/modules/org-custom-properties/` and `repo-custom-properties/`, with export in `packages/migration/src/index.ts` and registration in `createDefaultModuleRegistry`.
+- **Hardening & Defensiveness:** Antigravity added defensive `try/catch` error boundaries around target schema and value reads (`ctx.targetClient.readSingle`) to safely tolerate non-existent resources or unmapped schemas.
+- **Tests & Docs:** Antigravity added comprehensive unit tests in `packages/migration/tests/modules/custom-properties.test.ts` (9 tests covering full discover, plan, apply, verify lifecycle, schema updates, and dependency order) and documentation in `README.md` for both modules.
+- **Verification:** All 171 migration tests passing, `npm run check` green.

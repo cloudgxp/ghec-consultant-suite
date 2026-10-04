@@ -409,3 +409,27 @@ All material engineering work, test completions, and milestone deliveries are re
   - Exported `repo-settings` module and types from `@ghec/migration`.
   - Added unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, diffing, live and cached discovery, planning, mutation, dry-run, policy fallback, and verification.
 - **Tests:** `npm run check` passed 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 026 Custom Properties Migration Modules
+- **Changes:**
+  - Implemented `OrgCustomPropertiesMigrationModule` (`org-custom-properties`) under `packages/migration/src/modules/org-custom-properties/`:
+    - Discovers organization property definitions via `GET /orgs/{org}/properties/schema`.
+    - Diffs definitions against target organization schemas, generating `create`, `update`, and `noop` operations.
+    - Creates or updates custom property definitions on target organization via `PUT /orgs/{targetOrg}/properties/schema`.
+    - Verifies custom property schema synchronization between source and target organizations.
+  - Implemented `RepoCustomPropertiesMigrationModule` (`repo-custom-properties`) under `packages/migration/src/modules/repo-custom-properties/`:
+    - Discovers custom property values on source repositories via `GET /repos/{owner}/{repo}/properties/values`.
+    - Compares values with target repository custom properties, planning batched assignment payloads.
+    - Assigns property values on target repositories via `PATCH /orgs/{targetOrg}/properties/values`.
+    - Verifies custom property values on target repositories match plan.
+  - Added defensive `try/catch` boundaries around target client reads (`readSingle`) for uninitialized target org schemas or repositories.
+  - Exported both modules from `@ghec/migration` and registered both in `createDefaultModuleRegistry()` with `repo-custom-properties` dependent on `gei-repo` and `org-custom-properties`.
+  - Added module documentation in `packages/migration/src/modules/org-custom-properties/README.md` and `packages/migration/src/modules/repo-custom-properties/README.md`.
+  - Added unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
+- **Tests:** `npm run check` passed all tests green, with ESLint, Prettier, and TypeScript clean.

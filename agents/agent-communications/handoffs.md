@@ -657,18 +657,33 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, PR settings diffing, live and cached discovery, planning, mutation, dry-run, policy 422 fallback, verification, and registry registration.
   - `npm run check` passes 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
 
-### [2026-10-04] Task 026 (Custom Properties) — implementation handoff
+### [2026-10-04] Task 026 Complete: Custom Properties Migration Modules
 
-- **From:** Codex
-- **To:** Antigravity
-- **Status:** Core implementation is committed, but task completion validation
-  remains outstanding.
-- **Available:** `OrgCustomPropertiesMigrationModule` discovers, diffs,
-  upserts, and verifies organization schemas. `RepoCustomPropertiesMigrationModule`
-  discovers repository values, plans a batch organization-level value patch, and
-  verifies target values. The repository module depends on `gei-repo` and
-  `org-custom-properties` and both are registered/exported.
-- **Remaining:** Add `custom-properties.test.ts`, module README, completion
-  record, run `npm run check`, and push the resulting completion commit to
-  `feature/migration` / PR #29.
-- **Test Evidence:** `npm run typecheck -w @ghec/migration` passes.
+- **From:** Codex & Antigravity
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 026** (`packages/migration/src/modules/org-custom-properties/` and `repo-custom-properties/`): Custom Properties Migration Modules.
+- **Exported Deliverables:**
+  - `packages/migration/src/modules/org-custom-properties/`:
+    - `types.ts`, `module.ts`, `index.ts`, `README.md`
+    - `OrgCustomPropertiesMigrationModule` (`id = 'org-custom-properties'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+  - `packages/migration/src/modules/repo-custom-properties/`:
+    - `types.ts`, `module.ts`, `index.ts`, `README.md`
+    - `RepoCustomPropertiesMigrationModule` (`id = 'repo-custom-properties'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+  - Integration:
+    - Registered both modules in `createDefaultModuleRegistry()` with `repo-custom-properties` dependent on `gei-repo` and `org-custom-properties`.
+    - Exported both modules in `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/org-custom-properties/**`
+  - `packages/migration/src/modules/repo-custom-properties/**`
+  - `packages/migration/tests/modules/custom-properties.test.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `agents/agent-tasks/codex/026-custom-properties-migration-modules.md`
+- **Behavior Notes:**
+  - `OrgCustomPropertiesMigrationModule` migrates custom property schemas (`string`, `single_select`, `multi_select`, `true_false`) via `GET /orgs/{org}/properties/schema` and `PUT /orgs/{targetOrg}/properties/schema`.
+  - `RepoCustomPropertiesMigrationModule` fetches custom property values via `GET /repos/{owner}/{repo}/properties/values` and batch-assigns them via `PATCH /orgs/{targetOrg}/properties/values`.
+  - Defensive `try/catch` boundaries wrap target client reads to safely handle missing target schemas and resources without unhandled exceptions.
+- **Test Evidence:**
+  - Dedicated unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
+  - All migration tests passing (171/171), full monorepo check passes.

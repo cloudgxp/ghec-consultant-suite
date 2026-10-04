@@ -60,20 +60,26 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
     source: RepoCustomPropertiesData,
   ): Promise<ModulePlan> {
     const repo = ctx.scope.targetRepo ?? source.repository;
-    const response = await ctx.targetClient.readSingle<{
-      properties?: RawRepositoryCustomPropertyValue[];
-    }>(
-      {
-        id: 'rest.repos.listCustomPropertyValues',
-        transport: 'rest',
-        verifiedReadOnly: true,
-        path: valuesPath,
-        pathParams: { owner: ctx.scope.targetOrg, repo },
-      },
-      ctx.signal,
-    );
+    let rawProperties: RawRepositoryCustomPropertyValue[];
+    try {
+      const response = await ctx.targetClient.readSingle<{
+        properties?: RawRepositoryCustomPropertyValue[];
+      }>(
+        {
+          id: 'rest.repos.listCustomPropertyValues',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: valuesPath,
+          pathParams: { owner: ctx.scope.targetOrg, repo },
+        },
+        ctx.signal,
+      );
+      rawProperties = response.data?.properties ?? [];
+    } catch {
+      rawProperties = [];
+    }
     const target = new Map(
-      (response.data?.properties ?? []).flatMap((item) => {
+      rawProperties.flatMap((item) => {
         const value = normalize(item);
         return value ? [[value.propertyName, value] as const] : [];
       }),

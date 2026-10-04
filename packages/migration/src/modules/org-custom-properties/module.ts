@@ -62,20 +62,26 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
     ctx: MigrationContext,
     source: OrgCustomPropertiesData,
   ): Promise<ModulePlan> {
-    const response = await ctx.targetClient.readSingle<{
-      properties?: RawCustomPropertyDefinition[];
-    }>(
-      {
-        id: 'rest.orgs.listCustomPropertySchemas',
-        transport: 'rest',
-        verifiedReadOnly: true,
-        path,
-        pathParams: { org: ctx.scope.targetOrg },
-      },
-      ctx.signal,
-    );
+    let rawProperties: RawCustomPropertyDefinition[];
+    try {
+      const response = await ctx.targetClient.readSingle<{
+        properties?: RawCustomPropertyDefinition[];
+      }>(
+        {
+          id: 'rest.orgs.listCustomPropertySchemas',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path,
+          pathParams: { org: ctx.scope.targetOrg },
+        },
+        ctx.signal,
+      );
+      rawProperties = response.data?.properties ?? [];
+    } catch {
+      rawProperties = [];
+    }
     const target = new Map(
-      (response.data?.properties ?? []).flatMap((item) => {
+      rawProperties.flatMap((item) => {
         const definition = normalize(item);
         return definition
           ? [[definition.propertyName, definition] as const]
@@ -92,7 +98,7 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
           ? 'create'
           : equal(definition, existing)
             ? 'noop'
-            : 'update' as 'create' | 'update' | 'noop',
+            : ('update' as 'create' | 'update' | 'noop'),
         sourceState: definition,
         destinationCurrentState: existing,
         payload: definition,
@@ -178,7 +184,9 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
       ]),
     );
     const discrepancies = plan.operations.flatMap((operation) => {
-      const expected = operation.sourceState as CustomPropertyDefinition;
+      const expected = (operation.sourceState ??
+        operation.payload) as CustomPropertyDefinition;
+      if (!expected?.propertyName) return [];
       return equal(
         expected,
         map.get(expected.propertyName) ?? ({} as CustomPropertyDefinition),
