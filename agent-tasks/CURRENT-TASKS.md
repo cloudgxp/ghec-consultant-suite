@@ -21,10 +21,9 @@ records the current disposition of that scope.
 
 ## Immediate Shared Release Work
 
-| Priority | Owner  | Status              | Work                                                                                                                                                                                                                             | Completion evidence                                                                                                                                                              |
-| -------- | ------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P0       | Shared | Verification needed | Activate `.github/workflows/monorepo-quality.yml` as a required check after its first GitHub run. The workflow now runs the root lint, type checks, builds, CLI tests, contract tests, analysis tests, and dashboard unit tests. | The first successful `Monorepo quality / Root quality gate` run is linked in the changelog and the check is required by branch protection.                                       |
-| P1       | Shared | Verification needed | Run release-level browser and live-read validation in an environment that permits loopback and, for live checks, approved synthetic GitHub resources.                                                                            | Interaction, accessibility, visual, 200% zoom, reduced-motion, auth/preflight, enterprise enumeration, rate-limit, resume/SIGINT, and read-only live smoke evidence is recorded. |
+| Priority | Owner  | Status              | Work                                                                                                                                                                 | Completion evidence                                                                                               |
+| -------- | ------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| P1       | Shared | Verification needed | Run release-level live-read validation against approved synthetic GitHub resources. Browser interaction, accessibility, responsive, and visual evidence is complete. | Auth/preflight, enterprise enumeration, rate-limit, resume/SIGINT, and read-only live smoke evidence is recorded. |
 
 ## Task Specification Disposition
 
@@ -35,7 +34,7 @@ records the current disposition of that scope.
 | DASH-1 through DASH-5   | Verification needed | The PDF exporter, worker ingestion, virtualization, matrix/search, diffing, and target tuning are present. Close the acceptance criteria with browser, scale, scoping, and offline-network evidence.  |
 | DASH-6 through DASH-10  | Superseded          | The Tailwind/DaisyUI implementation approach was replaced by DASH-16 through DASH-20. Preserve only still-relevant UX, accessibility, responsive, and testing requirements in the Primer-based tasks. |
 | DASH-11 through DASH-15 | Verification needed | Feature pages and supporting analysis exist. Validate 10k/100k scale claims, keyboard alternatives, cross-filter behavior, coverage/unknown semantics, and export behavior.                           |
-| DASH-16 through DASH-20 | Complete            | Marked complete in the task index; quality gate passes without hook warnings; release-level browser, responsive (5 viewports), and accessibility (0 WCAG violations) evidence recorded. |
+| DASH-16 through DASH-20 | Complete            | Marked complete in the task index; quality gate passes without hook warnings; release-level browser, responsive (5 viewports), and accessibility (0 WCAG violations) evidence recorded.               |
 
 ### Antigravity / CLI
 
@@ -54,6 +53,9 @@ The 2026-10-04 reconciliation found:
   production build.
 - The latest recorded `npm run check` passes with all 116 tests green and no
   lint or React hook warnings.
+- GitHub run `37177299491` completed `Monorepo quality / Root quality gate`
+  successfully, and active repository ruleset `24443697` requires that exact
+  GitHub Actions check on up-to-date changes to `main`.
 - Dashboard feature pages and PDF generation load on demand. The production
   build enforces 600 KiB per JavaScript chunk, 270 KiB initial JavaScript gzip,
   and 80 KiB initial CSS gzip budgets; the recorded baseline passes all three.
@@ -77,4 +79,3 @@ The 2026-10-04 reconciliation found:
 
 Update this file whenever ownership, priority, status, or completion evidence
 changes. Record the corresponding event in [`CHANGELOG.md`](CHANGELOG.md).
-

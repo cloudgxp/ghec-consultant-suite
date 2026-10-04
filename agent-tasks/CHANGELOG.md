@@ -31,6 +31,21 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Codex — CI / QUALITY — Complete
+
+- Summary: Activated the monorepo root quality job as a required check for
+  `main`. The repository rule pins the check to the GitHub Actions app and
+  requires proposed changes to be up to date before merging.
+- Files: GitHub repository ruleset `24443697`, plus
+  `agent-tasks/CURRENT-TASKS.md` and this changelog.
+- Verification: [Monorepo quality run 37177299491](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37177299491)
+  completed successfully, including the `Root quality gate` job. The active
+  [Require monorepo quality ruleset](https://github.com/cloudgxp/ghec-consultant-suite/rules/24443697)
+  requires context `Root quality gate` from GitHub Actions app ID `15368` on
+  `refs/heads/main` with strict/up-to-date status enforcement.
+- Follow-up: Live-read validation against approved synthetic GitHub resources
+  is the remaining shared release-evidence task.
+
 ### 2026-10-04 — Antigravity — BROWSER-VALIDATION — Complete
 
 - Summary: Ran release-level browser validation across interactions, accessibility,
