@@ -227,21 +227,36 @@ export class MigrationCheckpointManager {
         return repository.targetPrep.status === 'completed';
       case 'gei':
         return repository.gei.status === 'completed';
-      case 'specializedStrategies':
-        return Object.values(repository.specializedStrategies).every(
-          (result) =>
-            result?.status === 'completed' || result?.status === 'skipped',
+      case 'specializedStrategies': {
+        const values = Object.values(repository.specializedStrategies);
+        return (
+          values.length > 0 &&
+          values.every(
+            (result) =>
+              result?.status === 'completed' || result?.status === 'skipped',
+          )
         );
-      case 'apiModules':
-        return Object.values(repository.apiModules).every(
-          (result) =>
-            result.status === 'completed' || result.status === 'skipped',
+      }
+      case 'apiModules': {
+        const values = Object.values(repository.apiModules);
+        return (
+          values.length > 0 &&
+          values.every(
+            (result) =>
+              result.status === 'completed' || result.status === 'skipped',
+          )
         );
-      case 'postMigration':
-        return Object.values(repository.postMigration).every(
-          (result) =>
-            result?.status === 'completed' || result?.status === 'skipped',
+      }
+      case 'postMigration': {
+        const values = Object.values(repository.postMigration);
+        return (
+          values.length > 0 &&
+          values.every(
+            (result) =>
+              result?.status === 'completed' || result?.status === 'skipped',
+          )
         );
+      }
       case 'verification':
         return repository.verification.status === 'passed';
       default:

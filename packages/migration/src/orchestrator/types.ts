@@ -9,20 +9,63 @@ import type { GitHubReadAdapter } from '@ghec/github-client';
 import type { ModuleRegistry } from '../core/registry.js';
 import type { StructuredLogger, TargetWriteClient } from '../core/types.js';
 
-export interface MigrationOrchestratorOptions {
+import type { MigrationCheckpointManager } from '../checkpoint/manager.js';
+import type { GeiCommandRunner, GeiMigrationResult } from '../gei/types.js';
+import type { ReleaseTransport } from '../strategies/releases/types.js';
+
+export interface RepositoryPipelineOptions {
   readonly registry: ModuleRegistry;
   readonly sourceClient: GitHubReadAdapter;
   readonly targetClient: GitHubReadAdapter;
   readonly targetWriteClient?: TargetWriteClient | undefined;
-  readonly scope?: MigrationScope | undefined;
-  readonly plan?: MigrationPlan | undefined;
+  readonly checkpointManager?: MigrationCheckpointManager | undefined;
+  readonly sourceToken?: string | undefined;
+  readonly targetToken?: string | undefined;
   readonly cachedDiscoveryBundle?: DiscoveryBundle | unknown | undefined;
-  readonly modules?: readonly string[] | undefined;
   readonly dryRun?: boolean | undefined;
   readonly continueOnError?: boolean | undefined;
   readonly runId?: string | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly signal?: AbortSignal | undefined;
+  readonly geiRunner?: GeiCommandRunner | undefined;
+  readonly lfsRunner?: GeiCommandRunner | undefined;
+  readonly releaseTransport?: ReleaseTransport | undefined;
+}
+
+export interface RepositoryPipelineResult {
+  readonly repositoryName: string;
+  readonly sourceOrg: string;
+  readonly sourceRepo: string;
+  readonly targetOrg: string;
+  readonly targetRepo: string;
+  readonly status: 'complete' | 'failed' | 'skipped';
+  readonly completedStages: readonly string[];
+  readonly error?: string | undefined;
+  readonly geiResult?: GeiMigrationResult | undefined;
+  readonly moduleResults: readonly ModuleExecutionResult[];
+}
+
+export interface MigrationOrchestratorOptions {
+  readonly registry: ModuleRegistry;
+  readonly sourceClient: GitHubReadAdapter;
+  readonly targetClient: GitHubReadAdapter;
+  readonly targetWriteClient?: TargetWriteClient | undefined;
+  readonly checkpointManager?: MigrationCheckpointManager | undefined;
+  readonly scope?: MigrationScope | undefined;
+  readonly plan?: MigrationPlan | undefined;
+  readonly cachedDiscoveryBundle?: DiscoveryBundle | unknown | undefined;
+  readonly modules?: readonly string[] | undefined;
+  readonly concurrency?: number | undefined;
+  readonly sourceToken?: string | undefined;
+  readonly targetToken?: string | undefined;
+  readonly dryRun?: boolean | undefined;
+  readonly continueOnError?: boolean | undefined;
+  readonly runId?: string | undefined;
+  readonly logger?: StructuredLogger | undefined;
+  readonly signal?: AbortSignal | undefined;
+  readonly geiRunner?: GeiCommandRunner | undefined;
+  readonly lfsRunner?: GeiCommandRunner | undefined;
+  readonly releaseTransport?: ReleaseTransport | undefined;
 }
 
 export interface MigrationExecutionReport {

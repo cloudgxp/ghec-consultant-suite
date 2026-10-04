@@ -54,6 +54,23 @@ test('creates a protected, atomically persisted checkpoint manifest', () => {
       readdirSync(directory).filter((name) => name.endsWith('.tmp')),
       [],
     );
+
+    // Initial stages should all evaluate as not completed
+    for (const stage of [
+      'preflight',
+      'targetPrep',
+      'gei',
+      'specializedStrategies',
+      'apiModules',
+      'postMigration',
+      'verification',
+    ]) {
+      assert.equal(
+        manager.isStageCompleted('acme/api', stage),
+        false,
+        `Initial stage ${stage} should not be completed`,
+      );
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

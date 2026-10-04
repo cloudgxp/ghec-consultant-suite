@@ -19,10 +19,13 @@ import type {
   StructuredLogger,
   TargetWriteClient,
 } from '../core/types.js';
+import type { MigrationCheckpointManager } from '../checkpoint/manager.js';
 import { MigrationPlanner } from '../planner/planner.js';
+import { RepositoryMigrationPipeline } from './pipeline.js';
 import type {
   MigrationExecutionReport,
   MigrationOrchestratorOptions,
+  RepositoryPipelineResult,
 } from './types.js';
 
 const defaultLogger: StructuredLogger = {
@@ -37,6 +40,16 @@ export class MigrationOrchestrator {
   private readonly targetClient: GitHubReadAdapter;
   private readonly targetWriteClient?: TargetWriteClient | undefined;
   private readonly scope?: MigrationScope | undefined;
+  private readonly checkpointManager?: MigrationCheckpointManager | undefined;
+  private readonly concurrency: number;
+  private readonly sourceToken?: string | undefined;
+  private readonly targetToken?: string | undefined;
+  private readonly geiRunner?:
+    MigrationOrchestratorOptions['geiRunner'] | undefined;
+  private readonly lfsRunner?:
+    MigrationOrchestratorOptions['lfsRunner'] | undefined;
+  private readonly releaseTransport?:
+    MigrationOrchestratorOptions['releaseTransport'] | undefined;
   private readonly plan?: MigrationPlan | undefined;
   private readonly cachedDiscoveryBundle?:
     DiscoveryBundle | unknown | undefined;
@@ -57,6 +70,13 @@ export class MigrationOrchestrator {
     this.sourceClient = options.sourceClient;
     this.targetClient = options.targetClient;
     this.targetWriteClient = options.targetWriteClient;
+    this.checkpointManager = options.checkpointManager;
+    this.concurrency = options.concurrency ?? 2;
+    this.sourceToken = options.sourceToken;
+    this.targetToken = options.targetToken;
+    this.geiRunner = options.geiRunner;
+    this.lfsRunner = options.lfsRunner;
+    this.releaseTransport = options.releaseTransport;
     this.cachedDiscoveryBundle = options.cachedDiscoveryBundle;
     this.modulesFilter = options.modules;
     this.dryRun = options.dryRun ?? false;
@@ -86,6 +106,59 @@ export class MigrationOrchestrator {
       }
       this.scope = scopeValidation.data;
     }
+  }
+
+  async executeRepositoryPipelines(): Promise<
+    readonly RepositoryPipelineResult[]
+  > {
+    const repos = this.scope?.repositories ?? [];
+    if (repos.length === 0) {
+      return [];
+    }
+
+    const results: RepositoryPipelineResult[] = [];
+    const pipeline = new RepositoryMigrationPipeline({
+      registry: this.registry,
+      sourceClient: this.sourceClient,
+      targetClient: this.targetClient,
+      targetWriteClient: this.targetWriteClient,
+      checkpointManager: this.checkpointManager,
+      sourceToken: this.sourceToken,
+      targetToken: this.targetToken,
+      cachedDiscoveryBundle: this.cachedDiscoveryBundle,
+      dryRun: this.dryRun,
+      continueOnError: this.continueOnError,
+      runId: this.runId,
+      logger: this.logger,
+      signal: this.signal,
+      geiRunner: this.geiRunner,
+      lfsRunner: this.lfsRunner,
+      releaseTransport: this.releaseTransport,
+    });
+
+    const queue = [...repos];
+    const activeWorkers: Promise<void>[] = [];
+    const concurrency = Math.max(1, this.concurrency);
+
+    for (let i = 0; i < concurrency && queue.length > 0; i++) {
+      activeWorkers.push(
+        (async () => {
+          while (queue.length > 0) {
+            if (this.signal.aborted) break;
+            const repo = queue.shift()!;
+            const res = await pipeline.execute(repo, this.plan);
+            results.push(res);
+            if (res.status === 'failed' && !this.continueOnError) {
+              queue.length = 0;
+              break;
+            }
+          }
+        })(),
+      );
+    }
+
+    await Promise.all(activeWorkers);
+    return results;
   }
 
   async run(): Promise<MigrationExecutionReport> {
