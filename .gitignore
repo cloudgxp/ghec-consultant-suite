@@ -39,4 +39,8 @@ ghec-discovery-*.json
 !fixtures/synthetic/ghec-discovery-*.json
 *.log
 *.tmp
+*.cpuprofile
+.eslintcache
 .DS_Store
+__pycache__/
+*.pyc

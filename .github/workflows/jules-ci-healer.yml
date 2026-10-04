@@ -1,0 +1,153 @@
+name: Jules CI Auto-Healer
+
+on:
+  workflow_run:
+    workflows: ["Monorepo quality"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_run_id:
+        description: "Failed Monorepo quality workflow run ID to heal"
+        required: true
+        type: string
+      target_branch:
+        description: "Target branch to heal"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  heal-ci-failure:
+    name: Auto-Heal CI Failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Evaluate Failure & Build Healing Prompt
+        id: prep
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+
+            function setOutput(name, value) {
+              const delimiter = 'DELIMITER_' + crypto.randomBytes(8).toString('hex');
+              const data = `${name}<<${delimiter}\n${value}\n${delimiter}\n`;
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, data);
+            }
+
+            const eventName = context.eventName;
+            let runId;
+            let headBranch;
+            let repoFullName;
+            let isFailure = false;
+
+            if (eventName === 'workflow_run') {
+              const wr = context.payload.workflow_run;
+              runId = wr.id;
+              headBranch = wr.head_branch;
+              repoFullName = wr.head_repository?.full_name;
+              isFailure = wr.conclusion === 'failure';
+            } else if (eventName === 'workflow_dispatch') {
+              runId = parseInt(context.payload.inputs.target_run_id, 10);
+              headBranch = context.payload.inputs.target_branch;
+              repoFullName = `${context.repo.owner}/${context.repo.repo}`;
+              isFailure = true;
+            }
+
+            core.info(`Evaluating CI Run #${runId} on branch '${headBranch}' (conclusion: ${isFailure ? 'failure' : 'non-failure'}).`);
+
+            // 1. Must be a failure
+            if (!isFailure) {
+              core.info('Workflow run did not fail. Skipping auto-heal.');
+              setOutput('should_run', 'false');
+              return;
+            }
+
+            // 2. Must be an internal branch (same repository)
+            const currentRepo = `${context.repo.owner}/${context.repo.repo}`;
+            if (repoFullName && repoFullName !== currentRepo) {
+              core.info(`Fork repository (${repoFullName}). Skipping auto-heal for security.`);
+              setOutput('should_run', 'false');
+              return;
+            }
+
+            // 3. Anti-recursion guards: skip default, combined, or Jules branches
+            if (!headBranch || headBranch === 'main' || headBranch === 'combined-jules-prs') {
+              core.info(`Branch '${headBranch}' is a protected/aggregation branch. Skipping auto-heal.`);
+              setOutput('should_run', 'false');
+              return;
+            }
+
+            const isJulesBranch =
+              headBranch.startsWith('jules/') ||
+              headBranch.includes('-jules-') ||
+              /-\d{15,}$/.test(headBranch) ||
+              headBranch.includes('healer');
+
+            if (isJulesBranch) {
+              core.info(`Branch '${headBranch}' was created by Jules/automation. Skipping to prevent recursion.`);
+              setOutput('should_run', 'false');
+              return;
+            }
+
+            // 4. Retrieve job & step failure details
+            let failureSummary = '';
+            try {
+              const jobsRes = await github.rest.actions.listJobsForWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: runId
+              });
+
+              const failedJobs = jobsRes.data.jobs.filter(j => j.conclusion === 'failure');
+              for (const job of failedJobs) {
+                const failedSteps = job.steps.filter(s => s.conclusion === 'failure');
+                for (const step of failedSteps) {
+                  failureSummary += `- Job: "${job.name}", Step: "${step.name}" failed.\n`;
+                }
+              }
+            } catch (err) {
+              core.warning(`Could not fetch job failure details: ${err.message}`);
+              failureSummary = '- Root quality gate failed during npm run check.';
+            }
+
+            const prompt = `Automated CI Healing Request:
+            The 'Monorepo quality' workflow failed for branch '${headBranch}' on run #${runId}.
+
+            Failure Breakdown:
+            ${failureSummary || '- Job quality check failed.'}
+
+            Healing Objective:
+            Diagnose and fix the minor failure (such as an ESLint formatting violation, Prettier discrepancy, missing import, or slight TypeScript type error) causing 'npm run check' to fail on branch '${headBranch}'.
+
+            Strict Guidelines:
+            1. Scoped, minimal diff: Keep all modifications under 100 lines.
+            2. Never weaken test assertions, bypass lint rules, or alter migration business logic.
+            3. Preserve existing docstrings, license headers, and architecture comments.
+            4. Verification: Run 'npm run check' locally before submitting. It must pass (0 lint warnings, 0 type errors, all unit tests green).
+            5. PR / Commit conventions: Title should be 'fix(ci): auto-heal monorepo quality on ${headBranch}' with 'jules' label.
+            `;
+
+            setOutput('should_run', 'true');
+            setOutput('starting_branch', headBranch);
+            setOutput('prompt', prompt.trim());
+
+      - name: Invoke Jules Auto-Healer
+        if: steps.prep.outputs.should_run == 'true'
+        uses: google-labs-code/jules-invoke@v1
+        with:
+          prompt: ${{ steps.prep.outputs.prompt }}
+          jules_api_key: ${{ secrets.JULES_API_KEY }}
+          starting_branch: ${{ steps.prep.outputs.starting_branch }}
+          include_last_commit: 'true'
+          include_commit_log: 'true'

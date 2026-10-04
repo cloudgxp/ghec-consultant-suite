@@ -23,6 +23,7 @@ export interface TenantClientConfig {
   readonly maxRetrySeconds?: number | undefined;
   readonly timeoutMs?: number | undefined;
   readonly fetchImpl?: typeof globalThis.fetch | undefined;
+  readonly throttle?: boolean | { enabled?: boolean } | undefined;
 }
 
 export interface GitHubDualClientConfig {
@@ -97,6 +98,7 @@ function buildTenantClient(
     maxRetrySeconds: config.maxRetrySeconds,
     timeoutMs: config.timeoutMs,
     fetchImpl: config.fetchImpl,
+    throttle: config.throttle,
   });
   return { client, rateLimiter };
 }

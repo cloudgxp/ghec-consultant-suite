@@ -62,6 +62,19 @@ This file is the single source of truth for work tracking across all categories 
 | **High**     | `dompurify` Vulnerability Remediation | Complete | [`dependabot-01-update-dompurify.md`](security/completed/dependabot-01-update-dompurify.md) | #13, #26–#40 (16 alerts) | Hoisted `dompurify@3.4.16` across lockfile; `npm audit` reports 0 vulnerabilities; `npm run check` green.                                                |
 | **Critical** | `jspdf` Vulnerability Remediation     | Complete | [`dependabot-02-update-jspdf.md`](security/completed/dependabot-02-update-jspdf.md)         | #14–#25 (12 alerts)      | Hoisted `jspdf@4.2.1` and `jspdf-autotable@5.0.8`; purged legacy `atob`/`btoa`; `apps/dashboard/tests/export-pdf.test.ts` passed; `npm run check` green. |
 
+#### Active Migration Security Test Tasks
+
+| Priority | Title / Domain                          | Status | Specification File                                                                                          | Target / Evidence                                                                                    |
+| :------- | :-------------------------------------- | :----: | :---------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| **P1**   | Stage 1: Preflight Credential & Scopes  |  Open  | [`test-stage1-preflight-credential-validation.md`](security/test-stage1-preflight-credential-validation.md) | Preflight credential matrix & blocker inspection engine test specification.                          |
+| **P1**   | Stage 2: Org Variables & Sealed Secrets |  Open  | [`test-stage2-org-variables-and-secrets.md`](security/test-stage2-org-variables-and-secrets.md)             | Organization Actions variables and encrypted secrets dry-run diff & apply test specification.        |
+| **P1**   | Stage 2: Teams & EMU Identity Mapping   |  Open  | [`test-stage2-teams-and-emu-identity-mapping.md`](security/test-stage2-teams-and-emu-identity-mapping.md)   | DFS team hierarchy, privacy, and EMU SCIM/SAML username reconciliation test specification.           |
+| **P1**   | Stage 3: Repo Variables & Secrets       |  Open  | [`test-stage3-repo-variables-and-secrets.md`](security/test-stage3-repo-variables-and-secrets.md)           | Repository Actions variables and sealed-box secrets rehydration test specification.                  |
+| **P1**   | Stage 3: Rulesets & Branch Protection   |  Open  | [`test-stage3-rulesets-and-branch-protection.md`](security/test-stage3-rulesets-and-branch-protection.md)   | Modern rulesets & legacy branch protection translation test specification.                           |
+| **P1**   | Stage 3: Environments & Protection      |  Open  | [`test-stage3-environments-reconciliation.md`](security/test-stage3-environments-reconciliation.md)         | Deployment environments, wait timers, reviewer rules, variables, and secrets test specification.     |
+| **P2**   | Stage 3: Webhooks & Secret Rotation     |  Open  | [`test-stage3-webhooks-reconciliation.md`](security/test-stage3-webhooks-reconciliation.md)                 | Webhooks payload URL matching, event triggers, and secret rotation test specification.               |
+| **P1**   | Stage 4: Mannequin Reclamation (EMU)    |  Open  | [`test-stage4-mannequin-reclamation-emu.md`](security/test-stage4-mannequin-reclamation-emu.md)             | Post-migration mannequin reclamation with EMU `--skip-invitation` flag execution test specification. |
+
 ### 2. Feature Tasks ([`features/`](features/))
 
 | Task(s)           | Title / Domain                                |   Status   | Specification File                                                                                                                                                                                                                                                                                           | Evidence                                                                                   |
@@ -92,6 +105,17 @@ This file is the single source of truth for work tracking across all categories 
 | **DASH-6,7,9**    | UI Foundation & Material Design               | Superseded | [`dash-task-6-...`](features/completed/dash-task-6-tailwind-daisyui-design-system-foundation.md), [`dash-task-7-...`](features/completed/dash-task-7-responsive-left-navigation-app-shell.md), [`dash-task-9-...`](features/completed/dash-task-9-material-dashboard-information-design.md)                  | Replaced by Primer-based foundation (DASH-16..19).                                         |
 | **DASH-11,12,14** | Packages, Actions, Portfolio                  |  Complete  | [`dash-task-11-...`](features/completed/dash-task-11-packages-releases-and-artifacts-pages.md), [`dash-task-12-...`](features/completed/dash-task-12-actions-automation-and-runner-operations-page.md), [`dash-task-14-...`](features/completed/dash-task-14-code-ownership-projects-and-portfolio-pages.md) | Automated tests in `tests/` pass.                                                          |
 | **DASH-16..19**   | Primer React Foundation & Pages               |  Complete  | [`dash-task-16-...`](features/completed/dash-task-16-primer-react-foundation-and-migration-spike.md) through [`19`](features/completed/dash-task-19-primer-feature-pages-data-tables-and-visualization.md)                                                                                                   | Full Primer migration passing 0 WCAG violations.                                           |
+| **JULES-01**      | Jules Action Workflow Automation              |  Complete  | [`feature-jules-action-workflow-automation.md`](features/completed/feature-jules-action-workflow-automation.md)                                                                                                                                                                                              | Multi-trigger Jules automation workflows and batch integration.                            |
+
+#### Active Migration Feature Test Tasks
+
+| Priority | Title / Domain                          | Status | Specification File                                                                                                  | Target / Evidence                                                                                 |
+| :------- | :-------------------------------------- | :----: | :------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------ |
+| **P1**   | Stage 1: Discovery Verification         |  Open  | [`test-stage1-discovery-verification.md`](features/test-stage1-discovery-verification.md)                           | Source & target discovery verification, dry-run CLI test specification.                           |
+| **P2**   | Stage 2: Org Custom Properties          |  Open  | [`test-stage2-org-custom-properties.md`](features/test-stage2-org-custom-properties.md)                             | Organization custom property schema diff, dry-run simulation & apply test specification.          |
+| **P2**   | Stage 3: Repo Custom Props & Settings   |  Open  | [`test-stage3-repo-custom-properties-and-settings.md`](features/test-stage3-repo-custom-properties-and-settings.md) | Repository custom property values, visibility, and PR settings reconciliation test specification. |
+| **P1**   | Stage 3: Git LFS & Releases Transfer    |  Open  | [`test-stage3-git-lfs-and-releases-transfer.md`](features/test-stage3-git-lfs-and-releases-transfer.md)             | Git LFS mirroring, quota check, and large release streaming fallback test specification.          |
+| **P1**   | Stage 4: Verification Compliance Report |  Open  | [`test-stage4-verification-compliance-suite.md`](features/test-stage4-verification-compliance-suite.md)             | Verification CLI compliance engine, summary report, and discrepancy audit test specification.     |
 
 ### 3. Performance Tasks ([`performance/`](performance/))
 
@@ -105,6 +129,10 @@ This file is the single source of truth for work tracking across all categories 
 | **CLI-9**   | Consolidated GraphQL Aggregators          | Complete | [`cli-task-9-consolidated-graphql-query-aggregators.md`](performance/completed/cli-task-9-consolidated-graphql-query-aggregators.md)                       | Aggregators verified in `tests/aggregators.test.ts`.                                                   |
 | **DASH-2**  | Web Worker & Table Virtualization         | Complete | [`dash-task-2-web-worker-and-table-virtualization.md`](performance/completed/dash-task-2-web-worker-and-table-virtualization.md)                           | VirtualizedTable navigation in `e2e/interactions.spec.ts`.                                             |
 | **DASH-15** | 100k Dependency Graph Traversal           | Complete | [`dash-task-15-repository-dependency-map-and-migration-cohorts.md`](performance/completed/dash-task-15-repository-dependency-map-and-migration-cohorts.md) | Verified in `tests/dependency-graph.test.ts`.                                                          |
+
+| **PERF-01** | Lint Cache & Ignore Pruning | Complete | [`perf-01-lint-cache-and-ignore-pruning.md`](performance/completed/perf-01-lint-cache-and-ignore-pruning.md) | Added `.prettierignore`, ESLint `--cache`, pruned 500+ non-code files; `npm run lint` runtime reduced from 9.86s to 5.55s (43.7% speedup). |
+| **PERF-02** | Eliminate Redundant Compilations | Complete | [`perf-02-eliminate-redundant-compilations.md`](performance/completed/perf-02-eliminate-redundant-compilations.md) | Enabled `incremental: true`, deduplicated build cascades in `npm run check`; `npm run typecheck` dropped from 15.53s to 9.88s (36.4%). |
+| **PERF-03** | Optimize Test Runner Concurrency & Delays | Complete | [`perf-03-optimize-test-runner-concurrency.md`](performance/completed/perf-03-optimize-test-runner-concurrency.md) | Bypassed Octokit mock throttle, tuned test timers, added `--test-concurrency=8`; `npm test` dropped from 40.83s to 10.58s (74.1%). |
 
 ### 4. Bug Fix Tasks ([`bug-fixes/`](bug-fixes/))
 
@@ -123,6 +151,14 @@ This file is the single source of truth for work tracking across all categories 
 | **PR-FIX-25** | Trigger and Verify CI Quality Gates for PR #25 | Complete | [`pr-fix-25-trigger-and-verify-ci-checks.md`](bug-fixes/completed/pr-fix-25-trigger-and-verify-ci-checks.md)                   | PR #25    | Merged `main`, resolved conflict in `formatters.test.ts` (commit `d29b394`); 7/7 checks green on GitHub Actions.                     |
 | **PR-FIX-07** | Resolve TypeScript 7 Peer Dependency Conflict  | Complete | [`pr-fix-07-typescript-7-peer-dependency-conflict.md`](bug-fixes/completed/pr-fix-07-typescript-7-peer-dependency-conflict.md) | PR #7     | Used `@typescript/typescript6` bridge & added `types: ["node"]` (commit `e697280`); `npm ci` & all 7 checks green on GitHub Actions. |
 
+#### Prerequisite Migration & Dry-Run Fix Tasks
+
+| Priority | Title / Domain                       | Status | Specification File                                                                                     | Target / Evidence                                                                                               |
+| :------- | :----------------------------------- | :----: | :----------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| **High** | Git LFS Strategy Dry-Run Support     |  Open  | [`prereq-dryrun-git-lfs.md`](bug-fixes/prereq-dryrun-git-lfs.md)                                       | Add `dryRun` flag to `GitLfsMigrationRequest` and short-circuit write mutations during standalone execution.    |
+| **High** | Releases Fallback Dry-Run Support    |  Open  | [`prereq-dryrun-releases.md`](bug-fixes/prereq-dryrun-releases.md)                                     | Add `dryRun` flag to `ReleaseMigrationRequest` and simulate release asset streaming without target writes.      |
+| **High** | Fix Pipeline Module Identifier Drift |  Open  | [`prereq-pipeline-module-identifiers-drift.md`](bug-fixes/prereq-pipeline-module-identifiers-drift.md) | Reconcile `'repo-settings'` alias in `pipeline.ts` Stage 6 and decouple org-scoped `mannequins` from repo loop. |
+
 ---
 
 ## Reconciliation Evidence
@@ -131,6 +167,10 @@ The 2026-10-04 reconciliation found:
 
 - `npm run build` succeeds, including the Primer style guard and dashboard production build.
 - `npm run check` passes with all tests green and zero lint or React hook warnings.
+- End-to-end migration application audit completed across 12 core modules, 2 specialized transfer strategies, and 3 CLI commands.
+- Universal dry-run verified across all 12 core modules (`org-variables`, `org-secrets`, `teams`, `org-custom-properties`, `repo-variables`, `repo-secrets`, `repo-custom-properties`, `repo-settings`, `branch-protection`, `rulesets`, `environments`, `webhooks`) and CLI commands (`discover`, `plan`, `migrate`, `verify`).
+- Prerequisite bug fix specifications registered in `bug-fixes/` for standalone Git LFS and Releases dry-run support and Stage 6 pipeline identifier resolution.
+- Modular migration test specifications registered in `features/` and `security/` for all 4 migration lifecycle stages.
 - GitHub Actions branch protection checks require root quality gate passing on up-to-date `main`.
 - Dashboard feature pages and PDF generation load on demand within budget limits.
 - Browser-level release validation is verified across 5 viewports with 0 WCAG violations.
