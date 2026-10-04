@@ -12,6 +12,7 @@ export * from './client/http-target-write-client.js';
 export * from './orchestrator/index.js';
 export * from './modules/repo-variables/index.js';
 export * from './modules/repo-secrets/index.js';
+export * from './modules/environments/index.js';
 export * from './modules/rulesets/index.js';
 export * from './modules/branch-protection/index.js';
 export * from './modules/teams/index.js';

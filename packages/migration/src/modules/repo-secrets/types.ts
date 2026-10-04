@@ -39,12 +39,13 @@ export interface RawGitHubPublicKeyResponse {
  */
 export interface SecretValueProvider {
   getSecretValue(input: {
-    readonly domain: RepoSecretDomain;
+    readonly domain: RepoSecretDomain | 'environment';
     readonly name: string;
     readonly sourceOrg: string;
     readonly sourceRepo: string;
     readonly targetOrg: string;
     readonly targetRepo: string;
+    readonly environmentName?: string | undefined;
     readonly signal: AbortSignal;
   }): Promise<string | undefined>;
 }

@@ -321,3 +321,39 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Fix:** Corrected cached repository-variable discovery to select Actions `variable` metadata rather than `secret` metadata.
 - **Tests:** `npx tsx --test apps/cli/tests/migration-e2e.test.ts` passes in under one second.
 - **Tests:** `npm run check` passes (lint, type checks, build, and full test suite).
+
+---
+
+## 2026-10-04
+
+### Agent: Codex
+
+- **Task:** 011 Implement `repo-secrets` Metadata Rehydration Module
+- **Changes:**
+  - Implemented `RepoSecretsMigrationModule` in `packages/migration/src/modules/repo-secrets/` with full discovery, planning, mutation, and verification.
+  - Inventories Actions, Dependabot, and Codespaces secret metadata without raw values.
+  - Rehydrates missing secrets on destination repositories by encrypting blank placeholders (`""`) or vault-supplied values with libsodium sealed-box encryption against repository public keys (`GET /repos/{owner}/{repo}/{domain}/secrets/public-key`) per DEC-004.
+  - Added unit test suite `packages/migration/tests/modules/repo-secrets.test.ts` verifying sealed-box encryption roundtrip, dry-run, and discrepancy reporting.
+- **Tests:** `npm run check` passed 263/263 tests green across 30 suites.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity (Pair Execution)
+
+- **Task:** 012 Implement `environments` Migration Module
+- **Changes:**
+  - Implemented `EnvironmentsMigrationModule` under `packages/migration/src/modules/environments/`:
+    - Discovers deployment environments, protection rules (wait timer, prevent self review, required reviewers), deployment branch policies, variables, and secrets via live REST and cached `DiscoveryBundle` (`action-environment` + `configuration-metadata`).
+    - Maps required reviewers to GHEC-EMU logins via `IdentityMappingEngine` with non-fatal warnings for unmapped users.
+    - Applies environment creation/updates via `PUT /repos/{owner}/{repo}/environments/{name}`.
+    - Creates custom deployment branch policies via `POST .../deployment-branch-policies`.
+    - Creates and patches environment variables via `POST`/`PATCH .../variables`.
+    - Obtains environment public key (`GET .../environments/{name}/secrets/public-key`) and performs sealed-box encryption using `libsodium-wrappers` per DEC-004.
+    - Verifies post-migration environment presence, wait timer accuracy, variable values, and secret existence.
+  - Extended `SecretValueProvider` in `packages/migration/src/modules/repo-secrets/types.ts` with optional `environmentName` and `'environment'` domain.
+  - Registered `EnvironmentsMigrationModule` in `createDefaultModuleRegistry()` with execution dependency on `gei-repo`.
+  - Added unit test suite `packages/migration/tests/modules/environments.test.ts` (8 tests) and module documentation in `README.md`.
+- **Tests:** `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+- **Follow-Up:** Unblocks Task 016 (`org-variables` and `org-secrets`), Task 018 (`webhooks`), Task 019 (`step-summary`), Task 025 (repo visibility/settings), and Task 026 (custom properties).

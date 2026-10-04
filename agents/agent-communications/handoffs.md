@@ -503,3 +503,35 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 - **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
   test suite). Consulted
   `references/github-docs/content/rest/guides/encrypting-secrets-for-the-rest-api.md`.
+
+### [2026-10-04] Task 012 Complete: Deployment Environments Migration Module
+
+- **From:** Codex / Antigravity pair
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 012** (`packages/migration/src/modules/environments/`): Repository Deployment Environments, Variables & Protection Rules.
+- **Unblocked Tasks:**
+  - Task 016 (`codex/016-org-variables-and-secrets-modules.md`)
+  - Task 018 (`codex/018-webhooks-migration-module.md`)
+  - Task 019 (`codex/019-github-actions-step-summary-reporter.md`)
+  - Task 025 (`codex/025-repo-visibility-and-settings-reconciliation.md`)
+  - Task 026 (`codex/026-custom-properties-migration-modules.md`)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `EnvironmentsMigrationModule` (`id = 'environments'`)
+    - Types: `EnvironmentDefinition`, `EnvironmentReviewer`, `DeploymentBranchPolicy`, `DeploymentBranchPolicyRule`, `EnvironmentVariable`, `EnvironmentSecret`, `EnvironmentsData`, `EnvironmentsModuleOptions`
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/environments/types.ts`
+  - `packages/migration/src/modules/environments/module.ts`
+  - `packages/migration/src/modules/environments/index.ts`
+  - `packages/migration/src/modules/environments/README.md`
+  - `packages/migration/src/modules/repo-secrets/types.ts` (extended `SecretValueProvider` for environment-scoped secrets)
+  - `packages/migration/src/core/registry.ts` (registered in `createDefaultModuleRegistry`)
+  - `packages/migration/src/index.ts` (exported module & types)
+  - `packages/migration/tests/modules/environments.test.ts` (8 unit tests)
+- **Behavior Notes:**
+  - Full discovery, planning, applying, and verification lifecycle for repository deployment environments.
+  - Required reviewers mapped via `IdentityMappingEngine` with structured warnings for unmapped users.
+  - Secret rehydration uses `libsodium-wrappers` sealed box against target environment public key (`GET .../environments/{env}/secrets/public-key`).
+  - Zero-exposure DEC-004 compliance: raw secret values are never printed, logged, or serialized into migration plans.
+- **Test Evidence:** `npm run check` passes 271/271 tests across 31 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.

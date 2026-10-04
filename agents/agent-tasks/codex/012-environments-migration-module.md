@@ -2,11 +2,11 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
-Codex
+Codex (completed with Antigravity pair support during credit window)
 
 ## Objective
 
@@ -79,4 +79,10 @@ GitHub Enterprise Importer (GEI) migrates repository code, issues, and PRs, but 
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+- Implemented `EnvironmentsMigrationModule` in `packages/migration/src/modules/environments/` with full discovery, planning, mutation, and verification.
+- Supports both live REST discovery (`GET /repos/{owner}/{repo}/environments`, `.../variables`, `.../secrets`, `.../deployment-branch-policies`) and offline cached mode using `DiscoveryBundle` (`action-environment` and `configuration-metadata` entities).
+- Integrated `IdentityMappingEngine` to translate required reviewers to EMU identities with warnings for unmapped users.
+- Rehydrates environment-level secrets via sealed-box encryption using `libsodium-wrappers` against the target environment's public key (DEC-004 zero-exposure compliance).
+- Extended `SecretValueProvider` in `packages/migration/src/modules/repo-secrets/types.ts` to support environment-scoped secret retrieval.
+- Registered module in `createDefaultModuleRegistry()` with execution dependency on `gei-repo`.
+- Verified 100% test coverage in `packages/migration/tests/modules/environments.test.ts` (8 test suites) and full monorepo quality gate (`npm run check`, 271 passing tests).
