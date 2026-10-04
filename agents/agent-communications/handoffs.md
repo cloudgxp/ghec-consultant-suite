@@ -386,3 +386,35 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - All divergent work from both agents has been unified into canonical `feature/migration`.
   - All 16 completed tasks (001, 002, 003, 004, 005, 006, 007, 008, 009, 013, 014, 017, 022, 023, 024, 030) are now fully available and verified together.
 - **Test Evidence:** `npm run check` passes 234/234 tests across 25 test suites green (100% pass).
+
+### [2026-10-04] Task 015 Complete: Orchestrate GEI with Post-GEI API Module Pipeline
+
+- **From:** Antigravity
+- **To:** Codex
+- **Completed Task:**
+  - **Task 015** (`packages/migration/src/orchestrator/pipeline.ts`, `packages/migration/tests/orchestrator/pipeline.test.ts`): Orchestrate GEI with Post-GEI API Module Pipeline.
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `RepositoryMigrationPipeline`, `RepositoryPipelineOptions`, `RepositoryPipelineResult`
+    - Enhanced `MigrationOrchestrator` with `executeRepositoryPipelines()` supporting worker-queue concurrency throttling (default 2 parallel repositories)
+- **Files Modified / Created:**
+  - `packages/migration/src/orchestrator/pipeline.ts`
+  - `packages/migration/src/orchestrator/migration-orchestrator.ts`
+  - `packages/migration/src/orchestrator/types.ts`
+  - `packages/migration/src/orchestrator/index.ts`
+  - `packages/migration/src/checkpoint/manager.ts` (fixed vacuous truth bug on empty initial stage records)
+  - `packages/migration/tests/checkpoint.test.ts` (added assertions for initial stage evaluation)
+  - `packages/migration/tests/orchestrator/pipeline.test.ts` (6 comprehensive test cases)
+- **Behavior Notes:**
+  - Implements the complete 7-stage repository lifecycle:
+    1. Preflight Evaluation (`SourceRepositoryInspector` assessing sizing, blockers, LFS, and releases threshold)
+    2. Target Preparation (`DestinationBlockerInspector` checking ruleset bypass and target repo naming conflicts)
+    3. GEI Process Execution (`GeiProcessExecutor` running `gh gei migrate-repo` with `--skip-releases` when thresholds exceeded)
+    4. Specialized Strategies (`GitLfsMigrationStrategy` streaming objects, `LargeReleasesMigrationStrategy` recreating releases and streaming assets)
+    5. Post-GEI API Rehydration (applies planned repository API modules such as variables, rulesets, branch protection)
+    6. Post-Migration Reconciliations (applies post-GEI tasks: visibility, webhooks, mannequins, codeowners)
+    7. Verification & Audit Discrepancy Detection (verifies target state and records checkpoint)
+  - Checkpoint resumption skips already completed stages.
+  - Failures in earlier stages (preflight, target prep, GEI) immediately halt the pipeline and prevent subsequent destructive API mutations.
+- **Test Evidence:** `npm run check` passes 240/240 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+
