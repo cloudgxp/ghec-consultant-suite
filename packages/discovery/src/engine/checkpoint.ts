@@ -10,6 +10,7 @@ import {
   chmodSync,
 } from 'node:fs';
 import { join, dirname, basename, resolve } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import type {
   Entity,
   CollectorExecution,
@@ -42,7 +43,7 @@ export function writeAtomicJson(filePath: string, data: unknown): void {
   }
   const tempPath = join(
     dir,
-    `.${basename(filePath)}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
+    `.${basename(filePath)}.tmp.${Date.now()}.${randomBytes(4).toString('hex')}`,
   );
   const content = JSON.stringify(data, null, 2);
   writeFileSync(tempPath, content, { encoding: 'utf8', mode: 0o600 });
