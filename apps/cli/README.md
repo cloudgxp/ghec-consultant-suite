@@ -87,6 +87,8 @@ reports/                        # ignored local dashboard exports
 fixtures/synthetic/             # tracked, fictional examples only
   enterprise-v1.json
   organization-v1.json
+  specialized-v1.json
+  partial-denied-v1.json
 ```
 
 Top-level fields: schemaVersion, synthetic, scan, configuration, scope, organizations, collectors, entities, findings, limitations, errors, summary. Each collector has timestamps, provenance, status, warnings/errors and coverage; entities carry organization/execution references. Configuration omits tokens, raw argv and absolute customer paths. See [data contract](../../docs/specs/data-contract.md).
