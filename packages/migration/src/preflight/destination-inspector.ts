@@ -1,9 +1,9 @@
 import type { DestinationAssessment } from '@ghec/contracts';
 import type {
   DestinationInspectorOptions,
-  GitHubRuleset,
   RulesetBypassActor,
 } from './types.js';
+import type { GitHubRuleset } from '../modules/rulesets/types.js';
 
 interface GitHubOrgDetails {
   login?: string | undefined;

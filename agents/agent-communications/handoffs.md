@@ -279,3 +279,36 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Standardized exit codes: `0` (Success), `1` (Fatal / Discrepancy), `2` (Syntax Error), `4` (Partial Success), `130` (Interrupted).
 - **Test Evidence:** `npm run check` passes 193/193 tests green.
 
+### [2026-10-04] Task 013 (Implement `rulesets` and `branch-protection` Modules) -> Task 015
+
+- **From:** Antigravity
+- **To:** Antigravity
+- **Completed Task:** 013
+- **Unblocked Tasks:**
+  - Task 015 (Orchestrate GEI with Post-GEI API Module Pipeline)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `RulesetsMigrationModule`, `GitHubRuleset`, `RulesetRule`, `BypassActor`, `RulesetConditions`, `RulesetsData`, `RulesetEnforcement`, `RulesetTarget`, `RulesetSourceType`, `areRulesetsEqual`, `isInheritedOrganizationRuleset`, `sanitizeRulesetPayload`
+    - `BranchProtectionReconciliationModule`, `BranchProtectionRule`, `BranchProtectionReconciliationDiff`, `BranchProtectionData`, `computeBranchProtectionReconciliation`, `convertBranchProtectionToRuleset`
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/rulesets/types.ts`
+  - `packages/migration/src/modules/rulesets/ruleset-mapper.ts`
+  - `packages/migration/src/modules/rulesets/module.ts`
+  - `packages/migration/src/modules/rulesets/index.ts`
+  - `packages/migration/src/modules/rulesets/README.md`
+  - `packages/migration/src/modules/branch-protection/types.ts`
+  - `packages/migration/src/modules/branch-protection/reconciler.ts`
+  - `packages/migration/src/modules/branch-protection/module.ts`
+  - `packages/migration/src/modules/branch-protection/index.ts`
+  - `packages/migration/src/modules/branch-protection/README.md`
+  - `packages/migration/src/preflight/types.ts`
+  - `packages/migration/src/preflight/destination-inspector.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/modules/rulesets.test.ts`
+  - `packages/migration/tests/modules/branch-protection.test.ts`
+- **Behavior Notes:**
+  - `rulesets`: Full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`). Safely detects and skips inherited organization rulesets (`source_type === 'Organization'`) with warning to prevent illegal repository mutations. Sanitizes read-only fields (`id`, `source`, `source_type`, `created_at`, `updated_at`, `_links`) prior to POST/PUT mutations.
+  - `branch-protection`: Reconciles the 7 specific settings omitted by GEI (DEC-009) without overwriting existing settings. Emits clean updates via `PUT /repos/{owner}/{repo}/branches/{branch}/protection`. Includes `convertBranchProtectionToRuleset` utility adhering to GitHub's official conversion rules.
+- **Test Evidence:** `npm run check` passes 201/201 tests across 25 test suites green.
+

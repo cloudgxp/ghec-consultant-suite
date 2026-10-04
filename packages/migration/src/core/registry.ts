@@ -149,6 +149,9 @@ class GeiRepoMigrationModule implements MigrationModule {
   }
 }
 
+import { RulesetsMigrationModule } from '../modules/rulesets/module.js';
+import { BranchProtectionReconciliationModule } from '../modules/branch-protection/module.js';
+
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
  */
@@ -156,5 +159,7 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(new GeiRepoMigrationModule());
   registry.register(new RepoVariablesMigrationModule());
+  registry.register(new RulesetsMigrationModule());
+  registry.register(new BranchProtectionReconciliationModule());
   return registry;
 }

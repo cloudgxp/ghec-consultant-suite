@@ -162,3 +162,35 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** `npm run check` passed 193/193 tests green.
 - **Follow-Up:** Unblocks Task 010 (Codex E2E Mock Integration Tests for `repo-variables`), Task 015 (GEI Orchestrator Pipeline Integration), Task 019 (Actions Step Summary Reporter), and Task 020 (Scope Matrix Slicer).
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 013 Implement `rulesets` and `branch-protection` Migration Modules
+- **Changes:**
+  - Implemented `RulesetsMigrationModule` under `packages/migration/src/modules/rulesets/`:
+    - Full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - Handles repository and organization rulesets, conditions, rule types, and bypass actors.
+    - Safety guard for inherited organization rulesets (`source_type === 'Organization'`), emitting `skip` operations to prevent invalid repository-level mutation attempts.
+    - Added ruleset equality checking and payload sanitization in `ruleset-mapper.ts`.
+  - Implemented `BranchProtectionReconciliationModule` under `packages/migration/src/modules/branch-protection/`:
+    - Full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - Implemented `computeBranchProtectionReconciliation` restoring the 7 specific settings omitted by GEI (DEC-009):
+      1. `bypass_pull_request_allowances`
+      2. `require_last_push_approval`
+      3. `required_deployments_enforcement_level`
+      4. `lock_branch`
+      5. `block_creations`
+      6. `allow_force_pushes` (custom mode specifying who can push)
+      7. `dismissal_restrictions` exceptions (users, teams, apps exempt from dismissal)
+    - Merges missing settings non-destructively via `PUT /repos/{owner}/{repo}/branches/{branch}/protection`.
+    - Implemented `convertBranchProtectionToRuleset` cleanly translating classic protection rules to modern ruleset format.
+  - Registered both modules in `createDefaultModuleRegistry()` in `packages/migration/src/core/registry.ts`.
+  - Exported both modules from `packages/migration/src/index.ts`.
+  - Added unit test suites `packages/migration/tests/modules/rulesets.test.ts` (5 tests) and `packages/migration/tests/modules/branch-protection.test.ts` (3 tests).
+  - Documented modules in `packages/migration/src/modules/rulesets/README.md` and `packages/migration/src/modules/branch-protection/README.md`.
+- **Tests:** `npm run check` passed 201/201 tests across 25 test suites green (100% pass).
+- **Follow-Up:** Unblocks Task 015 (Orchestrate GEI with Post-GEI API Module Pipeline).
+

@@ -79,23 +79,6 @@ export interface RulesetBypassActor {
 }
 
 /**
- * Ruleset representation returned by GET /orgs/{org}/rulesets.
- */
-export interface GitHubRuleset {
-  readonly id: number;
-  readonly name: string;
-  readonly target?: string | undefined;
-  readonly enforcement: 'active' | 'evaluate' | 'disabled';
-  readonly bypass_actors?: readonly RulesetBypassActor[] | undefined;
-  readonly _links?:
-    | {
-        readonly self?: { readonly href?: string | undefined } | undefined;
-        readonly html?: { readonly href?: string | undefined } | undefined;
-      }
-    | undefined;
-}
-
-/**
  * Options for inspecting destination blockers.
  */
 export interface DestinationInspectorOptions {
