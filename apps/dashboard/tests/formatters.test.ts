@@ -26,7 +26,7 @@ test('formatBytesMetric respects availability and formats observed values', () =
       availability: 'observed',
       reason: null,
     }),
-    '1.0 KB'
+    '1.0 KB',
   );
 
   assert.equal(
@@ -36,7 +36,7 @@ test('formatBytesMetric respects availability and formats observed values', () =
       availability: 'unavailable',
       reason: 'No data',
     }),
-    'Unknown (No data)'
+    'Unknown (No data)',
   );
 
   assert.equal(
@@ -46,7 +46,7 @@ test('formatBytesMetric respects availability and formats observed values', () =
       availability: 'unknown',
       reason: null,
     }),
-    'Unknown'
+    'Unknown',
   );
 });
 
@@ -60,7 +60,7 @@ test('formatCountMetric formats valid counts and handles unknown states', () => 
       availability: 'observed',
       reason: null,
     }),
-    (1234567).toLocaleString()
+    (1234567).toLocaleString(),
   );
 
   assert.equal(
@@ -70,7 +70,7 @@ test('formatCountMetric formats valid counts and handles unknown states', () => 
       availability: 'unavailable',
       reason: 'failed',
     }),
-    'Unknown (failed)'
+    'Unknown (failed)',
   );
 });
 
@@ -84,7 +84,7 @@ test('formatMinutesMetric handles observed minutes and fallbacks', () => {
       availability: 'observed',
       reason: null,
     }),
-    '42 mins'
+    '42 mins',
   );
 
   assert.equal(
@@ -94,7 +94,7 @@ test('formatMinutesMetric handles observed minutes and fallbacks', () => {
       availability: 'unknown',
       reason: 'pending',
     }),
-    'Unknown (pending)'
+    'Unknown (pending)',
   );
 });
 
@@ -113,7 +113,10 @@ test('formatTimestamp safely formats ISO strings to human-readable UTC', () => {
   assert.equal(formatTimestamp(undefined), 'Unknown');
 
   // Valid UTC time
-  assert.equal(formatTimestamp('2023-10-05T14:48:00.000Z'), '2023-10-05 14:48:00 UTC');
+  assert.equal(
+    formatTimestamp('2023-10-05T14:48:00.000Z'),
+    '2023-10-05 14:48:00 UTC',
+  );
 
   // Invalid string
   assert.equal(formatTimestamp('not-a-date'), 'not-a-date');
@@ -164,8 +167,8 @@ test('resolveOrgName returns appropriate string for an organization ID', () => {
   const mockBundle = {
     organizations: [
       { id: 'org_1', login: 'github', displayName: 'GitHub Inc.' },
-      { id: 'org_2', login: 'no-display' }
-    ]
+      { id: 'org_2', login: 'no-display' },
+    ],
   } as unknown as DiscoveryBundle;
 
   assert.equal(resolveOrgName(mockBundle, 'org_1'), 'GitHub Inc. (github)');
