@@ -21,6 +21,22 @@ function post(message: ImportWorkerMessage): void {
 }
 
 self.onmessage = async (event: MessageEvent<File>) => {
+  // Defensive origin check: dedicated workers only accept messages from own origin or empty origin
+  if (event.origin && event.origin !== self.location.origin) {
+    return;
+  }
+  if (
+    !event.data ||
+    typeof (event.data as unknown as { text?: unknown })?.text !== 'function'
+  ) {
+    post({
+      status: 'error',
+      progress: 0,
+      code: 'invalid_payload',
+      message: 'Expected a File or Blob payload.',
+    });
+    return;
+  }
   try {
     post({ status: 'reading', progress: 5 });
     const text = await event.data.text();

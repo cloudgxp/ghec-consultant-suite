@@ -623,3 +623,17 @@ All material engineering work, test completions, and milestone deliveries are re
   - Moved task specification to `agents/agent-tasks/security/completed/`.
 - **Tests:** YAML syntax validated with prettier. Resolves CodeQL alert #1 (`actions/unpinned-tag`).
 - **Follow-Up:** Proceed to Task 08 (`codeql-08-harden-web-worker-message-origins.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 08: Harden Web Worker Message Verification and Address Origin Checks (`codeql-08-harden-web-worker-message-origins.md`)
+- **Changes:**
+  - Added defensive origin check `if (event.origin && event.origin !== self.location.origin) return;` to both dedicated workers (`apps/dashboard/src/lib/dependency-map.worker.ts` and `apps/dashboard/src/lib/importer.worker.ts`).
+  - Added strict payload structure and type validation before executing worker business logic.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Dashboard tests and production bundle build passed with zero style or bundle budget violations. Resolves CodeQL alerts #12 and #13 (`js/missing-origin-check`).
+- **Follow-Up:** Proceed to Task 09 (`codeql-09-fix-timestamp-identity-replacement.md`).
