@@ -288,4 +288,3 @@ Antigravity and Codex have completed the bundle code-splitting and visual regres
    - All 11 Playwright e2e/a11y tests pass (`npm run test:e2e -w @ghec/dashboard`), confirming 0 accessibility violations, 200% zoom usability, reduced-motion compliance, 44px minimum touch targets, and hover independence.
    - Full `npm run quality -w @ghec/dashboard` passes cleanly.
    - Full `npm run check` passes with **116 tests green**, 0 ESLint warnings/errors, and 0 Primer style violations.
-
