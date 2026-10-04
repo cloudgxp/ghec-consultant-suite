@@ -71,6 +71,58 @@ export const ORG_REPOSITORIES_QUERY = `query OrgRepositories($login: String!, $c
   }
 }`;
 
+export const ORG_REPOSITORIES_QUERY_WITHOUT_PROJECTS = `query OrgRepositoriesWithoutProjects($login: String!, $cursor: String) {
+  rateLimit {
+    cost
+    remaining
+    resetAt
+  }
+  organization(login: $login) {
+    repositories(
+      first: 100
+      after: $cursor
+      orderBy: { field: NAME, direction: ASC }
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+      nodes {
+        id
+        name
+        visibility
+        isArchived
+        isFork
+        isTemplate
+        pushedAt
+        diskUsage
+        primaryLanguage { name }
+        repositoryTopics(first: 100) { nodes { topic { name } } }
+        defaultBranchRef {
+          name
+        }
+        branchProtectionRules(first: 10) {
+          nodes {
+            pattern
+            requiresApprovingReviews
+            requiredApprovingReviewCount
+            requiresStatusChecks
+            requiresStrictStatusChecks
+          }
+        }
+        rulesets(first: 10) {
+          nodes {
+            name
+            enforcement
+            target
+          }
+        }
+      }
+    }
+  }
+}`;
+
 interface GraphQLRepoNode {
   id: string;
   name: string;
@@ -144,27 +196,54 @@ export const collector: Collector = {
     >['nodes'] = [];
     let lastObservedAt = startedAt;
 
+    let activeQuery = ORG_REPOSITORIES_QUERY;
+
     while (hasNextPage && !context.signal.aborted) {
-      const response: GraphQLResponse<OrgRepositoriesData> =
-        await context.adapter.queryGraphQL<OrgRepositoriesData>(
-          ORG_REPOSITORIES_QUERY,
+      let response: GraphQLResponse<OrgRepositoriesData>;
+      try {
+        response = await context.adapter.queryGraphQL<OrgRepositoriesData>(
+          activeQuery,
           {
             login: context.organizationId,
             cursor,
           },
           context.signal,
         );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          activeQuery === ORG_REPOSITORIES_QUERY &&
+          /read:project|projectsV2|INSUFFICIENT_SCOPES/i.test(msg)
+        ) {
+          activeQuery = ORG_REPOSITORIES_QUERY_WITHOUT_PROJECTS;
+          response = await context.adapter.queryGraphQL<OrgRepositoriesData>(
+            activeQuery,
+            {
+              login: context.organizationId,
+              cursor,
+            },
+            context.signal,
+          );
+        } else {
+          throw err;
+        }
+      }
 
       lastObservedAt = response.observedAt;
       const reposPayload = response.data?.organization?.repositories;
-      projectNodes =
-        response.data?.organization?.projectsV2?.nodes ?? projectNodes;
+      if (response.data?.organization?.projectsV2?.nodes) {
+        projectNodes = response.data.organization.projectsV2.nodes;
+      }
       const nodes = reposPayload?.nodes ?? [];
       allRepoNodes.push(...nodes);
 
       const pageInfo = reposPayload?.pageInfo;
       hasNextPage = Boolean(pageInfo?.hasNextPage && pageInfo?.endCursor);
       cursor = pageInfo?.endCursor ?? null;
+
+      if (hasNextPage && activeQuery === ORG_REPOSITORIES_QUERY) {
+        activeQuery = ORG_REPOSITORIES_QUERY_WITHOUT_PROJECTS;
+      }
     }
 
     const completedAt = new Date().toISOString();
