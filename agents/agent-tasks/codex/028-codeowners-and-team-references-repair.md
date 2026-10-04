@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -83,4 +83,9 @@ GitHub documentation explicitly notes: references to teams like `@octo-org/octo-
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+- Implemented `CodeownersRepairModule` in `packages/migration/src/post-migration/codeowners/module.ts` adhering to `MigrationModule<CodeownersData>`.
+- Implemented file scanner in `scanner.ts` checking static paths (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories (`.github/ISSUE_TEMPLATE`, `.github/workflows`).
+- Implemented token rewriter in `rewriter.ts` mapping `@source-org/team` references to `@target-org/mapped-team` using `teamSlugMap` from Task 017 while leaving non-source references intact.
+- Implemented `applyFileRepair` in `git-committer.ts` supporting direct commit to default branch, automatic fallback to PR creation (`migration/repair-team-references`) when blocked by branch protection (HTTP 403/422), and dry-run execution.
+- Added comprehensive unit test suite in `packages/migration/tests/post-migration/codeowners.test.ts` (6 tests).
+- Verified full quality gate passes with `npm run check`.

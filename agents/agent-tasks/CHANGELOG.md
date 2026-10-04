@@ -31,6 +31,15 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity & Codex — TASK-028 & TASK-029 — Complete
+
+- Summary: Completed the final two migration expansion tasks:
+  - Task 028 (CODEOWNERS & Team References Repair Module): Implemented file scanner, team token rewriter, git direct commit and PR branch fallback, and lifecycle module `CodeownersRepairModule`.
+  - Task 029 (GHAS & Security Remediation Reconciliation Strategy): Implemented `GhasSecurityMigrationModule`, feature flag diffing with GHAS license checks, secret scanning alert remediation matching and patching, and optional SARIF code scanning uploads with structured fidelity audit reporting.
+- Files: `packages/migration/src/post-migration/codeowners/**`, `packages/migration/src/post-migration/security/**`, `packages/migration/src/checkpoint/types.ts`, `packages/migration/src/checkpoint/manager.ts`, `packages/migration/src/orchestrator/pipeline.ts`, `packages/migration/src/core/registry.ts`, `packages/migration/src/index.ts`, `packages/migration/tests/post-migration/codeowners.test.ts`, `packages/migration/tests/post-migration/security.test.ts`, `agents/agent-tasks/codex/028-codeowners-and-team-references-repair.md`, `agents/agent-tasks/codex/029-ghas-and-security-remediation-sync.md`, `agents/agent-tasks/CURRENT-TASKS.md`, `agents/agent-tasks/README.md`.
+- Verification: Full monorepo quality check `npm run check` passing 326/326 tests across 51 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+- Follow-up: All 30 Migration Expansion tasks (001–030) are now complete.
+
 ### 2026-10-04 — Antigravity — RELEASE-LIVE-SMOKE & P1-SHARED — Complete
 
 - Summary: Executed release-level live read-only validation against GitHub Enterprise Cloud organization `cloudgxp`.

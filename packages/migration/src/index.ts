@@ -23,4 +23,6 @@ export * from './modules/branch-protection/index.js';
 export * from './modules/teams/index.js';
 export * from './modules/repo-settings/index.js';
 export * from './post-migration/mannequins/index.js';
+export * from './post-migration/codeowners/index.js';
+export * from './post-migration/security/index.js';
 export * from './reporting/index.js';

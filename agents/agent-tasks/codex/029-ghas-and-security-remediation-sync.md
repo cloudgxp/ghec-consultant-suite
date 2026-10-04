@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -89,4 +89,11 @@ When GHAS products are enabled for a migrated repository, secret scanning scans 
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+- Implemented `GhasSecurityMigrationModule` in `packages/migration/src/post-migration/security/module.ts` adhering to `MigrationModule<GhasSecurityDiscoveredData>`.
+- Implemented `fetchRepositorySecuritySettings` and `diffSecuritySettings` in `ghas-config.ts` evaluating and generating idempotent `PATCH /repos/{owner}/{repo}` payloads with `security_and_analysis`, and checking GHAS license availability.
+- Implemented `fetchSecretScanningAlerts` and `matchAlertRemediations` in `secret-scanning-sync.ts` matching open target alerts to source resolved alerts and patching resolutions with origin comments while documenting PAT actor attribution limitations (`SECRET_SCANNING_LIMITATION_NOTICE`).
+- Implemented optional code scanning SARIF synchronization in `sarif-sync.ts` with upload payload construction and limitation documentation (`SARIF_LIMITATION_NOTICE`).
+- Implemented `generateFidelityReport` producing structured `GhasFidelityReport` for audit compliance.
+- Added comprehensive unit test suite in `packages/migration/tests/post-migration/security.test.ts` (3 tests).
+- Integrated with `RepositoryMigrationPipeline` Stage 6 and `createDefaultModuleRegistry`.
+- Verified full quality gate passes with `npm run check`.

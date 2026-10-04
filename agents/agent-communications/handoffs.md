@@ -387,8 +387,6 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - All 16 completed tasks (001, 002, 003, 004, 005, 006, 007, 008, 009, 013, 014, 017, 022, 023, 024, 030) are now fully available and verified together.
 - **Test Evidence:** `npm run check` passes 234/234 tests across 25 test suites green (100% pass).
 
-<<<<<<< HEAD
-
 ### [2026-10-04] Task 015 Complete: Orchestrate GEI with Post-GEI API Module Pipeline
 
 - **From:** Antigravity
@@ -687,3 +685,63 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 - **Test Evidence:**
   - Dedicated unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
   - All migration tests passing (171/171), full monorepo check passes.
+
+### [2026-10-04] Task 028 Complete: CODEOWNERS & Team References Repair Module
+
+- **From:** Codex & Antigravity
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 028** (`packages/migration/src/post-migration/codeowners/`): CODEOWNERS & Team References Repair.
+- **Exported Deliverables:**
+  - `packages/migration/src/post-migration/codeowners/`:
+    - `types.ts`, `scanner.ts`, `rewriter.ts`, `git-committer.ts`, `module.ts`, `index.ts`, `README.md`
+    - `CodeownersRepairModule` (`id = 'post-migration-codeowners'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+  - Integration:
+    - Registered `CodeownersRepairModule` in `createDefaultModuleRegistry()`.
+    - Executed in Stage 6 post-migration reconciliations of `RepositoryMigrationPipeline`.
+    - Exported module and utilities from `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/post-migration/codeowners/**`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/post-migration/codeowners.test.ts`
+  - `agents/agent-tasks/codex/028-codeowners-and-team-references-repair.md`
+- **Behavior Notes:**
+  - Scans static files (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories (`.github/ISSUE_TEMPLATE`, `.github/workflows`).
+  - Rewrites `@source-org/team` references to `@target-org/mapped-team` using `teamSlugMap` from Task 017 while leaving non-source references intact.
+  - Commits directly to default branch or automatically falls back to PR creation branch `migration/repair-team-references` when blocked by branch protection (HTTP 403/422).
+- **Test Evidence:**
+  - Unit test suite `packages/migration/tests/post-migration/codeowners.test.ts` (6 tests) passing.
+
+### [2026-10-04] Task 029 Complete: GHAS & Security Remediation Reconciliation Strategy
+
+- **From:** Codex & Antigravity
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 029** (`packages/migration/src/post-migration/security/`): GHAS & Security Remediation Reconciliation Strategy.
+- **Exported Deliverables:**
+  - `packages/migration/src/post-migration/security/`:
+    - `types.ts`, `ghas-config.ts`, `secret-scanning-sync.ts`, `sarif-sync.ts`, `module.ts`, `index.ts`, `README.md`
+    - `GhasSecurityMigrationModule` (`id = 'security'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - Audit fidelity report generator `generateFidelityReport()`.
+  - Integration:
+    - Registered `GhasSecurityMigrationModule` in `createDefaultModuleRegistry()`.
+    - Integrated into Stage 6 of `RepositoryMigrationPipeline` and `MigrationCheckpointManager`.
+    - Exported module, reconcilers, and types from `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/post-migration/security/**`
+  - `packages/migration/src/checkpoint/types.ts`
+  - `packages/migration/src/checkpoint/manager.ts`
+  - `packages/migration/src/orchestrator/pipeline.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/post-migration/security.test.ts`
+  - `agents/agent-tasks/codex/029-ghas-and-security-remediation-sync.md`
+- **Behavior Notes:**
+  - Reconciles `security_and_analysis` settings on destination repositories via idempotent `PATCH /repos/{owner}/{repo}` payloads.
+  - Validates prerequisite dependencies (GHAS license availability and `advanced_security` activation before `secret_scanning`).
+  - Matches open target secret scanning alerts with source resolved alerts by secret type and patches resolution status and origin comment via `PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}`.
+  - Documents compliance limitations: resolving actor is the PAT owner, resolution timestamp reflects API execution time, and SARIF alert dismissals are omitted in raw uploads.
+- **Test Evidence:**
+  - Dedicated unit test suite `packages/migration/tests/post-migration/security.test.ts` (3 tests) passing.
+  - Monorepo quality check `npm run check` passing 326/326 tests across 51 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.

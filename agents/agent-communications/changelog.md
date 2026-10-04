@@ -454,3 +454,39 @@ All material engineering work, test completions, and milestone deliveries are re
     - Hardened `RepoCustomPropertiesMigrationModule` to support direct array values (`RawRepositoryCustomPropertyValue[]`) from `GET /repos/{owner}/{repo}/properties/values`.
     - Expanded `packages/migration/tests/modules/custom-properties.test.ts` to 11 tests verifying direct array support, endpoint pathing, and snake_case request bodies.
 - **Tests:** `npm run check` passed 317/317 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 028 CODEOWNERS & Team References Repair Module
+- **Changes:**
+  - Implemented `CodeownersRepairModule` (`id = 'post-migration-codeowners'`) in `packages/migration/src/post-migration/codeowners/module.ts`.
+  - Implemented static candidate path scanner (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories scanner (`.github/ISSUE_TEMPLATE`, `.github/workflows`) in `scanner.ts`.
+  - Implemented team reference token rewriter (`@source-org/team-slug` to `@target-org/mapped-team`) using `teamSlugMap` from Task 017 in `rewriter.ts`.
+  - Implemented automated commit handler with direct branch commit and protected branch fallback to PR creation (`migration/repair-team-references`) in `git-committer.ts`.
+  - Integrated into Stage 6 of `RepositoryMigrationPipeline` and registered in `createDefaultModuleRegistry()`.
+  - Exported module, scanner, rewriter, and git-committer from `@ghec/migration`.
+  - Added dedicated unit test suite in `packages/migration/tests/post-migration/codeowners.test.ts` (6 tests).
+- **Tests:** `npm run check` passed all tests green.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 029 GHAS & Security Remediation Reconciliation Strategy
+- **Changes:**
+  - Implemented `GhasSecurityMigrationModule` (`id = 'security'`) in `packages/migration/src/post-migration/security/module.ts`.
+  - Implemented `diffSecuritySettings` and `fetchRepositorySecuritySettings` in `ghas-config.ts` evaluating and generating idempotent `PATCH /repos/{owner}/{repo}` payloads with `security_and_analysis`, and enforcing GHAS enterprise license availability checks.
+  - Implemented `fetchSecretScanningAlerts` and `matchAlertRemediations` in `secret-scanning-sync.ts` matching open target alerts to source resolved alerts and patching resolutions with origin comments while documenting PAT actor attribution limitations (`SECRET_SCANNING_LIMITATION_NOTICE`).
+  - Implemented optional code scanning SARIF synchronization in `sarif-sync.ts` with upload payload construction and limitation documentation (`SARIF_LIMITATION_NOTICE`).
+  - Implemented `generateFidelityReport` producing structured `GhasFidelityReport` for audit compliance.
+  - Extended `PostMigrationTaskId` in `packages/migration/src/checkpoint/types.ts` and allowed stage keys in `manager.ts` to support `'security'`.
+  - Integrated with Stage 6 of `RepositoryMigrationPipeline` and `createDefaultModuleRegistry()`.
+  - Exported module, reconcilers, and types from `@ghec/migration`.
+  - Added dedicated unit test suite in `packages/migration/tests/post-migration/security.test.ts` (3 tests).
+- **Tests:** `npm run check` passed 326/326 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.

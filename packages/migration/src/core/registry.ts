@@ -161,6 +161,8 @@ import { WebhooksMigrationModule } from '../modules/webhooks/module.js';
 import { RepoSettingsMigrationModule } from '../modules/repo-settings/module.js';
 import { OrgCustomPropertiesMigrationModule } from '../modules/org-custom-properties/module.js';
 import { RepoCustomPropertiesMigrationModule } from '../modules/repo-custom-properties/module.js';
+import { CodeownersRepairModule } from '../post-migration/codeowners/module.js';
+import { GhasSecurityMigrationModule } from '../post-migration/security/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -181,5 +183,7 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new BranchProtectionReconciliationModule());
   registry.register(new TeamsMigrationModule());
   registry.register(new MannequinReclamationEngine());
+  registry.register(new CodeownersRepairModule());
+  registry.register(new GhasSecurityMigrationModule());
   return registry;
 }

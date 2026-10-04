@@ -37,7 +37,7 @@ export interface TerminalStageCheckpoint {
 
 export type SpecializedStrategyId = 'git-lfs' | 'releases-fallback';
 export type PostMigrationTaskId =
-  'repo-visibility' | 'webhooks' | 'mannequins' | 'codeowners';
+  'repo-visibility' | 'webhooks' | 'mannequins' | 'codeowners' | 'security';
 
 export interface VerificationCheckpoint {
   status: 'pending' | 'passed' | 'failed';
