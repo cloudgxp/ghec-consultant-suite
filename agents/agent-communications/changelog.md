@@ -610,3 +610,16 @@ All material engineering work, test completions, and milestone deliveries are re
   - Moved task specification to `agents/agent-tasks/security/completed/`.
 - **Tests:** Monorepo test suite passed (338/338 tests). Resolves CodeQL alerts #14, #15, #16, and #17 (4 alerts).
 - **Follow-Up:** Proceed to Task 07 (`codeql-07-pin-reusable-workflow-commit-sha.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 07: Pin Reusable Workflow Reference to Immutable Commit SHA (`codeql-07-pin-reusable-workflow-commit-sha.md`)
+- **Changes:**
+  - Pinned external reusable workflow call in `.github/workflows/combine-dependabot-prs.yml` to full 40-character commit SHA (`dfd8341503b978f86fa0e5d7f39e27c4efba692e # main`), eliminating mutable `@main` reference.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** YAML syntax validated with prettier. Resolves CodeQL alert #1 (`actions/unpinned-tag`).
+- **Follow-Up:** Proceed to Task 08 (`codeql-08-harden-web-worker-message-origins.md`).
