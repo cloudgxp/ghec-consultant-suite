@@ -52,7 +52,7 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
             (e) =>
               e.kind === 'configuration-metadata' &&
               e.domain === 'actions' &&
-              e.configurationKind === 'secret' &&
+              e.configurationKind === 'variable' &&
               e.level === 'repository' &&
               e.repositoryId === repoEntity.id,
           );

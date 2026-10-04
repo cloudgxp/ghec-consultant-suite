@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.0.0",
+  "synthetic": true,
+  "scan": {
+    "id": "repo-variables-e2e-scan",
+    "startedAt": "2026-10-04T00:00:00Z",
+    "completedAt": "2026-10-04T00:00:01Z",
+    "producer": "ghec-consultant-cli",
+    "producerVersion": "0.1.0",
+    "status": "complete"
+  },
+  "configuration": {
+    "modules": ["repos", "actions-secrets"],
+    "format": "json",
+    "includeSensitiveMetadata": false,
+    "redactionProfile": "standard",
+    "continueOnError": false
+  },
+  "scope": {
+    "kind": "organization",
+    "organizationId": "org:fictional-north"
+  },
+  "organizations": [
+    {
+      "id": "org:fictional-north",
+      "login": "fictional-north",
+      "displayName": "Fictional North"
+    }
+  ],
+  "collectors": [
+    {
+      "id": "org:fictional-north:repos",
+      "module": "repos",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-10-04T00:00:00Z",
+      "completedAt": "2026-10-04T00:00:01Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "repo-variables-e2e",
+          "observedAt": "2026-10-04T00:00:01Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-north:actions-secrets",
+      "module": "actions-secrets",
+      "organizationId": "org:fictional-north",
+      "status": "complete",
+      "startedAt": "2026-10-04T00:00:00Z",
+      "completedAt": "2026-10-04T00:00:01Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "repo-variables-e2e",
+          "observedAt": "2026-10-04T00:00:01Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 2,
+        "expected": 2,
+        "reason": null
+      }
+    }
+  ],
+  "entities": [
+    {
+      "id": "org:fictional-north:repo:fictional-demo",
+      "kind": "repository",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "repo-variables-e2e",
+        "observedAt": "2026-10-04T00:00:01Z",
+        "apiVersion": null
+      },
+      "name": "fictional-demo",
+      "visibility": "private",
+      "archived": false,
+      "defaultBranch": "main",
+      "size": {
+        "value": 1,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "fork": false
+    },
+    {
+      "id": "org:fictional-north:cfg:cached-create",
+      "kind": "configuration-metadata",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "repo-variables-e2e",
+        "observedAt": "2026-10-04T00:00:01Z",
+        "apiVersion": null
+      },
+      "domain": "actions",
+      "configurationKind": "variable",
+      "name": "CACHED_CREATE",
+      "level": "repository",
+      "repositoryId": "org:fictional-north:repo:fictional-demo",
+      "environmentName": null,
+      "parentId": "org:fictional-north:repo:fictional-demo",
+      "accessMode": "all_repositories",
+      "selectedRepositoryIds": [],
+      "selectedRepositoryCount": {
+        "value": 0,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2026-10-04T00:00:00Z",
+      "updatedAt": "2026-10-04T00:00:01Z"
+    },
+    {
+      "id": "org:fictional-north:cfg:cached-update",
+      "kind": "configuration-metadata",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "repo-variables-e2e",
+        "observedAt": "2026-10-04T00:00:01Z",
+        "apiVersion": null
+      },
+      "domain": "actions",
+      "configurationKind": "variable",
+      "name": "CACHED_UPDATE",
+      "level": "repository",
+      "repositoryId": "org:fictional-north:repo:fictional-demo",
+      "environmentName": null,
+      "parentId": "org:fictional-north:repo:fictional-demo",
+      "accessMode": "all_repositories",
+      "selectedRepositoryIds": [],
+      "selectedRepositoryCount": {
+        "value": 0,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2026-10-04T00:00:00Z",
+      "updatedAt": "2026-10-04T00:00:01Z"
+    }
+  ],
+  "findings": [],
+  "limitations": [],
+  "errors": [],
+  "summary": {
+    "organizationCount": 1,
+    "repositoryCount": 1,
+    "completeCollectorCount": 2,
+    "incompleteCollectorCount": 0
+  }
+}

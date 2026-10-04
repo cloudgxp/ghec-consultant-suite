@@ -309,3 +309,16 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/post-migration/mannequins.test.ts` (9 tests).
 - **Tests:** `npm run check` passed 257/257 tests across 29 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
 - **Follow-Up:** Unblocks downstream post-migration reconciliation tasks (e.g. Task 028 CODEOWNERS repair).
+
+---
+
+## 2026-10-04
+
+### Agent: Codex
+
+- **Task:** 010 End-to-End Mock Integration Tests for Repository Variable Migration
+- **Changes:** Added a native `node:http` end-to-end harness and compact migration fixtures. It exercises cached planning and approved application (including create and update), live source discovery, post-migration verification, and a twice-executed no-op plan. The mock servers bind dynamically on loopback ports and perform no external requests.
+- **Fix:** Corrected cached repository-variable discovery to select Actions `variable` metadata rather than `secret` metadata.
+- **Tests:** `npx tsx --test apps/cli/tests/migration-e2e.test.ts` passes in under one second.
+- **Tests:** `npm run check` passes (lint, type checks, build, and full test suite).
+
