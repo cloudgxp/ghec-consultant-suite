@@ -245,7 +245,7 @@ test('MigrationOrchestrator generates plan from scope on-the-fly and applies', a
   const report = await orchestrator.run();
   assert.equal(report.status, 'complete');
   assert.equal(report.exitCode, 0);
-  assert.equal(report.results.length, 3);
+  assert.equal(report.results.length, 4);
 });
 
 test('VerificationOrchestrator verifies target state and generates report', async () => {

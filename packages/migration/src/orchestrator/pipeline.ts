@@ -502,7 +502,9 @@ export class RepositoryMigrationPipeline {
         > = {};
 
         for (const task of postMigrationTasks) {
-          const mod = this.options.registry.get(task);
+          const mod =
+            this.options.registry.get(task) ??
+            this.options.registry.get(`post-migration-${task}`);
           if (mod) {
             try {
               const scopeTarget: MigrationScopeTarget = {

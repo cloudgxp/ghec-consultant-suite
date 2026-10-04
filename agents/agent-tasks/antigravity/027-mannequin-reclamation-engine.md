@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -88,4 +88,13 @@ GEI imports historical issues, pull requests, and comments under placeholder "ma
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+Completed on 2026-10-04 by Antigravity:
+
+- Implemented `MannequinReclamationEngine` under `packages/migration/src/post-migration/mannequins/`.
+- Full CSV parsing and serialization compliant with RFC 4180 in `csv-generator.ts`.
+- Integrated `IdentityMappingEngine` from `@ghec/migration` (Task 017) to resolve target EMU logins.
+- Spawns `gh gei reclaim-mannequin` with `--skip-invitation` for GHEC-EMU fast-tracking, or omits in standard environments.
+- Implemented full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) and standalone `.reclaim()` runner.
+- Documented Git commit author attribution limitations under GHEC-EMU (DEC-013).
+- Added comprehensive unit tests in `packages/migration/tests/post-migration/mannequins.test.ts` (9 tests).
+- Quality gate passing: 257/257 tests across 29 test suites green.

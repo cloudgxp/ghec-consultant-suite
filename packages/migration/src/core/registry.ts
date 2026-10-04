@@ -152,6 +152,7 @@ class GeiRepoMigrationModule implements MigrationModule {
 import { RulesetsMigrationModule } from '../modules/rulesets/module.js';
 import { BranchProtectionReconciliationModule } from '../modules/branch-protection/module.js';
 import { TeamsMigrationModule } from '../modules/teams/module.js';
+import { MannequinReclamationEngine } from '../post-migration/mannequins/engine.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -163,5 +164,6 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new RulesetsMigrationModule());
   registry.register(new BranchProtectionReconciliationModule());
   registry.register(new TeamsMigrationModule());
+  registry.register(new MannequinReclamationEngine());
   return registry;
 }

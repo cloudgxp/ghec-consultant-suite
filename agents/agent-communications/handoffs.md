@@ -446,3 +446,35 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Emits GitHub Actions matrix JSON payload (`{ "include": [ { "cohortId": "...", "repoCount": N, "scopeJson": "..." } ] }`).
   - Aggregates runner results into `AggregatedMigrationSummary` with overall status (`completed`, `completed-with-discrepancies`, or `failed`).
 - **Test Evidence:** `npm run check` passes 247/247 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 027 Complete: Mannequin Reclamation & Attribution Engine
+
+- **From:** Antigravity
+- **To:** Codex
+- **Completed Task:**
+  - **Task 027** (`packages/migration/src/post-migration/mannequins/`): Mannequin Reclamation & Attribution Engine.
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `MannequinReclamationEngine` (lifecycle module `post-migration-mannequins` and standalone `.reclaim()`)
+    - CSV tools: `parseMannequinCsv`, `serializeMannequinCsv`
+    - Reclaimer functions: `exportMannequinInventory`, `applyIdentityMappings`, `executeMannequinReclamation`
+    - Types: `MannequinRecord`, `MannequinDiscoveredData`, `MannequinReclamationOptions`, `MannequinReclamationReport`
+    - Platform constraint constant: `COMMIT_AUTHORSHIP_LIMITATION_NOTICE` (DEC-013)
+- **Files Modified / Created:**
+  - `packages/migration/src/post-migration/mannequins/types.ts`
+  - `packages/migration/src/post-migration/mannequins/csv-generator.ts`
+  - `packages/migration/src/post-migration/mannequins/reclaimer.ts`
+  - `packages/migration/src/post-migration/mannequins/engine.ts`
+  - `packages/migration/src/post-migration/mannequins/index.ts`
+  - `packages/migration/src/post-migration/mannequins/README.md`
+  - `packages/migration/src/core/registry.ts` (registered in `createDefaultModuleRegistry`)
+  - `packages/migration/src/orchestrator/pipeline.ts` (Stage 6 module resolution support)
+  - `packages/migration/src/index.ts` (re-exports)
+  - `packages/migration/tests/post-migration/mannequins.test.ts` (9 unit tests)
+  - `packages/migration/tests/orchestrator.test.ts` (updated expected module count for default registry)
+- **Behavior Notes:**
+  - Full discovery, planning, applying, and verification lifecycle for placeholder mannequin identities.
+  - In GHEC-EMU environments, `--skip-invitation` flag is passed to immediately attribute history without user invitation acceptance.
+  - Suffix and explicit dictionary transformations from `IdentityMappingEngine` are evaluated to map contributors.
+  - Generates clear platform advisory documenting that Git commit author emails cannot be added as secondary emails in GHEC-EMU (DEC-013).
+- **Test Evidence:** `npm run check` passes 257/257 tests across 29 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.

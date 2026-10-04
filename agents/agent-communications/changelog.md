@@ -284,3 +284,28 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/orchestrator/slicer.test.ts` (6 tests) and CLI test case in `apps/cli/tests/cli.test.ts`.
 - **Tests:** `npm run check` passed 247/247 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
 - **Follow-Up:** Unblocks Task 021 (Production GitHub Actions Workflow Templates).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 027 Mannequin Reclamation & Attribution Engine
+- **Changes:**
+  - Implemented `MannequinReclamationEngine` under `packages/migration/src/post-migration/mannequins/`:
+    - Full RFC-4180 compliant CSV parser and serializer in `csv-generator.ts` for GEI mannequin CSV files (`mannequin-user,mannequin-id,target-user`).
+    - Integrated with `IdentityMappingEngine` (Task 017) to resolve target EMU logins using enterprise suffix conventions (`_suffix`) and dictionary overrides.
+    - Implemented GEI command execution in `reclaimer.ts`:
+      - `exportMannequinInventory` running `gh gei generate-mannequin-csv`.
+      - `executeMannequinReclamation` running `gh gei reclaim-mannequin` with `--skip-invitation` for GHEC-EMU environments, or omitting it for standard GitHub environments.
+    - Implemented 4-stage module lifecycle (`discover`, `plan`, `apply`, `verify`) with `ModuleExecutionResult` and `ModuleVerificationResult` compliance.
+    - Added standalone `.reclaim()` runner returning comprehensive `MannequinReclamationReport`.
+    - Documented Git commit authorship attribution limitations under GHEC-EMU (DEC-013) with automated limitation advisory generation.
+  - Registered `MannequinReclamationEngine` in `createDefaultModuleRegistry()` in `core/registry.ts`.
+  - Added support for `post-migration-${task}` module lookups in Stage 6 of `RepositoryMigrationPipeline`.
+  - Re-exported all mannequin types and functions in `@ghec/migration`.
+  - Created module documentation in `packages/migration/src/post-migration/mannequins/README.md`.
+  - Added unit test suite `packages/migration/tests/post-migration/mannequins.test.ts` (9 tests).
+- **Tests:** `npm run check` passed 257/257 tests across 29 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+- **Follow-Up:** Unblocks downstream post-migration reconciliation tasks (e.g. Task 028 CODEOWNERS repair).
