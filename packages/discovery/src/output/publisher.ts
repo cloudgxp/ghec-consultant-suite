@@ -29,7 +29,7 @@ export function generateBundleFilename(options: PublishOptions): string {
   const timestamp = options.startedAt
     .replace(/[-:]/g, '')
     .replace(/\..+/, '')
-    .replace('Z', 'Z');
+    .replace(/Z$/i, '');
   const filename = `ghec-discovery-${options.scopeKind}-${sanitizedScope}-${timestamp}-${options.runId}.json`;
   return join(resolve(options.outputPath), filename);
 }

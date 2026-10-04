@@ -11,7 +11,32 @@ function redact(message: string, secrets: readonly string[]): string {
     );
 }
 
-function repositoryUrl(org: string, repo: string, token: string): string {
+export function validateGitHubIdentifier(name: string, label: string): void {
+  if (
+    !name ||
+    !/^[a-zA-Z0-9_.-]+$/.test(name) ||
+    name.startsWith('-') ||
+    name.startsWith('.')
+  ) {
+    throw new Error(`Invalid GitHub ${label}: "${name}".`);
+  }
+}
+
+export function validateStagingDirectory(directory: string): void {
+  if (!directory || directory.startsWith('-')) {
+    throw new Error(
+      `Invalid staging directory: "${directory}". Staging directory cannot begin with a dash.`,
+    );
+  }
+}
+
+export function repositoryUrl(
+  org: string,
+  repo: string,
+  token: string,
+): string {
+  validateGitHubIdentifier(org, 'organization');
+  validateGitHubIdentifier(repo, 'repository');
   return `https://x-access-token:${encodeURIComponent(token)}@github.com/${org}/${repo}.git`;
 }
 
@@ -59,15 +84,12 @@ export class GitLfsClient {
     sourceToken: string,
     signal: AbortSignal,
   ): Promise<void> {
+    validateStagingDirectory(stagingDirectory);
     const secrets = [sourceToken];
+    const repoUrl = repositoryUrl(sourceOrg, sourceRepo, sourceToken);
     const result = await this.runner(
       'git',
-      [
-        'clone',
-        '--mirror',
-        repositoryUrl(sourceOrg, sourceRepo, sourceToken),
-        stagingDirectory,
-      ],
+      ['clone', '--mirror', '--', repoUrl, stagingDirectory],
       { signal, secrets },
     );
     assertSuccess(
@@ -84,6 +106,7 @@ export class GitLfsClient {
     sourceToken: string,
     signal: AbortSignal,
   ): Promise<void> {
+    validateStagingDirectory(stagingDirectory);
     const result = await this.runner(
       'git',
       ['-C', stagingDirectory, 'lfs', 'fetch', '--all', 'origin'],
@@ -108,17 +131,12 @@ export class GitLfsClient {
     targetToken: string,
     signal: AbortSignal,
   ): Promise<void> {
+    validateStagingDirectory(stagingDirectory);
     const secrets = [targetToken];
+    const repoUrl = repositoryUrl(targetOrg, targetRepo, targetToken);
     const result = await this.runner(
       'git',
-      [
-        '-C',
-        stagingDirectory,
-        'remote',
-        'set-url',
-        'origin',
-        repositoryUrl(targetOrg, targetRepo, targetToken),
-      ],
+      ['-C', stagingDirectory, 'remote', 'set-url', '--', 'origin', repoUrl],
       { signal, secrets },
     );
     assertSuccess(
@@ -135,6 +153,7 @@ export class GitLfsClient {
     targetToken: string,
     signal: AbortSignal,
   ): Promise<void> {
+    validateStagingDirectory(stagingDirectory);
     const result = await this.runner(
       'git',
       ['-C', stagingDirectory, 'lfs', 'push', '--all', 'origin'],
