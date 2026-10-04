@@ -539,7 +539,10 @@ export async function runApiSurfaceProbe(
   const registryPath = join(ROOT, 'research/github/collector-registry.json');
   const reconciliationPath = join(ROOT, 'research/github/reconciliation.json');
   const catalogPath = join(ROOT, 'research/github/graphql-query-catalog.json');
-  const orchestratorPath = join(ROOT, 'apps/cli/src/engine/orchestrator.ts');
+  const orchestratorPath = join(
+    ROOT,
+    'packages/discovery/src/engine/orchestrator.ts',
+  );
 
   if (!existsSync(openApiPath))
     throw new Error(`Missing OpenAPI spec: ${openApiPath}`);

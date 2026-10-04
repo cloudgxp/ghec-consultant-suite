@@ -869,3 +869,60 @@ export function validateBundle(input: unknown): BundleValidation {
           'Invalid bundle: required fields, relationships, or coverage are inconsistent.',
       };
 }
+
+export {
+  MIGRATION_SCHEMA_VERSION,
+  MigrationModuleIdSchema,
+  MigrationScopeLevelSchema,
+  NonEmptyStringSchema,
+  NonNegativeIntegerSchema,
+  PlannedOperationTypeSchema,
+  TimestampSchema,
+} from './migration-common.js';
+export {
+  MigrationScopeSchema,
+  validateMigrationScope,
+  type MigrationScope,
+} from './scope/migration-scope.js';
+export {
+  MigrationPlanSchema,
+  ModulePlanSchema,
+  PlannedOperationSchema,
+  validateMigrationPlan,
+  type MigrationPlan,
+  type ModulePlan,
+  type PlannedOperation,
+} from './plan/migration-plan.js';
+export {
+  DestinationAssessmentSchema,
+  MigrationPreflightReportSchema,
+  RepositoryAssessmentSchema,
+  validatePreflightReport,
+  type DestinationAssessment,
+  type MigrationPreflightReport,
+  type RepositoryAssessment,
+} from './preflight/preflight-report.js';
+export {
+  ModuleExecutionResultSchema,
+  OperationExecutionResultSchema,
+  validateModuleExecutionResult,
+  type ModuleExecutionResult,
+  type OperationExecutionResult,
+} from './results/execution-result.js';
+export {
+  CustomPropertyMappingSchema,
+  MannequinReclamationPlanSchema,
+  validateCustomPropertyMapping,
+  validateMannequinReclamationPlan,
+  type CustomPropertyMapping,
+  type MannequinReclamationPlan,
+} from './verification/migration-artifacts.js';
+export {
+  ModuleVerificationResultSchema,
+  VerificationDiscrepancySchema,
+  VerificationReportSchema,
+  validateVerificationReport,
+  type ModuleVerificationResult,
+  type VerificationDiscrepancy,
+  type VerificationReport,
+} from './verification/verification-report.js';

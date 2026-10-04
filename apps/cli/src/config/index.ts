@@ -1,22 +1,18 @@
 import { readFileSync } from 'node:fs';
+import type { DiscoveryConfig } from '@ghec/discovery';
+import type { GitHubAppConfig } from '@ghec/github-client';
+
+// Re-exported so existing CLI imports keep working; the implementations live
+// in @ghec/github-client so every transport error is scrubbed at the source.
+export { sanitizeDiagnostics } from '@ghec/github-client';
+export type { GitHubAppConfig } from '@ghec/github-client';
 
 /**
  * Configuration and credential management.
  * In accordance with SEC-CRED-001, tokens and private keys must never be logged, printed, or exported.
  */
 
-export interface GitHubAppConfig {
-  readonly appId: string;
-  readonly privateKey: string;
-  readonly installationId: string;
-}
-
-export interface CliConfig {
-  readonly token?: string | undefined;
-  readonly app?: GitHubAppConfig | undefined;
-  readonly baseUrl: string;
-  readonly apiVersion: string;
-}
+export type CliConfig = DiscoveryConfig;
 
 export interface CliConfigOptions {
   readonly appId?: string | undefined;
@@ -74,21 +70,113 @@ export function loadConfig(options?: CliConfigOptions): CliConfig {
   };
 }
 
-/** Redacts potential token, JWT, and private key patterns from any diagnostic string. */
-export function sanitizeDiagnostics(message: string): string {
-  return message
-    .replace(
-      /-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA )?PRIVATE KEY-----/g,
-      '[REDACTED_PRIVATE_KEY]',
-    )
-    .replace(
-      /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
-      '[REDACTED_JWT]',
-    )
-    .replace(
-      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,255}|ghs_[A-Za-z0-9_]{20,255})\b/g,
-      '[REDACTED_TOKEN]',
-    )
-    .replace(/\b(Bearer\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]')
-    .replace(/\b(token\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]');
+import {
+  createGitHubDualClient,
+  type GitHubReadAdapter,
+  type TenantClientConfig,
+} from '@ghec/github-client';
+import { HttpTargetWriteClient, type TargetWriteClient } from '@ghec/migration';
+
+export interface CliDualConfigOptions {
+  readonly appId?: string | undefined;
+  readonly privateKeyPath?: string | undefined;
+  readonly installationId?: string | undefined;
+  readonly sourceToken?: string | undefined;
+  readonly targetToken?: string | undefined;
+  readonly sourceBaseUrl?: string | undefined;
+  readonly targetBaseUrl?: string | undefined;
+  readonly sourceApiVersion?: string | undefined;
+  readonly targetApiVersion?: string | undefined;
+}
+
+export interface CliDualConfig {
+  readonly source: TenantClientConfig;
+  readonly target: TenantClientConfig;
+}
+
+export function loadDualConfig(options?: CliDualConfigOptions): CliDualConfig {
+  const sourceToken =
+    options?.sourceToken ||
+    process.env.GHEC_SOURCE_TOKEN?.trim() ||
+    process.env.GHEC_TOKEN?.trim() ||
+    undefined;
+
+  const targetToken =
+    options?.targetToken || process.env.GHEC_TARGET_TOKEN?.trim() || undefined;
+
+  const sourceBaseUrl =
+    options?.sourceBaseUrl ||
+    process.env.GHEC_SOURCE_BASE_URL?.trim() ||
+    process.env.GHEC_BASE_URL?.trim() ||
+    'https://api.github.com';
+
+  const targetBaseUrl =
+    options?.targetBaseUrl ||
+    process.env.GHEC_TARGET_BASE_URL?.trim() ||
+    process.env.GHEC_BASE_URL?.trim() ||
+    'https://api.github.com';
+
+  const sourceApiVersion =
+    options?.sourceApiVersion ||
+    process.env.GHEC_SOURCE_API_VERSION?.trim() ||
+    process.env.GHEC_API_VERSION?.trim() ||
+    '2026-03-10';
+
+  const targetApiVersion =
+    options?.targetApiVersion ||
+    process.env.GHEC_TARGET_API_VERSION?.trim() ||
+    process.env.GHEC_API_VERSION?.trim() ||
+    '2026-03-10';
+
+  const baseConfig = loadConfig(options);
+
+  const source: TenantClientConfig = {
+    token: sourceToken,
+    app: baseConfig.app,
+    baseUrl: sourceBaseUrl,
+    apiVersion: sourceApiVersion,
+  };
+
+  const target: TenantClientConfig = {
+    token: targetToken,
+    baseUrl: targetBaseUrl,
+    apiVersion: targetApiVersion,
+  };
+
+  return { source, target };
+}
+
+export interface MigrationClients {
+  readonly sourceClient: GitHubReadAdapter;
+  readonly targetClient: GitHubReadAdapter;
+  readonly targetWriteClient?: TargetWriteClient | undefined;
+}
+
+export function createMigrationClientsFromConfig(
+  dualConfig: CliDualConfig,
+): MigrationClients {
+  const dual = createGitHubDualClient({
+    source: dualConfig.source,
+    target: dualConfig.target,
+  });
+
+  if (!dual.targetClient) {
+    throw new Error(
+      'Target client could not be initialized. GHEC_TARGET_TOKEN must be configured.',
+    );
+  }
+
+  const targetWriteClient = dualConfig.target.token
+    ? new HttpTargetWriteClient({
+        token: dualConfig.target.token,
+        baseUrl: dualConfig.target.baseUrl,
+        apiVersion: dualConfig.target.apiVersion,
+      })
+    : undefined;
+
+  return {
+    sourceClient: dual.sourceClient,
+    targetClient: dual.targetClient,
+    targetWriteClient,
+  };
 }

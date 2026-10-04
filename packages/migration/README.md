@@ -1,0 +1,56 @@
+# @ghec/migration
+
+Core framework and modular API migration execution engine for GHEC $\rightarrow$ GHEC-EMU migrations.
+
+Authoritative boundary and lifecycle specifications:
+
+- [`agents/agent-specs/migration-module-contract.md`](../../agents/agent-specs/migration-module-contract.md)
+- [`agents/agent-specs/migration-execution-model.md`](../../agents/agent-specs/migration-execution-model.md)
+
+## Architectural Role
+
+`@ghec/migration` is a headless, decoupled package providing:
+
+1. **Authoritative Module Lifecycle Contract:** standard `MigrationModule` interface with 4 stages: `discover`, `plan`, `apply`, `verify`.
+2. **Module Registry:** centralized registration, validation, and retrieval of migration modules by unique ID.
+3. **Topological Dependency DAG:** dependency ordering resolution that schedules prerequisite modules (e.g. `gei-repo`) before downstream modules (e.g. `rulesets`, `repo-variables`), while guarding against circular dependencies.
+
+## 4-Stage Lifecycle
+
+Every module implements:
+
+```text
+discover ───► plan ───► apply ───► verify
+```
+
+- `discover(ctx, cachedData?)`: extracts source configuration (using cached bundle or live `@ghec/discovery`).
+- `plan(ctx, sourceData)`: inspects destination state using `targetClient` and emits a typed `ModulePlan` of `create`, `update`, `noop`, `skip`, and `warn` operations.
+- `apply(ctx, plan)`: executes idempotent target mutations (preferring PUT/PATCH), reporting progress per operation.
+- `verify(ctx, plan)`: audits target state compliance and emits a `ModuleVerificationResult`.
+
+## Usage Example
+
+```typescript
+import {
+  ModuleRegistry,
+  type MigrationModule,
+  type MigrationContext,
+} from '@ghec/migration';
+
+const registry = new ModuleRegistry();
+registry.register(myRepoVariablesModule);
+registry.register(myRulesetsModule);
+
+// Compute topological execution order
+const executionPlan = registry.resolveExecutionPlan([
+  'rulesets',
+  'repo-variables',
+]);
+```
+
+## Development
+
+```bash
+npm run build -w @ghec/migration
+npm run typecheck -w @ghec/migration
+```

@@ -3,8 +3,8 @@
 **PLAN-001.** Status changes require implementation and recorded acceptance
 evidence. Build success alone never completes a live capability. The current
 task status and evidence log are maintained in
-[`agent-tasks/CURRENT-TASKS.md`](../../agent-tasks/CURRENT-TASKS.md) and
-[`agent-tasks/CHANGELOG.md`](../../agent-tasks/CHANGELOG.md).
+[`agents/agent-tasks/CURRENT-TASKS.md`](../../agents/agent-tasks/CURRENT-TASKS.md) and
+[`agents/agent-tasks/CHANGELOG.md`](../../agents/agent-tasks/CHANGELOG.md).
 
 ## 1. Engineering Phases and Release Status
 

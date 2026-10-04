@@ -2,11 +2,26 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MODULE_IDS, validateBundle } from '@ghec/contracts';
+import {
+  MIGRATION_SCHEMA_VERSION,
+  MODULE_IDS,
+  validateBundle,
+  validateMigrationPlan,
+  validateVerificationReport,
+} from '@ghec/contracts';
 import { parseDiscoveryOptions } from '../src/commands/discover.js';
+import { parsePlanOptions } from '../src/commands/plan.js';
+import { parseMigrateOptions } from '../src/commands/migrate.js';
+import { parseVerifyOptions } from '../src/commands/verify.js';
 import { collectors } from '../src/collectors/index.js';
 import { DiscoveryOrchestrator } from '../src/engine/orchestrator.js';
 import { runCli } from '../src/index.js';
@@ -699,6 +714,268 @@ test('CLI end-to-end execution against mock HTTP server', async () => {
   } finally {
     server.close();
     server.closeAllConnections?.();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('ghec-consultant-cli --help displays all subcommands', async () => {
+  const stdout: string[] = [];
+  const originalLog = console.log;
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+    const status = await runCli(['--help']);
+    assert.equal(status, 0);
+    const out = stdout.join('\n');
+    assert.match(out, /Commands:/);
+    assert.match(out, /discover/);
+    assert.match(out, /plan/);
+    assert.match(out, /migrate/);
+    assert.match(out, /verify/);
+  } finally {
+    console.log = originalLog;
+  }
+});
+
+test('subcommand --help displays dedicated usage instructions', async () => {
+  const stdout: string[] = [];
+  const originalLog = console.log;
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+
+    await runCli(['plan', '--help']);
+    assert.match(stdout.join('\n'), /ghec-consultant-cli plan/);
+    assert.match(stdout.join('\n'), /--scope <file>/);
+
+    stdout.length = 0;
+    await runCli(['migrate', '--help']);
+    assert.match(stdout.join('\n'), /ghec-consultant-cli migrate/);
+    assert.match(stdout.join('\n'), /--plan <file>/);
+
+    stdout.length = 0;
+    await runCli(['verify', '--help']);
+    assert.match(stdout.join('\n'), /ghec-consultant-cli verify/);
+    assert.match(stdout.join('\n'), /--plan <file>/);
+  } finally {
+    console.log = originalLog;
+  }
+});
+
+test('CLI option parsers for plan, migrate, and verify', () => {
+  assert.throws(() => parsePlanOptions([]), /--scope <file> flag is required/);
+  const planOpts = parsePlanOptions([
+    '--scope',
+    'my-scope.json',
+    '--modules',
+    'repo-variables',
+    '--output',
+    'out.json',
+  ]);
+  assert.equal(planOpts.scopePath, 'my-scope.json');
+  assert.deepEqual(planOpts.modules, ['repo-variables']);
+  assert.equal(planOpts.outputPath, 'out.json');
+
+  assert.throws(
+    () => parseMigrateOptions([]),
+    /Either --plan <file> or --scope <file> is required/,
+  );
+  const migrateOpts = parseMigrateOptions([
+    '--plan',
+    'my-plan.json',
+    '--dry-run',
+    '--continue-on-error',
+  ]);
+  assert.equal(migrateOpts.planPath, 'my-plan.json');
+  assert.equal(migrateOpts.dryRun, true);
+  assert.equal(migrateOpts.continueOnError, true);
+
+  assert.throws(() => parseVerifyOptions([]), /--plan <file> flag is required/);
+  const verifyOpts = parseVerifyOptions([
+    '--plan',
+    'my-plan.json',
+    '--output',
+    'report.json',
+  ]);
+  assert.equal(verifyOpts.planPath, 'my-plan.json');
+  assert.equal(verifyOpts.outputPath, 'report.json');
+});
+
+test('CLI plan, migrate, and verify workflow end-to-end with mock adapter', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-workflow-'));
+  const originalLog = console.log;
+  const originalError = console.error;
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+    console.error = (...values: unknown[]) => stderr.push(values.join(' '));
+
+    const scopeFile = join(dir, 'scope.json');
+    const scopeData = {
+      version: MIGRATION_SCHEMA_VERSION,
+      name: 'test-scope',
+      organizations: [
+        { source: 'fictional-north', target: 'fictional-target', modules: [] },
+      ],
+      repositories: [
+        {
+          sourceOrg: 'fictional-north',
+          sourceRepo: 'core-repo',
+          targetOrg: 'fictional-target',
+          targetRepo: 'core-repo',
+          useGei: true,
+          modules: ['repo-variables'],
+        },
+      ],
+    };
+    writeFileSync(scopeFile, JSON.stringify(scopeData, null, 2));
+
+    const planFile = join(dir, 'migration-plan.json');
+    const executionFile = join(dir, 'migration-execution.json');
+    const verifyFile = join(dir, 'verification-report.json');
+
+    const mockAdapter = new MockGitHubReadAdapter();
+
+    // 1. Run plan
+    const planExit = await runCli(
+      ['plan', '--scope', scopeFile, '--output', planFile],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+    assert.equal(planExit, 0);
+    assert.match(stdout.join('\n'), /Migration plan generated/);
+    const planJson = JSON.parse(readFileSync(planFile, 'utf8'));
+    const planValidation = validateMigrationPlan(planJson);
+    assert.ok(planValidation.success, 'Generated plan must be valid');
+
+    // 2. Run migrate in dry-run mode
+    stdout.length = 0;
+    const migrateExit = await runCli(
+      [
+        'migrate',
+        '--plan',
+        planFile,
+        '--scope',
+        scopeFile,
+        '--dry-run',
+        '--output',
+        executionFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+    assert.equal(migrateExit, 0);
+    assert.match(stdout.join('\n'), /Migration finished with status: complete/);
+    const executionJson = JSON.parse(readFileSync(executionFile, 'utf8'));
+    assert.equal(executionJson.status, 'complete');
+    assert.equal(executionJson.dryRun, true);
+
+    // 3. Run verify
+    stdout.length = 0;
+    const verifyExit = await runCli(
+      [
+        'verify',
+        '--plan',
+        planFile,
+        '--scope',
+        scopeFile,
+        '--output',
+        verifyFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        targetClient: mockAdapter,
+      },
+    );
+    assert.equal(verifyExit, 0);
+    assert.match(stdout.join('\n'), /Verification report saved/);
+    const verifyJson = JSON.parse(readFileSync(verifyFile, 'utf8'));
+    const verifyValidation = validateVerificationReport(verifyJson);
+    assert.ok(verifyValidation.success, 'Verification report must be valid');
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('CLI plan command partitions scope with --split-matrix and outputs matrix JSON', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-matrix-'));
+  const originalLog = console.log;
+  const originalError = console.error;
+  const stdout: string[] = [];
+
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+
+    const scopeFile = join(dir, 'scope.json');
+    const scopeData = {
+      version: MIGRATION_SCHEMA_VERSION,
+      name: 'matrix-scope',
+      organizations: [
+        { source: 'fictional-north', target: 'fictional-target', modules: [] },
+      ],
+      repositories: Array.from({ length: 5 }, (_, i) => ({
+        sourceOrg: 'fictional-north',
+        sourceRepo: `repo-${i + 1}`,
+        targetOrg: 'fictional-target',
+        targetRepo: `repo-${i + 1}`,
+        useGei: true,
+        modules: ['repo-variables'],
+      })),
+    };
+    writeFileSync(scopeFile, JSON.stringify(scopeData, null, 2));
+
+    const planFile = join(dir, 'migration-plan.json');
+    const matrixFile = join(dir, 'migration-matrix.json');
+    const mockAdapter = new MockGitHubReadAdapter();
+
+    const planExit = await runCli(
+      [
+        'plan',
+        '--scope',
+        scopeFile,
+        '--output',
+        planFile,
+        '--split-matrix',
+        '2',
+        '--output-matrix',
+        matrixFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+
+    assert.equal(planExit, 0);
+    assert.match(stdout.join('\n'), /GitHub Actions matrix generated/);
+    assert.match(stdout.join('\n'), /Total matrix cohorts: 3/);
+
+    const matrixJson = JSON.parse(readFileSync(matrixFile, 'utf8'));
+    assert.ok(Array.isArray(matrixJson.include));
+    assert.equal(matrixJson.include.length, 3);
+    assert.equal(matrixJson.include[0].repoCount, 2);
+    assert.equal(matrixJson.include[1].repoCount, 2);
+    assert.equal(matrixJson.include[2].repoCount, 1);
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
     rmSync(dir, { recursive: true, force: true });
   }
 });

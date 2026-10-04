@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "name": "repository-variables-e2e",
+  "organizations": [],
+  "repositories": [
+    {
+      "sourceOrg": "fictional-north",
+      "sourceRepo": "fictional-demo",
+      "targetOrg": "fictional-target",
+      "targetRepo": "fictional-demo",
+      "useGei": true,
+      "modules": ["repo-variables"]
+    }
+  ]
+}

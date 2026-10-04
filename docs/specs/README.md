@@ -5,7 +5,7 @@ Cloud (GHEC) consulting suite. “Must” describes a requirement, not by itself
 claim that the feature exists. The CLI, dashboard, v1 contract, analysis, and
 offline verification are implemented; approved live-read and release-level
 browser verification remain open. Use
-[`agent-tasks/CURRENT-TASKS.md`](../../agent-tasks/CURRENT-TASKS.md) for current
+[`agents/agent-tasks/CURRENT-TASKS.md`](../../agents/agent-tasks/CURRENT-TASKS.md) for current
 status rather than inferring implementation from a specification.
 
 ---
