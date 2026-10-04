@@ -119,7 +119,7 @@ export class MigrationAdvisoryPlanner {
     outputDir: string,
     artifacts: AdvisoryArtifacts,
   ): Promise<{ paths: Record<string, string> }> {
-    await mkdir(outputDir, { recursive: true });
+    await mkdir(outputDir, { recursive: true, mode: 0o700 });
 
     const paths = {
       reportJson: join(outputDir, 'migration-advisory-report.json'),
@@ -133,18 +133,29 @@ export class MigrationAdvisoryPlanner {
     };
 
     await Promise.all([
-      writeFile(paths.reportJson, artifacts.reportJson, 'utf-8'),
-      writeFile(paths.reportMarkdown, artifacts.reportMarkdown, 'utf-8'),
-      writeFile(paths.appsMatrixCsv, artifacts.appsMatrixCsv, 'utf-8'),
-      writeFile(
-        paths.packagesGuideMarkdown,
-        artifacts.packagesGuideMarkdown,
-        'utf-8',
-      ),
+      writeFile(paths.reportJson, artifacts.reportJson, {
+        encoding: 'utf-8',
+        mode: 0o600,
+      }),
+      writeFile(paths.reportMarkdown, artifacts.reportMarkdown, {
+        encoding: 'utf-8',
+        mode: 0o600,
+      }),
+      writeFile(paths.appsMatrixCsv, artifacts.appsMatrixCsv, {
+        encoding: 'utf-8',
+        mode: 0o600,
+      }),
+      writeFile(paths.packagesGuideMarkdown, artifacts.packagesGuideMarkdown, {
+        encoding: 'utf-8',
+        mode: 0o600,
+      }),
       writeFile(
         paths.runnerInfrastructureSpecMarkdown,
         artifacts.runnerInfrastructureSpecMarkdown,
-        'utf-8',
+        {
+          encoding: 'utf-8',
+          mode: 0o600,
+        },
       ),
     ]);
 

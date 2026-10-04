@@ -125,12 +125,13 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
     }
 
     // 4. Generate inventory via GEI CLI
-    const tempCsvPath = path.join(
-      os.tmpdir(),
-      `mannequins-${targetOrg}-${Date.now()}.csv`,
-    );
+    let secureDir: string | undefined;
+    let tempCsvPath: string;
 
     try {
+      secureDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ghec-mannequins-'));
+      tempCsvPath = path.join(secureDir, 'inventory.csv');
+
       const records = await exportMannequinInventory({
         targetOrg,
         outputPath: tempCsvPath,
@@ -149,6 +150,11 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
         sourceCsvPath: tempCsvPath,
       };
     } catch (err) {
+      if (secureDir) {
+        await fs
+          .rm(secureDir, { recursive: true, force: true })
+          .catch(() => {});
+      }
       ctx.logger.warn(
         `Could not export mannequins for organization '${targetOrg}': ${String(err)}`,
       );
@@ -295,54 +301,66 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
     }
 
     // Write out mapped CSV
-    const csvPath =
-      this.engineOptions.csvPath ??
-      path.join(
-        os.tmpdir(),
-        `mannequins-reclaim-${targetOrg}-${Date.now()}.csv`,
-      );
+    let secureDir: string | undefined;
+    let csvPath = this.engineOptions.csvPath;
 
-    const csvContent = serializeMannequinCsv(reclaimableRecords);
-    await fs.writeFile(csvPath, csvContent, 'utf8');
-
-    let executionError: string | undefined;
+    if (!csvPath) {
+      secureDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ghec-mannequins-'));
+      csvPath = path.join(secureDir, 'reclaim.csv');
+    }
 
     try {
-      await executeMannequinReclamation({
-        targetOrg,
-        csvPath,
-        isEmu: this.engineOptions.isEmu !== false,
-        ...(this.engineOptions.geiRunner
-          ? { geiRunner: this.engineOptions.geiRunner }
-          : {}),
-        ...(this.engineOptions.targetToken || process.env.GH_PAT
-          ? { token: this.engineOptions.targetToken ?? process.env.GH_PAT }
-          : {}),
-        dryRun: isDryRun,
-        signal: ctx.signal,
+      const csvContent = serializeMannequinCsv(reclaimableRecords);
+      await fs.writeFile(csvPath, csvContent, {
+        encoding: 'utf8',
+        mode: 0o600,
       });
 
-      for (const op of plan.operations) {
-        if (op.operation === 'update') {
-          results.push({
-            operationId: op.id,
-            status: 'succeeded',
-            httpStatus: 200,
-            completedAt: new Date().toISOString(),
-          });
+      let executionError: string | undefined;
+
+      try {
+        await executeMannequinReclamation({
+          targetOrg,
+          csvPath,
+          isEmu: this.engineOptions.isEmu !== false,
+          ...(this.engineOptions.geiRunner
+            ? { geiRunner: this.engineOptions.geiRunner }
+            : {}),
+          ...(this.engineOptions.targetToken || process.env.GH_PAT
+            ? { token: this.engineOptions.targetToken ?? process.env.GH_PAT }
+            : {}),
+          dryRun: isDryRun,
+          signal: ctx.signal,
+        });
+
+        for (const op of plan.operations) {
+          if (op.operation === 'update') {
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: 200,
+              completedAt: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (err) {
+        executionError = err instanceof Error ? err.message : String(err);
+        for (const op of plan.operations) {
+          if (op.operation === 'update') {
+            results.push({
+              operationId: op.id,
+              status: 'failed',
+              error: executionError.slice(0, 2048),
+              completedAt: new Date().toISOString(),
+            });
+          }
         }
       }
-    } catch (err) {
-      executionError = err instanceof Error ? err.message : String(err);
-      for (const op of plan.operations) {
-        if (op.operation === 'update') {
-          results.push({
-            operationId: op.id,
-            status: 'failed',
-            error: executionError.slice(0, 2048),
-            completedAt: new Date().toISOString(),
-          });
-        }
+    } finally {
+      if (secureDir) {
+        await fs
+          .rm(secureDir, { recursive: true, force: true })
+          .catch(() => {});
       }
     }
 
@@ -409,21 +427,33 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
     }
 
     const mapper = options.identityMapper ?? new IdentityMappingEngine();
-    const tempCsvPath =
-      options.csvPath ??
-      path.join(
-        os.tmpdir(),
-        `mannequins-${options.targetOrg}-${Date.now()}.csv`,
-      );
+    let tempDir: string | undefined;
+    let tempCsvPath = options.csvPath;
+
+    if (!tempCsvPath) {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ghec-mannequins-'));
+      tempCsvPath = path.join(tempDir, 'inventory.csv');
+    }
 
     let rawRecords: MannequinRecord[];
 
-    // Check if CSV exists or export
-    if (options.csvPath) {
-      try {
-        const content = await fs.readFile(options.csvPath, 'utf8');
-        rawRecords = parseMannequinCsv(content);
-      } catch {
+    try {
+      // Check if CSV exists or export
+      if (options.csvPath) {
+        try {
+          const content = await fs.readFile(options.csvPath, 'utf8');
+          rawRecords = parseMannequinCsv(content);
+        } catch {
+          rawRecords = await exportMannequinInventory({
+            targetOrg: options.targetOrg,
+            outputPath: tempCsvPath,
+            ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
+            ...(options.targetToken || process.env.GH_PAT
+              ? { token: options.targetToken ?? process.env.GH_PAT }
+              : {}),
+          });
+        }
+      } else {
         rawRecords = await exportMannequinInventory({
           targetOrg: options.targetOrg,
           outputPath: tempCsvPath,
@@ -433,70 +463,79 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
             : {}),
         });
       }
-    } else {
-      rawRecords = await exportMannequinInventory({
+
+      const { mappedRecords, unmappedUsers } = applyIdentityMappings(
+        rawRecords,
+        mapper,
+      );
+
+      let mappedDir: string | undefined;
+      let mappedCsvPath: string;
+
+      try {
+        mappedDir = await fs.mkdtemp(
+          path.join(os.tmpdir(), 'ghec-mannequins-reclaim-'),
+        );
+        mappedCsvPath = path.join(mappedDir, 'reclaim.csv');
+
+        const mappedCsvContent = serializeMannequinCsv(mappedRecords);
+        await fs.writeFile(mappedCsvPath, mappedCsvContent, {
+          encoding: 'utf8',
+          mode: 0o600,
+        });
+
+        if (mappedRecords.some((r) => r.targetUser)) {
+          await executeMannequinReclamation({
+            targetOrg: options.targetOrg,
+            csvPath: mappedCsvPath,
+            isEmu: options.isEmu !== false,
+            ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
+            ...(options.targetToken || process.env.GH_PAT
+              ? { token: options.targetToken ?? process.env.GH_PAT }
+              : {}),
+            ...(options.dryRun !== undefined ? { dryRun: options.dryRun } : {}),
+          });
+        }
+      } finally {
+        if (mappedDir) {
+          await fs
+            .rm(mappedDir, { recursive: true, force: true })
+            .catch(() => {});
+        }
+      }
+
+      const isEmu = options.isEmu !== false;
+      let reclaimedCount = 0;
+      let invitedCount = 0;
+      let unmappedCount = 0;
+
+      for (const r of mappedRecords) {
+        if (!r.targetUser) {
+          unmappedCount++;
+          r.status = 'unmapped';
+        } else if (isEmu) {
+          reclaimedCount++;
+          r.status = 'completed';
+        } else {
+          invitedCount++;
+          r.status = 'invited';
+        }
+      }
+
+      return {
         targetOrg: options.targetOrg,
-        outputPath: tempCsvPath,
-        ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
-        ...(options.targetToken || process.env.GH_PAT
-          ? { token: options.targetToken ?? process.env.GH_PAT }
-          : {}),
-      });
-    }
-
-    const { mappedRecords, unmappedUsers } = applyIdentityMappings(
-      rawRecords,
-      mapper,
-    );
-
-    const mappedCsvPath = path.join(
-      os.tmpdir(),
-      `mannequins-reclaim-${options.targetOrg}-${Date.now()}.csv`,
-    );
-
-    const mappedCsvContent = serializeMannequinCsv(mappedRecords);
-    await fs.writeFile(mappedCsvPath, mappedCsvContent, 'utf8');
-
-    if (mappedRecords.some((r) => r.targetUser)) {
-      await executeMannequinReclamation({
-        targetOrg: options.targetOrg,
-        csvPath: mappedCsvPath,
-        isEmu: options.isEmu !== false,
-        ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
-        ...(options.targetToken || process.env.GH_PAT
-          ? { token: options.targetToken ?? process.env.GH_PAT }
-          : {}),
-        ...(options.dryRun !== undefined ? { dryRun: options.dryRun } : {}),
-      });
-    }
-
-    const isEmu = options.isEmu !== false;
-    let reclaimedCount = 0;
-    let invitedCount = 0;
-    let unmappedCount = 0;
-
-    for (const r of mappedRecords) {
-      if (!r.targetUser) {
-        unmappedCount++;
-        r.status = 'unmapped';
-      } else if (isEmu) {
-        reclaimedCount++;
-        r.status = 'completed';
-      } else {
-        invitedCount++;
-        r.status = 'invited';
+        totalMannequins: mappedRecords.length,
+        reclaimedCount,
+        invitedCount,
+        unmappedCount,
+        records: mappedRecords,
+        unmappedUsers,
+        limitationsNotice: COMMIT_AUTHORSHIP_LIMITATION_NOTICE,
+      };
+    } finally {
+      if (tempDir) {
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       }
     }
-
-    return {
-      targetOrg: options.targetOrg,
-      totalMannequins: mappedRecords.length,
-      reclaimedCount,
-      invitedCount,
-      unmappedCount,
-      records: mappedRecords,
-      unmappedUsers,
-      limitationsNotice: COMMIT_AUTHORSHIP_LIMITATION_NOTICE,
-    };
   }
 }

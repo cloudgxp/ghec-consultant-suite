@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, rmSync, existsSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { DiscoveryBundle } from '@ghec/contracts';
@@ -347,7 +347,7 @@ describe('Migration Advisory & Non-Migrated Items Planner', () => {
 
   describe('MigrationAdvisoryPlanner (End-to-End)', () => {
     it('executes in offline mode using a DiscoveryBundle and writes artifacts to disk', async () => {
-      const tempDir = join(tmpdir(), `advisory-test-${Date.now()}`);
+      const tempDir = mkdtempSync(join(tmpdir(), 'advisory-test-'));
 
       const mockBundle: DiscoveryBundle = {
         schemaVersion: '1.0.0',

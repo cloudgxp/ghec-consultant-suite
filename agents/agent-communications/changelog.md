@@ -563,4 +563,21 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** Prettier check clean on workflow file. Resolves CodeQL alerts #2 through #6 (5 alerts).
 - **Follow-Up:** Proceed to Task 04 (`codeql-04-secure-temporary-file-creation.md`).
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 04: Secure Temporary File and Directory Creation (`codeql-04-secure-temporary-file-creation.md`)
+- **Changes:**
+  - Replaced predictable `Date.now()` filenames and direct `os.tmpdir()` path joins in `packages/migration/src/post-migration/mannequins/engine.ts` with `fs.mkdtemp` (0700 permissions) and guaranteed `finally` teardown.
+  - Hardened file writing permissions to `0o600` for generated CSVs and advisory report artifacts.
+  - Updated `packages/migration/src/advisory/planner.ts` to enforce `0o700` permissions on created directories and `0o600` on generated files.
+  - Replaced insecure temporary directory and file creation in `packages/migration/tests/advisory/planner.test.ts` and `packages/migration/tests/planner.test.ts` with `mkdtempSync` and recursive teardown.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `packages/migration/tests/post-migration/mannequins.test.ts`, `packages/migration/tests/advisory/planner.test.ts`, and `packages/migration/tests/planner.test.ts` (25/25 passed). Resolves CodeQL alerts #21 through #27 (7 alerts).
+- **Follow-Up:** Proceed to Task 05 (`codeql-05-prevent-git-lfs-command-injection.md`).
+
+
 
