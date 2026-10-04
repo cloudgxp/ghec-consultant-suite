@@ -651,3 +651,16 @@ All material engineering work, test completions, and milestone deliveries are re
   - Moved task specification to `agents/agent-tasks/security/completed/`.
 - **Tests:** Publisher unit tests passed (339/339 monorepo tests). Resolves CodeQL alert #18 (`js/identity-replacement`).
 - **Follow-Up:** Proceed to Task 10 (`codeql-10-fix-permissions-test-regex-anchor.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 10: Fix Missing Regexp Anchor in Permissions Test Assertion (`codeql-10-fix-permissions-test-regex-anchor.md`)
+- **Changes:**
+  - Replaced unanchored URL regex assertion `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` with string inclusion check `assert.ok(report.includes('https://github.com/orgs/acme-corp/sso'))` in `apps/cli/tests/permissions.test.ts`.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Permissions unit tests passed (8/8 tests). Resolves CodeQL alert #8 (`js/regex/missing-regexp-anchor`).
+- **Follow-Up:** All 10 CodeQL security tasks in `agents/agent-tasks/security/` are now 100% complete. Run final monorepo verification.
