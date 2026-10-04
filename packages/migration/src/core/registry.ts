@@ -106,6 +106,8 @@ export class ModuleRegistry {
 }
 
 import { RepoVariablesMigrationModule } from '../modules/repo-variables/module.js';
+import { OrgVariablesMigrationModule } from '../modules/org-variables/module.js';
+import { OrgSecretsMigrationModule } from '../modules/org-secrets/module.js';
 import { RepoSecretsMigrationModule } from '../modules/repo-secrets/module.js';
 
 class GeiRepoMigrationModule implements MigrationModule {
@@ -163,6 +165,8 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(new GeiRepoMigrationModule());
   registry.register(new RepoVariablesMigrationModule());
+  registry.register(new OrgVariablesMigrationModule());
+  registry.register(new OrgSecretsMigrationModule());
   registry.register(new RepoSecretsMigrationModule());
   registry.register(new EnvironmentsMigrationModule());
   registry.register(new RulesetsMigrationModule());

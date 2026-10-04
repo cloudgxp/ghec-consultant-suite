@@ -595,3 +595,19 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Unit test suite `packages/migration/tests/reporting/summary.test.ts` (9 tests) verifying formula sanitization, markdown formatting, summary building, and file roundtrips.
   - `npm run check` passes 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
 
+### [2026-10-04] Task 016 (Organization Variables & Secrets) -> Migration orchestration
+
+- **From:** Codex
+- **To:** Codex / Antigravity
+- **Completed Task:** 016
+- **Exported Interfaces / Packages:** `OrgVariablesMigrationModule`,
+  `OrgSecretsMigrationModule`, their discovery types, and constructor options
+  with `repositoryIdMap` for source-to-target selected-repository bindings.
+- **Behavior Notes:** Organization variables support create, update, noop, and
+  verification across `all`, `private`, and `selected` scopes. Organization
+  secrets support Actions, Dependabot, and Codespaces using domain public keys,
+  libsodium sealed boxes, and the existing client-vault hook. Source repository
+  IDs are never used as target IDs; missing bindings emit warnings for deferred
+  application.
+- **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
+  test suite).
