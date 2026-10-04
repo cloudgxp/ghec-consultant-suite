@@ -23,6 +23,7 @@
     "validate:fixtures": "npm run build -w @ghec/contracts && node --import tsx scripts/validate-fixtures.ts",
     "validate:manifests": "python3 scripts/collectors/validate.py",
     "setup:app": "node scripts/register-app.mjs",
+    "docs:sync": "node scripts/sync-github-docs.mjs",
     "probe:api": "node --import tsx scripts/collectors/probe-api-surface.ts",
     "probe:api:live": "node --import tsx scripts/collectors/probe-api-surface.ts --live"
   },
