@@ -2,11 +2,11 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
-Codex
+Antigravity & Codex
 
 ## Objective
 
@@ -96,4 +96,11 @@ GitHub Enterprise Importer creates all migrated repositories with `private` visi
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+Completed on 2026-10-04 by Antigravity & Codex:
+
+- Implemented `RepoSettingsMigrationModule` under `packages/migration/src/modules/repo-settings/`.
+- Built discovery, planning, mutation, and verification for repository visibility and PR commit message settings / merge strategies.
+- Implemented graceful enterprise policy violation fallback: automatically tries fallback to `internal` visibility when enterprise policies prohibit `public` repositories with HTTP 422, emitting structured warnings without failing execution.
+- Added comprehensive unit test suite with 14 passing tests in `packages/migration/tests/modules/repo-settings.test.ts`.
+- Registered module in default `ModuleRegistry` with `gei-repo` dependency.
+- All monorepo checks pass with 294/294 tests green.

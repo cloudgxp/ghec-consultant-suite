@@ -158,6 +158,7 @@ import { TeamsMigrationModule } from '../modules/teams/module.js';
 import { MannequinReclamationEngine } from '../post-migration/mannequins/engine.js';
 import { EnvironmentsMigrationModule } from '../modules/environments/module.js';
 import { WebhooksMigrationModule } from '../modules/webhooks/module.js';
+import { RepoSettingsMigrationModule } from '../modules/repo-settings/module.js';
 import { OrgCustomPropertiesMigrationModule } from '../modules/org-custom-properties/module.js';
 import { RepoCustomPropertiesMigrationModule } from '../modules/repo-custom-properties/module.js';
 
@@ -173,6 +174,7 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new RepoSecretsMigrationModule());
   registry.register(new EnvironmentsMigrationModule());
   registry.register(new WebhooksMigrationModule());
+  registry.register(new RepoSettingsMigrationModule());
   registry.register(new OrgCustomPropertiesMigrationModule());
   registry.register(new RepoCustomPropertiesMigrationModule());
   registry.register(new RulesetsMigrationModule());

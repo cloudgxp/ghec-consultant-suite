@@ -78,19 +78,25 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
     };
   }
   async plan(ctx: MigrationContext, source: WebhooksData): Promise<ModulePlan> {
-    const response = await ctx.targetClient.readSingle<{
-      readonly hooks?: readonly RawWebhook[];
-    }>(
-      {
-        id: 'rest.webhooks.list',
-        transport: 'rest',
-        verifiedReadOnly: true,
-        path: pathFor(ctx),
-        pathParams: paramsFor(ctx),
-      },
-      ctx.signal,
-    );
-    const target = (response.data?.hooks ?? []).flatMap((hook) => {
+    let rawHooks: readonly RawWebhook[];
+    try {
+      const response = await ctx.targetClient.readSingle<{
+        readonly hooks?: readonly RawWebhook[];
+      }>(
+        {
+          id: 'rest.webhooks.list',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: pathFor(ctx),
+          pathParams: paramsFor(ctx),
+        },
+        ctx.signal,
+      );
+      rawHooks = response.data?.hooks ?? [];
+    } catch {
+      rawHooks = [];
+    }
+    const target = rawHooks.flatMap((hook) => {
       const parsed = parse(hook);
       return parsed ? [parsed] : [];
     });

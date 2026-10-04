@@ -390,3 +390,22 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/reporting/summary.test.ts` with 9 unit tests covering formula escaping, markdown formatting, summary building, and file I/O.
 - **Tests:** `npm run check` passed 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity & Codex
+
+- **Task:** 025 Repository Visibility & PR Settings Reconciliation Module
+- **Changes:**
+  - Implemented `RepoSettingsMigrationModule` under `packages/migration/src/modules/repo-settings/`:
+    - `types.ts`: typed models for `RepositoryVisibility`, `RepositoryPullRequestSettings`, `RepoSettingsData`, `RepoSettingsModuleOptions`, and raw GitHub response mappings.
+    - `visibility.ts`: helpers for normalizing API visibility, evaluating desired visibility, and handling enterprise policy fallback.
+    - `pr-settings.ts`: parsing PR settings and diffing configuration to emit granular change descriptions and patch payloads.
+    - `module.ts`: 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) reconciling visibility from GEI default `private` back to `internal`/`public` and restoring custom squash/merge commit message templates and merge strategy toggles (DEC-015).
+    - Implemented graceful enterprise policy handling: intercepts HTTP 422 policy violations (e.g. EMU enterprises prohibiting public repos), automatically attempting fallback to `internal` visibility with structured warnings without failing execution.
+    - `index.ts` & `README.md`: exported types, module, and detailed documentation.
+  - Registered `RepoSettingsMigrationModule` in `createDefaultModuleRegistry()` with dependency on `gei-repo`.
+  - Exported `repo-settings` module and types from `@ghec/migration`.
+  - Added unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, diffing, live and cached discovery, planning, mutation, dry-run, policy fallback, and verification.
+- **Tests:** `npm run check` passed 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.

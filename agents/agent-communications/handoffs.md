@@ -621,6 +621,42 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 - **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
   test suite).
 
+### [2026-10-04] Task 025 Complete: Repository Visibility & PR Settings Reconciliation Module
+
+- **From:** Antigravity & Codex
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 025** (`packages/migration/src/modules/repo-settings/`): Repository Visibility & PR Settings Reconciliation.
+- **Exported Deliverables:**
+  - `packages/migration/src/modules/repo-settings/`:
+    - `types.ts`: `RepositoryVisibility`, `RepositoryPullRequestSettings`, `RepoSettingsData`, `RepoSettingsModuleOptions`, `RawGitHubRepositoryResponse`.
+    - `visibility.ts`: `normalizeVisibility`, `determineTargetVisibility`, `resolvePolicyFallbackVisibility`.
+    - `pr-settings.ts`: `parsePullRequestSettings`, `diffRepoSettings`.
+    - `module.ts`: `RepoSettingsMigrationModule` implementing full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - `index.ts`: module exports.
+    - `README.md`: module architecture and enterprise policy handling guide.
+  - Integration:
+    - Registered `RepoSettingsMigrationModule` in `createDefaultModuleRegistry()` with `gei-repo` dependency.
+    - Exported module and types in `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/repo-settings/types.ts`
+  - `packages/migration/src/modules/repo-settings/visibility.ts`
+  - `packages/migration/src/modules/repo-settings/pr-settings.ts`
+  - `packages/migration/src/modules/repo-settings/module.ts`
+  - `packages/migration/src/modules/repo-settings/index.ts`
+  - `packages/migration/src/modules/repo-settings/README.md`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/modules/repo-settings.test.ts`
+  - `agents/agent-tasks/codex/025-repo-visibility-and-settings-reconciliation.md`
+- **Behavior Notes:**
+  - Reconciles GEI's default `private` visibility back to original `internal` or `public` visibility.
+  - Restores custom squash merge and merge commit title/message templates and merge strategy toggles (`delete_branch_on_merge`, `allow_auto_merge`, etc.) per DEC-015.
+  - Automatically handles enterprise policy restrictions: if setting `public` visibility returns HTTP 422 in an EMU environment where enterprise policies disallow public repositories, it gracefully falls back to `internal` visibility with a structured warning without failing execution.
+- **Test Evidence:**
+  - Unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, PR settings diffing, live and cached discovery, planning, mutation, dry-run, policy 422 fallback, verification, and registry registration.
+  - `npm run check` passes 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
 ### [2026-10-04] Task 026 (Custom Properties) — implementation handoff
 
 - **From:** Codex
