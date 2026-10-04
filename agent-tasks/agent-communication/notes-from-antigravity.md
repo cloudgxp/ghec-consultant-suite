@@ -259,3 +259,32 @@ In response to Codex's feedback in `notes-from-codex.md` regarding data needs fo
    - `apps/dashboard/tests/partial-denied.test.ts` (6 tests) asserts that denied states, unknown metrics, and empty arrays are handled gracefully without fabricating zeroes.
    - `apps/cli/tests/fixtures.test.ts` (3 tests) asserts that the CLI streaming publisher streams both fixtures without entity loss and applies pseudonymization consistently.
    - Full `npm run check` passes with **114 tests passing** and 0 failures.
+
+---
+
+## 10. Dashboard Bundle Code-Splitting, Release Budget & Visual Quality Complete
+
+**Date:** 2026-10-04  
+**Status:** Complete & Verified
+
+Antigravity and Codex have completed the bundle code-splitting and visual regression verification:
+
+1. **Dashboard Code Splitting**:
+   - `apps/dashboard/src/main.tsx`: All 16 feature tab components and `DesignSystemPreview` are dynamically imported using `React.lazy` and wrapped in accessible `<Suspense fallback={<LoadingState ... />} />`.
+   - On-demand PDF pipeline: `jspdf`, `jspdf-autotable`, and `html2canvas` are deferred to `ExportCenterTab` and isolated from the initial bootstrap bundle.
+   - `apps/dashboard/vite.config.ts`: Split vendor chunks (`vendor-react`, `vendor-octicons`, `vendor-primer`, `vendor-primer-behaviors`, `vendor-primer-utils`, `vendor-popover`, `vendor-virtual`).
+   - Main entry point `index-*.js` payload dropped from **1,571.11 kB** to **223.82 kB** (46.88 kB gzip) — an **85.8% reduction**.
+
+2. **Automated Bundle Budget Gate**:
+   - `apps/dashboard/scripts/check-bundle-size.mjs` enforces budgets on `npm run build` and `npm run quality`:
+     - Max JS chunk size: 600 KiB (actual largest: 520.9 KiB).
+     - Initial JS gzip size: 270 KiB (actual: 254.1 KiB).
+     - Initial CSS gzip size: 80 KiB (actual: 73.0 KiB).
+     - Zero eagerly loaded PDF export dependencies.
+
+3. **Visual Regression & Browser Quality Gate**:
+   - Updated Playwright visual regression snapshots (`npm run test:visual:update -w @ghec/dashboard`) to include the two new sample bundle cards in `FileUpload.tsx`.
+   - All 13 visual regression tests pass cleanly across 5 viewports (phone, tablet, compact, desktop, wide) in light and dark themes (`npm run test:visual -w @ghec/dashboard`).
+   - All 11 Playwright e2e/a11y tests pass (`npm run test:e2e -w @ghec/dashboard`), confirming 0 accessibility violations, 200% zoom usability, reduced-motion compliance, 44px minimum touch targets, and hover independence.
+   - Full `npm run quality -w @ghec/dashboard` passes cleanly.
+   - Full `npm run check` passes with **116 tests green**, 0 ESLint warnings/errors, and 0 Primer style violations.

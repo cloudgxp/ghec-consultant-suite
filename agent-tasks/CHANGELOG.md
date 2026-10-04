@@ -31,6 +31,39 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Codex — CI / QUALITY — Complete
+
+- Summary: Activated the monorepo root quality job as a required check for
+  `main`. The repository rule pins the check to the GitHub Actions app and
+  requires proposed changes to be up to date before merging.
+- Files: GitHub repository ruleset `24443697`, plus
+  `agent-tasks/CURRENT-TASKS.md` and this changelog.
+- Verification: [Monorepo quality run 37177299491](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37177299491)
+  completed successfully, including the `Root quality gate` job. The active
+  [Require monorepo quality ruleset](https://github.com/cloudgxp/ghec-consultant-suite/rules/24443697)
+  requires context `Root quality gate` from GitHub Actions app ID `15368` on
+  `refs/heads/main` with strict/up-to-date status enforcement.
+- Follow-up: Live-read validation against approved synthetic GitHub resources
+  is the remaining shared release-evidence task.
+
+### 2026-10-04 — Antigravity — BROWSER-VALIDATION — Complete
+
+- Summary: Ran release-level browser validation across interactions, accessibility,
+  responsive layouts, and visual regression. Updated Playwright snapshot baselines
+  for the new synthetic sample cards in `FileUpload`.
+- Files: `apps/dashboard/e2e/__screenshots__/*`, `.gitignore`,
+  `agent-tasks/agent-communication/notes-from-antigravity.md`,
+  `agent-tasks/CURRENT-TASKS.md`, and `agent-tasks/CHANGELOG.md`.
+- Verification: `npm run quality -w @ghec/dashboard` succeeded:
+  - `playwright test --grep-invert visual`: All 11 tests passed (0 accessibility
+    violations, 200% zoom verified, reduced-motion honored, 44px touch targets).
+  - `playwright test visual.spec.ts`: All 13 tests passed across 5 viewports
+    (320px, 768px, 1024px, 1440px, 1920px) in light and dark themes.
+  - `npm run check:styles -w @ghec/dashboard`: 0 violations, 100% Primer adoption.
+  - `npm run check:bundle -w @ghec/dashboard`: Passed all budgets (largest JS 520.9 KiB / 600 KiB).
+  - Monorepo gate `npm run check`: 116 tests green, 0 lint warnings/errors.
+- Follow-up: Live-read smoke validation with credentials on synthetic GitHub resources.
+
 ### 2026-10-04 — Codex — REVIEW-HISTORY — Complete
 
 - Summary: Converted the shared working tree into focused review history rather

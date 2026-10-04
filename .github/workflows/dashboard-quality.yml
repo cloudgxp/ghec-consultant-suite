@@ -26,10 +26,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run typecheck -w @ghec/dashboard
-      - run: npm run build -w @ghec/dashboard
-      - run: npm run test:e2e -w @ghec/dashboard
-      - run: npm run test:visual -w @ghec/dashboard
+      - name: Build shared workspace packages
+        run: npm run build -w @ghec/contracts && npm run build -w @ghec/analysis
+      - name: Type-check dashboard
+        run: npm run typecheck -w @ghec/dashboard
+      - name: Build dashboard
+        run: npm run build -w @ghec/dashboard
+      - name: Run dashboard interaction and accessibility tests
+        run: npm run test:e2e -w @ghec/dashboard
+      - name: Run dashboard visual regression tests
+        run: npm run test:visual -w @ghec/dashboard
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
