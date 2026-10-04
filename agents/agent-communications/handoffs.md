@@ -24,6 +24,29 @@ This log documents formal handoffs, package interfaces, and dependency resolutio
 
 ## Handoff Records
 
+### [2026-10-04] CodeQL Security Remediation Planning Pass -> Implementation Backlog
+
+- **From:** Antigravity (Planning & Security Audit Pass)
+- **To:** Implementation Agents (Antigravity & Subagents)
+- **Completed Task:** CodeQL Security Remediation Planning Pass (50 open alerts audited, 10 remediation tasks formulated)
+- **Unblocked Tasks:**
+  - `codeql-01-fix-app-registration-command-injection-ssrf.md` (Critical)
+  - `codeql-02-fix-action-runner-code-injection.md` (High - 24 alerts)
+  - `codeql-03-fix-reusable-token-workflow-injection.md` (High - 5 alerts)
+  - `codeql-04-secure-temporary-file-creation.md` (High - 7 alerts)
+  - `codeql-05-prevent-git-lfs-command-injection.md` (High)
+  - `codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md` (Medium - 4 alerts)
+  - `codeql-07-pin-reusable-workflow-commit-sha.md` (Medium)
+  - `codeql-08-harden-web-worker-message-origins.md` (Low)
+  - `codeql-09-fix-timestamp-identity-replacement.md` (Low)
+  - `codeql-10-fix-permissions-test-regex-anchor.md` (Low)
+- **Exported Deliverables:**
+  - Authoritative remediation plan: `agents/agent-tasks/security/CODEQL-REMEDIATION-PLAN.md`
+  - 10 task specification files in `agents/agent-tasks/security/` (accessible via `agent-tasks/antigravity/`)
+  - Updated tracking index: `agents/agent-tasks/CURRENT-TASKS.md`
+  - Updated category index: `agents/agent-tasks/security/README.md`
+- **Behavior Notes:** No production code was modified during this planning pass. All tasks are implementation-ready with precise remediation blueprints, acceptance criteria, regression test designs, and validation commands.
+
 ### [2026-10-04] Foundation Scaffolding & Initial Backlog Handoff
 
 - **From:** Antigravity
