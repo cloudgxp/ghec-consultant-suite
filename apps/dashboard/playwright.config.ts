@@ -1,9 +1,16 @@
 import { defineConfig } from '@playwright/test';
 
+const snapshotProfile = process.env.PLAYWRIGHT_SNAPSHOT_PROFILE;
+if (snapshotProfile && !/^[a-z0-9-]+$/.test(snapshotProfile)) {
+  throw new Error('PLAYWRIGHT_SNAPSHOT_PROFILE must be lowercase kebab-case');
+}
+
 export default defineConfig({
   testDir: './e2e',
   outputDir: './test-results',
-  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
+  snapshotPathTemplate: snapshotProfile
+    ? `{testDir}/__screenshots__/${snapshotProfile}/{arg}{ext}`
+    : '{testDir}/__screenshots__/{arg}{ext}',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

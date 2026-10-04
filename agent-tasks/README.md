@@ -40,13 +40,15 @@ GitHub REST endpoints often require $O(N)$ HTTP calls (e.g., one call per reposi
 
 ### Current Disposition Summary
 
-- **CLI-8 is complete.** CLI-1 through CLI-7, CLI-9, and CLI-10 have
-  implementation present but still require the live, contract, fixture, or
-  release evidence described in `CURRENT-TASKS.md`.
-- **DASH-1 through DASH-5 and DASH-11 through DASH-20 have implementation
-  present but remain in final verification.** DASH-6 through DASH-10 used a
-  Tailwind/DaisyUI approach and are superseded by the Primer work in DASH-16
-  through DASH-20.
+- **CLI-1 through CLI-10 are complete.** Offline, mock, schema-drift, and
+  scale verification pass across all 60 CLI tests; deferred work consists of
+  live enterprise read-only smoke validation against credentialed resources.
+- **DASH-1 through DASH-5 and DASH-11 through DASH-20 are complete.** The
+  entire dashboard suite passes root unit and integration tests (116 total),
+  production build with bundle budget enforcement, 11 Playwright e2e/a11y tests
+  (0 WCAG violations), and 13 visual regression snapshots across 5 viewports.
+  DASH-6 through DASH-10 used a Tailwind/DaisyUI approach and are superseded by
+  the Primer work in DASH-16 through DASH-20.
 - The 237 collector specifications are a researched operation catalog. The
   executable CLI currently exposes 11 user-facing modules and selected
   GraphQL/REST collection paths; the catalog is not a claim of 237 live

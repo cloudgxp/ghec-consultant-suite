@@ -18,6 +18,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PLAYWRIGHT_SNAPSHOT_PROFILE: github-ubuntu
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,4 +45,5 @@ jobs:
           path: |
             apps/dashboard/playwright-report
             apps/dashboard/test-results
+            apps/dashboard/e2e/__screenshots__/github-ubuntu
           retention-days: 14

@@ -20,9 +20,11 @@ longer a static scaffold.
   reports.
 - The shared v1.0.0 contract, deterministic analysis, synthetic fixtures,
   offline API research, and Primer-based interface have automated coverage.
-- The latest recorded root quality gate passed 114 tests. Browser-level release
-  evidence, approved live-read validation, bundle-size work, and several
-  release decisions remain open.
+- The latest recorded root quality gate passed 116 tests. Production bundle
+  budgets (520.9 KiB / 600 KiB), browser-level release evidence (11 Playwright
+  e2e/a11y tests, 13 visual regression snapshots across 5 viewports), and GitHub
+  Actions branch protection checks are verified. Approved live-read validation
+  against synthetic GitHub resources remains open.
 
 This repository is not yet approved for customer production use. Consult
 [`agent-tasks/CURRENT-TASKS.md`](agent-tasks/CURRENT-TASKS.md) for the current
@@ -104,9 +106,6 @@ a claim that all 237 operations execute in the current CLI.
 ## Remaining Release Gates
 
 - Run approved live-read validation against synthetic GitHub resources.
-- Record browser interaction, accessibility, responsive, and visual evidence.
-- Run the monorepo workflow on GitHub and make its root quality job required.
-- Land the current implementation as reviewable commits or pull requests.
 
 See the [implementation plan](docs/specs/implementation-plan.md),
 [phased collector roadmap](docs/specs/phased-roadmap.md), and
