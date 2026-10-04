@@ -25,6 +25,23 @@ const same = (
   right: RepositoryCustomPropertyValue | undefined,
 ) => JSON.stringify(left?.value) === JSON.stringify(right?.value);
 
+function extractValues(
+  data: unknown,
+): readonly RawRepositoryCustomPropertyValue[] {
+  if (Array.isArray(data))
+    return data as readonly RawRepositoryCustomPropertyValue[];
+  if (
+    data &&
+    typeof data === 'object' &&
+    'properties' in data &&
+    Array.isArray((data as { properties: unknown }).properties)
+  ) {
+    return (data as { properties: readonly RawRepositoryCustomPropertyValue[] })
+      .properties;
+  }
+  return [];
+}
+
 export class RepoCustomPropertiesMigrationModule implements MigrationModule<RepoCustomPropertiesData> {
   readonly id = 'repo-custom-properties';
   readonly displayName = 'Repository Custom Property Values';
@@ -35,9 +52,7 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
   ];
   async discover(ctx: MigrationContext): Promise<RepoCustomPropertiesData> {
     const repo = ctx.scope.sourceRepo ?? '';
-    const response = await ctx.sourceClient.readSingle<{
-      properties?: RawRepositoryCustomPropertyValue[];
-    }>(
+    const response = await ctx.sourceClient.readSingle<unknown>(
       {
         id: 'rest.repos.listCustomPropertyValues',
         transport: 'rest',
@@ -49,7 +64,7 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
     );
     return {
       repository: repo,
-      values: (response.data?.properties ?? []).flatMap((item) => {
+      values: extractValues(response.data).flatMap((item) => {
         const value = normalize(item);
         return value ? [value] : [];
       }),
@@ -60,11 +75,9 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
     source: RepoCustomPropertiesData,
   ): Promise<ModulePlan> {
     const repo = ctx.scope.targetRepo ?? source.repository;
-    let rawProperties: RawRepositoryCustomPropertyValue[];
+    let rawProperties: readonly RawRepositoryCustomPropertyValue[];
     try {
-      const response = await ctx.targetClient.readSingle<{
-        properties?: RawRepositoryCustomPropertyValue[];
-      }>(
+      const response = await ctx.targetClient.readSingle<unknown>(
         {
           id: 'rest.repos.listCustomPropertyValues',
           transport: 'rest',
@@ -74,7 +87,7 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
         },
         ctx.signal,
       );
-      rawProperties = response.data?.properties ?? [];
+      rawProperties = extractValues(response.data);
     } catch {
       rawProperties = [];
     }

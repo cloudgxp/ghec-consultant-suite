@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -80,4 +80,8 @@ GitHub Enterprise Importer transfers active webhooks at both repository and orga
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+- **Implementation:** Built `WebhooksMigrationModule` (`webhooks`) under `packages/migration/src/modules/webhooks/` with full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+- **REST Robustness:** Added resilient response parsing supporting direct array responses (`RawWebhook[]`) as well as wrapped `{ hooks: [...] }` envelopes.
+- **Anti-Duplication (DEC-014):** In-place `PATCH` re-enables GEI-disabled webhooks, patches URL/event/SSL/content-type discrepancies, and rehydrates cryptographic secrets when `secretProvider` is supplied.
+- **POST Compliance:** Included mandatory `"name": "web"` property when creating new webhooks via `POST` to prevent GitHub API 422 errors.
+- **Verification:** Unit tests in `packages/migration/tests/modules/webhooks.test.ts` verify direct array parsing, in-place `PATCH`, `POST` creation with `"name": "web"`, secret warnings, and discrepancy detection. All monorepo checks pass.

@@ -14,6 +14,7 @@ import type {
 } from './types.js';
 
 const path = '/orgs/{org}/properties/schema';
+const itemPath = '/orgs/{org}/properties/schema/{custom_property_name}';
 const normalize = (
   item: RawCustomPropertyDefinition,
 ): CustomPropertyDefinition | undefined =>
@@ -32,15 +33,30 @@ const equal = (
   right: CustomPropertyDefinition,
 ) => JSON.stringify(left) === JSON.stringify(right);
 
+function extractProperties(
+  data: unknown,
+): readonly RawCustomPropertyDefinition[] {
+  if (Array.isArray(data))
+    return data as readonly RawCustomPropertyDefinition[];
+  if (
+    data &&
+    typeof data === 'object' &&
+    'properties' in data &&
+    Array.isArray((data as { properties: unknown }).properties)
+  ) {
+    return (data as { properties: readonly RawCustomPropertyDefinition[] })
+      .properties;
+  }
+  return [];
+}
+
 export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCustomPropertiesData> {
   readonly id = 'org-custom-properties';
   readonly displayName = 'Organization Custom Property Schemas';
   readonly scopeLevel: MigrationScopeLevel = 'organization';
   readonly dependencies: readonly string[] = [];
   async discover(ctx: MigrationContext): Promise<OrgCustomPropertiesData> {
-    const response = await ctx.sourceClient.readSingle<{
-      properties?: RawCustomPropertyDefinition[];
-    }>(
+    const response = await ctx.sourceClient.readSingle<unknown>(
       {
         id: 'rest.orgs.listCustomPropertySchemas',
         transport: 'rest',
@@ -52,7 +68,7 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
     );
     return {
       organization: ctx.scope.sourceOrg,
-      definitions: (response.data?.properties ?? []).flatMap((item) => {
+      definitions: extractProperties(response.data).flatMap((item) => {
         const definition = normalize(item);
         return definition ? [definition] : [];
       }),
@@ -62,11 +78,9 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
     ctx: MigrationContext,
     source: OrgCustomPropertiesData,
   ): Promise<ModulePlan> {
-    let rawProperties: RawCustomPropertyDefinition[];
+    let rawProperties: readonly RawCustomPropertyDefinition[];
     try {
-      const response = await ctx.targetClient.readSingle<{
-        properties?: RawCustomPropertyDefinition[];
-      }>(
+      const response = await ctx.targetClient.readSingle<unknown>(
         {
           id: 'rest.orgs.listCustomPropertySchemas',
           transport: 'rest',
@@ -76,7 +90,7 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
         },
         ctx.signal,
       );
-      rawProperties = response.data?.properties ?? [];
+      rawProperties = extractProperties(response.data);
     } catch {
       rawProperties = [];
     }
@@ -101,7 +115,16 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
             : ('update' as 'create' | 'update' | 'noop'),
         sourceState: definition,
         destinationCurrentState: existing,
-        payload: definition,
+        payload: {
+          value_type: definition.valueType,
+          required: definition.required,
+          default_value: definition.defaultValue,
+          description: definition.description,
+          allowed_values:
+            definition.allowedValues.length > 0
+              ? definition.allowedValues
+              : undefined,
+        },
       };
     });
     return {
@@ -136,12 +159,16 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
         });
         continue;
       }
+      const propertyName = operation.resourceName;
       const result = await ctx.targetWriteClient!.mutate(
         {
           id: 'rest.orgs.createOrUpdateCustomPropertySchema',
           method: 'PUT',
-          path,
-          pathParams: { org: ctx.scope.targetOrg },
+          path: itemPath,
+          pathParams: {
+            org: ctx.scope.targetOrg,
+            custom_property_name: propertyName,
+          },
           body: operation.payload,
         },
         ctx.signal,

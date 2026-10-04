@@ -13,8 +13,10 @@ export function hooksMatch(
 export function webhookPayload(
   hook: WebhookDefinition,
   secret?: string,
+  isCreate = false,
 ): Record<string, unknown> {
   return {
+    ...(isCreate ? { name: 'web' } : {}),
     active: hook.active,
     events: hook.events,
     config: {

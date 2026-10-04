@@ -44,6 +44,19 @@ function parse(raw: RawWebhook): WebhookDefinition | undefined {
   };
 }
 
+function extractHooks(data: unknown): readonly RawWebhook[] {
+  if (Array.isArray(data)) return data as readonly RawWebhook[];
+  if (
+    data &&
+    typeof data === 'object' &&
+    'hooks' in data &&
+    Array.isArray((data as { hooks: unknown }).hooks)
+  ) {
+    return (data as { hooks: readonly RawWebhook[] }).hooks;
+  }
+  return [];
+}
+
 export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
   readonly id = 'webhooks';
   readonly displayName = 'Organization & Repository Webhooks Reconciliation';
@@ -54,9 +67,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
     this.secretProvider = options.secretProvider;
   }
   async discover(ctx: MigrationContext): Promise<WebhooksData> {
-    const response = await ctx.sourceClient.readSingle<{
-      readonly hooks?: readonly RawWebhook[];
-    }>(
+    const response = await ctx.sourceClient.readSingle<unknown>(
       {
         id: 'rest.webhooks.list',
         transport: 'rest',
@@ -71,7 +82,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
     );
     return {
       level: ctx.scope.level,
-      hooks: (response.data?.hooks ?? []).flatMap((hook) => {
+      hooks: extractHooks(response.data).flatMap((hook) => {
         const parsed = parse(hook);
         return parsed ? [parsed] : [];
       }),
@@ -80,9 +91,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
   async plan(ctx: MigrationContext, source: WebhooksData): Promise<ModulePlan> {
     let rawHooks: readonly RawWebhook[];
     try {
-      const response = await ctx.targetClient.readSingle<{
-        readonly hooks?: readonly RawWebhook[];
-      }>(
+      const response = await ctx.targetClient.readSingle<unknown>(
         {
           id: 'rest.webhooks.list',
           transport: 'rest',
@@ -92,7 +101,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
         },
         ctx.signal,
       );
-      rawHooks = response.data?.hooks ?? [];
+      rawHooks = extractHooks(response.data);
     } catch {
       rawHooks = [];
     }
@@ -103,11 +112,18 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
     const warnings: string[] = [];
     const operations: PlannedOperation[] = source.hooks.map((hook) => {
       const existing = target.find((candidate) => hooksMatch(hook, candidate));
-      const operation = !existing
-        ? 'create'
-        : existing.active === hook.active
-          ? 'noop'
-          : 'update';
+      let operation: 'create' | 'update' | 'noop';
+      if (!existing) {
+        operation = 'create';
+      } else {
+        const needsSecretRehydration =
+          hook.secretConfigured && this.secretProvider !== undefined;
+        const configChanged =
+          existing.active !== hook.active ||
+          existing.contentType !== hook.contentType ||
+          existing.insecureSsl !== hook.insecureSsl;
+        operation = configChanged || needsSecretRehydration ? 'update' : 'noop';
+      }
       if (hook.secretConfigured && !this.secretProvider)
         warnings.push(
           `Webhook "${hook.url}" has a source secret but no replacement secret provider.`,
@@ -180,7 +196,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
             ...paramsFor(ctx),
             ...(hookId === undefined ? {} : { hook_id: String(hookId) }),
           },
-          body: webhookPayload(hook, secret),
+          body: webhookPayload(hook, secret, op.operation === 'create'),
         },
         ctx.signal,
       );

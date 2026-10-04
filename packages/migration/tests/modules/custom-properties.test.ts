@@ -182,7 +182,29 @@ describe('Custom Properties Migration Modules (Task 026)', () => {
       assert.equal(noopOp?.operation, 'noop');
     });
 
-    it('applies schema mutations via PUT against target organization', async () => {
+    it('discovers custom property schemas from direct array response', async () => {
+      const directArray = [
+        {
+          property_name: 'environment',
+          value_type: 'single_select',
+          required: true,
+          default_value: 'production',
+          allowed_values: ['production', 'staging', 'development'],
+        },
+      ];
+
+      const ctx = createMockContext({
+        sourceData: directArray,
+        level: 'organization',
+      });
+      const module = new OrgCustomPropertiesMigrationModule();
+      const discovered = await module.discover(ctx);
+
+      assert.equal(discovered.definitions.length, 1);
+      assert.equal(discovered.definitions[0]?.propertyName, 'environment');
+    });
+
+    it('applies schema mutations via PUT against target organization with snake_case payload', async () => {
       const writeClient = new MockWriteClient([200]);
       const ctx = createMockContext({ writeClient, level: 'organization' });
       const module = new OrgCustomPropertiesMigrationModule();
@@ -199,9 +221,9 @@ describe('Custom Properties Migration Modules (Task 026)', () => {
             resourceName: 'cost-center',
             operation: 'create' as const,
             payload: {
-              propertyName: 'cost-center',
-              valueType: 'string',
+              value_type: 'string',
               required: false,
+              description: 'Cost center code',
             },
           },
         ],
@@ -211,7 +233,19 @@ describe('Custom Properties Migration Modules (Task 026)', () => {
       assert.equal(result.status, 'complete');
       assert.equal(writeClient.calls.length, 1);
       assert.equal(writeClient.calls[0]?.method, 'PUT');
-      assert.equal(writeClient.calls[0]?.path, '/orgs/{org}/properties/schema');
+      assert.equal(
+        writeClient.calls[0]?.path,
+        '/orgs/{org}/properties/schema/{custom_property_name}',
+      );
+      assert.equal(
+        writeClient.calls[0]?.pathParams?.custom_property_name,
+        'cost-center',
+      );
+      assert.deepEqual(writeClient.calls[0]?.body, {
+        value_type: 'string',
+        required: false,
+        description: 'Cost center code',
+      });
     });
 
     it('verifies custom property schemas against planned state', async () => {
@@ -282,6 +316,24 @@ describe('Custom Properties Migration Modules (Task 026)', () => {
       assert.equal(discovered.values.length, 2);
       assert.equal(discovered.values[0]?.propertyName, 'environment');
       assert.equal(discovered.values[0]?.value, 'production');
+    });
+
+    it('discovers custom property values from direct array response', async () => {
+      const directValues = [
+        { property_name: 'environment', value: 'production' },
+        { property_name: 'cost-center', value: 'finance-101' },
+      ];
+
+      const ctx = createMockContext({
+        sourceData: directValues,
+        level: 'repository',
+      });
+      const module = new RepoCustomPropertiesMigrationModule();
+      const discovered = await module.discover(ctx);
+
+      assert.equal(discovered.repository, 'sample-repo');
+      assert.equal(discovered.values.length, 2);
+      assert.equal(discovered.values[0]?.propertyName, 'environment');
     });
 
     it('plans batch update operation for modified custom property values', async () => {

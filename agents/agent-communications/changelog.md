@@ -433,3 +433,24 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added module documentation in `packages/migration/src/modules/org-custom-properties/README.md` and `packages/migration/src/modules/repo-custom-properties/README.md`.
   - Added unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
 - **Tests:** `npm run check` passed all tests green, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 018 & 026 REST Contract Hardening & Reconciliation Fixes
+- **Changes:**
+  - **Task 018 (Webhooks):**
+    - Hardened `discover()` and `plan()` to seamlessly parse both direct JSON array responses (`RawWebhook[]`) returned by GitHub REST APIs and wrapped `{ hooks: [...] }` envelopes.
+    - Added required `"name": "web"` parameter to `webhookPayload` for `POST` webhook creation operations, preventing GitHub HTTP 422 errors.
+    - Improved `plan()` diffing logic to trigger `update` when cryptographic secret tokens need rehydration or when SSL/content-type configuration changes.
+    - Expanded `packages/migration/tests/modules/webhooks.test.ts` to 5 tests covering array responses, create with `"name": "web"`, secret warnings, and verification discrepancy detection.
+    - Marked `agents/agent-tasks/codex/018-webhooks-migration-module.md` as `complete`.
+  - **Task 026 (Custom Properties):**
+    - Hardened `OrgCustomPropertiesMigrationModule` to support direct array schemas (`RawCustomPropertyDefinition[]`) from `GET /orgs/{org}/properties/schema`.
+    - Corrected org custom property schema mutation endpoint to `PUT /orgs/{org}/properties/schema/{custom_property_name}` and mapped body payload to snake_case (`value_type`, `required`, `default_value`, `description`, `allowed_values`).
+    - Hardened `RepoCustomPropertiesMigrationModule` to support direct array values (`RawRepositoryCustomPropertyValue[]`) from `GET /repos/{owner}/{repo}/properties/values`.
+    - Expanded `packages/migration/tests/modules/custom-properties.test.ts` to 11 tests verifying direct array support, endpoint pathing, and snake_case request bodies.
+- **Tests:** `npm run check` passed 317/317 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
