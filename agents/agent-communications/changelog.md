@@ -532,3 +532,20 @@ All material engineering work, test completions, and milestone deliveries are re
   - Moved task specification to `agents/agent-tasks/security/completed/`.
 - **Tests:** `apps/cli/tests/register-app.test.ts` (4/4 passed). Root `npm run check` green. Resolves CodeQL alerts #9, #10, and #11.
 - **Follow-Up:** Proceed to Task 02 (`codeql-02-fix-action-runner-code-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 02: Remediate GitHub Actions Code Injection in Composite Action Runner (`codeql-02-fix-action-runner-code-injection.md`)
+- **Changes:**
+  - Exported all composite action inputs through the step's `env:` block (`INPUT_COMMAND`, `INPUT_SCOPE`, `INPUT_PLAN`, etc.) in `action.yml`.
+  - Replaced all `${{ inputs.* }}` expressions inside bash script text blocks with native bash variable expansions (`"$INPUT_SCOPE"`, etc.).
+  - Removed command-line exposure of `--source-token` and `--target-token` and scrubbed argument logging (`node ./apps/cli/bin/ghec-consultant-cli.mjs $CMD`), relying safely on `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` environment variables.
+  - Hardened workflows `.github/workflows/enterprise-multi-org-scan.yml`, `.github/workflows/migration-execute-wave.yml`, and `.github/workflows/migration-plan-pr.yml` against similar unflagged shell expression interpolations.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Prettier check on all workflows and action.yml clean. Resolves CodeQL alerts #28 through #51 (24 alerts).
+- **Follow-Up:** Proceed to Task 03 (`codeql-03-fix-reusable-token-workflow-injection.md`).
+

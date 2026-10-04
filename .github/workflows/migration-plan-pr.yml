@@ -63,9 +63,10 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           SCOPES_JSON: ${{ steps.find-scopes.outputs.scopes_json }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           mkdir -p ./scans ./reports
-          COMMENT_BODY="# 📋 Migration Planning Summary for PR #${{ github.event.pull_request.number }}\n\n"
+          COMMENT_BODY="# 📋 Migration Planning Summary for PR #${PR_NUMBER}\n\n"
           COMMENT_BODY+="Automated pre-migration plan execution completed for modified scopes.\n\n"
 
           echo "$SCOPES_JSON" | jq -r '.[]' | while read -r SCOPE_FILE; do

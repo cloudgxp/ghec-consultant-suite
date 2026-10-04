@@ -171,36 +171,40 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+          INPUT_CACHED_BUNDLE: ${{ inputs.cached_bundle }}
+          INPUT_MODULES: ${{ inputs.modules }}
+          MATRIX_COHORT_ID: ${{ matrix.cohortId }}
+          MATRIX_REPO_COUNT: ${{ matrix.repoCount }}
         run: |
           mkdir -p ./scans ./migrations
-          COHORT_SCOPE="./cohorts/${{ matrix.cohortId }}-scope.json"
-          REPORT_OUTPUT="./scans/cohort-report-${{ matrix.cohortId }}.json"
+          COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
+          REPORT_OUTPUT="./scans/cohort-report-${MATRIX_COHORT_ID}.json"
 
           DRY_RUN_ARG=()
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
             DRY_RUN_ARG=(--dry-run)
           fi
 
           CONT_ARG=()
-          if [ "${{ inputs.continue_on_error }}" = "true" ]; then
+          if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
             CONT_ARG=(--continue-on-error)
           fi
 
           INPUT_ARG=()
-          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
-            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          if [ -n "$INPUT_CACHED_BUNDLE" ] && [ -f "$INPUT_CACHED_BUNDLE" ]; then
+            INPUT_ARG=(--input "$INPUT_CACHED_BUNDLE")
           fi
 
-          echo "Executing migration for cohort ${{ matrix.cohortId }} (${{ matrix.repoCount }} repositories)..."
+          echo "Executing migration for cohort $MATRIX_COHORT_ID ($MATRIX_REPO_COUNT repositories)..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --scope "$COHORT_SCOPE" \
             "${INPUT_ARG[@]}" \
-            --modules "${{ inputs.modules }}" \
+            --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
             "${CONT_ARG[@]}" \
-            --output "$REPORT_OUTPUT" \
-            --source-token "$GHEC_SOURCE_TOKEN" \
-            --target-token "$GHEC_TARGET_TOKEN"
+            --output "$REPORT_OUTPUT"
 
       - name: Upload Cohort Execution Artifacts & Checkpoints
         if: always()
@@ -258,9 +262,7 @@ jobs:
             echo "Running post-migration verification against target enterprise..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --plan ./scans/migration-plan.json \
-              --output ./scans/verification-report.json \
-              --source-token "$GHEC_SOURCE_TOKEN" \
-              --target-token "$GHEC_TARGET_TOKEN" || {
+              --output ./scans/verification-report.json || {
                 echo "Verification reported discrepancies or failed."
               }
           else
@@ -270,13 +272,21 @@ jobs:
       - name: Generate Summary Report
         id: report
         shell: bash
+        env:
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          NEEDS_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count }}
         run: |
           SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
           echo "## 🚀 Migration Wave Execution Summary" >> "$SUMMARY_FILE"
           echo "" >> "$SUMMARY_FILE"
-          echo "- **Scope:** \`${{ inputs.scope }}\`" >> "$SUMMARY_FILE"
-          echo "- **Mode:** ${{ inputs.dry_run == true && '🧪 Dry-Run (Simulation)' || '⚡ Live Migration' }}" >> "$SUMMARY_FILE"
-          echo "- **Cohorts:** ${{ needs.slicer.outputs.cohort_count }}" >> "$SUMMARY_FILE"
+          echo "- **Scope:** \`$INPUT_SCOPE\`" >> "$SUMMARY_FILE"
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            echo "- **Mode:** 🧪 Dry-Run (Simulation)" >> "$SUMMARY_FILE"
+          else
+            echo "- **Mode:** ⚡ Live Migration" >> "$SUMMARY_FILE"
+          fi
+          echo "- **Cohorts:** $NEEDS_COHORT_COUNT" >> "$SUMMARY_FILE"
           echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
           echo "" >> "$SUMMARY_FILE"
 
