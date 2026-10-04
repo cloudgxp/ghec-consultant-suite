@@ -1,6 +1,6 @@
 # Product requirements
 
-Status: specified except for the scaffold and contract foundations listed in the implementation plan.
+Status: implemented and verified with automated tests, air-gapped guarantees, and release gates (live enterprise smoke pending).
 
 ## Personas and outcomes
 
