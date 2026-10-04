@@ -611,3 +611,12 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   application.
 - **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
   test suite).
+
+### [2026-10-04] Task 018 (Webhook Reconciliation)
+
+- **From:** Codex
+- **Behavior:** Matches migrated hooks by URL and event set and patches the
+  transferred hook in place; never creates a duplicate for that match. Optional
+  secret replacement is supplied only by a client-owned provider.
+- **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
+  test suite).

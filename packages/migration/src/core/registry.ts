@@ -157,6 +157,7 @@ import { BranchProtectionReconciliationModule } from '../modules/branch-protecti
 import { TeamsMigrationModule } from '../modules/teams/module.js';
 import { MannequinReclamationEngine } from '../post-migration/mannequins/engine.js';
 import { EnvironmentsMigrationModule } from '../modules/environments/module.js';
+import { WebhooksMigrationModule } from '../modules/webhooks/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -169,6 +170,7 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new OrgSecretsMigrationModule());
   registry.register(new RepoSecretsMigrationModule());
   registry.register(new EnvironmentsMigrationModule());
+  registry.register(new WebhooksMigrationModule());
   registry.register(new RulesetsMigrationModule());
   registry.register(new BranchProtectionReconciliationModule());
   registry.register(new TeamsMigrationModule());
