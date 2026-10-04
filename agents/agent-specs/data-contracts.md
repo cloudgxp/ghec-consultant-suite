@@ -2,7 +2,7 @@
 
 **Specification Status:** Authoritative Architectural Standard  
 **Target:** `@ghec/contracts` Package Schema Evolution  
-**Applicability:** All implementation agents (Antigravity & Codex)
+**Applicability:** All implementation agents (Antigravity)
 
 ---
 

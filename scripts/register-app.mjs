@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { exec, execSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+export function isValidManifestCode(code) {
+  return typeof code === 'string' && /^[a-zA-Z0-9_-]+$/.test(code);
+}
+
+export function buildConversionUrl(code) {
+  if (!isValidManifestCode(code)) {
+    throw new Error('Invalid manifest code format');
+  }
+  return `https://api.github.com/app-manifests/${encodeURIComponent(code)}/conversions`;
+}
 
 const PORT = 3000;
 const INITIAL_ORG =
@@ -11,7 +23,7 @@ const STATE = randomBytes(16).toString('hex');
 // Dynamically determine repository homepage URL from git remote
 let repoHomepage = 'https://github.com';
 try {
-  const remote = execSync('git config --get remote.origin.url', {
+  const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
     encoding: 'utf8',
   }).trim();
   if (remote.startsWith('git@github.com:')) {
@@ -161,9 +173,9 @@ const server = createServer(async (req, res) => {
     const code = url.searchParams.get('code');
     const returnedState = url.searchParams.get('state');
 
-    if (!code || returnedState !== STATE) {
+    if (!code || returnedState !== STATE || !isValidManifestCode(code)) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
-      res.end('Invalid request or state mismatch.');
+      res.end('Invalid request, invalid code format, or state mismatch.');
       return;
     }
 
@@ -171,16 +183,14 @@ const server = createServer(async (req, res) => {
       console.log(
         'Exchanging temporary manifest code for App ID and Private Key...',
       );
-      const response = await fetch(
-        `https://api.github.com/app-manifests/${code}/conversions`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'ghec-consultant-suite-setup',
-          },
+      const conversionUrl = buildConversionUrl(code);
+      const response = await fetch(conversionUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'ghec-consultant-suite-setup',
         },
-      );
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -203,11 +213,13 @@ const server = createServer(async (req, res) => {
         console.log(
           'Configuring repository secrets (GHEC_APP_ID and GHEC_APP_PRIVATE_KEY)...',
         );
-        execSync(`gh secret set GHEC_APP_ID --body "${id}"`, {
-          stdio: 'inherit',
+        execFileSync('gh', ['secret', 'set', 'GHEC_APP_ID'], {
+          input: String(id),
+          stdio: ['pipe', 'inherit', 'inherit'],
         });
-        execSync(`gh secret set GHEC_APP_PRIVATE_KEY --body "${pem}"`, {
-          stdio: 'inherit',
+        execFileSync('gh', ['secret', 'set', 'GHEC_APP_PRIVATE_KEY'], {
+          input: pem,
+          stdio: ['pipe', 'inherit', 'inherit'],
         });
         secretsSaved = true;
         console.log('✔ Repository secrets successfully set!');
@@ -268,26 +280,32 @@ const server = createServer(async (req, res) => {
   res.end('Not Found');
 });
 
-server.listen(PORT, () => {
-  const localUrl = `http://localhost:${PORT}`;
-  console.log(`\n======================================================`);
-  console.log(`🚀 GitHub App Manifest Setup Helper`);
-  if (INITIAL_ORG) {
-    console.log(`Pre-selected Organization: ${INITIAL_ORG}`);
-  }
-  console.log(`Opening setup page in your browser: ${localUrl}`);
-  console.log(`======================================================\n`);
-
-  // Try opening browser automatically
-  const opener =
-    process.platform === 'darwin'
-      ? 'open'
-      : process.platform === 'win32'
-        ? 'start'
-        : 'xdg-open';
-  exec(`${opener} ${localUrl}`, (err) => {
-    if (err) {
-      console.log(`Please open this URL in your browser: ${localUrl}`);
+export function startServer(port = PORT) {
+  return server.listen(port, () => {
+    const localUrl = `http://localhost:${port}`;
+    console.log(`\n======================================================`);
+    console.log(`🚀 GitHub App Manifest Setup Helper`);
+    if (INITIAL_ORG) {
+      console.log(`Pre-selected Organization: ${INITIAL_ORG}`);
     }
+    console.log(`Opening setup page in your browser: ${localUrl}`);
+    console.log(`======================================================\n`);
+
+    // Try opening browser automatically
+    const opener =
+      process.platform === 'darwin'
+        ? 'open'
+        : process.platform === 'win32'
+          ? 'start'
+          : 'xdg-open';
+    execFile(opener, [localUrl], (err) => {
+      if (err) {
+        console.log(`Please open this URL in your browser: ${localUrl}`);
+      }
+    });
   });
-});
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  startServer(PORT);
+}

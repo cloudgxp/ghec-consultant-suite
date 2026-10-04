@@ -1,13 +1,13 @@
-# Shared Agent Changelog
+# Agent Task Changelog
 
-Codex and Antigravity use this append-only log to record material repository
-work, decisions, verification results, and handoffs. This is an engineering
+Antigravity uses this append-only log to record material repository
+work, decisions, verification results, and milestones. This is an engineering
 work log, not a release changelog.
 
 ## Update Rules
 
-1. Add new entries at the top of **Entries**; do not rewrite another agent's
-   entry. Corrections are new entries that reference the corrected date.
+1. Add new entries at the top of **Entries**. Corrections are new entries that
+   reference the corrected date.
 2. Use an ISO date and identify the agent. Include task IDs when applicable.
 3. Record outcomes, not intentions. List material files or areas changed and
    the exact verification command/result.
@@ -30,6 +30,24 @@ work log, not a release changelog.
 ```
 
 ## Entries
+
+### 2026-10-04 — Antigravity — DEPENDABOT-01 & DEPENDABOT-02 — Complete
+
+- Summary: Triaged and remediated all 28 open Dependabot vulnerability alerts in cloudgxp/ghec-consultant-suite:
+  - Task DEPENDABOT-01 (`dompurify`): Remediated 16 open Dependabot alerts (#13, #26–#40; CVE-2025-26791, CVE-2026-65914, CVE-2026-65913, CVE-2026-65912, CVE-2026-65903, CVE-2026-41239, CVE-2026-41240, CVE-2026-49459, CVE-2026-49458, CVE-2026-65902, CVE-2026-65901, CVE-2026-49978, CVE-2026-65899, CVE-2026-65898, CVE-2026-66010, CVE-2026-66009) by resolving and hoisting `dompurify@3.4.16` across `package-lock.json`.
+  - Task DEPENDABOT-02 (`jspdf`): Remediated 12 open Dependabot alerts (#14–#25; CVE-2025-29907, CVE-2025-57810, CVE-2025-68428, CVE-2026-24040, CVE-2026-24043, CVE-2026-24133, CVE-2026-24737, CVE-2026-25535, CVE-2026-25755, CVE-2026-25940, CVE-2026-31898, CVE-2026-31938) by hoisting `jspdf@4.2.1` and `jspdf-autotable@5.0.8` across root and workspace manifests, eliminating legacy `atob`/`btoa` packages, and deduplicating dependencies.
+- Files: `package-lock.json`, `agents/agent-tasks/security/completed/dependabot-01-update-dompurify.md`, `agents/agent-tasks/security/completed/dependabot-02-update-jspdf.md`, `agents/agent-tasks/security/README.md`, `agents/agent-tasks/CURRENT-TASKS.md`, `agents/agent-tasks/CHANGELOG.md`.
+- Verification: `npm audit` reporting 0 vulnerabilities; `node --import tsx --test apps/dashboard/tests/export-pdf.test.ts` passing 2/2; full repository check `npm run check` passing 339/339 tests across 51 test suites green (100% pass), with ESLint, Prettier, TypeScript, styles check, and bundle size budget checks clean.
+- Follow-up: None. All open Dependabot vulnerabilities are remediated.
+
+### 2026-10-04 — Antigravity & Codex — TASK-028 & TASK-029 — Complete
+
+- Summary: Completed the final two migration expansion tasks:
+  - Task 028 (CODEOWNERS & Team References Repair Module): Implemented file scanner, team token rewriter, git direct commit and PR branch fallback, and lifecycle module `CodeownersRepairModule`.
+  - Task 029 (GHAS & Security Remediation Reconciliation Strategy): Implemented `GhasSecurityMigrationModule`, feature flag diffing with GHAS license checks, secret scanning alert remediation matching and patching, and optional SARIF code scanning uploads with structured fidelity audit reporting.
+- Files: `packages/migration/src/post-migration/codeowners/**`, `packages/migration/src/post-migration/security/**`, `packages/migration/src/checkpoint/types.ts`, `packages/migration/src/checkpoint/manager.ts`, `packages/migration/src/orchestrator/pipeline.ts`, `packages/migration/src/core/registry.ts`, `packages/migration/src/index.ts`, `packages/migration/tests/post-migration/codeowners.test.ts`, `packages/migration/tests/post-migration/security.test.ts`, `agents/agent-tasks/security/completed/028-codeowners-and-team-references-repair.md`, `agents/agent-tasks/security/completed/029-ghas-and-security-remediation-sync.md`, `agents/agent-tasks/CURRENT-TASKS.md`, `agents/agent-tasks/README.md`.
+- Verification: Full monorepo quality check `npm run check` passing 326/326 tests across 51 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+- Follow-up: All 30 Migration Expansion tasks (001–030) are now complete.
 
 ### 2026-10-04 — Antigravity — RELEASE-LIVE-SMOKE & P1-SHARED — Complete
 

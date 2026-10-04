@@ -357,3 +357,310 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/modules/environments.test.ts` (8 tests) and module documentation in `README.md`.
 - **Tests:** `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
 - **Follow-Up:** Unblocks Task 016 (`org-variables` and `org-secrets`), Task 018 (`webhooks`), Task 019 (`step-summary`), Task 025 (repo visibility/settings), and Task 026 (custom properties).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 021 Production GitHub Actions Workflow Templates & CI/CD Integration
+- **Changes:**
+  - Implemented reusable composite action `action.yml` automating Node 22 runtime setup, GitHub CLI verification, `gh-gei` extension installation, dependency caching, monorepo compilation, and mapped CLI command invocation.
+  - Implemented `.github/workflows/migration-plan-pr.yml` running automated pre-migration diffing on PRs modifying `scopes/**.json`, uploading plan artifacts and commenting summaries on PRs.
+  - Implemented `.github/workflows/migration-execute-wave.yml` orchestrating 3-stage parallel matrix migration waves (`slicer` partitioning, parallel matrix worker execution with `production-migration` environment approval gate, and fan-in aggregation/verification reporting to `$GITHUB_STEP_SUMMARY`).
+  - Implemented `.github/workflows/migration-resume.yml` enabling automated resumption from checkpoint manifests for interrupted runs.
+  - Authored comprehensive enterprise operator runbook in `docs/guides/github-actions-migration.md` covering architecture diagrams, self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover playbook.
+- **Tests:** Validated workflow YAML syntax; `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity & Codex
+
+- **Task:** 019 GitHub Actions Structured Output & Step Summary Generator
+- **Changes:**
+  - Implemented `packages/migration/src/reporting/` containing:
+    - `types.ts`: `MigrationRunSummary`, `StepSummaryOptions`, and stage-by-stage summary interfaces for Preflight, CoreTransfer, Rehydration, PostMigration, and Verification.
+    - `step-summary.ts`: Markdown formatting with status badges, summary metadata tables, per-stage operation counts, expandable detail blocks (`<details><summary>`), formula injection sanitization (`sanitizeFormula`), and atomic appending to `$GITHUB_STEP_SUMMARY`.
+    - `summary-reporter.ts`: Extraction helpers `buildSummaryFromExecutionReport` and `buildSummaryFromVerification`, plus JSON reader/writer (`writeJsonSummaryFile`, `readJsonSummaryFile`).
+    - `index.ts`: Exported reporting utilities through `@ghec/migration`.
+  - Updated `apps/cli/src/commands/migrate.ts` and `apps/cli/src/commands/verify.ts` with `--json-summary <path>` options and automated `$GITHUB_STEP_SUMMARY` markdown reporting.
+  - Added unit test suite `packages/migration/tests/reporting/summary.test.ts` with 9 unit tests covering formula escaping, markdown formatting, summary building, and file I/O.
+- **Tests:** `npm run check` passed 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity & Codex
+
+- **Task:** 025 Repository Visibility & PR Settings Reconciliation Module
+- **Changes:**
+  - Implemented `RepoSettingsMigrationModule` under `packages/migration/src/modules/repo-settings/`:
+    - `types.ts`: typed models for `RepositoryVisibility`, `RepositoryPullRequestSettings`, `RepoSettingsData`, `RepoSettingsModuleOptions`, and raw GitHub response mappings.
+    - `visibility.ts`: helpers for normalizing API visibility, evaluating desired visibility, and handling enterprise policy fallback.
+    - `pr-settings.ts`: parsing PR settings and diffing configuration to emit granular change descriptions and patch payloads.
+    - `module.ts`: 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) reconciling visibility from GEI default `private` back to `internal`/`public` and restoring custom squash/merge commit message templates and merge strategy toggles (DEC-015).
+    - Implemented graceful enterprise policy handling: intercepts HTTP 422 policy violations (e.g. EMU enterprises prohibiting public repos), automatically attempting fallback to `internal` visibility with structured warnings without failing execution.
+    - `index.ts` & `README.md`: exported types, module, and detailed documentation.
+  - Registered `RepoSettingsMigrationModule` in `createDefaultModuleRegistry()` with dependency on `gei-repo`.
+  - Exported `repo-settings` module and types from `@ghec/migration`.
+  - Added unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, diffing, live and cached discovery, planning, mutation, dry-run, policy fallback, and verification.
+- **Tests:** `npm run check` passed 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 026 Custom Properties Migration Modules
+- **Changes:**
+  - Implemented `OrgCustomPropertiesMigrationModule` (`org-custom-properties`) under `packages/migration/src/modules/org-custom-properties/`:
+    - Discovers organization property definitions via `GET /orgs/{org}/properties/schema`.
+    - Diffs definitions against target organization schemas, generating `create`, `update`, and `noop` operations.
+    - Creates or updates custom property definitions on target organization via `PUT /orgs/{targetOrg}/properties/schema`.
+    - Verifies custom property schema synchronization between source and target organizations.
+  - Implemented `RepoCustomPropertiesMigrationModule` (`repo-custom-properties`) under `packages/migration/src/modules/repo-custom-properties/`:
+    - Discovers custom property values on source repositories via `GET /repos/{owner}/{repo}/properties/values`.
+    - Compares values with target repository custom properties, planning batched assignment payloads.
+    - Assigns property values on target repositories via `PATCH /orgs/{targetOrg}/properties/values`.
+    - Verifies custom property values on target repositories match plan.
+  - Added defensive `try/catch` boundaries around target client reads (`readSingle`) for uninitialized target org schemas or repositories.
+  - Exported both modules from `@ghec/migration` and registered both in `createDefaultModuleRegistry()` with `repo-custom-properties` dependent on `gei-repo` and `org-custom-properties`.
+  - Added module documentation in `packages/migration/src/modules/org-custom-properties/README.md` and `packages/migration/src/modules/repo-custom-properties/README.md`.
+  - Added unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
+- **Tests:** `npm run check` passed all tests green, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 018 & 026 REST Contract Hardening & Reconciliation Fixes
+- **Changes:**
+  - **Task 018 (Webhooks):**
+    - Hardened `discover()` and `plan()` to seamlessly parse both direct JSON array responses (`RawWebhook[]`) returned by GitHub REST APIs and wrapped `{ hooks: [...] }` envelopes.
+    - Added required `"name": "web"` parameter to `webhookPayload` for `POST` webhook creation operations, preventing GitHub HTTP 422 errors.
+    - Improved `plan()` diffing logic to trigger `update` when cryptographic secret tokens need rehydration or when SSL/content-type configuration changes.
+    - Expanded `packages/migration/tests/modules/webhooks.test.ts` to 5 tests covering array responses, create with `"name": "web"`, secret warnings, and verification discrepancy detection.
+    - Marked `agents/agent-tasks/features/completed/018-webhooks-migration-module.md` as `complete`.
+  - **Task 026 (Custom Properties):**
+    - Hardened `OrgCustomPropertiesMigrationModule` to support direct array schemas (`RawCustomPropertyDefinition[]`) from `GET /orgs/{org}/properties/schema`.
+    - Corrected org custom property schema mutation endpoint to `PUT /orgs/{org}/properties/schema/{custom_property_name}` and mapped body payload to snake_case (`value_type`, `required`, `default_value`, `description`, `allowed_values`).
+    - Hardened `RepoCustomPropertiesMigrationModule` to support direct array values (`RawRepositoryCustomPropertyValue[]`) from `GET /repos/{owner}/{repo}/properties/values`.
+    - Expanded `packages/migration/tests/modules/custom-properties.test.ts` to 11 tests verifying direct array support, endpoint pathing, and snake_case request bodies.
+- **Tests:** `npm run check` passed 317/317 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 028 CODEOWNERS & Team References Repair Module
+- **Changes:**
+  - Implemented `CodeownersRepairModule` (`id = 'post-migration-codeowners'`) in `packages/migration/src/post-migration/codeowners/module.ts`.
+  - Implemented static candidate path scanner (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories scanner (`.github/ISSUE_TEMPLATE`, `.github/workflows`) in `scanner.ts`.
+  - Implemented team reference token rewriter (`@source-org/team-slug` to `@target-org/mapped-team`) using `teamSlugMap` from Task 017 in `rewriter.ts`.
+  - Implemented automated commit handler with direct branch commit and protected branch fallback to PR creation (`migration/repair-team-references`) in `git-committer.ts`.
+  - Integrated into Stage 6 of `RepositoryMigrationPipeline` and registered in `createDefaultModuleRegistry()`.
+  - Exported module, scanner, rewriter, and git-committer from `@ghec/migration`.
+  - Added dedicated unit test suite in `packages/migration/tests/post-migration/codeowners.test.ts` (6 tests).
+- **Tests:** `npm run check` passed all tests green.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 029 GHAS & Security Remediation Reconciliation Strategy
+- **Changes:**
+  - Implemented `GhasSecurityMigrationModule` (`id = 'security'`) in `packages/migration/src/post-migration/security/module.ts`.
+  - Implemented `diffSecuritySettings` and `fetchRepositorySecuritySettings` in `ghas-config.ts` evaluating and generating idempotent `PATCH /repos/{owner}/{repo}` payloads with `security_and_analysis`, and enforcing GHAS enterprise license availability checks.
+  - Implemented `fetchSecretScanningAlerts` and `matchAlertRemediations` in `secret-scanning-sync.ts` matching open target alerts to source resolved alerts and patching resolutions with origin comments while documenting PAT actor attribution limitations (`SECRET_SCANNING_LIMITATION_NOTICE`).
+  - Implemented optional code scanning SARIF synchronization in `sarif-sync.ts` with upload payload construction and limitation documentation (`SARIF_LIMITATION_NOTICE`).
+  - Implemented `generateFidelityReport` producing structured `GhasFidelityReport` for audit compliance.
+  - Extended `PostMigrationTaskId` in `packages/migration/src/checkpoint/types.ts` and allowed stage keys in `manager.ts` to support `'security'`.
+  - Integrated with Stage 6 of `RepositoryMigrationPipeline` and `createDefaultModuleRegistry()`.
+  - Exported module, reconcilers, and types from `@ghec/migration`.
+  - Added dedicated unit test suite in `packages/migration/tests/post-migration/security.test.ts` (3 tests).
+- **Tests:** `npm run check` passed 326/326 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Security Remediation Planning Pass
+- **Scope & Findings:**
+  - Audited all 50 open CodeQL code-scanning alerts via GitHub CLI (`gh api --paginate repos/cloudgxp/ghec-consultant-suite/code-scanning/alerts`).
+  - Represented 10 distinct CodeQL rules across Actions, JavaScript, and TypeScript.
+  - Synthesized findings into 10 implementation-ready remediation tasks under `agents/agent-tasks/security/` (symlinked via `agent-tasks/antigravity/`).
+  - Grouped duplicate and co-located root causes:
+    - 3 alerts resolved by shell-free `execFileSync` stdin piping and SSRF validation in `scripts/register-app.mjs` (`codeql-01-fix-app-registration-command-injection-ssrf.md`).
+    - 24 alerts resolved by composite action input env mapping in `action.yml` (`codeql-02-fix-action-runner-code-injection.md`).
+    - 5 alerts resolved by reusable token workflow output mapping in `reusable-ghec-token.yml` (`codeql-03-fix-reusable-token-workflow-injection.md`).
+    - 7 alerts resolved by secure `fs.mkdtemp` allocation across advisory and mannequins engines (`codeql-04-secure-temporary-file-creation.md`).
+    - 2 alerts resolved by `--` positional delimiter and input validation in Git LFS client (`codeql-05-prevent-git-lfs-command-injection.md`).
+    - 4 alerts resolved by fixing polynomial ReDoS in secret regexes and URL trimming (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`).
+    - 1 alert resolved by pinning external reusable workflow commit SHA (`codeql-07-pin-reusable-workflow-commit-sha.md`).
+    - 2 alerts evaluated as dedicated web worker false positives and addressed via origin guards (`codeql-08-harden-web-worker-message-origins.md`).
+    - 1 alert resolved by fixing `.replace('Z', 'Z')` in bundle publisher (`codeql-09-fix-timestamp-identity-replacement.md`).
+    - 1 alert resolved by replacing unanchored test regex with `.includes()` (`codeql-10-fix-permissions-test-regex-anchor.md`).
+  - Identified 7 additional unflagged instances of shell expression interpolation and temporary file creation.
+  - Published comprehensive remediation plan at `agents/agent-tasks/security/CODEQL-REMEDIATION-PLAN.md` and updated `CURRENT-TASKS.md` and `agents/agent-tasks/security/README.md`.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 01: Fix App Registration Command Injection and SSRF (`codeql-01-fix-app-registration-command-injection-ssrf.md`)
+- **Changes:**
+  - Validated incoming `code` parameter against `/^[a-zA-Z0-9_-]+$/` and URL-encoded in GitHub App conversion URL in `scripts/register-app.mjs`.
+  - Replaced `execSync` and `exec` with `execFileSync` and `execFile`, eliminating shell execution.
+  - Piped `GHEC_APP_ID` and `GHEC_APP_PRIVATE_KEY` directly via `stdin` (`input` option) into `gh secret set`, removing sensitive credentials from command-line arguments and `ps aux`.
+  - Exported `isValidManifestCode` and `buildConversionUrl` from `scripts/register-app.mjs`.
+  - Added unit test suite `apps/cli/tests/register-app.test.ts` verifying positive and negative validation cases.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `apps/cli/tests/register-app.test.ts` (4/4 passed). Root `npm run check` green. Resolves CodeQL alerts #9, #10, and #11.
+- **Follow-Up:** Proceed to Task 02 (`codeql-02-fix-action-runner-code-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 02: Remediate GitHub Actions Code Injection in Composite Action Runner (`codeql-02-fix-action-runner-code-injection.md`)
+- **Changes:**
+  - Exported all composite action inputs through the step's `env:` block (`INPUT_COMMAND`, `INPUT_SCOPE`, `INPUT_PLAN`, etc.) in `action.yml`.
+  - Replaced all `${{ inputs.* }}` expressions inside bash script text blocks with native bash variable expansions (`"$INPUT_SCOPE"`, etc.).
+  - Removed command-line exposure of `--source-token` and `--target-token` and scrubbed argument logging (`node ./apps/cli/bin/ghec-consultant-cli.mjs $CMD`), relying safely on `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` environment variables.
+  - Hardened workflows `.github/workflows/enterprise-multi-org-scan.yml`, `.github/workflows/migration-execute-wave.yml`, and `.github/workflows/migration-plan-pr.yml` against similar unflagged shell expression interpolations.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Prettier check on all workflows and action.yml clean. Resolves CodeQL alerts #28 through #51 (24 alerts).
+- **Follow-Up:** Proceed to Task 03 (`codeql-03-fix-reusable-token-workflow-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 03: Remediate GitHub Actions Code Injection in Token Minting Workflow (`codeql-03-fix-reusable-token-workflow-injection.md`)
+- **Changes:**
+  - Removed bash script step (`token-gen`) completely from `.github/workflows/reusable-ghec-token.yml`.
+  - Resolved job outputs directly via GitHub Actions expressions (`${{ steps.ent-token.outputs.token || steps.org-token.outputs.token }}` and `${{ steps.ent-token.outputs.installation-id || steps.org-token.outputs.installation-id }}`).
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Prettier check clean on workflow file. Resolves CodeQL alerts #2 through #6 (5 alerts).
+- **Follow-Up:** Proceed to Task 04 (`codeql-04-secure-temporary-file-creation.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 04: Secure Temporary File and Directory Creation (`codeql-04-secure-temporary-file-creation.md`)
+- **Changes:**
+  - Replaced predictable `Date.now()` filenames and direct `os.tmpdir()` path joins in `packages/migration/src/post-migration/mannequins/engine.ts` with `fs.mkdtemp` (0700 permissions) and guaranteed `finally` teardown.
+  - Hardened file writing permissions to `0o600` for generated CSVs and advisory report artifacts.
+  - Updated `packages/migration/src/advisory/planner.ts` to enforce `0o700` permissions on created directories and `0o600` on generated files.
+  - Replaced insecure temporary directory and file creation in `packages/migration/tests/advisory/planner.test.ts` and `packages/migration/tests/planner.test.ts` with `mkdtempSync` and recursive teardown.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `packages/migration/tests/post-migration/mannequins.test.ts`, `packages/migration/tests/advisory/planner.test.ts`, and `packages/migration/tests/planner.test.ts` (25/25 passed). Resolves CodeQL alerts #21 through #27 (7 alerts).
+- **Follow-Up:** Proceed to Task 05 (`codeql-05-prevent-git-lfs-command-injection.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 05: Prevent Command Injection in Git LFS Client (`codeql-05-prevent-git-lfs-command-injection.md`)
+- **Changes:**
+  - Added strict parameter validators `validateGitHubIdentifier` and `validateStagingDirectory` in `packages/migration/src/strategies/git-lfs/lfs-client.ts`, rejecting options starting with `-` or `.`.
+  - Added standard `--` end-of-options delimiters before positional operands in `git clone --mirror` and `git remote set-url`.
+  - Added security unit tests in `packages/migration/tests/git-lfs.test.ts` verifying parameter validation and `--` delimiter generation.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** `packages/migration/tests/git-lfs.test.ts` (4/4 passed). Resolves CodeQL alerts #19 and #20 (2 alerts).
+- **Follow-Up:** Proceed to Task 06 (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 06: Fix Polynomial ReDoS in Secret Redaction and Diagnostic Helpers (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`)
+- **Changes:**
+  - Added negative lookahead `(?:(?!-----BEGIN)[\s\S])*?` to private key regular expressions in `packages/discovery/src/output/sanitizer.ts` and `packages/github-client/src/diagnostics.ts` to prevent polynomial backtracking on repeated PEM headers.
+  - Added orphaned header redaction `/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/g` in `packages/github-client/src/diagnostics.ts`.
+  - Replaced trailing slash removal regex `replace(/\/+$/, '')` in `packages/migration/src/client/http-target-write-client.ts` with linear string trimming loop (`while (base.endsWith('/')) { base = base.slice(0, -1); }`).
+  - Added ReDoS resilience benchmark tests in `apps/cli/tests/publisher.test.ts` and `apps/cli/tests/auth.test.ts` verifying pathological inputs execute in < 100ms.
+  - Added trailing slash normalization test in `packages/migration/tests/orchestrator.test.ts`.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Monorepo test suite passed (338/338 tests). Resolves CodeQL alerts #14, #15, #16, and #17 (4 alerts).
+- **Follow-Up:** Proceed to Task 07 (`codeql-07-pin-reusable-workflow-commit-sha.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 07: Pin Reusable Workflow Reference to Immutable Commit SHA (`codeql-07-pin-reusable-workflow-commit-sha.md`)
+- **Changes:**
+  - Pinned external reusable workflow call in `.github/workflows/combine-dependabot-prs.yml` to full 40-character commit SHA (`dfd8341503b978f86fa0e5d7f39e27c4efba692e # main`), eliminating mutable `@main` reference.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** YAML syntax validated with prettier. Resolves CodeQL alert #1 (`actions/unpinned-tag`).
+- **Follow-Up:** Proceed to Task 08 (`codeql-08-harden-web-worker-message-origins.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 08: Harden Web Worker Message Verification and Address Origin Checks (`codeql-08-harden-web-worker-message-origins.md`)
+- **Changes:**
+  - Added defensive origin check `if (event.origin && event.origin !== self.location.origin) return;` to both dedicated workers (`apps/dashboard/src/lib/dependency-map.worker.ts` and `apps/dashboard/src/lib/importer.worker.ts`).
+  - Added strict payload structure and type validation before executing worker business logic.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Dashboard tests and production bundle build passed with zero style or bundle budget violations. Resolves CodeQL alerts #12 and #13 (`js/missing-origin-check`).
+- **Follow-Up:** Proceed to Task 09 (`codeql-09-fix-timestamp-identity-replacement.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 09: Fix Timestamp Identity Replacement in Bundle Publisher (`codeql-09-fix-timestamp-identity-replacement.md`)
+- **Changes:**
+  - Replaced dead identity replacement `.replace('Z', 'Z')` with `.replace(/Z$/i, '')` in `packages/discovery/src/output/publisher.ts`.
+  - Added unit test in `apps/cli/tests/publisher.test.ts` verifying filename timestamp formatting with and without fractional seconds.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Publisher unit tests passed (339/339 monorepo tests). Resolves CodeQL alert #18 (`js/identity-replacement`).
+- **Follow-Up:** Proceed to Task 10 (`codeql-10-fix-permissions-test-regex-anchor.md`).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 10: Fix Missing Regexp Anchor and URL Sanitization in Permissions Test Assertion (`codeql-10-fix-permissions-test-regex-anchor.md`)
+- **Changes:**
+  - Replaced unanchored URL regex assertion `assert.match(report, /https:\/\/github\.com\/orgs\/acme-corp\/sso/)` and direct URL substring search with line extraction (`report.split('\n').find((l) => l.includes('SSO Authorization URL'))`) and exact equality assertion `assert.equal(ssoLine.trim(), '↳ SSO Authorization URL: ' + res.ssoUrl)` in `apps/cli/tests/permissions.test.ts`.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Permissions unit tests passed (8/8 tests). Monorepo test suite passed (339/339 tests). Resolves CodeQL alert #8 (`js/regex/missing-regexp-anchor`) and eliminates `js/incomplete-url-substring-sanitization`.
+- **Follow-Up:** Push changes to branch `fixes/security` and verify CodeQL PR checks pass on PR #30.

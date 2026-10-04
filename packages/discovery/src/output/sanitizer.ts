@@ -11,7 +11,7 @@ export const SECRET_PATTERNS: readonly RegExp[] = [
   /ghs_[A-Za-z0-9_]{36,}/g,
   /ghu_[A-Za-z0-9_]{36,}/g,
   // Private keys (RSA, OpenSSH, EC, DSA, PKCS8)
-  /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z]+ )?PRIVATE KEY-----/g,
+  /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----(?:(?!-----BEGIN)[\s\S])*?-----END (?:[A-Z]+ )?PRIVATE KEY-----/g,
   /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/g,
   // Webhook secrets and authorization headers
   /(?:bearer\s+|authorization:\s*(?:bearer\s*)?)[A-Za-z0-9_.-]{20,}/gi,

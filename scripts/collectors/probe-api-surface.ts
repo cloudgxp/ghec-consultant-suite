@@ -838,45 +838,47 @@ export async function runApiSurfaceProbe(
       '/orgs/{org}/security-managers',
     ];
 
-    for (const ep of testEndpoints) {
-      const resolvedUrl = `https://api.github.com${ep.replace('{org}', opts.org)}`;
-      try {
-        const res = await fetch(resolvedUrl, {
-          method: 'HEAD',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'User-Agent': 'ghec-consultant-suite-probe/1.0',
-            Accept: 'application/vnd.github+json',
-          },
-        });
-        const remaining = Number(
-          res.headers.get('x-ratelimit-remaining') || '-1',
-        );
-        const cType = res.headers.get('content-type') || 'unknown';
-        console.log(
-          `  Live HEAD ${resolvedUrl} -> HTTP ${res.status} (remaining quota: ${remaining})`,
-        );
+    await Promise.all(
+      testEndpoints.map(async (ep) => {
+        const resolvedUrl = `https://api.github.com${ep.replace('{org}', opts.org)}`;
+        try {
+          const res = await fetch(resolvedUrl, {
+            method: 'HEAD',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'User-Agent': 'ghec-consultant-suite-probe/1.0',
+              Accept: 'application/vnd.github+json',
+            },
+          });
+          const remaining = Number(
+            res.headers.get('x-ratelimit-remaining') || '-1',
+          );
+          const cType = res.headers.get('content-type') || 'unknown';
+          console.log(
+            `  Live HEAD ${resolvedUrl} -> HTTP ${res.status} (remaining quota: ${remaining})`,
+          );
 
-        const matchedDetail = driftDetails.find((d) => d.path === ep);
-        if (matchedDetail) {
-          matchedDetail.liveProbe = {
-            httpStatus: res.status,
-            contentType: cType,
-            rateLimitRemaining: remaining,
-            verdict:
-              res.status === 200
-                ? 'verified'
-                : res.status === 403
-                  ? 'permission-denied'
-                  : res.status === 404
-                    ? 'not-found'
-                    : 'other',
-          };
+          const matchedDetail = driftDetails.find((d) => d.path === ep);
+          if (matchedDetail) {
+            matchedDetail.liveProbe = {
+              httpStatus: res.status,
+              contentType: cType,
+              rateLimitRemaining: remaining,
+              verdict:
+                res.status === 200
+                  ? 'verified'
+                  : res.status === 403
+                    ? 'permission-denied'
+                    : res.status === 404
+                      ? 'not-found'
+                      : 'other',
+            };
+          }
+        } catch (liveErr) {
+          console.warn(`  Live request error on ${resolvedUrl}:`, liveErr);
         }
-      } catch (liveErr) {
-        console.warn(`  Live request error on ${resolvedUrl}:`, liveErr);
-      }
-    }
+      }),
+    );
   } else {
     console.log(
       '\n[3/3] Live Probe skipped (run with --live to probe live target)',
