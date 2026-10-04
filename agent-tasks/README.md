@@ -40,9 +40,9 @@ GitHub REST endpoints often require $O(N)$ HTTP calls (e.g., one call per reposi
 
 ### Current Disposition Summary
 
-- **CLI-1 through CLI-10 are complete.** Offline, mock, schema-drift, and
-  scale verification pass across all 60 CLI tests; deferred work consists of
-  live enterprise read-only smoke validation against credentialed resources.
+- **CLI-1 through CLI-10 are complete.** Offline, mock, schema-drift,
+  scale verification pass across all 60 CLI tests, and live enterprise
+  read-only smoke validation against `cloudgxp` is complete and verified.
 - **DASH-1 through DASH-5 and DASH-11 through DASH-20 are complete.** The
   entire dashboard suite passes root unit and integration tests (116 total),
   production build with bundle budget enforcement, 11 Playwright e2e/a11y tests
