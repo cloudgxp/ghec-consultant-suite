@@ -1,4 +1,11 @@
-import { StrictMode, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  StrictMode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider, BaseStyles } from '@primer/react';
 import type { DiscoveryBundle } from '@ghec/contracts';
@@ -11,28 +18,90 @@ import './styles/index.css';
 
 import { AppShell } from './components/AppShell.js';
 import { SettingsDrawer } from './components/SettingsDrawer.js';
-import { DesignSystemPreview } from './components/DesignSystemPreview.js';
 import {
   GlobalSearchModal,
   type GlobalSearchSelection,
 } from './components/GlobalSearchModal.js';
 import { FileUpload } from './components/FileUpload.js';
-import { OverviewTab } from './features/OverviewTab.js';
-import { MigrationReadinessTab } from './features/MigrationReadinessTab.js';
-import { RepositoriesTab } from './features/RepositoriesTab.js';
-import { PackagesTab } from './features/PackagesTab.js';
-import { ReleasesAndAssetsTab } from './features/ReleasesAndAssetsTab.js';
-import { ActionsTab } from './features/ActionsTab.js';
-import { SecretsAndVariablesTab } from './features/SecretsAndVariablesTab.js';
-import { CodeOwnershipTab } from './features/CodeOwnershipTab.js';
-import { ProjectsTab } from './features/ProjectsTab.js';
-import { PortfolioTab } from './features/PortfolioTab.js';
-import { DependencyMapTab } from './features/DependencyMapTab.js';
-import { SecurityAndPoliciesTab } from './features/SecurityAndPoliciesTab.js';
-import { VirtualizedTeamsAndIdentitiesTab } from './features/VirtualizedTeamsAndIdentitiesTab.js';
-import { CollectorHealthTab } from './features/CollectorHealthTab.js';
-import { ExportCenterTab } from './features/ExportCenterTab.js';
-import { RemediationTrackerTab } from './features/RemediationTrackerTab.js';
+import { LoadingState } from './components/ui/index.js';
+
+const OverviewTab = lazy(() =>
+  import('./features/OverviewTab.js').then((m) => ({ default: m.OverviewTab })),
+);
+const MigrationReadinessTab = lazy(() =>
+  import('./features/MigrationReadinessTab.js').then((m) => ({
+    default: m.MigrationReadinessTab,
+  })),
+);
+const RepositoriesTab = lazy(() =>
+  import('./features/RepositoriesTab.js').then((m) => ({
+    default: m.RepositoriesTab,
+  })),
+);
+const PackagesTab = lazy(() =>
+  import('./features/PackagesTab.js').then((m) => ({ default: m.PackagesTab })),
+);
+const ReleasesAndAssetsTab = lazy(() =>
+  import('./features/ReleasesAndAssetsTab.js').then((m) => ({
+    default: m.ReleasesAndAssetsTab,
+  })),
+);
+const ActionsTab = lazy(() =>
+  import('./features/ActionsTab.js').then((m) => ({ default: m.ActionsTab })),
+);
+const SecretsAndVariablesTab = lazy(() =>
+  import('./features/SecretsAndVariablesTab.js').then((m) => ({
+    default: m.SecretsAndVariablesTab,
+  })),
+);
+const CodeOwnershipTab = lazy(() =>
+  import('./features/CodeOwnershipTab.js').then((m) => ({
+    default: m.CodeOwnershipTab,
+  })),
+);
+const ProjectsTab = lazy(() =>
+  import('./features/ProjectsTab.js').then((m) => ({ default: m.ProjectsTab })),
+);
+const PortfolioTab = lazy(() =>
+  import('./features/PortfolioTab.js').then((m) => ({
+    default: m.PortfolioTab,
+  })),
+);
+const DependencyMapTab = lazy(() =>
+  import('./features/DependencyMapTab.js').then((m) => ({
+    default: m.DependencyMapTab,
+  })),
+);
+const SecurityAndPoliciesTab = lazy(() =>
+  import('./features/SecurityAndPoliciesTab.js').then((m) => ({
+    default: m.SecurityAndPoliciesTab,
+  })),
+);
+const VirtualizedTeamsAndIdentitiesTab = lazy(() =>
+  import('./features/VirtualizedTeamsAndIdentitiesTab.js').then((m) => ({
+    default: m.VirtualizedTeamsAndIdentitiesTab,
+  })),
+);
+const CollectorHealthTab = lazy(() =>
+  import('./features/CollectorHealthTab.js').then((m) => ({
+    default: m.CollectorHealthTab,
+  })),
+);
+const ExportCenterTab = lazy(() =>
+  import('./features/ExportCenterTab.js').then((m) => ({
+    default: m.ExportCenterTab,
+  })),
+);
+const RemediationTrackerTab = lazy(() =>
+  import('./features/RemediationTrackerTab.js').then((m) => ({
+    default: m.RemediationTrackerTab,
+  })),
+);
+const DesignSystemPreview = lazy(() =>
+  import('./components/DesignSystemPreview.js').then((m) => ({
+    default: m.DesignSystemPreview,
+  })),
+);
 import type { ImportResult } from './lib/importer.js';
 import { diffScans, scopesMatch } from './lib/diff-engine.js';
 import { isDashboardView, type DashboardView } from './navigation.js';
@@ -159,7 +228,16 @@ export function App() {
           />
         </div>
       ) : (
-        <div>
+        <Suspense
+          fallback={
+            <div className="p-8">
+              <LoadingState
+                title="Loading View"
+                message="Retrieving and rendering assessment data..."
+              />
+            </div>
+          }
+        >
           {activeTab === 'overview' && (
             <OverviewTab
               bundle={bundle}
@@ -239,7 +317,7 @@ export function App() {
           {activeTab === 'remediation' && remediationDiff && (
             <RemediationTrackerTab diff={remediationDiff} />
           )}
-        </div>
+        </Suspense>
       )}
     </AppShell>
   );
@@ -267,7 +345,18 @@ export function Root() {
       <BaseStyles className="min-h-screen">
         {import.meta.env.DEV &&
         window.location.pathname === '/__design-system' ? (
-          <DesignSystemPreview />
+          <Suspense
+            fallback={
+              <div className="p-8">
+                <LoadingState
+                  title="Loading Design System"
+                  message="Rendering Primer design system components..."
+                />
+              </div>
+            }
+          >
+            <DesignSystemPreview />
+          </Suspense>
         ) : (
           <App />
         )}

@@ -147,19 +147,18 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     }),
     [graph, selectedOrgIds, confidence],
   );
-  const ids = new Set(scoped.nodes.map((n) => n.id));
-  const filteredGraph = useMemo(
-    () => ({
+  const filteredGraph = useMemo(() => {
+    const ids = new Set(scoped.nodes.map((n) => n.id));
+    return {
       nodes: scoped.nodes,
       edges: scoped.edges.filter(
         (e) => ids.has(e.fromNodeId) && ids.has(e.toNodeId),
       ),
-    }),
-    [scoped],
-  );
+    };
+  }, [scoped]);
   const localInsights = useMemo(
     () => dependencyInsights(filteredGraph),
-    [filteredGraph.nodes, filteredGraph.edges],
+    [filteredGraph],
   );
   const [prevInsightsGraph, setPrevInsightsGraph] = useState(filteredGraph);
   const [workerInsights, setWorkerInsights] = useState<ReturnType<

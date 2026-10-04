@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import {
   Button,
@@ -116,31 +116,34 @@ export function ActionsTab({ bundle, selectedOrgIds }: Props) {
     window.addEventListener('ghec:focus-entity', focus);
     return () => window.removeEventListener('ghec:focus-entity', focus);
   }, []);
-  const inScope = (organizationId: string) =>
-    selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId);
+  const inScope = useCallback(
+    (organizationId: string) =>
+      selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId),
+    [selectedOrgIds],
+  );
   const workflows = useMemo(
     () =>
       workflowInventory(bundle).filter((item) => inScope(item.organizationId)),
-    [bundle, selectedOrgIds],
+    [bundle, inScope],
   );
   const runners = useMemo(
     () =>
       runnersInventory(bundle).filter((item) => inScope(item.organizationId)),
-    [bundle, selectedOrgIds],
+    [bundle, inScope],
   );
   const operations = useMemo(
     () =>
       operationsInventory(bundle).filter((item) =>
         inScope(item.organizationId),
       ),
-    [bundle, selectedOrgIds],
+    [bundle, inScope],
   );
   const policies = useMemo(
     () =>
       environmentPolicyInventory(bundle).filter((item) =>
         inScope(item.organizationId),
       ),
-    [bundle, selectedOrgIds],
+    [bundle, inScope],
   );
   const summaries = bundle.entities.filter(
     (
