@@ -43,7 +43,7 @@ This directory contains the engineering task specifications for the **GHEC Consu
 | **027** | Mannequin Reclamation & Attribution Engine                | Antigravity | `not-started` |   005, 006, 014, 017    | [`antigravity/027-mannequin-reclamation-engine.md`](antigravity/027-mannequin-reclamation-engine.md)                             |
 | **028** | CODEOWNERS & Team References Repair Module                |    Codex    | `not-started` |        005, 017         | [`codex/028-codeowners-and-team-references-repair.md`](codex/028-codeowners-and-team-references-repair.md)                       |
 | **029** | GHAS & Security Remediation Reconciliation Strategy       |    Codex    | `not-started` |      005, 008, 022      | [`codex/029-ghas-and-security-remediation-sync.md`](codex/029-ghas-and-security-remediation-sync.md)                             |
-| **030** | External Integrations & Migration Advisory Planner        | Antigravity | `not-started` |        003, 005         | [`antigravity/030-external-integrations-and-advisory-planner.md`](antigravity/030-external-integrations-and-advisory-planner.md) |
+| **030** | External Integrations & Migration Advisory Planner        | Antigravity |  `completed`  |        003, 005         | [`antigravity/030-external-integrations-and-advisory-planner.md`](antigravity/030-external-integrations-and-advisory-planner.md) |
 
 ---
 

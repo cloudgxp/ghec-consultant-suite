@@ -4,3 +4,4 @@ export * from './core/dag.js';
 export * from './core/registry.js';
 export * from './planner/index.js';
 export * from './preflight/index.js';
+export * from './advisory/index.js';

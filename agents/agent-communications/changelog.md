@@ -93,3 +93,22 @@ All material engineering work, test completions, and milestone deliveries are re
   - Created `packages/migration/src/preflight/README.md`.
 - **Tests:** `npm run check` passed 166/166 tests green.
 - **Follow-Up:** Unblocks Task 014 (Codex GEI Wrapper), Task 015 (GEI Orchestrator Pipeline), Task 024 (Releases Fallback Strategy), and Task 029 (GHAS Remediation).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 030 External Integrations & Migration Advisory Planner
+- **Changes:**
+  - Implemented `packages/migration/src/advisory/types.ts` defining data structures for apps, packages, runners, unsupported items, and advisory reports.
+  - Implemented `GitHubAppsAdvisoryPlanner` and `sanitizeCsvCell` (formula injection defense prefixing `=+\\-@\\t\\r` and quote escaping) to generate `github-apps-reinstallation-matrix.csv`.
+  - Implemented `PackagesCutoverPlanner` with ecosystem-specific republishing playbooks (`docker tag/push`, `npm publish`, `mvn deploy`, `dotnet nuget push`, `gem push`) generating `packages-cutover-guide.md`.
+  - Implemented `SelfHostedRunnersPlanner` extracting runner groups and runner metadata to produce `runner-infrastructure-spec.md`.
+  - Implemented `UnsupportedItemsAuditor` comprehensively covering all categories from `data-not-migrated.md` (severed fork networks, Discussions, Projects v2, ephemeral Actions runs/artifacts, audit logs, stars/watchers, user SSH/GPG keys, secret scanning remediation dismissals).
+  - Implemented `MigrationAdvisoryPlanner` coordinating live API or offline `DiscoveryBundle` runs and writing all 5 artifact files (`migration-advisory-report.json`, `migration-advisory-report.md`, `github-apps-reinstallation-matrix.csv`, `packages-cutover-guide.md`, `runner-infrastructure-spec.md`).
+  - Added test suite `packages/migration/tests/advisory/planner.test.ts`.
+  - Created `packages/migration/src/advisory/README.md`.
+- **Tests:** `npm run check` passed 174/174 tests green.
+- **Follow-Up:** Unblocks Task 009 (CLI advisory/reporting flags).

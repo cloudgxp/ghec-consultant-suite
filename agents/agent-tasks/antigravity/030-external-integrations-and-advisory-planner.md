@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+completed
 
 ## Owner
 
@@ -84,4 +84,14 @@ High-stakes enterprise migrations cannot afford "silent gaps". Many GitHub resou
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Implemented complete advisory subsystem in `packages/migration/src/advisory/`:
+  - `types.ts`: Defined data contracts for apps, packages, runner topologies, unsupported audit items, and advisory reports.
+  - `apps-matrix.ts`: Implemented `GitHubAppsAdvisoryPlanner` and `sanitizeCsvCell` (formula injection defense prefixing `=+\\-@\\t\\r` and quote escaping) to generate `github-apps-reinstallation-matrix.csv`.
+  - `packages-guide.ts`: Implemented `PackagesCutoverPlanner` with ecosystem-specific republishing playbooks (`docker tag/push`, `npm publish`, `mvn deploy`, `dotnet nuget push`, `gem push`) generating `packages-cutover-guide.md`.
+  - `runners-spec.ts`: Implemented `SelfHostedRunnersPlanner` extracting runner groups and runner metadata to produce `runner-infrastructure-spec.md`.
+  - `unsupported-audit.ts`: Implemented `UnsupportedItemsAuditor` comprehensively covering all categories from `data-not-migrated.md` (severed fork networks, Discussions, Projects v2, ephemeral Actions runs/artifacts, audit logs, stars/watchers, user SSH/GPG keys, secret scanning remediation dismissals).
+  - `planner.ts`: Implemented `MigrationAdvisoryPlanner` coordinating live API or offline `DiscoveryBundle` runs and writing all 5 artifact files (`migration-advisory-report.json`, `migration-advisory-report.md`, `github-apps-reinstallation-matrix.csv`, `packages-cutover-guide.md`, `runner-infrastructure-spec.md`).
+  - `index.ts`: Exported all advisory components from `@ghec/migration`.
+- Added unit tests in `packages/migration/tests/advisory/planner.test.ts` covering CSV formula injection sanitization, App discovery, package ecosystem cutover playbooks, runner specs, fork severance audit, and offline discovery bundle execution.
+- Created `packages/migration/src/advisory/README.md`.
+- Passes `npm run check` with 174/174 tests passing green.

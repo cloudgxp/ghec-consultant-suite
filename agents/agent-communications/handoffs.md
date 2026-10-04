@@ -167,3 +167,33 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Active rulesets on destination are required to have "Repository migrations" in `exempt` bypass mode (DEC-012); `always` or `always_allow` triggers a destination blocker.
   - Repositories are strictly categorized into 4 readiness tiers (`ready`, `ready-with-follow-up`, `requires-special-strategy`, `blocked`) with all contract invariants satisfied.
 - **Test Evidence:** `npm run check` passes 166/166 tests green.
+
+### [2026-10-04] Task 030 (External Integrations & Migration Advisory Planner) -> Task 009
+
+- **From:** Antigravity
+- **To:** Codex / Antigravity
+- **Completed Task:** 030
+- **Unblocked Tasks:** 009 (CLI subcommands plan, migrate, verify, advisory reporting)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `MigrationAdvisoryPlanner`, `AdvisoryPlannerOptions`, `AdvisoryArtifacts`, `MigrationAdvisoryReport`
+    - `GitHubAppsAdvisoryPlanner`, `GitHubAppInstallationInfo`, `sanitizeCsvCell`
+    - `PackagesCutoverPlanner`, `PackageCutoverItem`
+    - `SelfHostedRunnersPlanner`, `RunnerTopologySpec`, `RunnerGroupSpec`
+    - `UnsupportedItemsAuditor`, `UnsupportedItemDetail`, `UnsupportedItemCategory`
+- **Files Modified / Created:**
+  - `packages/migration/src/advisory/types.ts`
+  - `packages/migration/src/advisory/apps-matrix.ts`
+  - `packages/migration/src/advisory/packages-guide.ts`
+  - `packages/migration/src/advisory/runners-spec.ts`
+  - `packages/migration/src/advisory/unsupported-audit.ts`
+  - `packages/migration/src/advisory/planner.ts`
+  - `packages/migration/src/advisory/index.ts`
+  - `packages/migration/src/advisory/README.md`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/advisory/planner.test.ts`
+- **Behavior Notes:**
+  - Provides dual-mode operation: live inspection via `GitHubReadAdapter` or offline assessment via `DiscoveryBundle`.
+  - Emits 5 coordinated artifacts: `migration-advisory-report.json`, `migration-advisory-report.md`, `github-apps-reinstallation-matrix.csv`, `packages-cutover-guide.md`, and `runner-infrastructure-spec.md`.
+  - Comprehensive coverage of `data-not-migrated.md` eliminating silent gaps.
+- **Test Evidence:** `npm run check` passes 174/174 tests green.
