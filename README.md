@@ -40,8 +40,8 @@ packages/contracts/     public JSON contract v1.0.0 and Zod validation
 packages/analysis/      deterministic migration-readiness analysis
 agents/                 agent specifications, task backlogs, and communications
   ├── agent-specs/      system architecture and domain contracts
-  ├── agent-tasks/      implementation backlog and dependency graphs
-  └── agent-communications/ handoffs, decisions, changelog, and blockers
+  ├── agent-tasks/      category tasks (security, features, bug-fixes, performance)
+  └── agent-communications/ execution log, decisions, and blockers
 references/github-docs/ curated local GitHub documentation snapshot
 docs/specs/             requirements, architecture, security, and roadmap
 docs/architecture/      deployment and system boundaries

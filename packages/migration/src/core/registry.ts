@@ -106,6 +106,8 @@ export class ModuleRegistry {
 }
 
 import { RepoVariablesMigrationModule } from '../modules/repo-variables/module.js';
+import { OrgVariablesMigrationModule } from '../modules/org-variables/module.js';
+import { OrgSecretsMigrationModule } from '../modules/org-secrets/module.js';
 import { RepoSecretsMigrationModule } from '../modules/repo-secrets/module.js';
 
 class GeiRepoMigrationModule implements MigrationModule {
@@ -155,6 +157,12 @@ import { BranchProtectionReconciliationModule } from '../modules/branch-protecti
 import { TeamsMigrationModule } from '../modules/teams/module.js';
 import { MannequinReclamationEngine } from '../post-migration/mannequins/engine.js';
 import { EnvironmentsMigrationModule } from '../modules/environments/module.js';
+import { WebhooksMigrationModule } from '../modules/webhooks/module.js';
+import { RepoSettingsMigrationModule } from '../modules/repo-settings/module.js';
+import { OrgCustomPropertiesMigrationModule } from '../modules/org-custom-properties/module.js';
+import { RepoCustomPropertiesMigrationModule } from '../modules/repo-custom-properties/module.js';
+import { CodeownersRepairModule } from '../post-migration/codeowners/module.js';
+import { GhasSecurityMigrationModule } from '../post-migration/security/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -163,11 +171,19 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(new GeiRepoMigrationModule());
   registry.register(new RepoVariablesMigrationModule());
+  registry.register(new OrgVariablesMigrationModule());
+  registry.register(new OrgSecretsMigrationModule());
   registry.register(new RepoSecretsMigrationModule());
   registry.register(new EnvironmentsMigrationModule());
+  registry.register(new WebhooksMigrationModule());
+  registry.register(new RepoSettingsMigrationModule());
+  registry.register(new OrgCustomPropertiesMigrationModule());
+  registry.register(new RepoCustomPropertiesMigrationModule());
   registry.register(new RulesetsMigrationModule());
   registry.register(new BranchProtectionReconciliationModule());
   registry.register(new TeamsMigrationModule());
   registry.register(new MannequinReclamationEngine());
+  registry.register(new CodeownersRepairModule());
+  registry.register(new GhasSecurityMigrationModule());
   return registry;
 }

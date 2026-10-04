@@ -48,6 +48,23 @@ const executionPlan = registry.resolveExecutionPlan([
 ]);
 ```
 
+## Organization Configuration Modules
+
+`OrgVariablesMigrationModule` and `OrgSecretsMigrationModule` migrate Actions
+organization configuration with `all`, `private`, and `selected` visibility.
+Both accept a `repositoryIdMap` that maps a source repository ID to its
+target-tenant numeric ID. This is required for `selected` scopes: source IDs
+are never sent to the target API. Missing mappings produce plan warnings and
+an empty selected list, so callers can defer the binding until target
+repositories are available.
+
+Organization secrets cover Actions, Dependabot, and Codespaces. Like the
+repository secret module, they inventory names only and use a libsodium sealed
+box with the target organization public key. A client-owned
+`MigrationContext.secretValueProvider` can supply an ephemeral vault value;
+otherwise a blank encrypted placeholder is created. Plaintext values are never
+written to discovery bundles, plans, logs, or execution reports.
+
 ## Development
 
 ```bash

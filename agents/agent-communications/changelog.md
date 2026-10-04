@@ -357,3 +357,136 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/modules/environments.test.ts` (8 tests) and module documentation in `README.md`.
 - **Tests:** `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
 - **Follow-Up:** Unblocks Task 016 (`org-variables` and `org-secrets`), Task 018 (`webhooks`), Task 019 (`step-summary`), Task 025 (repo visibility/settings), and Task 026 (custom properties).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 021 Production GitHub Actions Workflow Templates & CI/CD Integration
+- **Changes:**
+  - Implemented reusable composite action `action.yml` automating Node 22 runtime setup, GitHub CLI verification, `gh-gei` extension installation, dependency caching, monorepo compilation, and mapped CLI command invocation.
+  - Implemented `.github/workflows/migration-plan-pr.yml` running automated pre-migration diffing on PRs modifying `scopes/**.json`, uploading plan artifacts and commenting summaries on PRs.
+  - Implemented `.github/workflows/migration-execute-wave.yml` orchestrating 3-stage parallel matrix migration waves (`slicer` partitioning, parallel matrix worker execution with `production-migration` environment approval gate, and fan-in aggregation/verification reporting to `$GITHUB_STEP_SUMMARY`).
+  - Implemented `.github/workflows/migration-resume.yml` enabling automated resumption from checkpoint manifests for interrupted runs.
+  - Authored comprehensive enterprise operator runbook in `docs/guides/github-actions-migration.md` covering architecture diagrams, self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover playbook.
+- **Tests:** Validated workflow YAML syntax; `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity & Codex
+
+- **Task:** 019 GitHub Actions Structured Output & Step Summary Generator
+- **Changes:**
+  - Implemented `packages/migration/src/reporting/` containing:
+    - `types.ts`: `MigrationRunSummary`, `StepSummaryOptions`, and stage-by-stage summary interfaces for Preflight, CoreTransfer, Rehydration, PostMigration, and Verification.
+    - `step-summary.ts`: Markdown formatting with status badges, summary metadata tables, per-stage operation counts, expandable detail blocks (`<details><summary>`), formula injection sanitization (`sanitizeFormula`), and atomic appending to `$GITHUB_STEP_SUMMARY`.
+    - `summary-reporter.ts`: Extraction helpers `buildSummaryFromExecutionReport` and `buildSummaryFromVerification`, plus JSON reader/writer (`writeJsonSummaryFile`, `readJsonSummaryFile`).
+    - `index.ts`: Exported reporting utilities through `@ghec/migration`.
+  - Updated `apps/cli/src/commands/migrate.ts` and `apps/cli/src/commands/verify.ts` with `--json-summary <path>` options and automated `$GITHUB_STEP_SUMMARY` markdown reporting.
+  - Added unit test suite `packages/migration/tests/reporting/summary.test.ts` with 9 unit tests covering formula escaping, markdown formatting, summary building, and file I/O.
+- **Tests:** `npm run check` passed 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity & Codex
+
+- **Task:** 025 Repository Visibility & PR Settings Reconciliation Module
+- **Changes:**
+  - Implemented `RepoSettingsMigrationModule` under `packages/migration/src/modules/repo-settings/`:
+    - `types.ts`: typed models for `RepositoryVisibility`, `RepositoryPullRequestSettings`, `RepoSettingsData`, `RepoSettingsModuleOptions`, and raw GitHub response mappings.
+    - `visibility.ts`: helpers for normalizing API visibility, evaluating desired visibility, and handling enterprise policy fallback.
+    - `pr-settings.ts`: parsing PR settings and diffing configuration to emit granular change descriptions and patch payloads.
+    - `module.ts`: 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) reconciling visibility from GEI default `private` back to `internal`/`public` and restoring custom squash/merge commit message templates and merge strategy toggles (DEC-015).
+    - Implemented graceful enterprise policy handling: intercepts HTTP 422 policy violations (e.g. EMU enterprises prohibiting public repos), automatically attempting fallback to `internal` visibility with structured warnings without failing execution.
+    - `index.ts` & `README.md`: exported types, module, and detailed documentation.
+  - Registered `RepoSettingsMigrationModule` in `createDefaultModuleRegistry()` with dependency on `gei-repo`.
+  - Exported `repo-settings` module and types from `@ghec/migration`.
+  - Added unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, diffing, live and cached discovery, planning, mutation, dry-run, policy fallback, and verification.
+- **Tests:** `npm run check` passed 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 026 Custom Properties Migration Modules
+- **Changes:**
+  - Implemented `OrgCustomPropertiesMigrationModule` (`org-custom-properties`) under `packages/migration/src/modules/org-custom-properties/`:
+    - Discovers organization property definitions via `GET /orgs/{org}/properties/schema`.
+    - Diffs definitions against target organization schemas, generating `create`, `update`, and `noop` operations.
+    - Creates or updates custom property definitions on target organization via `PUT /orgs/{targetOrg}/properties/schema`.
+    - Verifies custom property schema synchronization between source and target organizations.
+  - Implemented `RepoCustomPropertiesMigrationModule` (`repo-custom-properties`) under `packages/migration/src/modules/repo-custom-properties/`:
+    - Discovers custom property values on source repositories via `GET /repos/{owner}/{repo}/properties/values`.
+    - Compares values with target repository custom properties, planning batched assignment payloads.
+    - Assigns property values on target repositories via `PATCH /orgs/{targetOrg}/properties/values`.
+    - Verifies custom property values on target repositories match plan.
+  - Added defensive `try/catch` boundaries around target client reads (`readSingle`) for uninitialized target org schemas or repositories.
+  - Exported both modules from `@ghec/migration` and registered both in `createDefaultModuleRegistry()` with `repo-custom-properties` dependent on `gei-repo` and `org-custom-properties`.
+  - Added module documentation in `packages/migration/src/modules/org-custom-properties/README.md` and `packages/migration/src/modules/repo-custom-properties/README.md`.
+  - Added unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
+- **Tests:** `npm run check` passed all tests green, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 018 & 026 REST Contract Hardening & Reconciliation Fixes
+- **Changes:**
+  - **Task 018 (Webhooks):**
+    - Hardened `discover()` and `plan()` to seamlessly parse both direct JSON array responses (`RawWebhook[]`) returned by GitHub REST APIs and wrapped `{ hooks: [...] }` envelopes.
+    - Added required `"name": "web"` parameter to `webhookPayload` for `POST` webhook creation operations, preventing GitHub HTTP 422 errors.
+    - Improved `plan()` diffing logic to trigger `update` when cryptographic secret tokens need rehydration or when SSL/content-type configuration changes.
+    - Expanded `packages/migration/tests/modules/webhooks.test.ts` to 5 tests covering array responses, create with `"name": "web"`, secret warnings, and verification discrepancy detection.
+    - Marked `agents/agent-tasks/features/completed/018-webhooks-migration-module.md` as `complete`.
+  - **Task 026 (Custom Properties):**
+    - Hardened `OrgCustomPropertiesMigrationModule` to support direct array schemas (`RawCustomPropertyDefinition[]`) from `GET /orgs/{org}/properties/schema`.
+    - Corrected org custom property schema mutation endpoint to `PUT /orgs/{org}/properties/schema/{custom_property_name}` and mapped body payload to snake_case (`value_type`, `required`, `default_value`, `description`, `allowed_values`).
+    - Hardened `RepoCustomPropertiesMigrationModule` to support direct array values (`RawRepositoryCustomPropertyValue[]`) from `GET /repos/{owner}/{repo}/properties/values`.
+    - Expanded `packages/migration/tests/modules/custom-properties.test.ts` to 11 tests verifying direct array support, endpoint pathing, and snake_case request bodies.
+- **Tests:** `npm run check` passed 317/317 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 028 CODEOWNERS & Team References Repair Module
+- **Changes:**
+  - Implemented `CodeownersRepairModule` (`id = 'post-migration-codeowners'`) in `packages/migration/src/post-migration/codeowners/module.ts`.
+  - Implemented static candidate path scanner (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories scanner (`.github/ISSUE_TEMPLATE`, `.github/workflows`) in `scanner.ts`.
+  - Implemented team reference token rewriter (`@source-org/team-slug` to `@target-org/mapped-team`) using `teamSlugMap` from Task 017 in `rewriter.ts`.
+  - Implemented automated commit handler with direct branch commit and protected branch fallback to PR creation (`migration/repair-team-references`) in `git-committer.ts`.
+  - Integrated into Stage 6 of `RepositoryMigrationPipeline` and registered in `createDefaultModuleRegistry()`.
+  - Exported module, scanner, rewriter, and git-committer from `@ghec/migration`.
+  - Added dedicated unit test suite in `packages/migration/tests/post-migration/codeowners.test.ts` (6 tests).
+- **Tests:** `npm run check` passed all tests green.
+
+---
+
+## 2026-10-04
+
+### Agent: Codex & Antigravity
+
+- **Task:** 029 GHAS & Security Remediation Reconciliation Strategy
+- **Changes:**
+  - Implemented `GhasSecurityMigrationModule` (`id = 'security'`) in `packages/migration/src/post-migration/security/module.ts`.
+  - Implemented `diffSecuritySettings` and `fetchRepositorySecuritySettings` in `ghas-config.ts` evaluating and generating idempotent `PATCH /repos/{owner}/{repo}` payloads with `security_and_analysis`, and enforcing GHAS enterprise license availability checks.
+  - Implemented `fetchSecretScanningAlerts` and `matchAlertRemediations` in `secret-scanning-sync.ts` matching open target alerts to source resolved alerts and patching resolutions with origin comments while documenting PAT actor attribution limitations (`SECRET_SCANNING_LIMITATION_NOTICE`).
+  - Implemented optional code scanning SARIF synchronization in `sarif-sync.ts` with upload payload construction and limitation documentation (`SARIF_LIMITATION_NOTICE`).
+  - Implemented `generateFidelityReport` producing structured `GhasFidelityReport` for audit compliance.
+  - Extended `PostMigrationTaskId` in `packages/migration/src/checkpoint/types.ts` and allowed stage keys in `manager.ts` to support `'security'`.
+  - Integrated with Stage 6 of `RepositoryMigrationPipeline` and `createDefaultModuleRegistry()`.
+  - Exported module, reconcilers, and types from `@ghec/migration`.
+  - Added dedicated unit test suite in `packages/migration/tests/post-migration/security.test.ts` (3 tests).
+- **Tests:** `npm run check` passed 326/326 tests green across 51 test suites, with ESLint, Prettier, and TypeScript clean.
