@@ -32,3 +32,12 @@ This directory contains security-related tasks for the GHEC Consultant Suite, in
 | **Low**      | [`codeql-10-fix-permissions-test-regex-anchor.md`](completed/codeql-10-fix-permissions-test-regex-anchor.md)                                           | CLI Permissions Test (`apps/cli/tests/`)                             | #8                  | Complete |
 
 For comprehensive analysis, implementation order, architectural patterns, and CodeQL verification instructions, see [**`CODEQL-REMEDIATION-PLAN.md`**](CODEQL-REMEDIATION-PLAN.md).
+
+---
+
+## Dependabot Vulnerability Remediation Backlog
+
+| Priority     | Task File                                                                          | Primary Area                       | Dependabot Alerts        |  Status  |
+| :----------- | :--------------------------------------------------------------------------------- | :--------------------------------- | :----------------------- | :------: |
+| **High**     | [`dependabot-01-update-dompurify.md`](completed/dependabot-01-update-dompurify.md) | Transitive Sanitizer (`dompurify`) | #13, #26–#40 (16 alerts) | Complete |
+| **Critical** | [`dependabot-02-update-jspdf.md`](completed/dependabot-02-update-jspdf.md)         | Report Generator (`jspdf`)         | #14–#25 (12 alerts)      | Complete |
