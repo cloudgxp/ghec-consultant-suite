@@ -90,7 +90,10 @@ class MockReadAdapter implements GitHubReadAdapter {
     }
 
     // Target repo check
-    if (operation.pathParams?.owner === 'dst-org') {
+    if (
+      operation.pathParams?.owner === 'dst-org' &&
+      path === '/repos/{owner}/{repo}'
+    ) {
       if (this.config.targetRepoExists) {
         return {
           data: { id: 999, name: operation.pathParams.repo } as unknown as T,
@@ -249,7 +252,6 @@ test('RepositoryMigrationPipeline executes all 7 stages sequentially', async () 
     });
 
     const result = await pipeline.execute(scope.repositories[0]!);
-
     assert.equal(result.status, 'complete');
     assert.deepEqual(result.completedStages, [
       'preflight',

@@ -1,0 +1,345 @@
+name: Parallel Matrix Migration Wave
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Path to migration scope JSON file (e.g. "scopes/wave-1.json")'
+        required: true
+        type: string
+        default: 'scopes/wave-1.json'
+      cached_bundle:
+        description: 'Optional path to pre-collected discovery bundle JSON file'
+        required: false
+        type: string
+        default: ''
+      batch_size:
+        description: 'Cohort batch size for parallel runner partitioning'
+        required: false
+        type: number
+        default: 5
+      modules:
+        description: 'Comma-separated migration modules to execute (or "all")'
+        required: false
+        type: string
+        default: 'all'
+      dry_run:
+        description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
+        required: false
+        type: boolean
+        default: false
+      continue_on_error:
+        description: 'Continue executing remaining modules/cohorts on non-fatal failures'
+        required: false
+        type: boolean
+        default: true
+      runner_labels:
+        description: 'Comma-separated labels for runner selection (e.g. "self-hosted,linux")'
+        required: false
+        type: string
+        default: 'self-hosted,linux'
+      environment_gate:
+        description: 'Target GitHub Environment with review protection gates'
+        required: false
+        type: string
+        default: 'production-migration'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  slicer:
+    name: Partition Scopes & Plan Wave
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.slice.outputs.matrix }}
+      cohort_count: ${{ steps.slice.outputs.cohort_count }}
+      runner_labels_json: ${{ steps.resolve-runners.outputs.labels_json }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Resolve Runner Labels JSON
+        id: resolve-runners
+        shell: bash
+        run: |
+          RAW_LABELS="${{ inputs.runner_labels }}"
+          # Split comma separated labels into JSON array
+          LABELS_JSON=$(echo "$RAW_LABELS" | jq -R 'split(",") | map(gsub("^ +| +$"; ""))' -c)
+          echo "labels_json=$LABELS_JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Slice Scope into Parallel Matrix Cohorts
+        id: slice
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          mkdir -p ./scans ./cohorts
+
+          INPUT_ARG=()
+          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
+            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          fi
+
+          echo "Generating plan and slicing into cohorts (batch size: ${{ inputs.batch_size }})..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs plan \
+            --scope "${{ inputs.scope }}" \
+            "${INPUT_ARG[@]}" \
+            --modules "${{ inputs.modules }}" \
+            --split-matrix "${{ inputs.batch_size }}" \
+            --output-matrix ./scans/migration-matrix.json \
+            --output ./scans/migration-plan.json \
+            --source-token "$GHEC_SOURCE_TOKEN" \
+            --target-token "$GHEC_TARGET_TOKEN"
+
+          if [ ! -f ./scans/migration-matrix.json ]; then
+            echo "::error::Matrix output file ./scans/migration-matrix.json was not generated."
+            exit 1
+          fi
+
+          # Read matrix content and extract cohorts
+          MATRIX_CONTENT=$(jq -c . ./scans/migration-matrix.json)
+          COHORT_COUNT=$(echo "$MATRIX_CONTENT" | jq '.include | length')
+
+          echo "Generated $COHORT_COUNT parallel cohorts."
+          echo "matrix=$MATRIX_CONTENT" >> "$GITHUB_OUTPUT"
+          echo "cohort_count=$COHORT_COUNT" >> "$GITHUB_OUTPUT"
+
+          # Write individual cohort scopes to ./cohorts/ for matrix workers
+          echo "$MATRIX_CONTENT" | jq -c '.include[]' | while read -r COHORT; do
+            COHORT_ID=$(echo "$COHORT" | jq -r '.cohortId')
+            SCOPE_PAYLOAD=$(echo "$COHORT" | jq -r '.scopeJson')
+            echo "$SCOPE_PAYLOAD" > "./cohorts/${COHORT_ID}-scope.json"
+          done
+
+      - name: Upload Migration Plan & Matrix Cohorts
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-wave-plan-${{ github.run_id }}
+          path: |
+            ./scans/migration-plan.json
+            ./scans/migration-matrix.json
+            ./cohorts/*-scope.json
+          retention-days: 14
+
+  migrate-cohorts:
+    name: 'Migrate Cohort: ${{ matrix.cohortId }}'
+    needs: [slicer]
+    environment: ${{ inputs.environment_gate }}
+    runs-on: ${{ fromJson(needs.slicer.outputs.runner_labels_json) }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.slicer.outputs.matrix) }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Wave Plan & Cohort Scopes
+        uses: actions/download-artifact@v4
+        with:
+          name: migration-wave-plan-${{ github.run_id }}
+          path: .
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Suite Dependencies & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Execute Cohort Migration
+        id: migrate
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+          INPUT_CACHED_BUNDLE: ${{ inputs.cached_bundle }}
+          INPUT_MODULES: ${{ inputs.modules }}
+          MATRIX_COHORT_ID: ${{ matrix.cohortId }}
+          MATRIX_REPO_COUNT: ${{ matrix.repoCount }}
+        run: |
+          mkdir -p ./scans ./migrations
+          COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
+          REPORT_OUTPUT="./scans/cohort-report-${MATRIX_COHORT_ID}.json"
+
+          DRY_RUN_ARG=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY_RUN_ARG=(--dry-run)
+          fi
+
+          CONT_ARG=()
+          if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+            CONT_ARG=(--continue-on-error)
+          fi
+
+          INPUT_ARG=()
+          if [ -n "$INPUT_CACHED_BUNDLE" ] && [ -f "$INPUT_CACHED_BUNDLE" ]; then
+            INPUT_ARG=(--input "$INPUT_CACHED_BUNDLE")
+          fi
+
+          echo "Executing migration for cohort $MATRIX_COHORT_ID ($MATRIX_REPO_COUNT repositories)..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+            --scope "$COHORT_SCOPE" \
+            "${INPUT_ARG[@]}" \
+            --modules "$INPUT_MODULES" \
+            "${DRY_RUN_ARG[@]}" \
+            "${CONT_ARG[@]}" \
+            --output "$REPORT_OUTPUT"
+
+      - name: Upload Cohort Execution Artifacts & Checkpoints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cohort-results-${{ matrix.cohortId }}-${{ github.run_id }}
+          path: |
+            ./scans/cohort-report-${{ matrix.cohortId }}.json
+            ./migrations/
+          retention-days: 14
+
+  aggregate-and-verify:
+    name: Aggregate Results & Verify Migration
+    needs: [slicer, migrate-cohorts]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Suite Dependencies & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Download Wave Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: migration-wave-plan-${{ github.run_id }}
+          path: .
+
+      - name: Download All Cohort Results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cohort-results-*-${{ github.run_id }}
+          path: ./downloaded-cohorts
+          merge-multiple: true
+
+      - name: Execute Target Verification
+        id: verify
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          mkdir -p ./scans
+
+          if [ -f ./scans/migration-plan.json ]; then
+            echo "Running post-migration verification against target enterprise..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
+              --plan ./scans/migration-plan.json \
+              --output ./scans/verification-report.json || {
+                echo "Verification reported discrepancies or failed."
+              }
+          else
+            echo "::warning::Migration plan ./scans/migration-plan.json not found; skipping verify."
+          fi
+
+      - name: Generate Summary Report
+        id: report
+        shell: bash
+        env:
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          NEEDS_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count }}
+        run: |
+          SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
+          echo "## 🚀 Migration Wave Execution Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "- **Scope:** \`$INPUT_SCOPE\`" >> "$SUMMARY_FILE"
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            echo "- **Mode:** 🧪 Dry-Run (Simulation)" >> "$SUMMARY_FILE"
+          else
+            echo "- **Mode:** ⚡ Live Migration" >> "$SUMMARY_FILE"
+          fi
+          echo "- **Cohorts:** $NEEDS_COHORT_COUNT" >> "$SUMMARY_FILE"
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+
+          echo "### Cohort Execution Breakdown" >> "$SUMMARY_FILE"
+          echo "| Cohort ID | Status | Duration (s) | Succeeded Operations | Failed Operations |" >> "$SUMMARY_FILE"
+          echo "| :--- | :---: | :---: | :---: | :---: |" >> "$SUMMARY_FILE"
+
+          for REPORT in $(find ./scans ./downloaded-cohorts -name 'cohort-report-*.json' 2>/dev/null); do
+            COHORT_NAME=$(basename "$REPORT" .json | sed 's/cohort-report-//')
+            STATUS=$(jq -r '.status // "unknown"' "$REPORT")
+            DURATION_MS=$(jq -r '.durationMs // 0' "$REPORT")
+            DURATION_SEC=$(awk -v ms="$DURATION_MS" 'BEGIN { printf "%.2f", ms / 1000 }')
+            SUCCEEDED=$(jq '[.moduleResults[].results[] | select(.status == "succeeded")] | length' "$REPORT" 2>/dev/null || echo 0)
+            FAILED=$(jq '[.moduleResults[].results[] | select(.status == "failed")] | length' "$REPORT" 2>/dev/null || echo 0)
+
+            STATUS_BADGE="❓ $STATUS"
+            if [ "$STATUS" = "complete" ]; then
+              STATUS_BADGE="✅ Complete"
+            elif [ "$STATUS" = "partial" ]; then
+              STATUS_BADGE="⚠️ Partial"
+            elif [ "$STATUS" = "failed" ]; then
+              STATUS_BADGE="❌ Failed"
+            fi
+
+            echo "| \`$COHORT_NAME\` | $STATUS_BADGE | ${DURATION_SEC}s | $SUCCEEDED | $FAILED |" >> "$SUMMARY_FILE"
+          done
+          echo "" >> "$SUMMARY_FILE"
+
+          if [ -f ./scans/verification-report.json ]; then
+            VERIFIED=$(jq -r '.verified' ./scans/verification-report.json)
+            DISCREPANCY_COUNT=$(jq -r '.totalDiscrepancies // (.discrepancies | length) // 0' ./scans/verification-report.json)
+
+            echo "### Post-Migration Target Verification" >> "$SUMMARY_FILE"
+            if [ "$VERIFIED" = "true" ]; then
+              echo "✅ **Target state strictly verified with 0 discrepancies.**" >> "$SUMMARY_FILE"
+            else
+              echo "> [!WARNING]" >> "$SUMMARY_FILE"
+              echo "> **Verification detected $DISCREPANCY_COUNT discrepancy(ies) between planned and target state.**" >> "$SUMMARY_FILE"
+            fi
+            echo "" >> "$SUMMARY_FILE"
+          fi
+
+          echo "### Recommended Next Steps" >> "$SUMMARY_FILE"
+          echo "1. Review all cohort execution logs and download checkpoint artifacts." >> "$SUMMARY_FILE"
+          echo "2. Reclaim mannequins for GHEC-EMU contributors: \`gh gei reclaim-mannequin --skip-invitation\`." >> "$SUMMARY_FILE"
+          echo "3. Re-enable organization and repository webhooks after cutover confirmation." >> "$SUMMARY_FILE"
+
+      - name: Upload Final Consolidated Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-wave-final-${{ github.run_id }}
+          path: |
+            ./scans/migration-plan.json
+            ./scans/verification-report.json
+            ./scans/cohort-report-*.json
+          retention-days: 30

@@ -245,7 +245,7 @@ test('MigrationOrchestrator generates plan from scope on-the-fly and applies', a
   const report = await orchestrator.run();
   assert.equal(report.status, 'complete');
   assert.equal(report.exitCode, 0);
-  assert.equal(report.results.length, 4);
+  assert.equal(report.results.length, 7);
 });
 
 test('VerificationOrchestrator verifies target state and generates report', async () => {
@@ -351,4 +351,30 @@ test('HttpTargetWriteClient performs HTTP mutations', async () => {
   assert.equal(capturedHeaders.Authorization, 'Bearer mock-target-token');
   assert.equal(capturedHeaders['Content-Type'], 'application/json');
   assert.equal(JSON.parse(capturedBody).name, 'MY_VAR');
+});
+
+test('HttpTargetWriteClient normalizes trailing slashes on baseUrl', async () => {
+  let capturedUrl = '';
+  const customFetch = (async (url: string | URL | Request) => {
+    capturedUrl = String(url);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }) as typeof globalThis.fetch;
+
+  const client = new HttpTargetWriteClient({
+    token: 'mock-token',
+    baseUrl: 'https://mock.api.github.com///',
+    fetchImpl: customFetch,
+  });
+
+  await client.mutate(
+    {
+      id: 'test-slash',
+      method: 'GET',
+      path: '/orgs/{owner}',
+      pathParams: { owner: 'my-org' },
+    },
+    new AbortController().signal,
+  );
+
+  assert.equal(capturedUrl, 'https://mock.api.github.com/orgs/my-org');
 });

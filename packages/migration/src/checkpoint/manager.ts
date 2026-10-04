@@ -301,6 +301,7 @@ export class MigrationCheckpointManager {
           'webhooks',
           'mannequins',
           'codeowners',
+          'security',
         ]);
         break;
       case 'verification':

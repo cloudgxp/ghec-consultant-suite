@@ -1,0 +1,77 @@
+name: Combine Jules PRs
+
+on:
+  schedule:
+    # Run weekly every Sunday at 00:00 UTC
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      min_combine_number:
+        description: "Minimum number of PRs required to combine"
+        required: false
+        default: "2"
+      ci_required:
+        description: "Require CI checks to pass before combining"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  issues: write
+
+jobs:
+  combine-jules-prs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Label open Jules PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            for (const pr of pulls) {
+              const hasJulesBody =
+                pr.body &&
+                (pr.body.includes('PR created automatically by Jules') ||
+                  pr.body.includes('https://jules.google.com/task/'));
+              const hasJulesBranch = /-\d{15,}$/.test(pr.head.ref);
+
+              if (hasJulesBody || hasJulesBranch) {
+                const hasLabel = pr.labels.some(l => l.name === 'jules');
+                if (!hasLabel) {
+                  core.info(`Adding 'jules' label to PR #${pr.number}: ${pr.title}`);
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    labels: ['jules']
+                  });
+                }
+              }
+            }
+
+      - name: Combine passing Jules PRs
+        id: combine-prs
+        uses: github/combine-prs@v5.2.0
+        with:
+          github_token: ${{ secrets.COMBINE_PRS_PAT || secrets.GITHUB_TOKEN }}
+          branch_regex: ".*"
+          select_label: "jules"
+          ci_required: ${{ inputs.ci_required || 'true' }}
+          min_combine_number: ${{ inputs.min_combine_number || '2' }}
+          combine_branch_name: "combined-jules-prs"
+          pr_title: "Combine Jules PRs"
+          pr_body_header: "# Combined Jules PRs 🤖"
+          labels: "combined-pr,jules"

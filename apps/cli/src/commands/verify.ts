@@ -12,6 +12,10 @@ import {
   type VerificationOrchestratorResult,
   VerificationOrchestrator,
   writeVerificationReportFile,
+  buildSummaryFromVerification,
+  writeJsonSummaryFile,
+  formatStepSummaryMarkdown,
+  appendStepSummary,
 } from '@ghec/migration';
 import {
   createMigrationClientsFromConfig,
@@ -23,6 +27,7 @@ export interface VerifyCommandOptions {
   readonly planPath: string;
   readonly scopePath?: string | undefined;
   readonly outputPath: string;
+  readonly jsonSummaryPath?: string | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
   readonly privateKeyPath?: string | undefined;
@@ -40,6 +45,7 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
       plan: { type: 'string' },
       scope: { type: 'string' },
       output: { type: 'string', default: './scans/verification-report.json' },
+      'json-summary': { type: 'string' },
       verbose: { type: 'boolean', default: false },
       'app-id': { type: 'string' },
       'private-key-path': { type: 'string' },
@@ -57,6 +63,7 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
     planPath: values.plan,
     scopePath: values.scope,
     outputPath: values.output || './scans/verification-report.json',
+    jsonSummaryPath: values['json-summary'],
     verbose: values.verbose,
     appId: values['app-id'],
     privateKeyPath: values['private-key-path'],
@@ -154,6 +161,26 @@ export async function executeVerifyCommand(
       overwrite: true,
     },
   );
+
+  const sourceOrg =
+    scope?.organizations[0]?.source ??
+    scope?.repositories[0]?.sourceOrg ??
+    result.report.sourceOrg;
+  const targetOrg =
+    scope?.organizations[0]?.target ??
+    scope?.repositories[0]?.targetOrg ??
+    result.report.targetOrg;
+
+  const summary = buildSummaryFromVerification(result.report, {
+    sourceOrg,
+    targetOrg,
+  });
+
+  if (options.jsonSummaryPath) {
+    writeJsonSummaryFile(summary, options.jsonSummaryPath);
+  }
+
+  appendStepSummary(formatStepSummaryMarkdown(summary));
 
   return { result, filePath };
 }

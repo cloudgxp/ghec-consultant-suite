@@ -208,24 +208,29 @@ jobs:
       - name: Execute Discovery Scan
         env:
           GHEC_TOKEN: ${{ steps.org-token.outputs.token }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+          INPUT_REDACTION_PROFILE: ${{ inputs.redaction_profile }}
+          MATRIX_ORG: ${{ matrix.org }}
+          INPUT_MODULES: ${{ inputs.modules }}
         run: |
-          EXTRA_ARGS=""
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --dry-run"
+          EXTRA_ARGS=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            EXTRA_ARGS+=(--dry-run)
           fi
-          if [ "${{ inputs.continue_on_error }}" = "true" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --continue-on-error"
+          if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+            EXTRA_ARGS+=(--continue-on-error)
           fi
-          if [ -n "${{ inputs.redaction_profile }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --redaction-profile ${{ inputs.redaction_profile }}"
+          if [ -n "$INPUT_REDACTION_PROFILE" ]; then
+            EXTRA_ARGS+=(--redaction-profile "$INPUT_REDACTION_PROFILE")
           fi
 
           mkdir -p scans
           npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
-            --organization "${{ matrix.org }}" \
-            --modules "${{ inputs.modules }}" \
+            --organization "$MATRIX_ORG" \
+            --modules "$INPUT_MODULES" \
             --output "./scans" \
-            $EXTRA_ARGS
+            "${EXTRA_ARGS[@]}"
 
       - name: Upload Organization Bundle Artifact
         if: always()
@@ -268,24 +273,29 @@ jobs:
       - name: Execute Enterprise Discovery Scan
         env:
           GHEC_TOKEN: ${{ steps.ent-token.outputs.token }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+          INPUT_REDACTION_PROFILE: ${{ inputs.redaction_profile }}
+          INPUT_ENTERPRISE_SLUG: ${{ inputs.enterprise_slug }}
+          INPUT_MODULES: ${{ inputs.modules }}
         run: |
-          EXTRA_ARGS=""
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --dry-run"
+          EXTRA_ARGS=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            EXTRA_ARGS+=(--dry-run)
           fi
-          if [ "${{ inputs.continue_on_error }}" = "true" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --continue-on-error"
+          if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+            EXTRA_ARGS+=(--continue-on-error)
           fi
-          if [ -n "${{ inputs.redaction_profile }}" ]; then
-            EXTRA_ARGS="$EXTRA_ARGS --redaction-profile ${{ inputs.redaction_profile }}"
+          if [ -n "$INPUT_REDACTION_PROFILE" ]; then
+            EXTRA_ARGS+=(--redaction-profile "$INPUT_REDACTION_PROFILE")
           fi
 
           mkdir -p scans
           npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
-            --enterprise "${{ inputs.enterprise_slug }}" \
-            --modules "${{ inputs.modules }}" \
+            --enterprise "$INPUT_ENTERPRISE_SLUG" \
+            --modules "$INPUT_MODULES" \
             --output "./scans" \
-            $EXTRA_ARGS
+            "${EXTRA_ARGS[@]}"
 
       - name: Upload Enterprise Bundle Artifact
         if: always()

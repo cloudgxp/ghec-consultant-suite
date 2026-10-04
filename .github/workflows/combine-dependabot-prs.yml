@@ -16,4 +16,4 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.pull_request.user.login == 'dependabot[bot]'
-    uses: cloudgxp/reusable-workflows/.github/workflows/combine-dependabot-prs.yml@main
+    uses: cloudgxp/reusable-workflows/.github/workflows/combine-dependabot-prs.yml@dfd8341503b978f86fa0e5d7f39e27c4efba692e # main
