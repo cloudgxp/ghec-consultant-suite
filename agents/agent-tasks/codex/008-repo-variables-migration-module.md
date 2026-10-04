@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+completed
 
 ## Owner
 
@@ -79,4 +79,14 @@ Repository variables represent a clean, non-destructive slice of functionality: 
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+- Implemented `RepoVariablesMigrationModule` adhering to `MigrationModule<RepoVariablesData>` under `packages/migration/src/modules/repo-variables/`.
+- Extended `MigrationContext` with optional `TargetWriteClient` / `TargetWriteOperation` seam in `packages/migration/src/core/types.ts`.
+- Implemented full 4-stage lifecycle:
+  - `discover`: Supports cached `DiscoveryBundle` extraction (`configuration-metadata` entities where `domain === 'actions'` and `configurationKind === 'variable'`) and live API queries via `sourceClient.readEndpoint('/repos/{owner}/{repo}/actions/variables')`.
+  - `plan`: Fetches target variables via `targetClient`, diffs source vs target variables, generating `create`, `update`, and `noop` operations conforming to `ModulePlanSchema`.
+  - `apply`: Dispatches mutations via `targetWriteClient` (`POST` for `create`, `PATCH` for `update`), skipping writes on `noop`, supporting dry-run execution (`dryRun: true`), and honoring `continueOnError`.
+  - `verify`: Re-queries target variables and compares against source/plan, detecting discrepancies and conforming to `ModuleVerificationResultSchema`.
+- Exported module from `packages/migration/src/modules/repo-variables/index.ts` and `packages/migration/src/index.ts`.
+- Documented module architecture in `packages/migration/src/modules/repo-variables/README.md`.
+- Added 8 comprehensive test cases in `packages/migration/tests/modules/repo-variables.test.ts`.
+- All checks pass with 182/182 tests green (`npm run check`).

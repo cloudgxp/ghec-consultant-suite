@@ -25,11 +25,27 @@ export interface MigrationScopeTarget {
   readonly targetRepo?: string;
 }
 
+export interface TargetWriteOperation {
+  readonly id: string;
+  readonly method: 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  readonly path: string;
+  readonly pathParams?: Readonly<Record<string, string>> | undefined;
+  readonly body?: unknown | undefined;
+}
+
+export interface TargetWriteClient {
+  mutate<T = unknown>(
+    operation: TargetWriteOperation,
+    signal: AbortSignal,
+  ): Promise<{ status: number; data?: T | undefined }>;
+}
+
 export interface MigrationContext {
   readonly runId: string;
   readonly scope: MigrationScopeTarget;
   readonly sourceClient: GitHubReadAdapter;
   readonly targetClient: GitHubReadAdapter;
+  readonly targetWriteClient?: TargetWriteClient | undefined;
   readonly signal: AbortSignal;
   readonly dryRun: boolean;
   readonly continueOnError: boolean;
