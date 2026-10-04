@@ -31,6 +31,35 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — MIGRATION-TEST-ACTIONS-REFACTOR — Complete
+
+- Summary: Audited and refactored all migration testing tasks across `features/` and `security/` to enforce the Zero-Local-Secrets Security Boundary. Removed all local CLI command recommendations requiring local Personal Access Tokens or `.env` files. Established dedicated, committed migration scope files in `scopes/` conforming to `MigrationScopeSchema`. Created lightweight testing workflow `.github/workflows/test-migration-dispatch.yml` and hardened `.github/workflows/migration-execute-wave.yml`, `.github/workflows/migration-plan-pr.yml`, and `.github/workflows/migration-resume.yml` (removing CLI token arguments in favor of process environment variables injected strictly from GitHub Secrets). Refactored all 13 migration test task specifications to follow the Actions execution lifecycle (`gh workflow run`, `gh run watch`, `gh run view --log-failed`, artifact downloading, step summary audit, mandatory dry-run gate). Updated setup guide and task registry.
+- Files:
+  - `.github/workflows/test-migration-dispatch.yml`
+  - `.github/workflows/migration-execute-wave.yml`
+  - `.github/workflows/migration-plan-pr.yml`
+  - `.github/workflows/migration-resume.yml`
+  - `scopes/test-org-wave.json`
+  - `scopes/test-repo-wave.json`
+  - `scopes/test-all-wave.json`
+  - `agents/agent-tasks/features/test-stage1-discovery-verification.md`
+  - `agents/agent-tasks/features/test-stage2-org-custom-properties.md`
+  - `agents/agent-tasks/features/test-stage3-repo-custom-properties-and-settings.md`
+  - `agents/agent-tasks/features/test-stage3-git-lfs-and-releases-transfer.md`
+  - `agents/agent-tasks/features/test-stage4-verification-compliance-suite.md`
+  - `agents/agent-tasks/security/test-stage1-preflight-credential-validation.md`
+  - `agents/agent-tasks/security/test-stage2-org-variables-and-secrets.md`
+  - `agents/agent-tasks/security/test-stage2-teams-and-emu-identity-mapping.md`
+  - `agents/agent-tasks/security/test-stage3-repo-variables-and-secrets.md`
+  - `agents/agent-tasks/security/test-stage3-rulesets-and-branch-protection.md`
+  - `agents/agent-tasks/security/test-stage3-environments-reconciliation.md`
+  - `agents/agent-tasks/security/test-stage3-webhooks-reconciliation.md`
+  - `agents/agent-tasks/security/test-stage4-mannequin-reclamation-emu.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `docs/guides/ghec-to-emu-test-migration-setup.md`
+- Verification: Validated all 3 scope JSON files against `@ghec/contracts` `validateMigrationScope`; verified all 13 workflow YAML files with yamllint/GHA schema; confirmed zero local secrets exposure across all test tasks and runbooks; executed root monorepo quality gate (`npm run check`) clean with 0 warnings and all tests green.
+- Follow-up: None; all test tasks are ready for remote execution via `gh workflow run`.
+
 ### 2026-10-04 — Antigravity — JULES-01 — Complete
 
 - Summary: Implemented comprehensive multi-trigger GitHub Actions automation utilizing `google-labs-code/jules-action` (`google-labs-code/jules-invoke@v1`) for autonomous minor bug fixes, CI failure auto-healing, daily codebase hygiene sweeps, and manual dispatches. Configured strict maintainer authorization guards (`OWNER`, `MEMBER`, `COLLABORATOR`), loop-prevention heuristics to eliminate recursive failure cycles on Jules and aggregation branches, prompt templates enforcing < 100 line diffs and mandatory `npm run check` verification, and seamless integration with `combine-jules-prs.yml` for automated weekly PR combination. Added setup guide and validated all workflow YAML files.

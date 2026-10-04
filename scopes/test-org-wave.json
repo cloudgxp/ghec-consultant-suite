@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "name": "test-org-wave",
+  "organizations": [
+    {
+      "source": "cloudgxp-source",
+      "target": "cloudgxp-emu-target",
+      "modules": [
+        "org-variables",
+        "org-secrets",
+        "teams",
+        "org-custom-properties",
+        "webhooks"
+      ]
+    }
+  ],
+  "repositories": [],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_cloudgxp"
+  }
+}

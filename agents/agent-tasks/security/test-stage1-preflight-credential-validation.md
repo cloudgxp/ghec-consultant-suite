@@ -22,42 +22,85 @@ Organization & Repository
 
 ## Objective
 
-Verify that the preflight permission and blocker inspection engine accurately validates source and destination credentials, evaluates required classic scopes and fine-grained permissions, checks enterprise role boundaries, and detects destination repository name collisions or ruleset bypass blockers before migration execution begins.
+Verify that the preflight permission and blocker inspection engine accurately validates source and destination credentials, evaluates required classic scopes and fine-grained permissions, checks enterprise role boundaries, and detects destination repository name collisions or ruleset bypass blockers before migration execution begins. Guarantee zero local credential exposure by executing all online preflight probes exclusively via GitHub Actions runners.
 
 ## Background
 
-Under SEC-CRED-001 and ADR 0004, the migration pipeline must prevent catastrophic failures midway through execution by assessing readiness prior to any data transfer. In GHEC-to-GHEC-EMU migrations, target tokens frequently suffer from missing EMU SAML single sign-on authorizations or lack ruleset bypass permissions, causing hard failures during repository rehydration.
+Under SEC-CRED-001 and ADR 0004, the migration pipeline must prevent catastrophic failures midway through execution by assessing readiness prior to any data transfer. In GHEC-to-GHEC-EMU migrations, target tokens frequently suffer from missing EMU SAML single sign-on authorizations or lack ruleset bypass permissions, causing hard failures during repository rehydration. Under no circumstances should tokens or private keys be placed in local `.env` or shell variables.
 
 ## Dependencies
 
-- Task 022: Source & Destination Preflight Engine
-- `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` (or GitHub App credentials) configured.
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test scope: `scopes/test-org-wave.json` (or `scopes/test-repo-wave.json`).
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Preflight Permission Matrix Audit (Dry-Run Verification)
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Execute permission inspection against both source and target credentials to verify OAuth scopes and probe endpoints:
+### Step 1: Scope Artifact Definition
+
+Verify the committed test scope for preflight evaluation:
 
 ```bash
-# Verify source organization capability matrix
-ghec-consultant-cli discover \
-  --organization "$GHEC_SOURCE_ORG" \
-  --modules all \
-  --dry-run \
-  --verbose
-
-# Verify target organization capability matrix
-ghec-consultant-cli discover \
-  --organization "$GHEC_TARGET_ORG" \
-  --modules all \
-  --dry-run \
-  --verbose
+cat scopes/test-org-wave.json | jq '{name, organizations}'
 ```
 
-### Step 2: Automated Preflight Engine Unit & Contract Suite
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
 
-Run the isolated preflight evaluator and blocker suite:
+Trigger preflight inspection and planning in dry-run mode via GitHub Actions:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=all \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+Alternatively, dispatching the parallel wave workflow:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=all \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Automated Monitoring & Verification
+
+Monitor the workflow run in real time:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+If preflight fails due to missing permissions or collision blockers, inspect the failed step log:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download the plan and preflight reports:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const plan = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-plan.json", "utf8"));
+  console.log("Plan modules:", plan.modules.map(m => m.id));
+  console.log("Preflight warnings count:", plan.modules.flatMap(m => m.warnings || []).length);
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A clean `dry_run: true` run is required before live apply. Run offline preflight evaluator unit tests locally:
 
 ```bash
 node --import tsx --test packages/migration/tests/preflight/evaluator.test.ts
@@ -65,55 +108,12 @@ node --import tsx --test packages/migration/tests/preflight/sizer.test.ts
 node --import tsx --test apps/cli/tests/permissions.test.ts
 ```
 
-### Step 3: Destination Name Conflict & Ruleset Blocker Inspection
-
-Run destination preflight probe against a test migration scope:
-
-```bash
-# Prepare test scope file: ./scopes/test-preflight-scope.json
-cat <<EOF > ./scopes/test-preflight-scope.json
-{
-  "version": "1.0.0",
-  "migrationId": "preflight-test-001",
-  "organizations": [
-    {
-      "source": "$GHEC_SOURCE_ORG",
-      "target": "$GHEC_TARGET_ORG"
-    }
-  ],
-  "repositories": [
-    {
-      "sourceOrg": "$GHEC_SOURCE_ORG",
-      "sourceRepo": "dummy-repo-public",
-      "targetOrg": "$GHEC_TARGET_ORG",
-      "targetRepo": "dummy-repo-public"
-    }
-  ]
-}
-EOF
-
-# Execute migration planner with dry-run planning
-ghec-consultant-cli plan \
-  --scope ./scopes/test-preflight-scope.json \
-  --output ./scans/preflight-plan.json \
-  --verbose
-```
-
-## Expected Output & State
-
-1. **Permission Check Logs:**
-   - Source token classic scopes reported (e.g. `repo`, `admin:org`, `read:org_hook`).
-   - Target token classic scopes verified for write capability (e.g. `repo`, `admin:org`, `workflow`).
-   - If a required scope is missing, a structured `PreflightPermissionError` is thrown detailing the missing scopes without exiting unhandled.
-2. **Destination Inspector Assessment:**
-   - Detects if target repository already exists at destination (emits blocker warning).
-   - Validates whether destination organization rulesets allow bypass for migration bot/PAT actors.
-3. **Plan Generation:**
-   - `preflight-plan.json` generated and passes `validateMigrationPlan()`.
+---
 
 ## Pass/Fail Acceptance Criteria
 
-- [ ] All preflight tests pass with 0 failures (`evaluator.test.ts`, `sizer.test.ts`, `permissions.test.ts`).
-- [ ] No tokens, credentials, or client secrets are printed in stdout/stderr during verbose runs.
-- [ ] Preflight detects and warns if target repo collision exists without attempting deletion.
-- [ ] Plan output is written cleanly with exit code `0`.
+- [ ] Zero local migration credentials requested, stored, or exposed.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [ ] Preflight detects and warns if target repo collisions or ruleset bypass issues exist without mutating target.
+- [ ] No tokens, credentials, or private keys are printed in workflow logs or Step Summaries.
+- [ ] Offline preflight evaluator and permissions unit tests pass cleanly.

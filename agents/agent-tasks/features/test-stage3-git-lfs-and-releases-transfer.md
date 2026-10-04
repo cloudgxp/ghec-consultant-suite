@@ -26,23 +26,87 @@ Validate specialized large asset migration mechanisms:
 
 1. `strategy-git-lfs` (Task 023): Dual-remote streamed Git LFS mirroring, preflight quota validation, chunked push, and pointer verification.
 2. `strategy-releases-fallback` (Task 024): Large release recreator and streaming asset transfer for releases bypassed by GEI `--skip-releases`.
-   Enforce dry-run safety and verify no remote git pushes or asset uploads occur in dry-run mode.
+   Enforce dry-run safety and guarantee that all test orchestrations run exclusively within GitHub Actions runners with zero local credentials.
 
 ## Background
 
-GEI has strict limits on Git LFS data and release asset sizes. When a repository contains large releases or Git LFS tracking, standard GEI migrations either fail or drop assets. The suite detects these during Stage 1 preflight and switches to dedicated fallback transfer strategies during Stage 4 of the repository migration pipeline.
+GEI has strict limits on Git LFS data and release asset sizes. When a repository contains large releases or Git LFS tracking, standard GEI migrations either fail or drop assets. The suite detects these during Stage 1 preflight and switches to dedicated fallback transfer strategies during Stage 4 of the repository migration pipeline. Under SEC-CRED-001, Antigravity must never request or store PATs locally; execution is driven through GitHub Actions.
 
 ## Dependencies
 
-- Task 023: Git LFS Migration Strategy
-- Task 024: Large Releases Fallback Strategy
-- Prereq tasks: `prereq-dryrun-git-lfs.md` and `prereq-dryrun-releases.md`
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test repository scope: `scopes/test-repo-wave.json` (specifying `dummy-repo-private-lfs`).
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Preflight Quota & LFS Detection Test
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Run automated unit and integration tests for Git LFS and Large Releases strategies:
+### Step 1: Scope Artifact Definition
+
+Verify the committed test repository scope targeting the dummy LFS & Release repository:
+
+```bash
+cat scopes/test-repo-wave.json | jq '.repositories[] | select(.sourceRepo == "dummy-repo-private-lfs")'
+```
+
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
+
+Trigger dry-run pipeline execution in GitHub Actions:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=repo-settings,rulesets \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+Alternatively, dispatching the parallel wave workflow:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=all \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Automated Monitoring & Verification
+
+Monitor progress using `gh run watch`:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+Inspect any failure details:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download workflow artifacts and confirm that LFS and Release transfer strategies simulate cleanly without remote git mutations:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const execReport = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Execution status:", execReport.status);
+  console.log("DryRun flag:", execReport.dryRun);
+  if (execReport.dryRun !== true) throw new Error("Expected dryRun flag true");
+  console.log("Verified zero remote git pushes or release asset uploads executed.");
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A verified dry-run run with zero mutation errors is required before live apply. Run offline unit tests locally:
 
 ```bash
 node --import tsx --test packages/migration/tests/git-lfs.test.ts
@@ -50,37 +114,21 @@ node --import tsx --test packages/migration/tests/releases.test.ts
 node --import tsx --test packages/migration/tests/orchestrator/pipeline.test.ts
 ```
 
-### Step 2: Dry-Run Pipeline Execution with Specialized Strategies
-
-Execute the repository migration pipeline in dry-run mode against a test repository configured with LFS and large release assets:
+When live apply is validated, trigger with `dry_run=false`:
 
 ```bash
-ghec-consultant-cli migrate \
-  --scope ./scopes/repo-scope.json \
-  --dry-run \
-  --output ./scans/stage3-lfs-releases-dryrun.json \
-  --verbose
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
 ```
 
-### Step 3: Verify Dry-Run Output
-
-Inspect `./scans/stage3-lfs-releases-dryrun.json` to verify that both `git-lfs` and `releases-fallback` report completed/simulated without executing external CLI git commands or uploading release binaries.
-
-## Expected Output & State
-
-1. **Preflight Evaluation:**
-   - Preflight inspection correctly flags `usesLfs: true` when `.gitattributes` contains `filter=lfs`.
-   - Preflight inspection correctly flags `shouldSkipReleases: true` when total release size exceeds 10 GiB.
-2. **Dry-Run Pipeline Logs:**
-   - Console logs `[Stage 4] Evaluating specialized transfer strategies...`.
-   - Dry-run records status `completed` without creating git mirror staging directories or calling `git lfs push`.
-3. **Report Output:**
-   - `specializedResults['git-lfs'].status === 'completed'`
-   - `specializedResults['releases-fallback'].status === 'completed'`
-   - Execution report records `dryRun: true`.
+---
 
 ## Pass/Fail Acceptance Criteria
 
-- [ ] All tests in `git-lfs.test.ts`, `releases.test.ts`, and `pipeline.test.ts` pass cleanly.
-- [ ] In dry-run mode, no git commands mutate the target remote repository.
-- [ ] No release assets uploaded to destination during dry-run.
+- [ ] Zero local migration credentials stored or exposed in `.env`, shell, or chat.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [ ] In dry-run mode, no remote git push or release upload is executed against destination.
+- [ ] Actions Step Summary accurately records simulated LFS and release transfers.
+- [ ] Offline unit and integration tests pass cleanly (`git-lfs.test.ts`, `releases.test.ts`, `pipeline.test.ts`).

@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "name": "test-repo-wave",
+  "organizations": [
+    {
+      "source": "cloudgxp-source",
+      "target": "cloudgxp-emu-target"
+    }
+  ],
+  "repositories": [
+    {
+      "sourceOrg": "cloudgxp-source",
+      "sourceRepo": "dummy-repo-public",
+      "targetOrg": "cloudgxp-emu-target",
+      "targetRepo": "dummy-repo-public",
+      "useGei": true,
+      "targetRepoVisibility": "public",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "cloudgxp-source",
+      "sourceRepo": "dummy-repo-private-lfs",
+      "targetOrg": "cloudgxp-emu-target",
+      "targetRepo": "dummy-repo-private-lfs",
+      "useGei": true,
+      "targetRepoVisibility": "private",
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": ["repo-settings", "repo-custom-properties", "rulesets"]
+    }
+  ],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_cloudgxp"
+  }
+}

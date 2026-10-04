@@ -22,95 +22,115 @@ Repository
 
 ## Objective
 
-Validate repository-scoped Actions variables (`repo-variables`) and sealed-box encrypted secrets (`repo-secrets`) rehydration. Ensure that `--dry-run` produces an exact plan without mutating target repository configuration or reading sensitive secret material, followed by controlled live rehydration and verification.
+Validate repository-scoped Actions variables (`repo-variables`) and sealed-box encrypted secrets (`repo-secrets`) rehydration. Ensure that `--dry-run` produces an exact plan without mutating target repository configuration or reading sensitive secret material, followed by controlled live rehydration and verification. All test runs are orchestrated exclusively via GitHub Actions workflows with zero local secrets exposure.
 
 ## Background
 
-GEI migrates git repository history, releases, and pull requests, but omits Actions variables and secrets. The suite rehydrates repository variables directly from source API metadata, and rehydrates secrets by obtaining the target repository public key (`GET /repos/{owner}/{repo}/actions/secrets/public-key`) and encrypting values with libsodium before dispatching `PUT` requests. In dry-run mode, both operations must simulate cleanly with zero network mutations.
+GEI migrates git repository history, releases, and pull requests, but omits Actions variables and secrets. The suite rehydrates repository variables directly from source API metadata, and rehydrates secrets by obtaining the target repository public key (`GET /repos/{owner}/{repo}/actions/secrets/public-key`) and encrypting values with libsodium before dispatching `PUT` requests. In dry-run mode, both operations must simulate cleanly with zero network mutations. Under SEC-CRED-001, Antigravity must never hold write credentials locally.
 
 ## Dependencies
 
-- Task 008: Implement `repo-variables` Migration Module
-- Task 011: `repo-secrets` Metadata Rehydration Module
-- Target test repository created (or transferred via GEI).
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test repository scope: `scopes/test-repo-wave.json`.
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Generate Repository Scope & Plan
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Create test scope for target test repository:
+### Step 1: Scope Artifact Definition
 
-```bash
-cat <<EOF > ./scopes/repo-vars-secrets-scope.json
-{
-  "version": "1.0.0",
-  "migrationId": "repo-vars-secrets-test",
-  "organizations": [
-    { "source": "$GHEC_SOURCE_ORG", "target": "$GHEC_TARGET_ORG" }
-  ],
-  "repositories": [
-    {
-      "sourceOrg": "$GHEC_SOURCE_ORG",
-      "sourceRepo": "dummy-repo-public",
-      "targetOrg": "$GHEC_TARGET_ORG",
-      "targetRepo": "dummy-repo-public"
-    }
-  ]
-}
-EOF
-
-ghec-consultant-cli plan \
-  --scope ./scopes/repo-vars-secrets-scope.json \
-  --modules repo-variables,repo-secrets \
-  --output ./scans/stage3-repo-vars-secrets-plan.json
-```
-
-### Step 2: Enforce Dry-Run Migration
-
-Run migrate with `--dry-run`:
+Verify the committed test repository scope targeting dummy repositories:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-repo-vars-secrets-plan.json \
-  --dry-run \
-  --output ./scans/stage3-repo-vars-secrets-dryrun.json \
-  --json-summary ./scans/stage3-repo-vars-secrets-dryrun-summary.json
+cat scopes/test-repo-wave.json | jq '.repositories[] | {sourceRepo, targetRepo, modules}'
 ```
 
-### Step 3: Run Automated Module Test Suite
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
+
+Trigger dry-run planning and mutation simulation via GitHub Actions without local secrets:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=repo-variables,repo-secrets \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+Alternatively, dispatching the parallel wave workflow:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=repo-variables,repo-secrets \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Automated Monitoring & Verification
+
+Monitor the workflow run in real time:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+If an error occurs, inspect the failed step logs:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download artifacts and confirm zero write calls and zero plaintext secret leakage:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const execReport = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Status:", execReport.status);
+  console.log("DryRun Flag:", execReport.dryRun);
+  if (execReport.dryRun !== true) throw new Error("Expected dryRun flag true");
+
+  const rawJson = require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8");
+  if (rawJson.includes("synthetic-dummy-value-12345")) {
+    throw new Error("Plaintext secret detected in execution artifact!");
+  }
+  console.log("Verified zero plaintext secret leakage and zero REST mutations.");
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A verified dry-run run with zero mutation errors is strictly required before live apply. Run offline unit tests locally:
 
 ```bash
 node --import tsx --test packages/migration/tests/modules/repo-variables.test.ts
 node --import tsx --test packages/migration/tests/modules/repo-secrets.test.ts
 ```
 
-### Step 4: Live Rehydration & Target Verification
-
-Apply planned variables and secrets to target repository:
+When live apply is validated, trigger with `dry_run=false`:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-repo-vars-secrets-plan.json \
-  --output ./scans/stage3-repo-vars-secrets-apply.json
-
-ghec-consultant-cli verify \
-  --plan ./scans/stage3-repo-vars-secrets-plan.json \
-  --output ./scans/stage3-repo-vars-secrets-verify.json
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=repo-variables,repo-secrets \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
 ```
 
-## Expected Output & State
-
-1. **Dry-Run State:**
-   - Report recorded with `status: "complete"` and `dryRun: true`.
-   - Simulated `POST /repos/{owner}/{repo}/actions/variables` and `PUT .../actions/secrets/{name}` logged with `[DRY-RUN]` prefix.
-   - Zero modifications made on target GitHub repository.
-2. **Post-Apply State:**
-   - All expected repository variables present on target repository with matching values.
-   - All expected secret names present on target repository.
-   - Zero secret values exposed in reports, summaries, or console output.
+---
 
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Unit tests for `repo-variables` and `repo-secrets` pass with 100% success rate.
+- [ ] Zero local migration credentials stored or leaked.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
 - [ ] Dry-run execution generates report without sending any write requests to target GitHub API.
-- [ ] Verification command reports `verified: true` with 0 discrepancies.
+- [ ] No plaintext secrets emitted to console logs, execution reports, or step summaries.
+- [ ] Offline unit tests for `repo-variables` and `repo-secrets` pass cleanly.
+- [ ] Post-apply verification confirms variables and secret names match on destination.
