@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import {
   type MigrationPlan,
   type MigrationScope,
@@ -10,7 +11,9 @@ import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
   MigrationPlanner,
+  ScopeMatrixSlicer,
   writeMigrationPlanFile,
+  type GitHubActionsMatrix,
 } from '@ghec/migration';
 import {
   createMigrationClientsFromConfig,
@@ -23,6 +26,8 @@ export interface PlanCommandOptions {
   readonly inputPath?: string | undefined;
   readonly modules?: readonly string[] | undefined;
   readonly outputPath: string;
+  readonly splitMatrix?: number | undefined;
+  readonly outputMatrixPath?: string | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
   readonly privateKeyPath?: string | undefined;
@@ -41,6 +46,11 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
       input: { type: 'string' },
       modules: { type: 'string' },
       output: { type: 'string', default: './scans/migration-plan.json' },
+      'split-matrix': { type: 'string' },
+      'output-matrix': {
+        type: 'string',
+        default: './scans/migration-matrix.json',
+      },
       verbose: { type: 'boolean', default: false },
       'app-id': { type: 'string' },
       'private-key-path': { type: 'string' },
@@ -61,11 +71,22 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
         .filter(Boolean)
     : undefined;
 
+  let splitMatrix: number | undefined;
+  if (values['split-matrix']) {
+    splitMatrix = parseInt(values['split-matrix'], 10);
+    if (isNaN(splitMatrix) || splitMatrix <= 0) {
+      throw new Error('--split-matrix must be a positive integer.');
+    }
+  }
+
   return {
     scopePath: values.scope,
     inputPath: values.input,
     modules,
     outputPath: values.output || './scans/migration-plan.json',
+    splitMatrix,
+    outputMatrixPath:
+      values['output-matrix'] || './scans/migration-matrix.json',
     verbose: values.verbose,
     appId: values['app-id'],
     privateKeyPath: values['private-key-path'],
@@ -75,6 +96,13 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
   };
 }
 
+export interface PlanCommandResult {
+  readonly plan: MigrationPlan;
+  readonly filePath: string;
+  readonly matrix?: GitHubActionsMatrix | undefined;
+  readonly matrixFilePath?: string | undefined;
+}
+
 export async function executePlanCommand(
   options: PlanCommandOptions,
   clientOverrides?: {
@@ -82,7 +110,7 @@ export async function executePlanCommand(
     targetClient?: GitHubReadAdapter | undefined;
   },
   signal?: AbortSignal,
-): Promise<{ plan: MigrationPlan; filePath: string }> {
+): Promise<PlanCommandResult> {
   if (!existsSync(options.scopePath)) {
     throw new Error(`Scope file not found at "${options.scopePath}".`);
   }
@@ -162,5 +190,23 @@ export async function executePlanCommand(
     overwrite: true,
   });
 
-  return { plan, filePath };
+  let matrix: GitHubActionsMatrix | undefined;
+  let matrixFilePath: string | undefined;
+
+  if (options.splitMatrix !== undefined) {
+    matrix = ScopeMatrixSlicer.slice(scope, {
+      batchSize: options.splitMatrix,
+    });
+    matrixFilePath = resolve(
+      options.outputMatrixPath || './scans/migration-matrix.json',
+    );
+    mkdirSync(dirname(matrixFilePath), { recursive: true });
+    writeFileSync(matrixFilePath, JSON.stringify(matrix, null, 2), 'utf8');
+  }
+
+  return {
+    plan,
+    filePath,
+    ...(matrix ? { matrix, matrixFilePath } : {}),
+  };
 }

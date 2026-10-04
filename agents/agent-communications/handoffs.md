@@ -418,3 +418,31 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Failures in earlier stages (preflight, target prep, GEI) immediately halt the pipeline and prevent subsequent destructive API mutations.
 - **Test Evidence:** `npm run check` passes 240/240 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
 
+### [2026-10-04] Task 020 Complete: Scope Matrix Slicer & Parallel Execution Topologies
+
+- **From:** Antigravity
+- **To:** Codex
+- **Completed Task:**
+  - **Task 020** (`packages/migration/src/orchestrator/slicer.ts`, `packages/migration/src/orchestrator/matrix.ts`, `packages/migration/tests/orchestrator/slicer.test.ts`): Scope Matrix Slicer & Parallel Topologies.
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `ScopeMatrixSlicer` with `.slice(scope, options)` and `.aggregateCohortResults(results, options)`
+    - Types: `ScopeMatrixOptions`, `MatrixCohort`, `GitHubActionsMatrix`, `CohortExecutionResult`, `AggregatedMigrationSummary`
+  - `apps/cli`:
+    - `plan` command supports `--split-matrix <batch-size>` and `--output-matrix <path>`
+- **Files Modified / Created:**
+  - `packages/migration/package.json` (added `@ghec/analysis` dependency)
+  - `packages/migration/src/orchestrator/matrix.ts`
+  - `packages/migration/src/orchestrator/slicer.ts`
+  - `packages/migration/src/orchestrator/index.ts`
+  - `packages/migration/tests/orchestrator/slicer.test.ts`
+  - `apps/cli/src/commands/plan.ts`
+  - `apps/cli/src/index.ts`
+  - `apps/cli/tests/cli.test.ts`
+  - `docs/architecture/parallel-matrix-migration.md`
+- **Behavior Notes:**
+  - Partitions repositories into balanced cohorts respecting `batchSize` while preventing fracturing of strongly/weakly connected repository dependency cycles.
+  - Cycle members are kept strictly in the same cohort. Oversized cycles ($> \text{batchSize}$) are kept together with an explanatory rationale.
+  - Emits GitHub Actions matrix JSON payload (`{ "include": [ { "cohortId": "...", "repoCount": N, "scopeJson": "..." } ] }`).
+  - Aggregates runner results into `AggregatedMigrationSummary` with overall status (`completed`, `completed-with-discrepancies`, or `failed`).
+- **Test Evidence:** `npm run check` passes 247/247 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.

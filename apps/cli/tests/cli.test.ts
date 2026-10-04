@@ -910,3 +910,72 @@ test('CLI plan, migrate, and verify workflow end-to-end with mock adapter', asyn
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('CLI plan command partitions scope with --split-matrix and outputs matrix JSON', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-matrix-'));
+  const originalLog = console.log;
+  const originalError = console.error;
+  const stdout: string[] = [];
+
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+
+    const scopeFile = join(dir, 'scope.json');
+    const scopeData = {
+      version: MIGRATION_SCHEMA_VERSION,
+      name: 'matrix-scope',
+      organizations: [
+        { source: 'fictional-north', target: 'fictional-target', modules: [] },
+      ],
+      repositories: Array.from({ length: 5 }, (_, i) => ({
+        sourceOrg: 'fictional-north',
+        sourceRepo: `repo-${i + 1}`,
+        targetOrg: 'fictional-target',
+        targetRepo: `repo-${i + 1}`,
+        useGei: true,
+        modules: ['repo-variables'],
+      })),
+    };
+    writeFileSync(scopeFile, JSON.stringify(scopeData, null, 2));
+
+    const planFile = join(dir, 'migration-plan.json');
+    const matrixFile = join(dir, 'migration-matrix.json');
+    const mockAdapter = new MockGitHubReadAdapter();
+
+    const planExit = await runCli(
+      [
+        'plan',
+        '--scope',
+        scopeFile,
+        '--output',
+        planFile,
+        '--split-matrix',
+        '2',
+        '--output-matrix',
+        matrixFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+
+    assert.equal(planExit, 0);
+    assert.match(stdout.join('\n'), /GitHub Actions matrix generated/);
+    assert.match(stdout.join('\n'), /Total matrix cohorts: 3/);
+
+    const matrixJson = JSON.parse(readFileSync(matrixFile, 'utf8'));
+    assert.ok(Array.isArray(matrixJson.include));
+    assert.equal(matrixJson.include.length, 3);
+    assert.equal(matrixJson.include[0].repoCount, 2);
+    assert.equal(matrixJson.include[1].repoCount, 2);
+    assert.equal(matrixJson.include[2].repoCount, 1);
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -265,3 +265,22 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** `npm run check` passed 240/240 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
 - **Follow-Up:** Unblocks Task 020 (Scope Matrix Slicer & Parallel Topologies).
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 020 Scope Matrix Slicer & Parallel Topologies
+- **Changes:**
+  - Implemented `ScopeMatrixSlicer` in `packages/migration/src/orchestrator/slicer.ts` & `matrix.ts`:
+    - Partitions a `MigrationScope` into parallel cohorts ($\le \text{batchSize}$).
+    - Uses `@ghec/analysis` strongly and weakly connected components so tightly coupled / cyclic repositories migrate in the same cohort without fracturing dependencies.
+    - Handles oversized dependency cycles gracefully by keeping them together as atomic cohorts with explanatory rationale.
+    - Generates GitHub Actions dynamic matrix specification JSON (`{ "include": [ { "cohortId": "cohort-1", "repoCount": 5, "scopeJson": "..." } ] }`).
+    - Implemented fan-in summary aggregation utility (`ScopeMatrixSlicer.aggregateCohortResults`) to consolidate parallel runner results into a unified summary.
+  - Integrated `--split-matrix <batch-size>` and `--output-matrix <path>` into CLI `plan` command (`apps/cli/src/commands/plan.ts` and `apps/cli/src/index.ts`).
+  - Added architecture documentation at `docs/architecture/parallel-matrix-migration.md`.
+  - Added unit test suite `packages/migration/tests/orchestrator/slicer.test.ts` (6 tests) and CLI test case in `apps/cli/tests/cli.test.ts`.
+- **Tests:** `npm run check` passed 247/247 tests across 25 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+- **Follow-Up:** Unblocks Task 021 (Production GitHub Actions Workflow Templates).

@@ -17,6 +17,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@ghec/analysis": "0.1.0",
     "@ghec/contracts": "0.1.0",
     "@ghec/discovery": "0.1.0",
     "@ghec/github-client": "0.1.0",

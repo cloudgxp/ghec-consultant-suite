@@ -129,7 +129,7 @@ Modules: ${MODULE_IDS.join(', ')}`);
     if (commandArgs.includes('--help')) {
       console.log(`ghec-consultant-cli plan — Generate migration plan
 Usage: ghec-consultant-cli plan --scope <file> [options]
-Options: --input <bundle.json> --modules <list> --output <file> --verbose
+Options: --input <bundle.json> --modules <list> --output <file> --split-matrix <batch-size> --output-matrix <file> --verbose
          --app-id <id> --private-key-path <path> --installation-id <id>
          --source-token <token> --target-token <token>`);
       return 0;
@@ -148,20 +148,25 @@ Options: --input <bundle.json> --modules <list> --output <file> --verbose
     process.once('SIGINT', onSigint);
 
     try {
-      const { plan, filePath } = await executePlanCommand(
-        planOptions,
-        {
-          sourceClient: configOverride?.sourceClient,
-          targetClient: configOverride?.targetClient,
-        },
-        controller.signal,
-      );
+      const { plan, filePath, matrix, matrixFilePath } =
+        await executePlanCommand(
+          planOptions,
+          {
+            sourceClient: configOverride?.sourceClient,
+            targetClient: configOverride?.targetClient,
+          },
+          controller.signal,
+        );
       console.log(`Migration plan generated: ${filePath}`);
       console.log(`Plan ID: ${plan.planId}`);
       console.log(`Scope: ${plan.scopeName}`);
       console.log(
         `Operations: ${plan.summary.create} create, ${plan.summary.update} update, ${plan.summary.noop} noop, ${plan.summary.skip} skip`,
       );
+      if (matrix && matrixFilePath) {
+        console.log(`GitHub Actions matrix generated: ${matrixFilePath}`);
+        console.log(`Total matrix cohorts: ${matrix.include.length}`);
+      }
       return 0;
     } catch (err) {
       if (controller.signal.aborted) {
