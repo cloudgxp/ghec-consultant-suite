@@ -6,7 +6,7 @@ complete
 
 ## Owner
 
-Codex (completed with Antigravity pair support during credit window)
+Antigravity
 
 ## Objective
 

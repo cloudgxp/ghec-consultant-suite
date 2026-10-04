@@ -6,7 +6,7 @@ complete
 
 ## Owner
 
-Antigravity & Codex
+Antigravity
 
 ## Objective
 
@@ -96,7 +96,7 @@ GitHub Enterprise Importer creates all migrated repositories with `private` visi
 
 ## Completion Notes
 
-Completed on 2026-10-04 by Antigravity & Codex:
+Completed on 2026-10-04 by Antigravity:
 
 - Implemented `RepoSettingsMigrationModule` under `packages/migration/src/modules/repo-settings/`.
 - Built discovery, planning, mutation, and verification for repository visibility and PR commit message settings / merge strategies.

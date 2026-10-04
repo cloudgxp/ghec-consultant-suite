@@ -62,7 +62,7 @@ None. (Can start immediately).
 ## Documentation
 
 - Create `packages/github-client/README.md` explaining the dual-tenant model and public exports.
-- Update `agents/agent-communications/handoffs.md` upon completion to unblock Codex on Task 002.
+- Update `agents/agent-communications/handoffs.md` upon completion to unblock Task 002.
 
 ## Risks / Notes
 

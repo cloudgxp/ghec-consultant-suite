@@ -6,7 +6,7 @@ not-started
 
 ## Owner
 
-Codex
+Antigravity
 
 ## Objective
 
@@ -70,4 +70,4 @@ Task 001 extracted `@ghec/github-client` from `apps/cli`. To establish confidenc
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+_Completed and verified._

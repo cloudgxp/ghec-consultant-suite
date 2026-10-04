@@ -447,7 +447,7 @@ All material engineering work, test completions, and milestone deliveries are re
     - Added required `"name": "web"` parameter to `webhookPayload` for `POST` webhook creation operations, preventing GitHub HTTP 422 errors.
     - Improved `plan()` diffing logic to trigger `update` when cryptographic secret tokens need rehydration or when SSL/content-type configuration changes.
     - Expanded `packages/migration/tests/modules/webhooks.test.ts` to 5 tests covering array responses, create with `"name": "web"`, secret warnings, and verification discrepancy detection.
-    - Marked `agents/agent-tasks/codex/018-webhooks-migration-module.md` as `complete`.
+    - Marked `agents/agent-tasks/features/completed/018-webhooks-migration-module.md` as `complete`.
   - **Task 026 (Custom Properties):**
     - Hardened `OrgCustomPropertiesMigrationModule` to support direct array schemas (`RawCustomPropertyDefinition[]`) from `GET /orgs/{org}/properties/schema`.
     - Corrected org custom property schema mutation endpoint to `PUT /orgs/{org}/properties/schema/{custom_property_name}` and mapped body payload to snake_case (`value_type`, `required`, `default_value`, `description`, `allowed_values`).

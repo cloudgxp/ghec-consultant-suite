@@ -6,7 +6,7 @@ not-started
 
 ## Owner
 
-Codex
+Antigravity
 
 ## Objective
 
@@ -98,4 +98,4 @@ GitHub Enterprise Importer (GEI) transfers repository Git commit history, branch
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+_Completed and verified._

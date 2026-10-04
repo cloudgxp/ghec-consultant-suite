@@ -6,7 +6,7 @@ complete
 
 ## Owner
 
-Codex / Antigravity
+Antigravity
 
 ## Objective
 
@@ -80,4 +80,4 @@ In enterprise migrations, executions will frequently be triggered via GitHub Act
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+_Completed and verified._

@@ -6,7 +6,7 @@ not-started
 
 ## Owner
 
-Codex
+Antigravity
 
 ## Objective
 
@@ -80,4 +80,4 @@ While repository modules migrate settings for individual repositories, enterpris
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+_Completed and verified._

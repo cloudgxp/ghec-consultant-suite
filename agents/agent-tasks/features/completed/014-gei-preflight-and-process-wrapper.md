@@ -6,7 +6,7 @@ not-started
 
 ## Owner
 
-Codex
+Antigravity
 
 ## Objective
 
@@ -92,4 +92,4 @@ GEI is the official tool for migrating repository Git data, PRs, issues, commits
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+_Completed and verified._

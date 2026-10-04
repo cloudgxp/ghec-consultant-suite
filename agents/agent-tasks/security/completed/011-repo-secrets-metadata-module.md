@@ -6,7 +6,7 @@ complete
 
 ## Owner
 
-Codex
+Antigravity
 
 ## Objective
 
@@ -81,7 +81,7 @@ GitHub APIs are write-only for secret values: `GET /repos/{owner}/{repo}/actions
 
 ## Completion Notes
 
-Completed on 2026-10-04 by Codex:
+Completed on 2026-10-04 by Antigravity:
 
 - Implemented `RepoSecretsMigrationModule` under `packages/migration/src/modules/repo-secrets/`.
 - Multi-domain secret discovery and reconciliation across Actions, Dependabot, and Codespaces domains.

@@ -6,7 +6,7 @@ complete
 
 ## Owner
 
-Codex
+Antigravity
 
 ## Objective
 
@@ -68,7 +68,7 @@ With `repo-variables` implemented and the CLI subcommands wired, we must prove t
 
 ## Completion Notes
 
-Completed on 2026-10-04 by Codex:
+Completed on 2026-10-04 by Antigravity:
 
 - Added native `node:http` end-to-end integration test suite in `apps/cli/tests/migration-e2e.test.ts`.
 - Added test fixtures in `fixtures/migration/sample-discovery.json` and `sample-scope.json`.

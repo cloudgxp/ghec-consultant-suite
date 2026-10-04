@@ -1,6 +1,6 @@
-# Inter-Agent Task Handoffs
+# Agent Task & Subsystem Handoffs
 
-This log documents formal handoffs between Antigravity and Codex when completed interfaces or packages unblock downstream tasks.
+This log documents formal handoffs, package interfaces, and dependency resolutions across Antigravity tasks, specialized subagents, and milestones.
 
 ---
 
@@ -9,8 +9,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 ```markdown
 ## [YYYY-MM-DD] Handoff: Task <ID> (<Task Name>) -> Task <Dependent ID>
 
-- **From:** [Antigravity | Codex]
-- **To:** [Codex | Antigravity]
+- **Agent:** Antigravity (or Subagent)
 - **Completed Task:** <ID>
 - **Unblocked Tasks:** <IDs>
 - **Exported Interfaces / Packages:**
@@ -39,8 +38,8 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `agents/agent-communications/*.md`
   - `agents/agent-tasks/README.md`
   - `agents/agent-tasks/dependency-graph.md`
-  - `agents/agent-tasks/antigravity/*.md`
-  - `agents/agent-tasks/codex/*.md`
+  - `agents/agent-tasks/<category>/completed/*.md`
+
 - **Behavior Notes:** Baseline 116 tests are passing. Task 001 and Task 004 can start in parallel immediately.
 - **Test Evidence:** `npm run check` passes 116/116 tests.
 
@@ -552,7 +551,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `.github/workflows/migration-execute-wave.yml`
   - `.github/workflows/migration-resume.yml`
   - `docs/guides/github-actions-migration.md`
-  - `agents/agent-tasks/antigravity/021-github-actions-workflow-templates.md`
+  - `agents/agent-tasks/features/completed/021-github-actions-workflow-templates.md`
 - **Behavior Notes:**
   - Workflows use `secrets.GHEC_SOURCE_TOKEN` and `secrets.GHEC_TARGET_TOKEN` strictly without echoing them to outputs or logs.
   - Slicer outputs matrix dynamically via `jq` JSON encoding for direct consumption by `fromJSON(needs.slicer.outputs.matrix)`.
@@ -585,7 +584,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `apps/cli/src/commands/migrate.ts`
   - `apps/cli/src/commands/verify.ts`
   - `packages/migration/tests/reporting/summary.test.ts`
-  - `agents/agent-tasks/codex/019-github-actions-step-summary-reporter.md`
+  - `agents/agent-tasks/features/completed/019-github-actions-step-summary-reporter.md`
 - **Behavior Notes:**
   - All dynamic inputs formatted in Markdown or CSV undergo formula injection sanitization (`=`, `+`, `-`, `@`, `\t`, `\r`) with single-quote escaping.
   - Adheres strictly to Zero-Exposure Secrets (DEC-004): only secret count metrics and names are logged; raw values are never read, printed, or recorded.
@@ -646,7 +645,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/migration/src/core/registry.ts`
   - `packages/migration/src/index.ts`
   - `packages/migration/tests/modules/repo-settings.test.ts`
-  - `agents/agent-tasks/codex/025-repo-visibility-and-settings-reconciliation.md`
+  - `agents/agent-tasks/security/completed/025-repo-visibility-and-settings-reconciliation.md`
 - **Behavior Notes:**
   - Reconciles GEI's default `private` visibility back to original `internal` or `public` visibility.
   - Restores custom squash merge and merge commit title/message templates and merge strategy toggles (`delete_branch_on_merge`, `allow_auto_merge`, etc.) per DEC-015.
@@ -677,7 +676,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/migration/tests/modules/custom-properties.test.ts`
   - `packages/migration/src/core/registry.ts`
   - `packages/migration/src/index.ts`
-  - `agents/agent-tasks/codex/026-custom-properties-migration-modules.md`
+  - `agents/agent-tasks/features/completed/026-custom-properties-migration-modules.md`
 - **Behavior Notes:**
   - `OrgCustomPropertiesMigrationModule` migrates custom property schemas (`string`, `single_select`, `multi_select`, `true_false`) via `GET /orgs/{org}/properties/schema` and `PUT /orgs/{targetOrg}/properties/schema`.
   - `RepoCustomPropertiesMigrationModule` fetches custom property values via `GET /repos/{owner}/{repo}/properties/values` and batch-assigns them via `PATCH /orgs/{targetOrg}/properties/values`.
@@ -705,7 +704,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/migration/src/core/registry.ts`
   - `packages/migration/src/index.ts`
   - `packages/migration/tests/post-migration/codeowners.test.ts`
-  - `agents/agent-tasks/codex/028-codeowners-and-team-references-repair.md`
+  - `agents/agent-tasks/security/completed/028-codeowners-and-team-references-repair.md`
 - **Behavior Notes:**
   - Scans static files (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories (`.github/ISSUE_TEMPLATE`, `.github/workflows`).
   - Rewrites `@source-org/team` references to `@target-org/mapped-team` using `teamSlugMap` from Task 017 while leaving non-source references intact.
@@ -736,7 +735,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/migration/src/core/registry.ts`
   - `packages/migration/src/index.ts`
   - `packages/migration/tests/post-migration/security.test.ts`
-  - `agents/agent-tasks/codex/029-ghas-and-security-remediation-sync.md`
+  - `agents/agent-tasks/security/completed/029-ghas-and-security-remediation-sync.md`
 - **Behavior Notes:**
   - Reconciles `security_and_analysis` settings on destination repositories via idempotent `PATCH /repos/{owner}/{repo}` payloads.
   - Validates prerequisite dependencies (GHAS license availability and `advanced_security` activation before `secret_scanning`).
