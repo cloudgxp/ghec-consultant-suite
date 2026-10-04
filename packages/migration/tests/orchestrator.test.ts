@@ -352,3 +352,29 @@ test('HttpTargetWriteClient performs HTTP mutations', async () => {
   assert.equal(capturedHeaders['Content-Type'], 'application/json');
   assert.equal(JSON.parse(capturedBody).name, 'MY_VAR');
 });
+
+test('HttpTargetWriteClient normalizes trailing slashes on baseUrl', async () => {
+  let capturedUrl = '';
+  const customFetch = (async (url: string | URL | Request) => {
+    capturedUrl = String(url);
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  }) as typeof globalThis.fetch;
+
+  const client = new HttpTargetWriteClient({
+    token: 'mock-token',
+    baseUrl: 'https://mock.api.github.com///',
+    fetchImpl: customFetch,
+  });
+
+  await client.mutate(
+    {
+      id: 'test-slash',
+      method: 'GET',
+      path: '/orgs/{owner}',
+      pathParams: { owner: 'my-org' },
+    },
+    new AbortController().signal,
+  );
+
+  assert.equal(capturedUrl, 'https://mock.api.github.com/orgs/my-org');
+});

@@ -594,6 +594,19 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** `packages/migration/tests/git-lfs.test.ts` (4/4 passed). Resolves CodeQL alerts #19 and #20 (2 alerts).
 - **Follow-Up:** Proceed to Task 06 (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`).
 
+---
 
+## 2026-10-04
 
+### Agent: Antigravity
 
+- **Task:** CodeQL Remediation Task 06: Fix Polynomial ReDoS in Secret Redaction and Diagnostic Helpers (`codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md`)
+- **Changes:**
+  - Added negative lookahead `(?:(?!-----BEGIN)[\s\S])*?` to private key regular expressions in `packages/discovery/src/output/sanitizer.ts` and `packages/github-client/src/diagnostics.ts` to prevent polynomial backtracking on repeated PEM headers.
+  - Added orphaned header redaction `/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/g` in `packages/github-client/src/diagnostics.ts`.
+  - Replaced trailing slash removal regex `replace(/\/+$/, '')` in `packages/migration/src/client/http-target-write-client.ts` with linear string trimming loop (`while (base.endsWith('/')) { base = base.slice(0, -1); }`).
+  - Added ReDoS resilience benchmark tests in `apps/cli/tests/publisher.test.ts` and `apps/cli/tests/auth.test.ts` verifying pathological inputs execute in < 100ms.
+  - Added trailing slash normalization test in `packages/migration/tests/orchestrator.test.ts`.
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Monorepo test suite passed (338/338 tests). Resolves CodeQL alerts #14, #15, #16, and #17 (4 alerts).
+- **Follow-Up:** Proceed to Task 07 (`codeql-07-pin-reusable-workflow-commit-sha.md`).

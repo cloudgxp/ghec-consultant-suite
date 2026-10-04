@@ -456,6 +456,20 @@ test('Pre-publication security scanner catches and neutralizes secret patterns',
   );
 });
 
+test('Secret redactor is resilient against polynomial ReDoS on repeated PEM markers', () => {
+  const pathologicalPem = '-----BEGIN PRIVATE KEY-----\n'.repeat(500);
+  const start = performance.now();
+  const { sanitized, secretDetected } = redactSecretsInString(pathologicalPem);
+  const elapsed = performance.now() - start;
+
+  assert.equal(secretDetected, true);
+  assert.ok(
+    elapsed < 100,
+    `Pathological PEM check took too long: ${elapsed.toFixed(2)}ms`,
+  );
+  assert.doesNotMatch(sanitized, /BEGIN (?:[A-Z]+ )?PRIVATE KEY/);
+});
+
 test('DiscoveryOrchestrator applies salt pseudonymization and records saltDigest in configuration', async () => {
   const tmpDir = mkdtempSync(join(tmpdir(), 'ghec-orch-salt-test-'));
 
