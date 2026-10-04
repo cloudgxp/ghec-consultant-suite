@@ -45,6 +45,41 @@ records the current disposition of that scope.
 | CLI-8               | Complete            | The probe is exercised directly without a nested npm process, the package-script mapping is asserted, the generated report is verified, and the root quality gate passes. Live verification passed against `cloudgxp` (`research/github/api-drift-report.json`).                                                                                                                                                                                                                                                                                                       |
 | CLI-9 and CLI-10    | Complete            | Verified offline & mock, plus live read-only verification against `cloudgxp`. Verified by automated tests: GraphQL query aggregators (`OrgMetadataAggregator`, `RepositoryDeepDiscoveryAggregator`, `TeamHierarchyAndAccessAggregator` in `tests/aggregators.test.ts`), advanced domain collectors (Actions compute/runners, security posture, integrations/deploy keys, and LFS in `tests/advanced-collectors.test.ts`), and synthetic fixtures (`specialized-fixtures.test.ts`, `partial-denied.test.ts`). Live discovery across all 11 modules validated.           |
 
+### Migration Expansion (Tasks 001–030)
+
+| Task(s) | Owner | Current disposition | Work & Verification Evidence |
+| --- | --- | --- | --- |
+| **001** (`@ghec/github-client` package) | Antigravity | Complete | Extracted headless client with auth, rate limiter, dual client isolation. Verified via `tests/auth.test.ts`, `client-isolation.test.ts`. |
+| **002** (`@ghec/github-client` tests) | Codex | Complete | Unit test suite & tenant isolation verification (11 tests passing). Verified via `packages/github-client/tests/`. |
+| **003** (`@ghec/discovery` package) | Antigravity | Complete | Extracted headless discovery package with collectors, aggregators, orchestrator, and publisher. |
+| **004** (Migration Schemas) | Codex | Complete | Schema validation in `@ghec/contracts` for scopes, plans, preflight, execution, and verification artifacts. |
+| **005** (Migration Core Framework) | Antigravity | Complete | Core framework, `ModuleRegistry`, and topological DAG dependency resolution (`packages/migration/src/core/`). |
+| **006** (Checkpoint Manager) | Codex | Complete | Checkpoint manager & resumption manifests (`packages/migration/src/checkpoint/`). |
+| **007** (Migration Planner) | Antigravity | Complete | `MigrationPlanner`, diff calculation engine, and plan serialization (`packages/migration/src/planner/`). |
+| **008** (`repo-variables` module) | Antigravity / Codex | Complete | 4-stage lifecycle module (`discover`, `plan`, `apply`, `verify`) for repository variables (`packages/migration/src/modules/repo-variables/`). |
+| **009** (CLI Integration) | Antigravity | Complete | CLI commands `plan`, `migrate`, and `verify` with `MigrationOrchestrator`, `VerificationOrchestrator`, `HttpTargetWriteClient`. |
+| **010** (`repo-variables` E2E) | Codex | Open | Ready to start; depends on 008, 009. |
+| **011** (`repo-secrets` module) | Codex | Open | Ready to start; depends on 008. |
+| **012** (`environments` module) | Codex | Open | Ready to start; depends on 008. |
+| **013** (`rulesets` & `branch-protection`) | Antigravity | Complete | Ruleset migration module + branch protection reconciler (`packages/migration/src/modules/`). |
+| **014** (GEI Process Wrapper) | Codex | Complete | GEI preflight, process execution wrapper, backoff polling, and log parsing (`packages/migration/src/gei/`). |
+| **015** (GEI Pipeline Integration) | Antigravity | Open | Depends on 009, 013, 014, 022..027. |
+| **016** (`org-variables` and `org-secrets`) | Codex | Open | Depends on 008, 011. |
+| **017** (`teams` & EMU Identity Mapper) | Antigravity | Complete | Teams hierarchy DFS creation, repo access bindings, EMU identity mapper, IdP blueprint exporter (`packages/migration/src/modules/teams/`). |
+| **018** (`webhooks` module) | Codex | Open | Depends on 008. |
+| **019** (Step Summary Reporter) | Codex | Open | Depends on 009. |
+| **020** (Scope Matrix Slicer) | Antigravity | Open | Depends on 009, 015. |
+| **021** (Actions Workflow Templates) | Antigravity | Open | Depends on 019, 020. |
+| **022** (Preflight Engine) | Antigravity | Complete | 4-tier repository readiness classification, git-sizer limits, destination blocker inspection (`packages/migration/src/preflight/`). |
+| **023** (Git LFS Strategy) | Codex | Complete | Git LFS mirroring, push, verification, and target quota checks (`packages/migration/src/strategies/git-lfs/`). |
+| **024** (Release Fallback Strategy) | Codex | Complete | Release fallback strategy and asset streaming (`packages/migration/src/strategies/releases/`). |
+| **025** (Visibility & PR Settings) | Codex | Open | Depends on 005, 008, 014. |
+| **026** (Custom Properties) | Codex | Open | Depends on 005, 008. |
+| **027** (Mannequin Reclamation Engine) | Antigravity | Open | Depends on 005, 006, 014, 017. |
+| **028** (CODEOWNERS Repair) | Codex | Open | Depends on 005, 017. |
+| **029** (GHAS & Security Remediation) | Codex | Open | Depends on 005, 008, 022. |
+| **030** (Advisory Planner) | Antigravity | Complete | Apps matrix, packages guidance, runners spec, and unsupported items auditor (`packages/migration/src/advisory/`). |
+
 ## Reconciliation Evidence
 
 The 2026-10-04 reconciliation found:
