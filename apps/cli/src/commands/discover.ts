@@ -1,21 +1,7 @@
 import { parseArgs } from 'node:util';
 import { MODULE_IDS, type ModuleId } from '@ghec/contracts';
-export interface DiscoveryPlan {
-  scope: { kind: 'organization' | 'enterprise'; name: string };
-  modules: ModuleId[];
-  output: string;
-  format: 'json';
-  dryRun: boolean;
-  includeSensitiveMetadata: boolean;
-  redactionProfile: 'standard' | 'minimal';
-  continueOnError: boolean;
-  verbose: boolean;
-  appId?: string | undefined;
-  privateKeyPath?: string | undefined;
-  installationId?: string | undefined;
-  resume?: string | undefined;
-  salt?: string | undefined;
-}
+import type { DiscoveryPlan } from '@ghec/discovery';
+export type { DiscoveryPlan } from '@ghec/discovery';
 /** Offline syntax validation only. Does not validate credentials or API access. */
 export function parseDiscoveryOptions(args: string[]): DiscoveryPlan {
   // Normalize --resume if passed as bare flag

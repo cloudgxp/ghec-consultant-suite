@@ -1,22 +1,18 @@
 import { readFileSync } from 'node:fs';
+import type { DiscoveryConfig } from '@ghec/discovery';
+import type { GitHubAppConfig } from '@ghec/github-client';
+
+// Re-exported so existing CLI imports keep working; the implementations live
+// in @ghec/github-client so every transport error is scrubbed at the source.
+export { sanitizeDiagnostics } from '@ghec/github-client';
+export type { GitHubAppConfig } from '@ghec/github-client';
 
 /**
  * Configuration and credential management.
  * In accordance with SEC-CRED-001, tokens and private keys must never be logged, printed, or exported.
  */
 
-export interface GitHubAppConfig {
-  readonly appId: string;
-  readonly privateKey: string;
-  readonly installationId: string;
-}
-
-export interface CliConfig {
-  readonly token?: string | undefined;
-  readonly app?: GitHubAppConfig | undefined;
-  readonly baseUrl: string;
-  readonly apiVersion: string;
-}
+export type CliConfig = DiscoveryConfig;
 
 export interface CliConfigOptions {
   readonly appId?: string | undefined;
@@ -72,23 +68,4 @@ export function loadConfig(options?: CliConfigOptions): CliConfig {
     baseUrl,
     apiVersion,
   };
-}
-
-/** Redacts potential token, JWT, and private key patterns from any diagnostic string. */
-export function sanitizeDiagnostics(message: string): string {
-  return message
-    .replace(
-      /-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA )?PRIVATE KEY-----/g,
-      '[REDACTED_PRIVATE_KEY]',
-    )
-    .replace(
-      /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
-      '[REDACTED_JWT]',
-    )
-    .replace(
-      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,255}|ghs_[A-Za-z0-9_]{20,255})\b/g,
-      '[REDACTED_TOKEN]',
-    )
-    .replace(/\b(Bearer\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]')
-    .replace(/\b(token\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]');
 }

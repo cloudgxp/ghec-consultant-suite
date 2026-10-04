@@ -12,8 +12,8 @@
     "npm": ">=10"
   },
   "scripts": {
-    "build": "npm run build -w @ghec/contracts && npm run build -w @ghec/analysis && npm run build -w ghec-consultant-cli && npm run build -w @ghec/dashboard",
-    "typecheck": "npm run build -w @ghec/contracts && npm run build -w @ghec/analysis && npm run typecheck --workspaces --if-present",
+    "build": "npm run build -w @ghec/contracts && npm run build -w @ghec/analysis && npm run build -w @ghec/github-client && npm run build -w @ghec/discovery && npm run build -w ghec-consultant-cli && npm run build -w @ghec/dashboard",
+    "typecheck": "npm run build -w @ghec/contracts && npm run build -w @ghec/analysis && npm run build -w @ghec/github-client && npm run build -w @ghec/discovery && npm run typecheck --workspaces --if-present",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "npm run build && node --import tsx --test packages/contracts/tests/*.test.ts packages/analysis/tests/*.test.ts apps/dashboard/tests/*.test.ts apps/cli/tests/*.test.ts",

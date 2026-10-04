@@ -142,4 +142,4 @@ baseline in this order:
    evidence.
 
 The authoritative item-level backlog is
-[`agent-tasks/CURRENT-TASKS.md`](../../agent-tasks/CURRENT-TASKS.md).
+[`agents/agent-tasks/CURRENT-TASKS.md`](../../agents/agent-tasks/CURRENT-TASKS.md).

@@ -7,8 +7,10 @@ import {
   sanitizeDiagnostics,
   type CliConfig,
 } from './config/index.js';
-import { DiscoveryOrchestrator } from './engine/orchestrator.js';
-import { PreflightPermissionError } from './permissions/index.js';
+import {
+  DiscoveryOrchestrator,
+  PreflightPermissionError,
+} from '@ghec/discovery';
 
 export async function runCli(
   args: string[] = process.argv.slice(2),

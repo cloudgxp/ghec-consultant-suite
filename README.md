@@ -27,8 +27,8 @@ longer a static scaffold.
   against synthetic GitHub resources remains open.
 
 This repository is not yet approved for customer production use. Consult
-[`agent-tasks/CURRENT-TASKS.md`](agent-tasks/CURRENT-TASKS.md) for the current
-release backlog and [`agent-tasks/CHANGELOG.md`](agent-tasks/CHANGELOG.md) for
+[`agents/agent-tasks/CURRENT-TASKS.md`](agents/agent-tasks/CURRENT-TASKS.md) for the current
+release backlog and [`agents/agent-tasks/CHANGELOG.md`](agents/agent-tasks/CHANGELOG.md) for
 verification evidence.
 
 ## Workspace
@@ -38,13 +38,17 @@ apps/cli/               read-only GHEC discovery CLI and bundle publisher
 apps/dashboard/         offline Vite/React/Primer assessment dashboard
 packages/contracts/     public JSON contract v1.0.0 and Zod validation
 packages/analysis/      deterministic migration-readiness analysis
+agents/                 agent specifications, task backlogs, and communications
+  ├── agent-specs/      system architecture and domain contracts
+  ├── agent-tasks/      implementation backlog and dependency graphs
+  └── agent-communications/ handoffs, decisions, changelog, and blockers
+references/github-docs/ curated local GitHub documentation snapshot
 docs/specs/             requirements, architecture, security, and roadmap
 docs/architecture/      deployment and system boundaries
 docs/data-contracts/    public contract guidance
 docs/security/          security review material
 docs/adr/               architecture decisions
 fixtures/synthetic/     fictional evidence bundles only
-agent-tasks/            shared agent backlog, specifications, and changelog
 scripts/                fixture, manifest, API-probe, and setup tooling
 ```
 
