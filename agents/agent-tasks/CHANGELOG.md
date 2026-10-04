@@ -31,6 +31,15 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — DEPENDABOT-01 & DEPENDABOT-02 — Complete
+
+- Summary: Triaged and remediated all 28 open Dependabot vulnerability alerts in cloudgxp/ghec-consultant-suite:
+  - Task DEPENDABOT-01 (`dompurify`): Remediated 16 open Dependabot alerts (#13, #26–#40; CVE-2025-26791, CVE-2026-65914, CVE-2026-65913, CVE-2026-65912, CVE-2026-65903, CVE-2026-41239, CVE-2026-41240, CVE-2026-49459, CVE-2026-49458, CVE-2026-65902, CVE-2026-65901, CVE-2026-49978, CVE-2026-65899, CVE-2026-65898, CVE-2026-66010, CVE-2026-66009) by resolving and hoisting `dompurify@3.4.16` across `package-lock.json`.
+  - Task DEPENDABOT-02 (`jspdf`): Remediated 12 open Dependabot alerts (#14–#25; CVE-2025-29907, CVE-2025-57810, CVE-2025-68428, CVE-2026-24040, CVE-2026-24043, CVE-2026-24133, CVE-2026-24737, CVE-2026-25535, CVE-2026-25755, CVE-2026-25940, CVE-2026-31898, CVE-2026-31938) by hoisting `jspdf@4.2.1` and `jspdf-autotable@5.0.8` across root and workspace manifests, eliminating legacy `atob`/`btoa` packages, and deduplicating dependencies.
+- Files: `package-lock.json`, `agents/agent-tasks/security/completed/dependabot-01-update-dompurify.md`, `agents/agent-tasks/security/completed/dependabot-02-update-jspdf.md`, `agents/agent-tasks/security/README.md`, `agents/agent-tasks/CURRENT-TASKS.md`, `agents/agent-tasks/CHANGELOG.md`.
+- Verification: `npm audit` reporting 0 vulnerabilities; `node --import tsx --test apps/dashboard/tests/export-pdf.test.ts` passing 2/2; full repository check `npm run check` passing 339/339 tests across 51 test suites green (100% pass), with ESLint, Prettier, TypeScript, styles check, and bundle size budget checks clean.
+- Follow-up: None. All open Dependabot vulnerabilities are remediated.
+
 ### 2026-10-04 — Antigravity & Codex — TASK-028 & TASK-029 — Complete
 
 - Summary: Completed the final two migration expansion tasks:
