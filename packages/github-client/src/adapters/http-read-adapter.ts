@@ -20,6 +20,7 @@ export interface HttpAdapterOptions {
   maxRetrySeconds?: number | undefined;
   timeoutMs?: number | undefined;
   fetchImpl?: typeof globalThis.fetch | undefined;
+  throttle?: boolean | { enabled?: boolean } | undefined;
 }
 
 function parseLinkHeader(header: string | null | undefined): {
@@ -108,6 +109,15 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
     );
     const apiVersion = options.apiVersion ?? '2026-03-10';
 
+    const throttleEnabled =
+      options.throttle !== undefined
+        ? typeof options.throttle === 'boolean'
+          ? options.throttle
+          : (options.throttle.enabled ?? true)
+        : options.fetchImpl !== undefined
+          ? false
+          : true;
+
     this.octokit = new Octokit({
       auth: options.token,
       baseUrl,
@@ -121,6 +131,7 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
         },
       },
       throttle: {
+        enabled: throttleEnabled,
         onRateLimit: (
           retryAfter: number,
           requestOptions: { method: string; url: string },
