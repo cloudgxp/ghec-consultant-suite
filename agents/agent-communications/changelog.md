@@ -75,3 +75,21 @@ All material engineering work, test completions, and milestone deliveries are re
   - Updated `packages/migration/README.md` with planning workflow instructions.
 - **Tests:** `npm run check` passed 143/143 tests green.
 - **Follow-Up:** Unblocks downstream CLI integration: Task 009 (CLI plan, migrate, verify subcommands).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 022 Source & Destination Migration Preflight Engine
+- **Changes:**
+  - Implemented `types.ts` defining platform limits (`40 GiB` Git repo, `2 GiB` commit, `400 MiB` migration blob, `100 MiB` post-migration blob, `255-byte` ref name, `10 GiB` releases) and inspector options.
+  - Implemented `sizer.ts` parsing `git-sizer --json` output (snake_case and camelCase) and evaluating sizing boundaries.
+  - Implemented `source-inspector.ts` inspecting repository size, release asset totals across releases, and Git LFS detection.
+  - Implemented `destination-inspector.ts` verifying active destination rulesets have "Repository migrations" in `exempt` bypass mode (DEC-012), detecting name collisions, and testing IP allowlist / GHAS reachability.
+  - Implemented `evaluator.ts` running full preflight inspection over `MigrationScope`, classifying repos into 4 readiness tiers (`ready`, `ready-with-follow-up`, `requires-special-strategy`, `blocked`), and emitting validated `MigrationPreflightReport` (`1.0.0`).
+  - Added test suites `packages/migration/tests/preflight/sizer.test.ts` and `evaluator.test.ts`.
+  - Created `packages/migration/src/preflight/README.md`.
+- **Tests:** `npm run check` passed 166/166 tests green.
+- **Follow-Up:** Unblocks Task 014 (Codex GEI Wrapper), Task 015 (GEI Orchestrator Pipeline), Task 024 (Releases Fallback Strategy), and Task 029 (GHAS Remediation).

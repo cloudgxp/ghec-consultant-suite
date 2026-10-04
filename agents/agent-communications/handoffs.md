@@ -136,3 +136,34 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/migration/README.md`
 - **Behavior Notes:** `MigrationPlanner` is strictly read-only and never performs target mutations. In cached mode with `cachedDiscoveryBundle`, source network calls are completely bypassed. Emitted plans are guaranteed to conform to `MigrationPlanSchema`.
 - **Test Evidence:** `npm run check` passes 143/143 tests green.
+
+### [2026-10-04] Task 022 (Source & Destination Migration Preflight Engine) -> Tasks 014 / 015 / 024 / 029
+
+- **From:** Antigravity
+- **To:** Codex / Antigravity
+- **Completed Task:** 022
+- **Unblocked Tasks:** 014 (GEI Process Execution Wrapper), 015 (GEI Pipeline Integration), 024 (Large Releases Strategy), 029 (GHAS Remediation)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `PreflightEvaluator`, `PreflightEvaluatorOptions`
+    - `SourceRepositoryInspector`, `SourceInspectorOptions`
+    - `DestinationBlockerInspector`, `DestinationInspectorOptions`, `isRepositoryMigrationsExemptBypass`
+    - `parseGitSizerOutput`, `evaluateSizingLimits`, `formatBytes`, `PLATFORM_LIMITS`
+    - Types: `GitSizingStats`, `GitSizerRawOutput`, `GitHubRuleset`, `RulesetBypassActor`
+- **Files Modified / Created:**
+  - `packages/migration/src/preflight/types.ts`
+  - `packages/migration/src/preflight/sizer.ts`
+  - `packages/migration/src/preflight/source-inspector.ts`
+  - `packages/migration/src/preflight/destination-inspector.ts`
+  - `packages/migration/src/preflight/evaluator.ts`
+  - `packages/migration/src/preflight/index.ts`
+  - `packages/migration/src/preflight/README.md`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/preflight/sizer.test.ts`
+  - `packages/migration/tests/preflight/evaluator.test.ts`
+  - `package.json`
+- **Behavior Notes:**
+  - Evaluates platform limits: 40 GiB repository Git limit, 2 GiB commit limit, 400 MiB migration blob limit, 100 MiB post-migration blob warning, 255-byte ref length limit, and 10 GiB releases threshold.
+  - Active rulesets on destination are required to have "Repository migrations" in `exempt` bypass mode (DEC-012); `always` or `always_allow` triggers a destination blocker.
+  - Repositories are strictly categorized into 4 readiness tiers (`ready`, `ready-with-follow-up`, `requires-special-strategy`, `blocked`) with all contract invariants satisfied.
+- **Test Evidence:** `npm run check` passes 166/166 tests green.

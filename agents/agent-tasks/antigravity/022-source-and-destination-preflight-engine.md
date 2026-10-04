@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+completed
 
 ## Owner
 
@@ -92,4 +92,14 @@ GEI migrations fail abruptly if source repositories exceed size limits or if des
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Built complete preflight subsystem in `packages/migration/src/preflight/`:
+  - `types.ts`: Platform limits constants (`MAX_REPO_GIT_SIZE_BYTES` 40 GiB, `MAX_COMMIT_SIZE_BYTES` 2 GiB, `MAX_MIGRATION_BLOB_SIZE_BYTES` 400 MiB, `MAX_POST_MIGRATION_BLOB_SIZE_BYTES` 100 MiB, `MAX_REF_NAME_LENGTH_BYTES` 255, `MAX_RELEASES_TOTAL_ASSET_BYTES` 10 GiB) and inspection interfaces.
+  - `sizer.ts`: `parseGitSizerOutput` (supports snake_case and camelCase output from `git-sizer --json`), `evaluateSizingLimits` (enforcing commit, blob, repo size, ref length limits, and post-migration 100 MiB LFS warning), and `formatBytes` utility.
+  - `source-inspector.ts`: `SourceRepositoryInspector` querying repo metadata, releases asset byte totals, and LFS detection via `.gitattributes` or Discovery bundle.
+  - `destination-inspector.ts`: `DestinationBlockerInspector` asserting active destination rulesets have "Repository migrations" in `exempt` bypass mode (DEC-012), detecting destination naming collisions, checking IP allowlist reachability, and verifying GHAS status.
+  - `evaluator.ts`: `PreflightEvaluator` executing end-to-end evaluation across `MigrationScope`, reconciling destination blockers, classifying repositories into the 4 readiness tiers (`ready`, `ready-with-follow-up`, `requires-special-strategy`, `blocked`), and emitting validated `MigrationPreflightReport` (`1.0.0`).
+  - `index.ts`: Exporting all components from `@ghec/migration`.
+- Unit tests added in `packages/migration/tests/preflight/sizer.test.ts` and `evaluator.test.ts` covering all sizing thresholds, ruleset bypass modes (`exempt` vs `always`/`always_allow`), naming collisions, readiness tier classification, and schema contract validation.
+- Created `packages/migration/src/preflight/README.md`.
+- Updated root `package.json` test runner glob to include `packages/migration/tests/**/*.test.ts`.
+- Monorepo gate passes with 166/166 tests green, 0 lint or typecheck errors (`npm run check`).
