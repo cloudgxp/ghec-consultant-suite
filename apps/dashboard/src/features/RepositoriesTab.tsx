@@ -1,419 +1,404 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
+import { Button, IconButton, Label, Select, TextInput } from '@primer/react';
+import {
+  DownloadIcon,
+  SearchIcon,
+  SortAscIcon,
+  SortDescIcon,
+} from '@primer/octicons-react';
+import {
+  VirtualizedTable,
+  type VirtualizedColumn,
+} from '../components/VirtualizedTable.js';
 import {
   formatBytesMetric,
   formatCountMetric,
   resolveOrgName,
 } from '../lib/formatters.js';
 import { generateRepositoriesCsv, downloadCsv } from '../lib/export-csv.js';
+import {
+  ActiveFilters,
+  EmptyState,
+  FilterToolbar,
+  PageHeader,
+} from '../components/ui/index.js';
 
-interface RepositoriesTabProps {
+interface Props {
   bundle: DiscoveryBundle;
-  selectedOrgId: string;
+  selectedOrgIds: readonly string[];
 }
+type Repository = Extract<
+  DiscoveryBundle['entities'][number],
+  { kind: 'repository' }
+>;
+type Lfs = Extract<DiscoveryBundle['entities'][number], { kind: 'lfs' }>;
+type Actions = Extract<
+  DiscoveryBundle['entities'][number],
+  { kind: 'actions' }
+>;
+type Security = Extract<
+  DiscoveryBundle['entities'][number],
+  { kind: 'security' }
+>;
 
-export const RepositoriesTab: React.FC<RepositoriesTabProps> = ({
+export const RepositoriesTab: React.FC<Props> = ({
   bundle,
-  selectedOrgId,
+  selectedOrgIds,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [visibilityFilter, setVisibilityFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const [visibility, setVisibility] = useState('all');
   const [lfsFilter, setLfsFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<'name' | 'size'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
-  // Pre-index auxiliary entities by repositoryId
-  const lfsMap = useMemo(() => {
-    const map = new Map<
-      string,
-      Extract<(typeof bundle.entities)[number], { kind: 'lfs' }>
-    >();
-    for (const e of bundle.entities) {
-      if (e.kind === 'lfs') map.set(e.repositoryId, e);
+  const [sort, setSort] = useState<'name' | 'size'>('name');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const indexes = useMemo(() => {
+    const lfs = new Map<string, Lfs>();
+    const actions = new Map<string, Actions>();
+    const security = new Map<string, Security>();
+    for (const entity of bundle.entities) {
+      if (entity.kind === 'lfs') lfs.set(entity.repositoryId, entity);
+      if (entity.kind === 'actions') actions.set(entity.repositoryId, entity);
+      if (entity.kind === 'security') security.set(entity.repositoryId, entity);
     }
-    return map;
+    return { lfs, actions, security };
   }, [bundle]);
-
-  const actionsMap = useMemo(() => {
-    const map = new Map<
-      string,
-      Extract<(typeof bundle.entities)[number], { kind: 'actions' }>
-    >();
-    for (const e of bundle.entities) {
-      if (e.kind === 'actions') map.set(e.repositoryId, e);
-    }
-    return map;
-  }, [bundle]);
-
-  const secMap = useMemo(() => {
-    const map = new Map<
-      string,
-      Extract<(typeof bundle.entities)[number], { kind: 'security' }>
-    >();
-    for (const e of bundle.entities) {
-      if (e.kind === 'security') map.set(e.repositoryId, e);
-    }
-    return map;
-  }, [bundle]);
-
-  const repos = useMemo(() => {
-    return bundle.entities.filter(
-      (e) =>
-        e.kind === 'repository' &&
-        (!selectedOrgId || e.organizationId === selectedOrgId),
-    ) as Extract<(typeof bundle.entities)[number], { kind: 'repository' }>[];
-  }, [bundle, selectedOrgId]);
-
-  const filteredRepos = useMemo(() => {
-    return repos
-      .filter((repo) => {
-        if (
-          searchQuery &&
-          !repo.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+  const repositories = useMemo(
+    () =>
+      bundle.entities.filter(
+        (entity): entity is Repository =>
+          entity.kind === 'repository' &&
+          (selectedOrgIds.length === 0 ||
+            selectedOrgIds.includes(entity.organizationId)),
+      ),
+    [bundle, selectedOrgIds],
+  );
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return repositories
+      .filter((repository) => {
+        if (needle && !repository.name.toLowerCase().includes(needle))
           return false;
-
-        if (visibilityFilter !== 'all' && repo.visibility !== visibilityFilter)
+        if (visibility !== 'all' && repository.visibility !== visibility)
           return false;
-
-        if (lfsFilter !== 'all') {
-          const lfs = lfsMap.get(repo.id);
-          const isDetected = lfs?.indicator === 'detected';
-          if (lfsFilter === 'detected' && !isDetected) return false;
-          if (lfsFilter === 'not_detected' && isDetected) return false;
-        }
-
-        return true;
+        const detected =
+          indexes.lfs.get(repository.id)?.indicator === 'detected';
+        return (
+          lfsFilter === 'all' ||
+          (lfsFilter === 'detected' ? detected : !detected)
+        );
       })
       .sort((a, b) => {
-        if (sortBy === 'name') {
-          const res = a.name.localeCompare(b.name);
-          return sortOrder === 'asc' ? res : -res;
-        } else {
-          const aSize = a.size.value ?? -1;
-          const bSize = b.size.value ?? -1;
-          const res = aSize - bSize;
-          return sortOrder === 'asc' ? res : -res;
-        }
+        const value =
+          sort === 'name'
+            ? a.name.localeCompare(b.name)
+            : (a.size.value ?? -1) - (b.size.value ?? -1);
+        return order === 'asc' ? value : -value;
       });
-  }, [
-    repos,
-    searchQuery,
-    visibilityFilter,
-    lfsFilter,
-    sortBy,
-    sortOrder,
-    lfsMap,
-  ]);
-
-  const handleExportCsv = () => {
-    const csv = generateRepositoriesCsv(bundle, selectedOrgId || undefined);
-    downloadCsv(`repositories-${bundle.scan.id}.csv`, csv);
-  };
-
+  }, [repositories, query, visibility, lfsFilter, indexes, sort, order]);
+  const columns = useMemo<readonly VirtualizedColumn<Repository>[]>(
+    () => [
+      {
+        header: 'Repository',
+        width: '1.4fr',
+        cell: (repo) => (
+          <>
+            <div className="font-bold text-sm text-[var(--fgColor-default)]">
+              {repo.name}
+            </div>
+            <div className="text-[11px] text-[var(--fgColor-muted)]">
+              {resolveOrgName(bundle, repo.organizationId)}
+            </div>
+            {repo.archived && (
+              <Label variant="attention" size="small" className="mt-1">
+                Archived
+              </Label>
+            )}
+            {repo.fork && (
+              <Label variant="secondary" size="small" className="mt-1 ml-1">
+                Fork
+              </Label>
+            )}
+          </>
+        ),
+      },
+      {
+        header: 'Visibility',
+        width: '0.8fr',
+        cell: (repo) => (
+          <Label
+            variant={
+              repo.visibility === 'public'
+                ? 'attention'
+                : repo.visibility === 'private'
+                  ? 'secondary'
+                  : 'accent'
+            }
+            size="small"
+            className="capitalize"
+          >
+            {repo.visibility}
+          </Label>
+        ),
+      },
+      {
+        header: 'Size',
+        cell: (repo) => (
+          <>
+            <div className="font-mono text-xs text-[var(--fgColor-default)]">
+              {formatBytesMetric(repo.size)}
+            </div>
+            {repo.size.availability !== 'observed' && (
+              <div className="text-[10px] text-[var(--fgColor-attention)]">
+                {repo.size.reason}
+              </div>
+            )}
+          </>
+        ),
+      },
+      {
+        header: 'Git LFS',
+        cell: (repo) => {
+          const lfs = indexes.lfs.get(repo.id);
+          return lfs?.indicator === 'detected' ? (
+            <>
+              <Label variant="attention" size="small">
+                LFS Detected
+              </Label>
+              <div className="text-[10px] font-mono mt-1 text-[var(--fgColor-muted)]">
+                {formatBytesMetric(lfs.storage)}
+              </div>
+            </>
+          ) : (
+            <Label variant="secondary" size="small">
+              None
+            </Label>
+          );
+        },
+      },
+      {
+        header: 'Actions & Runners',
+        width: '1.2fr',
+        cell: (repo) => {
+          const action = indexes.actions.get(repo.id);
+          return action ? (
+            <>
+              <div className="text-xs text-[var(--fgColor-default)]">
+                <strong>{formatCountMetric(action.workflowCount)}</strong>{' '}
+                workflows
+              </div>
+              <Label
+                variant={
+                  action.runnerTypes.includes('self-hosted')
+                    ? 'danger'
+                    : 'secondary'
+                }
+                size="small"
+                className="mt-1"
+              >
+                {action.runnerTypes.includes('self-hosted')
+                  ? 'Self-hosted'
+                  : 'Hosted'}
+              </Label>
+            </>
+          ) : (
+            <span className="text-[var(--fgColor-muted)]">—</span>
+          );
+        },
+      },
+      {
+        header: 'Security Posture',
+        width: '1.2fr',
+        cell: (repo) => {
+          const sec = indexes.security.get(repo.id);
+          return sec ? (
+            <div className="text-xs text-[var(--fgColor-default)]">
+              <div>
+                Dependabot: <strong>{sec.dependabot}</strong>
+              </div>
+              <div>
+                Code scan: <strong>{sec.codeScanning}</strong>
+              </div>
+            </div>
+          ) : (
+            <span className="text-[var(--fgColor-muted)]">—</span>
+          );
+        },
+      },
+      {
+        header: 'Branch',
+        width: '0.9fr',
+        cell: (repo) => (
+          <code className="text-xs text-[var(--fgColor-default)]">
+            {repo.defaultBranch ?? 'unknown'}
+          </code>
+        ),
+      },
+    ],
+    [bundle, indexes],
+  );
   return (
     <div className="space-y-6">
-      {/* Header & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-xl border border-base-300 shadow-xs">
-        <div>
-          <h2 className="text-2xl font-bold text-base-content">
-            Repository Inventory
-          </h2>
-          <p className="text-sm text-base-content/70 mt-1">
-            Displaying {filteredRepos.length} of {repos.length} repositories.
-            {selectedOrgId && (
-              <span className="font-semibold text-primary ml-1">
-                (Filtered by {resolveOrgName(bundle, selectedOrgId)})
+      <PageHeader
+        title="Repository Inventory"
+        description={
+          <>
+            Displaying {filtered.length} of {repositories.length} repositories.
+            {selectedOrgIds.length > 0 && (
+              <span className="font-semibold text-[var(--fgColor-accent)] ml-1">
+                (Filtered by {selectedOrgIds.length} organization(s))
               </span>
             )}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="btn btn-primary btn-sm gap-2 shrink-0"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          </>
+        }
+        primaryAction={
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={() =>
+              downloadCsv(
+                `repositories-${bundle.scan.id}.csv`,
+                generateRepositoriesCsv(
+                  bundle,
+                  selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined,
+                ),
+              )
+            }
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            />
-          </svg>
-          Export Repositories (CSV)
-        </button>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-base-100 rounded-xl border border-base-300 shadow-xs">
-        {/* Search */}
-        <div>
-          <label
-            htmlFor="repo-search"
-            className="text-xs font-semibold text-base-content/70 block mb-1"
-          >
-            Search Repositories
-          </label>
-          <input
-            id="repo-search"
+            Export Repositories (CSV)
+          </Button>
+        }
+      />
+      <FilterToolbar className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <label className="text-xs font-semibold text-[var(--fgColor-default)] flex flex-col gap-1">
+          Search
+          <TextInput
+            leadingVisual={SearchIcon}
             type="search"
-            placeholder="Filter by name..."
-            className="input input-sm input-bordered w-full"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search"
+            placeholder="Search repositories…"
+            size="small"
+            block
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
-        </div>
-
-        {/* Visibility Filter */}
-        <div>
-          <label
-            htmlFor="repo-vis"
-            className="text-xs font-semibold text-base-content/70 block mb-1"
+        </label>
+        <label className="text-xs font-semibold text-[var(--fgColor-default)] flex flex-col gap-1">
+          Visibility
+          <Select
+            aria-label="Visibility"
+            size="small"
+            block
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value)}
           >
-            Visibility
-          </label>
-          <select
-            id="repo-vis"
-            className="select select-sm select-bordered w-full"
-            value={visibilityFilter}
-            onChange={(e) => setVisibilityFilter(e.target.value)}
-          >
-            <option value="all">All Visibilities</option>
-            <option value="public">Public</option>
-            <option value="private">Private</option>
-            <option value="internal">Internal</option>
-          </select>
-        </div>
-
-        {/* LFS Filter */}
-        <div>
-          <label
-            htmlFor="repo-lfs"
-            className="text-xs font-semibold text-base-content/70 block mb-1"
-          >
-            Git LFS Status
-          </label>
-          <select
-            id="repo-lfs"
-            className="select select-sm select-bordered w-full"
+            <Select.Option value="all">All Visibilities</Select.Option>
+            <Select.Option value="public">Public</Select.Option>
+            <Select.Option value="private">Private</Select.Option>
+            <Select.Option value="internal">Internal</Select.Option>
+          </Select>
+        </label>
+        <label className="text-xs font-semibold text-[var(--fgColor-default)] flex flex-col gap-1">
+          Git LFS Status
+          <Select
+            aria-label="Git LFS Status"
+            size="small"
+            block
             value={lfsFilter}
             onChange={(e) => setLfsFilter(e.target.value)}
           >
-            <option value="all">All LFS States</option>
-            <option value="detected">LFS Detected</option>
-            <option value="not_detected">No LFS</option>
-          </select>
-        </div>
-
-        {/* Sort Options */}
-        <div>
-          <label
-            htmlFor="repo-sort"
-            className="text-xs font-semibold text-base-content/70 block mb-1"
-          >
-            Sort By
-          </label>
-          <div className="flex gap-2">
-            <select
-              id="repo-sort"
-              className="select select-sm select-bordered w-full"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'name' | 'size')}
+            <Select.Option value="all">All LFS States</Select.Option>
+            <Select.Option value="detected">LFS Detected</Select.Option>
+            <Select.Option value="not_detected">No LFS</Select.Option>
+          </Select>
+        </label>
+        <div className="text-xs font-semibold text-[var(--fgColor-default)] flex flex-col gap-1">
+          <span>Sort By</span>
+          <div className="flex gap-2 items-center">
+            <Select
+              aria-label="Sort by"
+              size="small"
+              className="w-full"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as 'name' | 'size')}
             >
-              <option value="name">Name</option>
-              <option value="size">Size</option>
-            </select>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              title={`Sort order: ${sortOrder}`}
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </button>
+              <Select.Option value="name">Name</Select.Option>
+              <Select.Option value="size">Size</Select.Option>
+            </Select>
+            <IconButton
+              size="small"
+              icon={order === 'asc' ? SortAscIcon : SortDescIcon}
+              onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
+              aria-label={`Sort ${order === 'asc' ? 'descending' : 'ascending'}`}
+            />
           </div>
         </div>
-      </div>
-
-      {/* Repositories Table */}
-      <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
-        <table
-          className="table table-sm table-zebra w-full"
-          aria-label="Repository inventory table"
-        >
-          <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
-            <tr>
-              <th scope="col">Repository</th>
-              <th scope="col">Visibility</th>
-              <th scope="col">Size</th>
-              <th scope="col">Git LFS</th>
-              <th scope="col">Actions & Runners</th>
-              <th scope="col">Security Posture</th>
-              <th scope="col">Branch</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRepos.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="text-center py-8 text-base-content/60"
-                >
-                  No repositories match your criteria.
-                </td>
-              </tr>
-            ) : (
-              filteredRepos.map((repo) => {
-                const lfs = lfsMap.get(repo.id);
-                const actions = actionsMap.get(repo.id);
-                const sec = secMap.get(repo.id);
-
-                return (
-                  <tr key={repo.id} className="hover:bg-base-200/50">
-                    {/* Repo Name & Org */}
-                    <td>
-                      <div className="font-bold text-sm text-base-content">
-                        {repo.name}
-                      </div>
-                      <div className="text-[11px] text-base-content/60">
-                        {resolveOrgName(bundle, repo.organizationId)}
-                      </div>
-                      {repo.archived && (
-                        <span className="badge badge-warning badge-xs mt-0.5">
-                          Archived
-                        </span>
-                      )}
-                      {repo.fork && (
-                        <span className="badge badge-neutral badge-xs mt-0.5 ml-1">
-                          Fork
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Visibility */}
-                    <td>
-                      <span
-                        className={`badge badge-sm capitalize ${
-                          repo.visibility === 'public'
-                            ? 'badge-warning'
-                            : repo.visibility === 'private'
-                              ? 'badge-neutral'
-                              : 'badge-info'
-                        }`}
-                      >
-                        {repo.visibility}
-                      </span>
-                    </td>
-
-                    {/* Size */}
-                    <td className="whitespace-nowrap">
-                      <div className="font-mono text-xs">
-                        {formatBytesMetric(repo.size)}
-                      </div>
-                      {repo.size.availability !== 'observed' && (
-                        <div className="text-[10px] text-warning">
-                          {repo.size.reason ?? 'Unknown'}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* LFS */}
-                    <td>
-                      {lfs?.indicator === 'detected' ? (
-                        <div>
-                          <span className="badge badge-warning badge-xs font-semibold">
-                            LFS Detected
-                          </span>
-                          <div className="text-[10px] font-mono text-base-content/70 mt-0.5">
-                            {formatBytesMetric(lfs.storage)}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="badge badge-ghost badge-xs text-base-content/50">
-                          None
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Actions & Runners */}
-                    <td>
-                      {actions ? (
-                        <div className="space-y-0.5">
-                          <div className="text-xs">
-                            <strong>
-                              {formatCountMetric(actions.workflowCount)}
-                            </strong>{' '}
-                            workflows
-                          </div>
-                          {actions.runnerTypes.includes('self-hosted') ? (
-                            <span className="badge badge-error badge-xs font-semibold">
-                              Self-hosted Runner
-                            </span>
-                          ) : (
-                            <span className="badge badge-ghost badge-xs">
-                              Hosted
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-base-content/50">—</span>
-                      )}
-                    </td>
-
-                    {/* Security */}
-                    <td>
-                      {sec ? (
-                        <div className="text-xs space-y-0.5">
-                          <div>
-                            Dependabot:{' '}
-                            <span
-                              className={`font-semibold ${
-                                sec.dependabot === 'enabled'
-                                  ? 'text-success'
-                                  : 'text-base-content/60'
-                              }`}
-                            >
-                              {sec.dependabot}
-                            </span>
-                          </div>
-                          <div>
-                            Code Scan:{' '}
-                            <span
-                              className={`font-semibold ${
-                                sec.codeScanning === 'enabled'
-                                  ? 'text-success'
-                                  : 'text-base-content/60'
-                              }`}
-                            >
-                              {sec.codeScanning}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-base-content/50">—</span>
-                      )}
-                    </td>
-
-                    {/* Branch */}
-                    <td>
-                      <code className="text-xs text-base-content/70">
-                        {repo.defaultBranch ?? 'unknown'}
-                      </code>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      </FilterToolbar>
+      <ActiveFilters
+        filters={[
+          ...(query
+            ? [
+                {
+                  id: 'query',
+                  label: `Search: ${query}`,
+                  onRemove: () => setQuery(''),
+                },
+              ]
+            : []),
+          ...(visibility !== 'all'
+            ? [
+                {
+                  id: 'visibility',
+                  label: `Visibility: ${visibility}`,
+                  onRemove: () => setVisibility('all'),
+                },
+              ]
+            : []),
+          ...(lfsFilter !== 'all'
+            ? [
+                {
+                  id: 'lfs',
+                  label: `LFS: ${lfsFilter}`,
+                  onRemove: () => setLfsFilter('all'),
+                },
+              ]
+            : []),
+        ]}
+        onClearAll={() => {
+          setQuery('');
+          setVisibility('all');
+          setLfsFilter('all');
+        }}
+      />
+      {filtered.length === 0 && repositories.length > 0 ? (
+        <EmptyState
+          title="No repositories match these filters"
+          message="Remove one or more active filters to restore the inventory."
+          action={
+            <Button
+              variant="primary"
+              size="small"
+              onClick={() => {
+                setQuery('');
+                setVisibility('all');
+                setLfsFilter('all');
+              }}
+            >
+              Clear filters
+            </Button>
+          }
+        />
+      ) : (
+        <VirtualizedTable
+          ariaLabel="Repository inventory table"
+          rows={filtered}
+          columns={columns}
+          getRowKey={(row) => row.id}
+          emptyMessage="No repositories match your criteria."
+          estimateRowHeight={72}
+          minWidth={1050}
+        />
+      )}
     </div>
   );
 };

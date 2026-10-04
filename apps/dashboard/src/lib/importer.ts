@@ -1,14 +1,25 @@
 import { validateBundle, type DiscoveryBundle } from '@ghec/contracts';
+import { evaluateBundle, type EvaluatedInsights } from '@ghec/analysis';
+import type { ImportStage, ImportWorkerMessage } from './importer.worker.js';
 import {
   SAMPLE_ORGANIZATION_BUNDLE,
   SAMPLE_ENTERPRISE_BUNDLE,
 } from './samples.js';
 
 export type ImportResult =
-  | { success: true; bundle: DiscoveryBundle }
+  | {
+      success: true;
+      bundle: DiscoveryBundle;
+      insights: EvaluatedInsights;
+    }
   | { success: false; message: string; code?: string };
 
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB safeguard
+export interface ImportProgress {
+  status: ImportStage;
+  progress: number;
+}
+
+const MAX_FILE_SIZE_BYTES = 250 * 1024 * 1024;
 
 /**
  * Parses and validates an uploaded bundle file.
@@ -18,51 +29,56 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB safeguard
  * - Validates schema version and invariants
  * - Never echoes sensitive payload contents in error messages
  */
-export async function importBundleFile(file: File): Promise<ImportResult> {
+export async function importBundleFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void,
+): Promise<ImportResult> {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return {
       success: false,
       code: 'file_too_large',
-      message: `File exceeds maximum allowed size of 50 MB (uploaded file: ${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
+      message: `File exceeds maximum allowed size of 250 MB (uploaded file: ${(file.size / (1024 * 1024)).toFixed(1)} MB). Split the assessment or reduce optional evidence before retrying.`,
     };
   }
 
-  let text: string;
-  try {
-    text = await file.text();
-  } catch {
-    return {
-      success: false,
-      code: 'read_error',
-      message: 'Failed to read local file contents from browser.',
+  return new Promise((resolve) => {
+    const worker = new Worker(
+      new URL('./importer.worker.ts', import.meta.url),
+      {
+        type: 'module',
+      },
+    );
+    const finish = (result: ImportResult) => {
+      worker.terminate();
+      resolve(result);
     };
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return {
-      success: false,
-      code: 'malformed_json',
-      message:
-        'Invalid JSON file: file content could not be parsed as valid JSON.',
+    worker.onmessage = (event: MessageEvent<ImportWorkerMessage>) => {
+      const message = event.data;
+      onProgress?.({ status: message.status, progress: message.progress });
+      if (message.status === 'ready') {
+        finish({
+          success: true,
+          bundle: message.bundle,
+          insights: message.insights,
+        });
+      } else if (message.status === 'error') {
+        finish({
+          success: false,
+          code: message.code,
+          message: message.message,
+        });
+      }
     };
-  }
-
-  const validation = validateBundle(parsed);
-  if (!validation.success) {
-    return {
-      success: false,
-      code: validation.code,
-      message: validation.message,
+    worker.onerror = () => {
+      finish({
+        success: false,
+        code: 'worker_error',
+        message:
+          'The background importer stopped unexpectedly. Retry the import or verify the bundle schema.',
+      });
     };
-  }
-
-  return {
-    success: true,
-    bundle: validation.data,
-  };
+    worker.postMessage(file);
+  });
 }
 
 /**
@@ -86,5 +102,6 @@ export function loadSampleBundle(
   return {
     success: true,
     bundle: validation.data,
+    insights: evaluateBundle(validation.data),
   };
 }

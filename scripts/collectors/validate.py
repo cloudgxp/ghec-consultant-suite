@@ -29,6 +29,9 @@ def validate_schemas():
         ("reconciliation.json", "schemas/reconciliation.schema.json"),
         ("endpoint-inventory.json", "schemas/endpoint-inventory.schema.json"),
         ("collector-registry.json", "schemas/collector-registry.schema.json"),
+        ("graphql-query-catalog.json", "schemas/graphql-query-catalog.schema.json"),
+        ("advanced-domain-reconciliation.json", "schemas/advanced-domain-reconciliation.schema.json"),
+        ("api-drift-report.json", "schemas/api-drift-report.schema.json"),
     ]
     for data_file, schema_file in manifest_schema_pairs:
         data_path = DATA / data_file

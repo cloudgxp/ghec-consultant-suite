@@ -1,25 +1,36 @@
 import React, { useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
-import {
-  formatDuration,
-  getCollectorStatusBadgeClass,
-  resolveOrgName,
-} from '../lib/formatters.js';
+import { Button, Label, UnderlineNav } from '@primer/react';
+import { DownloadIcon } from '@primer/octicons-react';
+import { formatDuration, resolveOrgName } from '../lib/formatters.js';
 import { generateCollectorHealthCsv, downloadCsv } from '../lib/export-csv.js';
+import {
+  ActiveFilters,
+  DataTableFrame,
+  FilterToolbar,
+  PageHeader,
+} from '../components/ui/index.js';
 
 interface CollectorHealthTabProps {
   bundle: DiscoveryBundle;
-  selectedOrgId: string;
+  selectedOrgIds: readonly string[];
 }
+
+const statusVariant: Record<string, 'success' | 'attention' | 'danger'> = {
+  complete: 'success',
+  partial: 'attention',
+  failed: 'danger',
+};
 
 export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
   bundle,
-  selectedOrgId,
+  selectedOrgIds,
 }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const collectors = bundle.collectors.filter(
-    (c) => !selectedOrgId || c.organizationId === selectedOrgId,
+    (c) =>
+      selectedOrgIds.length === 0 || selectedOrgIds.includes(c.organizationId),
   );
 
   const filteredCollectors = collectors.filter((c) => {
@@ -28,55 +39,47 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
   });
 
   const handleExportCsv = () => {
-    const csv = generateCollectorHealthCsv(bundle, selectedOrgId || undefined);
+    const csv = generateCollectorHealthCsv(
+      bundle,
+      selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined,
+    );
     downloadCsv(`collector-health-${bundle.scan.id}.csv`, csv);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-xl border border-base-300 shadow-xs">
-        <div>
-          <h2 className="text-2xl font-bold text-base-content">
-            Collector Health & Evidence Audit
-          </h2>
-          <p className="text-sm text-base-content/70 mt-1">
+      <PageHeader
+        title="Collector Health & Evidence Audit"
+        description={
+          <>
             Terminal status, coverage verification, warnings, and error
             diagnostics for all {bundle.collectors.length} collector executions.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="btn btn-primary btn-sm gap-2 shrink-0"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          </>
+        }
+        primaryAction={
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={handleExportCsv}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            />
-          </svg>
-          Export Collector Audit (CSV)
-        </button>
-      </div>
+            Export Collector Audit (CSV)
+          </Button>
+        }
+      />
 
       {/* Filter Tabs */}
-      <div className="flex items-center justify-between bg-base-100 p-4 rounded-xl border border-base-300 shadow-xs">
-        <div className="tabs tabs-boxed">
+      <FilterToolbar>
+        <UnderlineNav aria-label="Collector status filters">
           {['all', 'failed', 'partial', 'complete'].map((status) => (
-            <button
+            <UnderlineNav.Item
               key={status}
-              type="button"
-              className={`tab capitalize ${statusFilter === status ? 'tab-active' : ''}`}
-              onClick={() => setStatusFilter(status)}
+              aria-current={statusFilter === status ? 'page' : 'false'}
+              onSelect={(e) => {
+                e.preventDefault();
+                setStatusFilter(status);
+              }}
+              className="capitalize cursor-pointer"
             >
               {status} (
               {
@@ -85,26 +88,53 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
                 ).length
               }
               )
-            </button>
+            </UnderlineNav.Item>
           ))}
-        </div>
-      </div>
+        </UnderlineNav>
+      </FilterToolbar>
+      <ActiveFilters
+        filters={
+          statusFilter !== 'all'
+            ? [
+                {
+                  id: 'status',
+                  label: `Status: ${statusFilter}`,
+                  onRemove: () => setStatusFilter('all'),
+                },
+              ]
+            : []
+        }
+      />
 
       {/* Collectors Table */}
-      <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
+      <DataTableFrame caption="Collector health and evidence audit">
         <table
-          className="table table-sm table-zebra w-full"
+          className="w-full text-left border-collapse text-sm"
           aria-label="Collector executions table"
         >
-          <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
+          <thead className="bg-[var(--bgColor-muted)] text-xs text-[var(--fgColor-muted)] font-bold border-b border-[var(--borderColor-default)]">
             <tr>
-              <th scope="col">Module</th>
-              <th scope="col">Organization</th>
-              <th scope="col">Terminal Status</th>
-              <th scope="col">Coverage State</th>
-              <th scope="col">Observed / Expected</th>
-              <th scope="col">Duration</th>
-              <th scope="col">Diagnostics & Notes</th>
+              <th scope="col" className="px-3 py-2.5">
+                Module
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Organization
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Terminal Status
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Coverage State
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Observed / Expected
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Duration
+              </th>
+              <th scope="col" className="px-3 py-2.5">
+                Diagnostics & Notes
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -112,59 +142,68 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
               <tr>
                 <td
                   colSpan={7}
-                  className="text-center py-8 text-base-content/60"
+                  className="text-center py-8 text-[var(--fgColor-muted)]"
                 >
                   No collectors match current filters.
                 </td>
               </tr>
             ) : (
               filteredCollectors.map((c) => (
-                <tr key={c.id} className="hover:bg-base-200/50">
-                  <td className="font-mono text-xs font-bold text-base-content">
+                <tr
+                  key={c.id}
+                  className="border-b border-[var(--borderColor-muted)] hover:bg-[var(--bgColor-muted)]/50 odd:bg-[var(--bgColor-default)] even:bg-[var(--bgColor-muted)]/20"
+                >
+                  <td className="font-mono text-xs font-bold text-[var(--fgColor-default)] px-3 py-2.5">
                     {c.module}
                   </td>
-                  <td className="text-xs text-base-content/70">
+                  <td className="text-xs text-[var(--fgColor-muted)] px-3 py-2.5">
                     {resolveOrgName(bundle, c.organizationId)}
                   </td>
-                  <td>
-                    <span
-                      className={`badge badge-sm font-semibold capitalize ${getCollectorStatusBadgeClass(
-                        c.status,
-                      )}`}
+                  <td className="px-3 py-2.5">
+                    <Label
+                      variant={statusVariant[c.status] ?? 'default'}
+                      size="small"
+                      className="capitalize"
                     >
                       {c.status}
-                    </span>
+                    </Label>
                   </td>
-                  <td>
-                    <span className="badge badge-sm badge-ghost font-mono text-xs capitalize">
+                  <td className="px-3 py-2.5">
+                    <Label
+                      variant="secondary"
+                      size="small"
+                      className="font-mono capitalize"
+                    >
                       {c.coverage.state}
-                    </span>
+                    </Label>
                   </td>
-                  <td className="text-xs font-mono">
+                  <td className="text-xs font-mono text-[var(--fgColor-default)] px-3 py-2.5">
                     {c.coverage.observed} / {c.coverage.expected ?? '—'}
                   </td>
-                  <td className="text-xs font-mono text-base-content/70">
+                  <td className="text-xs font-mono text-[var(--fgColor-muted)] px-3 py-2.5">
                     {formatDuration(c.startedAt, c.completedAt)}
                   </td>
-                  <td>
+                  <td className="px-3 py-2.5">
                     <div className="space-y-1 max-w-sm">
                       {c.coverage.reason && (
-                        <div className="text-xs text-warning">
+                        <div className="text-xs text-[var(--fgColor-attention)]">
                           Coverage note: {c.coverage.reason}
                         </div>
                       )}
                       {c.errors.map((err, idx) => (
-                        <div
+                        <Label
                           key={idx}
-                          className="badge badge-error badge-xs block whitespace-normal py-1"
+                          variant="danger"
+                          size="small"
+                          className="block whitespace-normal py-1"
                         >
                           [{err.code}] {err.message}
-                        </div>
+                        </Label>
                       ))}
                       {c.warnings.map((warn, idx) => (
                         <div
                           key={idx}
-                          className="text-xs text-warning/90 italic"
+                          className="text-xs text-[var(--fgColor-attention)] italic"
                         >
                           Warning: {warn}
                         </div>
@@ -172,7 +211,7 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
                       {c.errors.length === 0 &&
                         c.warnings.length === 0 &&
                         !c.coverage.reason && (
-                          <span className="text-xs text-success font-medium">
+                          <span className="text-xs text-[var(--fgColor-success)] font-medium">
                             Clean
                           </span>
                         )}
@@ -183,7 +222,7 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
             )}
           </tbody>
         </table>
-      </div>
+      </DataTableFrame>
     </div>
   );
 };

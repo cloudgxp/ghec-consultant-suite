@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
+import { Button, Flash, Label, UnderlineNav } from '@primer/react';
+import { DownloadIcon, InfoIcon } from '@primer/octicons-react';
 import { formatCountMetric, resolveOrgName } from '../lib/formatters.js';
 import {
   generateTeamsAndPermissionsCsv,
@@ -48,66 +50,91 @@ export const TeamsAndIdentitiesTab: React.FC<TeamsAndIdentitiesTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Header & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-xl border border-base-300 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bgColor-default)] p-6 rounded-lg border border-[var(--borderColor-default)] shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-base-content">
+          <h2 className="text-2xl font-bold text-[var(--fgColor-default)]">
             Teams, Access & Pseudonymized Identities
           </h2>
-          <p className="text-sm text-base-content/70 mt-1">
+          <p className="text-sm text-[var(--fgColor-muted)] mt-1">
             Review team structures, repository permissions, outside
             collaborators, and SSO mapping status.
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
             onClick={handleExportTeamsCsv}
-            className="btn btn-primary btn-sm gap-2"
           >
             Export Teams (CSV)
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="default"
+            size="small"
+            leadingVisual={DownloadIcon}
             onClick={handleExportIdentitiesCsv}
-            className="btn btn-outline btn-sm gap-2"
           >
             Export Identities (CSV)
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="tabs tabs-boxed bg-base-100 p-2 rounded-xl border border-base-300 shadow-xs">
-        <button
-          type="button"
-          className={`tab ${activeSubTab === 'teams' ? 'tab-active' : ''}`}
-          onClick={() => setActiveSubTab('teams')}
+      <UnderlineNav aria-label="Teams and identities subviews">
+        <UnderlineNav.Item
+          as="button"
+          aria-current={activeSubTab === 'teams' ? 'page' : 'false'}
+          onSelect={(e) => {
+            e.preventDefault();
+            setActiveSubTab('teams');
+          }}
+          className="cursor-pointer"
         >
           Teams & Repository Access ({teams.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${activeSubTab === 'identities' ? 'tab-active' : ''}`}
-          onClick={() => setActiveSubTab('identities')}
+        </UnderlineNav.Item>
+        <UnderlineNav.Item
+          as="button"
+          aria-current={activeSubTab === 'identities' ? 'page' : 'false'}
+          onSelect={(e) => {
+            e.preventDefault();
+            setActiveSubTab('identities');
+          }}
+          className="cursor-pointer"
         >
           Pseudonymized Identities ({identities.length})
-        </button>
-      </div>
+        </UnderlineNav.Item>
+      </UnderlineNav>
 
       {/* Sub-Tab 1: Teams */}
       {activeSubTab === 'teams' && (
-        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Teams and permissions table container"
+          className="overflow-x-auto rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-default)] shadow-xs"
+        >
           <table
-            className="table table-sm table-zebra w-full"
+            className="w-full text-left border-collapse text-sm"
             aria-label="Teams and permissions table"
           >
-            <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
+            <thead className="bg-[var(--bgColor-muted)] text-xs text-[var(--fgColor-muted)] font-bold border-b border-[var(--borderColor-default)]">
               <tr>
-                <th scope="col">Team Name</th>
-                <th scope="col">Organization</th>
-                <th scope="col">Parent Team</th>
-                <th scope="col">Members</th>
-                <th scope="col">Repository Access Grants</th>
+                <th scope="col" className="px-3 py-2.5">
+                  Team Name
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  Organization
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  Parent Team
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  Members
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  Repository Access Grants
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -115,47 +142,52 @@ export const TeamsAndIdentitiesTab: React.FC<TeamsAndIdentitiesTabProps> = ({
                 <tr>
                   <td
                     colSpan={5}
-                    className="text-center py-8 text-base-content/60"
+                    className="text-center py-8 text-[var(--fgColor-muted)] px-3 py-2.5"
                   >
                     No teams found in this scope.
                   </td>
                 </tr>
               ) : (
                 teams.map((team) => (
-                  <tr key={team.id} className="hover:bg-base-200/50">
-                    <td className="font-bold text-sm text-base-content">
+                  <tr
+                    key={team.id}
+                    className="border-b border-[var(--borderColor-muted)] hover:bg-[var(--bgColor-muted)]/50 odd:bg-[var(--bgColor-default)] even:bg-[var(--bgColor-muted)]/20"
+                  >
+                    <td className="font-bold text-sm text-[var(--fgColor-default)] px-3 py-2.5">
                       {team.name}
-                      <div className="text-[10px] font-mono text-base-content/50">
+                      <div className="text-[10px] font-mono text-[var(--fgColor-muted)]">
                         {team.id}
                       </div>
                     </td>
-                    <td className="text-xs text-base-content/70">
+                    <td className="text-xs text-[var(--fgColor-muted)] px-3 py-2.5">
                       {resolveOrgName(bundle, team.organizationId)}
                     </td>
-                    <td className="text-xs font-mono text-base-content/70">
+                    <td className="text-xs font-mono text-[var(--fgColor-muted)] px-3 py-2.5">
                       {team.parentTeamId ?? 'None (Top Level)'}
                     </td>
-                    <td className="text-xs font-semibold">
+                    <td className="text-xs font-semibold text-[var(--fgColor-default)] px-3 py-2.5">
                       {formatCountMetric(team.membershipCount)}
                     </td>
-                    <td>
+                    <td className="px-3 py-2.5">
                       {team.repositoryAccess.length === 0 ? (
-                        <span className="text-xs text-base-content/50">
+                        <span className="text-xs text-[var(--fgColor-muted)]">
                           No direct repo grants
                         </span>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           {team.repositoryAccess.map((acc, idx) => (
-                            <span
+                            <Label
                               key={idx}
-                              className="badge badge-sm badge-neutral font-mono text-xs"
+                              variant="secondary"
+                              size="small"
+                              className="font-mono text-xs"
                             >
                               {acc.repositoryId} (
-                              <span className="text-primary font-bold">
+                              <span className="text-[var(--fgColor-accent)] font-bold">
                                 {acc.permission}
                               </span>
                               )
-                            </span>
+                            </Label>
                           ))}
                         </div>
                       )}
@@ -171,39 +203,45 @@ export const TeamsAndIdentitiesTab: React.FC<TeamsAndIdentitiesTabProps> = ({
       {/* Sub-Tab 2: Identities */}
       {activeSubTab === 'identities' && (
         <div className="space-y-4">
-          <div className="alert alert-info py-3 text-xs shadow-xs">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="stroke-current shrink-0 h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>
-              <strong>PII Redaction Applied</strong>: In compliance with strict
-              privacy standards, human identities are pseudonymized into
-              deterministic tokens (e.g., <code>fictional-person-1</code>).
+          <Flash variant="default" className="text-xs shadow-xs">
+            <span className="flex items-center gap-2">
+              <InfoIcon className="h-4 w-4 shrink-0" />
+              <span>
+                <strong>PII Redaction Applied</strong>: In compliance with
+                strict privacy standards, human identities are pseudonymized
+                into deterministic tokens (e.g., <code>fictional-person-1</code>
+                ).
+              </span>
             </span>
-          </div>
+          </Flash>
 
-          <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Identities and access table container"
+            className="overflow-x-auto rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-default)] shadow-xs"
+          >
             <table
-              className="table table-sm table-zebra w-full"
+              className="w-full text-left border-collapse text-sm"
               aria-label="Identities and access table"
             >
-              <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
+              <thead className="bg-[var(--bgColor-muted)] text-xs text-[var(--fgColor-muted)] font-bold border-b border-[var(--borderColor-default)]">
                 <tr>
-                  <th scope="col">Pseudonym</th>
-                  <th scope="col">Organization</th>
-                  <th scope="col">Membership Role</th>
-                  <th scope="col">Outside Collaborator</th>
-                  <th scope="col">SSO Status</th>
+                  <th scope="col" className="px-3 py-2.5">
+                    Pseudonym
+                  </th>
+                  <th scope="col" className="px-3 py-2.5">
+                    Organization
+                  </th>
+                  <th scope="col" className="px-3 py-2.5">
+                    Membership Role
+                  </th>
+                  <th scope="col" className="px-3 py-2.5">
+                    Outside Collaborator
+                  </th>
+                  <th scope="col" className="px-3 py-2.5">
+                    SSO Status
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -211,58 +249,68 @@ export const TeamsAndIdentitiesTab: React.FC<TeamsAndIdentitiesTabProps> = ({
                   <tr>
                     <td
                       colSpan={5}
-                      className="text-center py-8 text-base-content/60"
+                      className="text-center py-8 text-[var(--fgColor-muted)] px-3 py-2.5"
                     >
                       No identity records found in this scope.
                     </td>
                   </tr>
                 ) : (
                   identities.map((user) => (
-                    <tr key={user.id} className="hover:bg-base-200/50">
-                      <td className="font-mono text-xs font-bold text-base-content">
+                    <tr
+                      key={user.id}
+                      className="border-b border-[var(--borderColor-muted)] hover:bg-[var(--bgColor-muted)]/50 odd:bg-[var(--bgColor-default)] even:bg-[var(--bgColor-muted)]/20"
+                    >
+                      <td className="font-mono text-xs font-bold text-[var(--fgColor-default)] px-3 py-2.5">
                         {user.pseudonym}
                       </td>
-                      <td className="text-xs text-base-content/70">
+                      <td className="text-xs text-[var(--fgColor-muted)] px-3 py-2.5">
                         {resolveOrgName(bundle, user.organizationId)}
                       </td>
-                      <td>
-                        <span
-                          className={`badge badge-sm capitalize ${
+                      <td className="px-3 py-2.5">
+                        <Label
+                          variant={
                             user.membership === 'owner'
-                              ? 'badge-warning font-semibold'
-                              : 'badge-ghost'
-                          }`}
+                              ? 'attention'
+                              : 'secondary'
+                          }
+                          size="small"
+                          className="capitalize"
                         >
                           {user.membership}
-                        </span>
+                        </Label>
                       </td>
-                      <td>
-                        {user.outsideCollaborator === true ? (
-                          <span className="badge badge-sm badge-error font-semibold">
-                            Outside Collaborator
-                          </span>
-                        ) : user.outsideCollaborator === false ? (
-                          <span className="badge badge-sm badge-ghost text-base-content/60">
-                            Member
-                          </span>
-                        ) : (
-                          <span className="badge badge-sm badge-outline">
-                            Unknown
-                          </span>
-                        )}
+                      <td className="px-3 py-2.5">
+                        <Label
+                          variant={
+                            user.outsideCollaborator === true
+                              ? 'danger'
+                              : user.outsideCollaborator === false
+                                ? 'secondary'
+                                : 'default'
+                          }
+                          size="small"
+                        >
+                          {user.outsideCollaborator === null
+                            ? 'Unknown'
+                            : user.outsideCollaborator
+                              ? 'Outside Collaborator'
+                              : 'Member'}
+                        </Label>
                       </td>
-                      <td>
-                        <span
-                          className={`badge badge-sm font-semibold capitalize ${
+                      <td className="px-3 py-2.5">
+                        <Label
+                          variant={
                             user.ssoStatus === 'linked'
-                              ? 'badge-success'
+                              ? 'success'
                               : user.ssoStatus === 'unlinked'
-                                ? 'badge-warning'
-                                : 'badge-ghost'
-                          }`}
+                                ? 'attention'
+                                : 'secondary'
+                          }
+                          size="small"
+                          className="capitalize"
                         >
                           {user.ssoStatus}
-                        </span>
+                        </Label>
                       </td>
                     </tr>
                   ))

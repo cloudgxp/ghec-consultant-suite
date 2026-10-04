@@ -17,7 +17,31 @@ export interface ReadPage<T> {
   readonly status: number;
 }
 
+export interface GraphQLResponse<T> {
+  readonly data: T;
+  readonly observedAt: string;
+  readonly cost?: number | undefined;
+  readonly remainingPoints?: number | undefined;
+  readonly resetAt?: string | undefined;
+}
+
+export interface EndpointProbeResult {
+  readonly status: number;
+  readonly oauthScopes?: readonly string[] | undefined;
+  readonly acceptedOAuthScopes?: readonly string[] | undefined;
+  readonly ssoRequired?: boolean | undefined;
+  readonly ssoUrl?: string | undefined;
+  readonly message?: string | undefined;
+}
+
 export interface GitHubReadAdapter {
+  /** Implementation must execute typed GraphQL queries against the GitHub GraphQL API. */
+  queryGraphQL<T>(
+    query: string,
+    variables: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<GraphQLResponse<T>>;
+
   /** Implementation must resolve IDs through a reviewed operation registry; never arbitrary queries. */
   readPage<T>(
     operation: ReadOperation,
@@ -42,4 +66,10 @@ export interface GitHubReadAdapter {
     complete: boolean;
     reason?: string;
   }>;
+
+  /** Lightweight probe of a specific path (e.g. /orgs/{org} or /user) to inspect headers and accessibility. */
+  probeEndpoint?(
+    path: string,
+    signal: AbortSignal,
+  ): Promise<EndpointProbeResult>;
 }

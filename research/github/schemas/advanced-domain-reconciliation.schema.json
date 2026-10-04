@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/advanced-domain-reconciliation.schema.json",
+  "title": "GHEC Advanced Domain Reconciliation Schema",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "generatedAt",
+    "summary",
+    "lfsStrategy",
+    "billingReconciliation",
+    "copilotDomain",
+    "emuIdentityDomain"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "enum": ["1.0.0"] },
+    "generatedAt": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": [
+        "unresolvedInitial",
+        "unresolvedResolved",
+        "unresolvedRemaining",
+        "dispositionTransfers"
+      ],
+      "properties": {
+        "unresolvedInitial": { "type": "integer", "minimum": 0 },
+        "unresolvedResolved": { "type": "integer", "minimum": 0 },
+        "unresolvedRemaining": { "type": "integer", "minimum": 0 },
+        "dispositionTransfers": {
+          "type": "object",
+          "required": ["Planned", "Deferred", "Excluded"],
+          "properties": {
+            "Planned": { "type": "integer", "minimum": 0 },
+            "Deferred": { "type": "integer", "minimum": 0 },
+            "Excluded": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "lfsStrategy": {
+      "type": "object",
+      "required": [
+        "recommendedDiscoveryOperation",
+        "fallbackMechanism",
+        "nonDestructiveConstraint",
+        "contractsAlignment",
+        "reasoning"
+      ],
+      "properties": {
+        "recommendedDiscoveryOperation": { "type": "string" },
+        "fallbackMechanism": { "type": "string" },
+        "nonDestructiveConstraint": { "type": "string" },
+        "contractsAlignment": { "type": "string" },
+        "reasoning": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "billingReconciliation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "method",
+          "scope",
+          "initialDisposition",
+          "resolvedDisposition",
+          "rationale",
+          "permissions"
+        ],
+        "properties": {
+          "path": { "type": "string" },
+          "method": { "type": "string", "enum": ["GET"] },
+          "scope": { "type": "string", "enum": ["organization", "user"] },
+          "initialDisposition": { "type": "string", "enum": ["Unresolved"] },
+          "resolvedDisposition": {
+            "type": "string",
+            "enum": ["Planned", "Deferred", "Excluded"]
+          },
+          "rationale": { "type": "string" },
+          "permissions": {
+            "type": "object",
+            "required": ["classic", "fineGrained"],
+            "properties": {
+              "classic": { "type": "array", "items": { "type": "string" } },
+              "fineGrained": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "copilotDomain": {
+      "type": "object",
+      "required": [
+        "enterpriseEndpoints",
+        "organizationEndpoints",
+        "requiredPermissions",
+        "assessmentScope"
+      ],
+      "properties": {
+        "enterpriseEndpoints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "organizationEndpoints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "requiredPermissions": {
+          "type": "object",
+          "properties": {
+            "enterprise": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "organization": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "assessmentScope": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "emuIdentityDomain": {
+      "type": "object",
+      "required": [
+        "endpoints",
+        "pseudonymizationEnforcement",
+        "teamSyncMapping",
+        "piiProtection"
+      ],
+      "properties": {
+        "endpoints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pseudonymizationEnforcement": { "type": "string" },
+        "teamSyncMapping": { "type": "string" },
+        "piiProtection": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

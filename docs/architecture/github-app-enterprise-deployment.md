@@ -48,7 +48,7 @@ In enterprise environments, scanning across multiple organizations presents dist
 3. Click **New GitHub App**.
 4. Configure basic settings:
    - **GitHub App name**: `ghec-consultant-discovery` (or your company naming convention).
-   - **Homepage URL**: `https://github.com/cloudgxp/ghec-consultant-suite`
+   - **Homepage URL**: `https://github.com/<your-org>/<your-repo>`
    - **Webhook**: Uncheck **Active** (no webhooks needed for discovery scanning).
 
 ### Step 2: Configure Read-Only Permissions

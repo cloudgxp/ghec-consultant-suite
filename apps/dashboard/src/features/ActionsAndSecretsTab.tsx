@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActiveFilters,
+  FilterToolbar,
+  PageHeader,
+} from '../components/ui/index.js';
+import { Button, Flash, Label, TextInput, UnderlineNav } from '@primer/react';
+import { DownloadIcon, SearchIcon } from '@primer/octicons-react';
 import type { DiscoveryBundle } from '@ghec/contracts';
+import {
+  VirtualizedTable,
+  type VirtualizedColumn,
+} from '../components/VirtualizedTable.js';
 import {
   formatCountMetric,
   formatMinutesMetric,
@@ -11,293 +22,299 @@ import {
   downloadCsv,
 } from '../lib/export-csv.js';
 
-interface ActionsAndSecretsTabProps {
+interface Props {
   bundle: DiscoveryBundle;
-  selectedOrgId: string;
+  selectedOrgIds: readonly string[];
 }
+type Action = Extract<DiscoveryBundle['entities'][number], { kind: 'actions' }>;
+type Secret = Extract<
+  DiscoveryBundle['entities'][number],
+  { kind: 'actions-secret' }
+>;
 
-export const ActionsAndSecretsTab: React.FC<ActionsAndSecretsTabProps> = ({
+export const ActionsAndSecretsTab: React.FC<Props> = ({
   bundle,
-  selectedOrgId,
+  selectedOrgIds,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'actions' | 'secrets'>(
-    'actions',
+  const [tab, setTab] = useState<'actions' | 'secrets'>('actions');
+  useEffect(() => {
+    const focus = (event: Event) => {
+      const subview = (event as CustomEvent<{ subview?: string }>).detail
+        .subview;
+      if (subview === 'actions' || subview === 'secrets') setTab(subview);
+    };
+    window.addEventListener('ghec:focus-entity', focus);
+    return () => window.removeEventListener('ghec:focus-entity', focus);
+  }, []);
+  const [query, setQuery] = useState('');
+  const actions = useMemo(
+    () =>
+      bundle.entities.filter(
+        (entity): entity is Action =>
+          entity.kind === 'actions' &&
+          (selectedOrgIds.length === 0 ||
+            selectedOrgIds.includes(entity.organizationId)),
+      ),
+    [bundle, selectedOrgIds],
   );
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const actionsEntities = bundle.entities.filter(
-    (e) =>
-      e.kind === 'actions' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'actions' }>[];
-
-  const secretsEntities = bundle.entities.filter(
-    (e) =>
-      e.kind === 'actions-secret' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'actions-secret' }>[];
-
-  const filteredActions = actionsEntities.filter((a) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      a.repositoryId.toLowerCase().includes(q) ||
-      a.workflowNames.some((w) => w.toLowerCase().includes(q))
-    );
-  });
-
-  const filteredSecrets = secretsEntities.filter((s) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      (s.repositoryId && s.repositoryId.toLowerCase().includes(q))
-    );
-  });
-
-  const handleExportCsv = () => {
-    const csv = generateActionsAndSecretsCsv(
-      bundle,
-      selectedOrgId || undefined,
-    );
-    downloadCsv(`actions-and-secrets-${bundle.scan.id}.csv`, csv);
-  };
-
+  const secrets = useMemo(
+    () =>
+      bundle.entities.filter(
+        (entity): entity is Secret =>
+          entity.kind === 'actions-secret' &&
+          (selectedOrgIds.length === 0 ||
+            selectedOrgIds.includes(entity.organizationId)),
+      ),
+    [bundle, selectedOrgIds],
+  );
+  const needle = query.trim().toLowerCase();
+  const filteredActions = useMemo(
+    () =>
+      actions.filter(
+        (item) =>
+          !needle ||
+          item.repositoryId.toLowerCase().includes(needle) ||
+          item.workflowNames.some((name) =>
+            name.toLowerCase().includes(needle),
+          ),
+      ),
+    [actions, needle],
+  );
+  const filteredSecrets = useMemo(
+    () =>
+      secrets.filter(
+        (item) =>
+          !needle ||
+          item.name.toLowerCase().includes(needle) ||
+          item.repositoryId?.toLowerCase().includes(needle),
+      ),
+    [secrets, needle],
+  );
+  const actionColumns = useMemo<readonly VirtualizedColumn<Action>[]>(
+    () => [
+      {
+        header: 'Target Repository',
+        width: '1.3fr',
+        className: 'font-mono text-xs font-bold',
+        cell: (item) => item.repositoryId,
+      },
+      {
+        header: 'Organization',
+        cell: (item) => (
+          <span className="text-xs">
+            {resolveOrgName(bundle, item.organizationId)}
+          </span>
+        ),
+      },
+      {
+        header: 'Workflows',
+        width: '0.7fr',
+        cell: (item) => (
+          <span className="text-xs font-semibold">
+            {formatCountMetric(item.workflowCount)}
+          </span>
+        ),
+      },
+      {
+        header: 'Workflow Names',
+        width: '1.5fr',
+        cell: (item) => (
+          <div className="flex flex-wrap gap-1">
+            {item.workflowNames.map((name) => (
+              <Label
+                key={name}
+                size="small"
+                variant="secondary"
+                className="font-mono"
+              >
+                {name}
+              </Label>
+            ))}
+          </div>
+        ),
+      },
+      {
+        header: 'Runners',
+        width: '0.7fr',
+        className: 'text-xs font-mono',
+        cell: (item) => formatCountMetric(item.runnerCount),
+      },
+      {
+        header: 'Runner Infrastructure',
+        width: '1.2fr',
+        cell: (item) => (
+          <div className="flex flex-wrap gap-1">
+            {item.runnerTypes.map((type) => (
+              <Label
+                key={type}
+                size="small"
+                variant={type === 'self-hosted' ? 'danger' : 'secondary'}
+              >
+                {type}
+              </Label>
+            ))}
+          </div>
+        ),
+      },
+      {
+        header: 'Usage',
+        className: 'text-xs font-mono',
+        cell: (item) => formatMinutesMetric(item.usage),
+      },
+    ],
+    [bundle],
+  );
+  const secretColumns = useMemo<readonly VirtualizedColumn<Secret>[]>(
+    () => [
+      {
+        header: 'Name',
+        width: '1.3fr',
+        className: 'font-mono text-xs font-bold',
+        cell: (item) => item.name,
+      },
+      {
+        header: 'Configuration Kind',
+        cell: (item) => (
+          <Label
+            size="small"
+            variant={
+              item.configurationKind === 'secret' ? 'attention' : 'accent'
+            }
+          >
+            {item.configurationKind}
+          </Label>
+        ),
+      },
+      {
+        header: 'Scope Level',
+        cell: (item) => (
+          <Label size="small" variant="secondary" className="capitalize">
+            {item.level}
+          </Label>
+        ),
+      },
+      {
+        header: 'Target Repository / Scope',
+        width: '1.5fr',
+        className: 'font-mono text-xs',
+        cell: (item) => item.repositoryId ?? 'Organization-wide',
+      },
+      {
+        header: 'Organization',
+        cell: (item) => (
+          <span className="text-xs">
+            {resolveOrgName(bundle, item.organizationId)}
+          </span>
+        ),
+      },
+      {
+        header: 'Last Updated',
+        width: '1.2fr',
+        className: 'text-xs',
+        cell: (item) => formatTimestamp(item.updatedAt),
+      },
+    ],
+    [bundle],
+  );
   return (
     <div className="space-y-6">
-      {/* Header & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-xl border border-base-300 shadow-xs">
-        <div>
-          <h2 className="text-2xl font-bold text-base-content">
-            Actions, Runners & Configuration
-          </h2>
-          <p className="text-sm text-base-content/70 mt-1">
-            Audit workflow automation, runner environments, and
-            secrets/variables inventories.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="btn btn-primary btn-sm gap-2 shrink-0"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+      <PageHeader
+        title="Actions, Runners & Configuration"
+        description="Audit workflow automation, runner environments, and secrets/variables inventories."
+        primaryAction={
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={() =>
+              downloadCsv(
+                `actions-and-secrets-${bundle.scan.id}.csv`,
+                generateActionsAndSecretsCsv(
+                  bundle,
+                  selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined,
+                ),
+              )
+            }
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-            />
-          </svg>
-          Export Workflows & Secrets (CSV)
-        </button>
-      </div>
-
-      {/* Sub-tab Navigation and Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-base-100 p-4 rounded-xl border border-base-300 shadow-xs">
-        <div className="tabs tabs-boxed">
-          <button
-            type="button"
-            className={`tab ${activeSubTab === 'actions' ? 'tab-active' : ''}`}
-            onClick={() => setActiveSubTab('actions')}
+            Export Workflows & Secrets (CSV)
+          </Button>
+        }
+      />
+      <FilterToolbar>
+        <UnderlineNav aria-label="Actions and secrets views">
+          <UnderlineNav.Item
+            as="button"
+            aria-current={tab === 'actions' ? 'page' : 'false'}
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              setTab('actions');
+            }}
           >
-            Workflows & Runners ({actionsEntities.length})
-          </button>
-          <button
-            type="button"
-            className={`tab ${activeSubTab === 'secrets' ? 'tab-active' : ''}`}
-            onClick={() => setActiveSubTab('secrets')}
+            Workflows & Runners ({actions.length})
+          </UnderlineNav.Item>
+          <UnderlineNav.Item
+            as="button"
+            aria-current={tab === 'secrets' ? 'page' : 'false'}
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              setTab('secrets');
+            }}
           >
-            Secrets & Variables ({secretsEntities.length})
-          </button>
-        </div>
-
-        <div className="w-full sm:w-72">
-          <input
-            type="search"
-            placeholder={`Search ${activeSubTab}...`}
-            className="input input-sm input-bordered w-full"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Sub-Tab 1: Workflows & Runners */}
-      {activeSubTab === 'actions' && (
-        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
-          <table
-            className="table table-sm table-zebra w-full"
-            aria-label="Actions workflows table"
-          >
-            <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
-              <tr>
-                <th scope="col">Target Repository</th>
-                <th scope="col">Organization</th>
-                <th scope="col">Workflows</th>
-                <th scope="col">Workflow Names</th>
-                <th scope="col">Runners</th>
-                <th scope="col">Runner Infrastructure</th>
-                <th scope="col">Usage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredActions.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="text-center py-8 text-base-content/60"
-                  >
-                    No actions entities found matching criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredActions.map((action) => (
-                  <tr key={action.id} className="hover:bg-base-200/50">
-                    <td className="font-mono text-xs font-bold text-base-content">
-                      {action.repositoryId}
-                    </td>
-                    <td className="text-xs text-base-content/70">
-                      {resolveOrgName(bundle, action.organizationId)}
-                    </td>
-                    <td className="font-semibold text-xs">
-                      {formatCountMetric(action.workflowCount)}
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {action.workflowNames.map((name) => (
-                          <span
-                            key={name}
-                            className="badge badge-xs badge-ghost font-mono"
-                          >
-                            {name}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="text-xs font-mono">
-                      {formatCountMetric(action.runnerCount)}
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {action.runnerTypes.map((type) => (
-                          <span
-                            key={type}
-                            className={`badge badge-xs font-semibold ${
-                              type === 'self-hosted'
-                                ? 'badge-error'
-                                : 'badge-neutral'
-                            }`}
-                          >
-                            {type}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="text-xs font-mono text-base-content/70">
-                      {formatMinutesMetric(action.usage)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Sub-Tab 2: Secrets & Variables */}
-      {activeSubTab === 'secrets' && (
+            Secrets & Variables ({secrets.length})
+          </UnderlineNav.Item>
+        </UnderlineNav>
+        <TextInput
+          leadingVisual={SearchIcon}
+          type="search"
+          aria-label={`Search ${tab}`}
+          placeholder={`Search ${tab}…`}
+          size="small"
+          className="w-full sm:w-72"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </FilterToolbar>
+      <ActiveFilters
+        filters={
+          query
+            ? [
+                {
+                  id: 'query',
+                  label: `Search: ${query}`,
+                  onRemove: () => setQuery(''),
+                },
+              ]
+            : []
+        }
+      />
+      {tab === 'actions' ? (
+        <VirtualizedTable
+          ariaLabel="Actions workflows table"
+          rows={filteredActions}
+          columns={actionColumns}
+          getRowKey={(row) => row.id}
+          emptyMessage="No actions entities found matching criteria."
+          estimateRowHeight={68}
+          minWidth={1000}
+        />
+      ) : (
         <div className="space-y-4">
-          <div className="alert alert-info py-3 text-xs shadow-xs">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="stroke-current shrink-0 h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>
-              <strong>Zero Secret Values Stored</strong>: For security, GitHub
-              APIs and discovery bundles only provide secret names, scopes, and
-              timestamps. Secret values must be regenerated or copied by
-              authorized personnel in the target destination.
+          <Flash variant="default">
+            <span className="text-xs">
+              <strong>Zero Secret Values Stored:</strong> Only names, scopes,
+              and timestamps are displayed.
             </span>
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
-            <table
-              className="table table-sm table-zebra w-full"
-              aria-label="Secrets and variables inventory table"
-            >
-              <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Configuration Kind</th>
-                  <th scope="col">Scope Level</th>
-                  <th scope="col">Target Repository / Scope</th>
-                  <th scope="col">Organization</th>
-                  <th scope="col">Last Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSecrets.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="text-center py-8 text-base-content/60"
-                    >
-                      No configuration items found matching criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSecrets.map((secret) => (
-                    <tr key={secret.id} className="hover:bg-base-200/50">
-                      <td className="font-mono text-xs font-bold text-base-content">
-                        {secret.name}
-                      </td>
-                      <td>
-                        <span
-                          className={`badge badge-sm font-semibold capitalize ${
-                            secret.configurationKind === 'secret'
-                              ? 'badge-warning'
-                              : 'badge-info'
-                          }`}
-                        >
-                          {secret.configurationKind}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="badge badge-sm badge-ghost capitalize">
-                          {secret.level}
-                        </span>
-                      </td>
-                      <td className="font-mono text-xs text-base-content/70">
-                        {secret.repositoryId ?? 'Organization-wide'}
-                      </td>
-                      <td className="text-xs text-base-content/70">
-                        {resolveOrgName(bundle, secret.organizationId)}
-                      </td>
-                      <td className="text-xs text-base-content/60">
-                        {formatTimestamp(secret.updatedAt)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          </Flash>
+          <VirtualizedTable
+            ariaLabel="Secrets and variables inventory table"
+            rows={filteredSecrets}
+            columns={secretColumns}
+            getRowKey={(row) => row.id}
+            emptyMessage="No configuration items found matching criteria."
+            minWidth={900}
+          />
         </div>
       )}
     </div>

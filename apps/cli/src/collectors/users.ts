@@ -1,6 +1,6 @@
-import { createHmac } from 'node:crypto';
 import type { Entity } from '@ghec/contracts';
 import type { Collector, CollectorContext, CollectorResult } from './types.js';
+import { pseudonymizeUsername } from '../output/sanitizer.js';
 
 interface GitHubMemberItem {
   id: number;
@@ -26,12 +26,10 @@ export const collector: Collector = {
       context.signal,
     );
     const completedAt = new Date().toISOString();
+    const salt = context.salt ?? 'default-salt';
 
     const entities: Entity[] = res.items.map((m) => {
-      const pseudonym = createHmac('sha256', context.executionId)
-        .update(String(m.id))
-        .digest('hex')
-        .slice(0, 16);
+      const pseudonym = pseudonymizeUsername(salt, m.login);
 
       return {
         id: `org:${context.organizationId}:identity:${pseudonym}`,
@@ -44,7 +42,7 @@ export const collector: Collector = {
           apiVersion: '2026-03-10',
         },
         kind: 'identity',
-        pseudonym: `user_${pseudonym}`,
+        pseudonym,
         outsideCollaborator: false,
         ssoStatus: 'unknown',
         membership: m.role === 'admin' ? 'owner' : 'member',

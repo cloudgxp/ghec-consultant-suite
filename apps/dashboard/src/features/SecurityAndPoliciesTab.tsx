@@ -1,313 +1,341 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
+import {
+  VirtualizedTable,
+  type VirtualizedColumn,
+} from '../components/VirtualizedTable.js';
 import { formatCountMetric, resolveOrgName } from '../lib/formatters.js';
 import {
   generateSecurityPostureCsv,
   generateIntegrationsCsv,
   downloadCsv,
 } from '../lib/export-csv.js';
+import { PageHeader } from '../components/ui/index.js';
+import { Button, Label, UnderlineNav } from '@primer/react';
+import { DownloadIcon } from '@primer/octicons-react';
 
-interface SecurityAndPoliciesTabProps {
+interface Props {
   bundle: DiscoveryBundle;
-  selectedOrgId: string;
+  selectedOrgIds: readonly string[];
 }
+type Security = Extract<
+  DiscoveryBundle['entities'][number],
+  { kind: 'security' }
+>;
+type Policy = Extract<DiscoveryBundle['entities'][number], { kind: 'policy' }>;
+type Integration = Extract<
+  DiscoveryBundle['entities'][number],
+  { kind: 'integration' }
+>;
 
-export const SecurityAndPoliciesTab: React.FC<SecurityAndPoliciesTabProps> = ({
+export const SecurityAndPoliciesTab: React.FC<Props> = ({
   bundle,
-  selectedOrgId,
+  selectedOrgIds,
 }) => {
-  const [subSection, setSubSection] = useState<
+  const [section, setSection] = useState<
     'security' | 'policies' | 'integrations'
   >('security');
-
-  const secEntities = bundle.entities.filter(
-    (e) =>
-      e.kind === 'security' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'security' }>[];
-
-  const policyEntities = bundle.entities.filter(
-    (e) =>
-      e.kind === 'policy' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'policy' }>[];
-
-  const integrationEntities = bundle.entities.filter(
-    (e) =>
-      e.kind === 'integration' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'integration' }>[];
-
-  const handleExportSecCsv = () => {
-    const csv = generateSecurityPostureCsv(bundle, selectedOrgId || undefined);
-    downloadCsv(`security-posture-${bundle.scan.id}.csv`, csv);
-  };
-
-  const handleExportIntCsv = () => {
-    const csv = generateIntegrationsCsv(bundle, selectedOrgId || undefined);
-    downloadCsv(`integrations-${bundle.scan.id}.csv`, csv);
-  };
-
+  useEffect(() => {
+    const focus = (event: Event) => {
+      const subview = (event as CustomEvent<{ subview?: string }>).detail
+        .subview;
+      if (
+        subview === 'security' ||
+        subview === 'policies' ||
+        subview === 'integrations'
+      )
+        setSection(subview);
+    };
+    window.addEventListener('ghec:focus-entity', focus);
+    return () => window.removeEventListener('ghec:focus-entity', focus);
+  }, []);
+  const security = useMemo(
+    () =>
+      bundle.entities.filter(
+        (entity): entity is Security =>
+          entity.kind === 'security' &&
+          (selectedOrgIds.length === 0 ||
+            selectedOrgIds.includes(entity.organizationId)),
+      ),
+    [bundle, selectedOrgIds],
+  );
+  const policies = useMemo(
+    () =>
+      bundle.entities.filter(
+        (entity): entity is Policy =>
+          entity.kind === 'policy' &&
+          (selectedOrgIds.length === 0 ||
+            selectedOrgIds.includes(entity.organizationId)),
+      ),
+    [bundle, selectedOrgIds],
+  );
+  const integrations = useMemo(
+    () =>
+      bundle.entities.filter(
+        (entity): entity is Integration =>
+          entity.kind === 'integration' &&
+          (selectedOrgIds.length === 0 ||
+            selectedOrgIds.includes(entity.organizationId)),
+      ),
+    [bundle, selectedOrgIds],
+  );
+  const renderStatusLabel = (value: 'enabled' | 'disabled' | 'unknown') => (
+    <Label
+      size="small"
+      variant={
+        value === 'enabled'
+          ? 'success'
+          : value === 'disabled'
+            ? 'danger'
+            : 'secondary'
+      }
+      className="capitalize font-semibold"
+    >
+      {value}
+    </Label>
+  );
+  const securityColumns = useMemo<readonly VirtualizedColumn<Security>[]>(
+    () => [
+      {
+        header: 'Repository',
+        width: '1.3fr',
+        className: 'font-mono text-xs font-bold',
+        cell: (item) => item.repositoryId,
+      },
+      {
+        header: 'Organization',
+        cell: (item) => (
+          <span className="text-xs">
+            {resolveOrgName(bundle, item.organizationId)}
+          </span>
+        ),
+      },
+      {
+        header: 'Code Scanning',
+        cell: (item) => renderStatusLabel(item.codeScanning),
+      },
+      {
+        header: 'Dependabot',
+        cell: (item) => renderStatusLabel(item.dependabot),
+      },
+      {
+        header: 'Open Alerts',
+        width: '0.8fr',
+        className: 'text-xs font-mono',
+        cell: (item) => formatCountMetric(item.openAlertCount),
+      },
+      {
+        header: 'Alert Availability Note',
+        width: '1.5fr',
+        className: 'text-xs',
+        cell: (item) => item.openAlertCount.reason ?? '—',
+      },
+    ],
+    [bundle],
+  );
+  const policyColumns = useMemo<readonly VirtualizedColumn<Policy>[]>(
+    () => [
+      {
+        header: 'Policy Name',
+        width: '1.3fr',
+        className: 'font-bold text-xs',
+        cell: (item) => item.name,
+      },
+      {
+        header: 'Policy Kind',
+        cell: (item) => (
+          <Label size="small" variant="secondary" className="font-mono">
+            {item.policyKind}
+          </Label>
+        ),
+      },
+      {
+        header: 'Enforcement',
+        cell: (item) => (
+          <Label
+            size="small"
+            variant={
+              item.enforcement === 'active'
+                ? 'success'
+                : item.enforcement === 'evaluate'
+                  ? 'attention'
+                  : 'secondary'
+            }
+          >
+            {item.enforcement}
+          </Label>
+        ),
+      },
+      {
+        header: 'Target Scope / Repository',
+        width: '1.5fr',
+        className: 'font-mono text-xs',
+        cell: (item) => item.repositoryId ?? 'Organization-wide',
+      },
+      {
+        header: 'Organization',
+        cell: (item) => (
+          <span className="text-xs">
+            {resolveOrgName(bundle, item.organizationId)}
+          </span>
+        ),
+      },
+    ],
+    [bundle],
+  );
+  const integrationColumns = useMemo<readonly VirtualizedColumn<Integration>[]>(
+    () => [
+      {
+        header: 'Label / Identifier',
+        width: '1.3fr',
+        className: 'font-bold text-xs font-mono',
+        cell: (item) => item.label,
+      },
+      {
+        header: 'Integration Kind',
+        cell: (item) => (
+          <Label size="small" variant="secondary" className="capitalize">
+            {item.integrationKind.replace('_', ' ')}
+          </Label>
+        ),
+      },
+      {
+        header: 'Status',
+        cell: (item) => (
+          <Label
+            size="small"
+            variant={item.active === true ? 'success' : 'secondary'}
+          >
+            {item.active === null
+              ? 'Unknown'
+              : item.active
+                ? 'Active'
+                : 'Inactive'}
+          </Label>
+        ),
+      },
+      {
+        header: 'Target Scope',
+        width: '1.5fr',
+        className: 'font-mono text-xs',
+        cell: (item) => item.repositoryId ?? 'Organization-wide',
+      },
+      {
+        header: 'Organization',
+        cell: (item) => (
+          <span className="text-xs">
+            {resolveOrgName(bundle, item.organizationId)}
+          </span>
+        ),
+      },
+    ],
+    [bundle],
+  );
   return (
     <div className="space-y-6">
-      {/* Top Header & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-xl border border-base-300 shadow-xs">
-        <div>
-          <h2 className="text-2xl font-bold text-base-content">
-            Security, Governance & Integrations
-          </h2>
-          <p className="text-sm text-base-content/70 mt-1">
-            Review security tool enablement, branch rulesets, and external
-            integration points.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleExportSecCsv}
-            className="btn btn-primary btn-sm gap-2"
+      <PageHeader
+        title="Security, Governance & Integrations"
+        description="Review security tool enablement, branch rulesets, and external integration points."
+        primaryAction={
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={() =>
+              downloadCsv(
+                `security-posture-${bundle.scan.id}.csv`,
+                generateSecurityPostureCsv(
+                  bundle,
+                  selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined,
+                ),
+              )
+            }
           >
             Export Security (CSV)
-          </button>
-          <button
-            type="button"
-            onClick={handleExportIntCsv}
-            className="btn btn-outline btn-sm gap-2"
+          </Button>
+        }
+        secondaryActions={
+          <Button
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={() =>
+              downloadCsv(
+                `integrations-${bundle.scan.id}.csv`,
+                generateIntegrationsCsv(
+                  bundle,
+                  selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined,
+                ),
+              )
+            }
           >
             Export Integrations (CSV)
-          </button>
-        </div>
-      </div>
-
-      {/* Sub Section Tabs */}
-      <div className="tabs tabs-boxed bg-base-100 p-2 rounded-xl border border-base-300 shadow-xs">
-        <button
-          type="button"
-          className={`tab ${subSection === 'security' ? 'tab-active' : ''}`}
-          onClick={() => setSubSection('security')}
+          </Button>
+        }
+      />
+      <UnderlineNav aria-label="Security, governance and integrations views">
+        <UnderlineNav.Item
+          as="button"
+          aria-current={section === 'security' ? 'page' : 'false'}
+          className="cursor-pointer"
+          onSelect={(e) => {
+            e.preventDefault();
+            setSection('security');
+          }}
         >
-          Security Posture ({secEntities.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${subSection === 'policies' ? 'tab-active' : ''}`}
-          onClick={() => setSubSection('policies')}
+          Security Posture ({security.length})
+        </UnderlineNav.Item>
+        <UnderlineNav.Item
+          as="button"
+          aria-current={section === 'policies' ? 'page' : 'false'}
+          className="cursor-pointer"
+          onSelect={(e) => {
+            e.preventDefault();
+            setSection('policies');
+          }}
         >
-          Policies & Rulesets ({policyEntities.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${subSection === 'integrations' ? 'tab-active' : ''}`}
-          onClick={() => setSubSection('integrations')}
+          Policies & Rulesets ({policies.length})
+        </UnderlineNav.Item>
+        <UnderlineNav.Item
+          as="button"
+          aria-current={section === 'integrations' ? 'page' : 'false'}
+          className="cursor-pointer"
+          onSelect={(e) => {
+            e.preventDefault();
+            setSection('integrations');
+          }}
         >
-          Integrations & Keys ({integrationEntities.length})
-        </button>
-      </div>
-
-      {/* Section 1: Security Posture */}
-      {subSection === 'security' && (
-        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
-          <table
-            className="table table-sm table-zebra w-full"
-            aria-label="Security posture table"
-          >
-            <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
-              <tr>
-                <th scope="col">Repository</th>
-                <th scope="col">Organization</th>
-                <th scope="col">Code Scanning</th>
-                <th scope="col">Dependabot</th>
-                <th scope="col">Open Alerts</th>
-                <th scope="col">Alert Availability Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {secEntities.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="text-center py-8 text-base-content/60"
-                  >
-                    No security posture records found.
-                  </td>
-                </tr>
-              ) : (
-                secEntities.map((sec) => (
-                  <tr key={sec.id} className="hover:bg-base-200/50">
-                    <td className="font-mono text-xs font-bold text-base-content">
-                      {sec.repositoryId}
-                    </td>
-                    <td className="text-xs text-base-content/70">
-                      {resolveOrgName(bundle, sec.organizationId)}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge badge-sm font-semibold capitalize ${
-                          sec.codeScanning === 'enabled'
-                            ? 'badge-success'
-                            : sec.codeScanning === 'disabled'
-                              ? 'badge-error'
-                              : 'badge-ghost'
-                        }`}
-                      >
-                        {sec.codeScanning}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge badge-sm font-semibold capitalize ${
-                          sec.dependabot === 'enabled'
-                            ? 'badge-success'
-                            : sec.dependabot === 'disabled'
-                              ? 'badge-error'
-                              : 'badge-ghost'
-                        }`}
-                      >
-                        {sec.dependabot}
-                      </span>
-                    </td>
-                    <td className="text-xs font-mono">
-                      {formatCountMetric(sec.openAlertCount)}
-                    </td>
-                    <td className="text-xs text-base-content/60">
-                      {sec.openAlertCount.reason ?? '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+          Integrations & Keys ({integrations.length})
+        </UnderlineNav.Item>
+      </UnderlineNav>
+      {section === 'security' && (
+        <VirtualizedTable
+          ariaLabel="Security posture table"
+          rows={security}
+          columns={securityColumns}
+          getRowKey={(row) => row.id}
+          emptyMessage="No security posture records found."
+          minWidth={900}
+        />
       )}
-
-      {/* Section 2: Policies & Rulesets */}
-      {subSection === 'policies' && (
-        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
-          <table
-            className="table table-sm table-zebra w-full"
-            aria-label="Policies and rulesets table"
-          >
-            <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
-              <tr>
-                <th scope="col">Policy Name</th>
-                <th scope="col">Policy Kind</th>
-                <th scope="col">Enforcement</th>
-                <th scope="col">Target Scope / Repository</th>
-                <th scope="col">Organization</th>
-              </tr>
-            </thead>
-            <tbody>
-              {policyEntities.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="text-center py-8 text-base-content/60"
-                  >
-                    No policy records found.
-                  </td>
-                </tr>
-              ) : (
-                policyEntities.map((policy) => (
-                  <tr key={policy.id} className="hover:bg-base-200/50">
-                    <td className="font-bold text-xs text-base-content">
-                      {policy.name}
-                    </td>
-                    <td>
-                      <span className="badge badge-sm badge-outline font-mono text-xs">
-                        {policy.policyKind}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge badge-sm font-semibold capitalize ${
-                          policy.enforcement === 'active'
-                            ? 'badge-success'
-                            : policy.enforcement === 'evaluate'
-                              ? 'badge-warning'
-                              : 'badge-ghost'
-                        }`}
-                      >
-                        {policy.enforcement}
-                      </span>
-                    </td>
-                    <td className="font-mono text-xs text-base-content/70">
-                      {policy.repositoryId ?? 'Organization-wide'}
-                    </td>
-                    <td className="text-xs text-base-content/70">
-                      {resolveOrgName(bundle, policy.organizationId)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {section === 'policies' && (
+        <VirtualizedTable
+          ariaLabel="Policies and rulesets table"
+          rows={policies}
+          columns={policyColumns}
+          getRowKey={(row) => row.id}
+          emptyMessage="No policy records found."
+          minWidth={850}
+        />
       )}
-
-      {/* Section 3: Integrations & Keys */}
-      {subSection === 'integrations' && (
-        <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100 shadow-xs">
-          <table
-            className="table table-sm table-zebra w-full"
-            aria-label="Integrations table"
-          >
-            <thead className="bg-base-200/60 text-xs text-base-content/80 font-bold">
-              <tr>
-                <th scope="col">Label / Identifier</th>
-                <th scope="col">Integration Kind</th>
-                <th scope="col">Status</th>
-                <th scope="col">Target Scope</th>
-                <th scope="col">Organization</th>
-              </tr>
-            </thead>
-            <tbody>
-              {integrationEntities.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="text-center py-8 text-base-content/60"
-                  >
-                    No integration records found.
-                  </td>
-                </tr>
-              ) : (
-                integrationEntities.map((item) => (
-                  <tr key={item.id} className="hover:bg-base-200/50">
-                    <td className="font-bold text-xs text-base-content font-mono">
-                      {item.label}
-                    </td>
-                    <td>
-                      <span className="badge badge-sm badge-neutral capitalize">
-                        {item.integrationKind.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td>
-                      {item.active === true ? (
-                        <span className="badge badge-sm badge-success font-semibold">
-                          Active
-                        </span>
-                      ) : item.active === false ? (
-                        <span className="badge badge-sm badge-ghost">
-                          Inactive
-                        </span>
-                      ) : (
-                        <span className="badge badge-sm badge-outline">
-                          Unknown
-                        </span>
-                      )}
-                    </td>
-                    <td className="font-mono text-xs text-base-content/70">
-                      {item.repositoryId ?? 'Organization-wide'}
-                    </td>
-                    <td className="text-xs text-base-content/70">
-                      {resolveOrgName(bundle, item.organizationId)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {section === 'integrations' && (
+        <VirtualizedTable
+          ariaLabel="Integrations table"
+          rows={integrations}
+          columns={integrationColumns}
+          getRowKey={(row) => row.id}
+          emptyMessage="No integration records found."
+          minWidth={850}
+        />
       )}
     </div>
   );

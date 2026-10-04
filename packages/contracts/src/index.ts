@@ -57,6 +57,7 @@ export const ProvenanceSchema = z
     apiVersion: Id.nullable(),
   })
   .strict();
+export type Provenance = z.infer<typeof ProvenanceSchema>;
 export const ErrorSchema = z
   .object({
     code: z.enum([
@@ -93,6 +94,93 @@ export const EntitySchema = z.discriminatedUnion('kind', [
       defaultBranch: Id.nullable(),
       size: BytesMetric,
       fork: z.boolean().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('repository-portfolio'),
+      repositoryId: Id,
+      primaryLanguage: Id.nullable(),
+      topics: z.array(Id),
+      template: z.boolean().nullable(),
+      pushedAt: Timestamp.nullable(),
+      businessClassification: Id.nullable(),
+      migrationWave: Id.nullable(),
+      customProperties: z.array(
+        z.object({ name: Id, value: Text.nullable() }).strict(),
+      ),
+      metadataCoverage: z.enum(['complete', 'partial', 'denied', 'unknown']),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('code-ownership'),
+      repositoryId: Id,
+      presence: z.enum(['present', 'absent', 'unknown']),
+      location: z.enum(['root', 'docs', 'github', 'other', 'unknown']),
+      syntaxStatus: z.enum(['valid', 'invalid', 'unknown']),
+      ruleCount: CountMetric,
+      ownerCount: CountMetric,
+      resolvableTeamCount: CountMetric,
+      resolvableUserCount: CountMetric,
+      unresolvedOwnerCount: CountMetric,
+      reviewPolicyIntegrated: z.boolean().nullable(),
+      updatedAt: Timestamp.nullable(),
+      coverage: z.enum([
+        'complete',
+        'partial',
+        'denied',
+        'unsupported',
+        'unknown',
+      ]),
+      coverageReason: Text,
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('project'),
+      title: Id,
+      number: Count,
+      status: z.enum(['open', 'closed', 'unknown']),
+      ownerScope: z.enum(['organization', 'repository', 'user', 'unknown']),
+      linkedRepositoryIds: z.array(Id),
+      itemCount: CountMetric,
+      fieldCount: CountMetric,
+      updatedAt: Timestamp.nullable(),
+      coverage: z.enum(['complete', 'partial', 'denied', 'unknown']),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('dependency-node'),
+      repositoryId: Id.nullable(),
+      stableKey: Id,
+      label: Id,
+      external: z.boolean(),
+      scanned: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('dependency-edge'),
+      fromNodeId: Id,
+      toNodeId: Id,
+      relationshipType: z.enum([
+        'package',
+        'actions',
+        'project',
+        'submodule',
+        'api',
+        'other',
+      ]),
+      ecosystem: Id.nullable(),
+      confidence: z.enum(['high', 'medium', 'low']),
+      evidenceMethod: z.enum(['first_party', 'imported', 'inferred']),
     })
     .strict(),
   z
@@ -146,12 +234,177 @@ export const EntitySchema = z.discriminatedUnion('kind', [
   z
     .object({
       ...base,
+      kind: z.literal('action-workflow'),
+      repositoryId: Id,
+      name: Id,
+      path: Text.nullable(),
+      state: z.enum(['active', 'disabled', 'unknown']),
+      reusable: z.boolean().nullable(),
+      createdAt: Timestamp.nullable(),
+      updatedAt: Timestamp.nullable(),
+      lastRunAt: Timestamp.nullable(),
+      runCount: CountMetric,
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-run-summary'),
+      repositoryId: Id,
+      workflowId: Id.nullable(),
+      windowStartedAt: Timestamp,
+      windowEndedAt: Timestamp,
+      truncated: z.boolean(),
+      total: CountMetric,
+      succeeded: CountMetric,
+      failed: CountMetric,
+      cancelled: CountMetric,
+      usage: MinutesMetric,
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-runner'),
+      repositoryId: Id.nullable(),
+      runnerGroupId: Id.nullable(),
+      name: Id,
+      runnerType: z.enum(['hosted', 'self-hosted', 'unknown']),
+      operatingSystem: Id.nullable(),
+      labels: z.array(Id),
+      status: z.enum(['online', 'offline', 'unknown']),
+      busy: z.boolean().nullable(),
+      customImage: z.boolean().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-runner-group'),
+      name: Id,
+      scope: z.enum(['enterprise', 'organization', 'repository', 'unknown']),
+      visibility: z.enum(['all', 'selected', 'private', 'unknown']),
+      runnerCount: CountMetric,
+      repositoryCount: CountMetric,
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-cache'),
+      repositoryId: Id,
+      key: Id,
+      ref: Text.nullable(),
+      size: BytesMetric,
+      createdAt: Timestamp.nullable(),
+      lastAccessedAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-artifact'),
+      repositoryId: Id,
+      name: Id,
+      size: BytesMetric,
+      expired: z.boolean().nullable(),
+      createdAt: Timestamp.nullable(),
+      expiresAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-environment'),
+      repositoryId: Id,
+      name: Id,
+      protectionRuleCount: CountMetric,
+      reviewerCount: CountMetric,
+      deploymentBranchPolicy: z.enum([
+        'all',
+        'protected',
+        'selected',
+        'unknown',
+      ]),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('action-policy'),
+      repositoryId: Id.nullable(),
+      allowedActions: z.enum([
+        'all',
+        'local_only',
+        'selected',
+        'disabled',
+        'unknown',
+      ]),
+      defaultTokenPermission: z.enum(['read', 'write', 'unknown']),
+      canApprovePullRequests: z.boolean().nullable(),
+      forkPolicy: z.enum(['enabled', 'disabled', 'restricted', 'unknown']),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
       kind: z.literal('actions-secret'),
       repositoryId: Id.nullable(),
       name: Id,
       configurationKind: z.enum(['secret', 'variable']),
       level: z.enum(['organization', 'repository', 'environment']),
       updatedAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('configuration-metadata'),
+      domain: z.enum([
+        'actions',
+        'dependabot',
+        'codespaces',
+        'environment',
+        'copilot',
+      ]),
+      configurationKind: z.enum(['secret', 'variable']),
+      name: Id,
+      level: z.enum(['organization', 'repository', 'environment']),
+      repositoryId: Id.nullable(),
+      environmentName: Id.nullable(),
+      parentId: Id.nullable(),
+      accessMode: z.enum([
+        'all_repositories',
+        'selected_repositories',
+        'private_repositories',
+        'inherited',
+        'unknown',
+      ]),
+      selectedRepositoryIds: z.array(Id),
+      selectedRepositoryCount: CountMetric,
+      createdAt: Timestamp.nullable(),
+      updatedAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('configuration-coverage'),
+      domain: z.enum([
+        'actions',
+        'dependabot',
+        'codespaces',
+        'environment',
+        'copilot',
+      ]),
+      state: z.enum([
+        'complete',
+        'partial',
+        'denied',
+        'unsupported',
+        'unknown',
+      ]),
+      reason: Text,
     })
     .strict(),
   z
@@ -208,6 +461,87 @@ export const EntitySchema = z.discriminatedUnion('kind', [
       assetKind: z.enum(['package', 'release', 'large_asset']),
       name: Id,
       size: BytesMetric,
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('package'),
+      name: Id,
+      ecosystem: z.enum([
+        'container',
+        'npm',
+        'maven',
+        'rubygems',
+        'nuget',
+        'unknown',
+      ]),
+      visibility: z.enum(['public', 'private', 'internal', 'unknown']),
+      owner: Id.nullable(),
+      repositoryId: Id.nullable(),
+      versionCount: CountMetric,
+      size: BytesMetric,
+      createdAt: Timestamp.nullable(),
+      updatedAt: Timestamp.nullable(),
+      disposition: z.enum([
+        'transfer',
+        'rebuild',
+        'retain_external',
+        'review',
+        'unknown',
+      ]),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('package-version'),
+      packageId: Id,
+      name: Id,
+      size: BytesMetric,
+      createdAt: Timestamp.nullable(),
+      updatedAt: Timestamp.nullable(),
+      status: z.enum(['active', 'deleted', 'unknown']),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('release'),
+      repositoryId: Id,
+      name: Id,
+      tagName: Id.nullable(),
+      draft: z.boolean().nullable(),
+      prerelease: z.boolean().nullable(),
+      createdAt: Timestamp.nullable(),
+      publishedAt: Timestamp.nullable(),
+      assetCount: CountMetric,
+      size: BytesMetric,
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('release-asset'),
+      repositoryId: Id,
+      releaseId: Id,
+      name: Id,
+      contentType: Text.nullable(),
+      downloadCount: CountMetric,
+      size: BytesMetric,
+      createdAt: Timestamp.nullable(),
+      updatedAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('large-asset'),
+      repositoryId: Id,
+      name: Id,
+      path: Text.nullable(),
+      size: BytesMetric,
+      source: z.enum(['repository', 'release', 'unknown']),
     })
     .strict(),
 ]);
@@ -307,6 +641,7 @@ const BundleShape = z
         includeSensitiveMetadata: z.boolean(),
         redactionProfile: z.enum(['standard', 'minimal']),
         continueOnError: z.boolean(),
+        saltDigest: z.string().optional(),
       })
       .strict(),
     scope: z.discriminatedUnion('kind', [
@@ -383,15 +718,35 @@ export const DiscoveryBundleSchema = BundleShape.superRefine((b, ctx) => {
   const moduleForKind: Record<z.infer<typeof EntitySchema>['kind'], ModuleId> =
     {
       repository: 'repos',
+      'repository-portfolio': 'repos',
+      'code-ownership': 'repos',
+      project: 'repos',
+      'dependency-node': 'repos',
+      'dependency-edge': 'repos',
       lfs: 'lfs',
       team: 'teams',
       actions: 'actions',
+      'action-workflow': 'actions',
+      'action-run-summary': 'actions',
+      'action-runner': 'actions',
+      'action-runner-group': 'actions',
+      'action-cache': 'actions',
+      'action-artifact': 'actions',
+      'action-environment': 'actions',
+      'action-policy': 'actions',
       'actions-secret': 'actions-secrets',
+      'configuration-metadata': 'actions-secrets',
+      'configuration-coverage': 'actions-secrets',
       policy: 'policies',
       security: 'security',
       integration: 'integrations',
       identity: 'users',
       asset: 'packages',
+      package: 'packages',
+      'package-version': 'packages',
+      release: 'packages',
+      'release-asset': 'packages',
+      'large-asset': 'packages',
     };
   for (const e of b.entities) {
     const c = executions.get(e.collectorExecutionId);
@@ -408,6 +763,36 @@ export const DiscoveryBundleSchema = BundleShape.superRefine((b, ctx) => {
     };
     if ('repositoryId' in e && e.repositoryId !== null)
       checkRef(e.repositoryId, 'repository');
+    if (e.kind === 'configuration-metadata')
+      for (const repositoryId of e.selectedRepositoryIds)
+        checkRef(repositoryId, 'repository');
+    if (e.kind === 'project')
+      for (const repositoryId of e.linkedRepositoryIds)
+        checkRef(repositoryId, 'repository');
+    if (e.kind === 'dependency-node' && e.repositoryId)
+      checkRef(e.repositoryId, 'repository');
+    if (e.kind === 'dependency-edge') {
+      const from = entities.get(e.fromNodeId);
+      const to = entities.get(e.toNodeId);
+      if (from?.kind !== 'dependency-node' || to?.kind !== 'dependency-node')
+        issue('Missing dependency relationship node');
+    }
+    if (e.kind === 'package-version') {
+      const parent = entities.get(e.packageId);
+      if (
+        parent?.kind !== 'package' ||
+        parent.organizationId !== e.organizationId
+      )
+        issue('Missing or cross-organization package relationship');
+    }
+    if (e.kind === 'release-asset') {
+      const parent = entities.get(e.releaseId);
+      if (
+        parent?.kind !== 'release' ||
+        parent.organizationId !== e.organizationId
+      )
+        issue('Missing or cross-organization release relationship');
+    }
     if (e.kind === 'team') {
       if (e.parentTeamId) checkRef(e.parentTeamId, 'team');
       for (const a of e.repositoryAccess)
@@ -451,6 +836,9 @@ export const DiscoveryBundleSchema = BundleShape.superRefine((b, ctx) => {
 export type DiscoveryBundle = z.infer<typeof DiscoveryBundleSchema>;
 export type Entity = z.infer<typeof EntitySchema>;
 export type CollectorExecution = z.infer<typeof CollectorExecutionSchema>;
+export type PublishableBundle = Omit<DiscoveryBundle, 'entities'> & {
+  entities: Iterable<Entity> | AsyncIterable<Entity> | readonly Entity[];
+};
 export type BundleValidation =
   | { success: true; data: DiscoveryBundle }
   | {

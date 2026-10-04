@@ -5,7 +5,21 @@ interface GitHubPackageItem {
   id: number;
   name: string;
   package_type?: string;
+  visibility?: string;
+  version_count?: number;
+  created_at?: string;
+  updated_at?: string;
+  owner?: { login?: string } | null;
+  repository?: { id?: number; name?: string } | null;
 }
+
+const packageTypes = [
+  'container',
+  'npm',
+  'maven',
+  'rubygems',
+  'nuget',
+] as const;
 
 export const collector: Collector = {
   id: 'packages',
@@ -13,48 +27,92 @@ export const collector: Collector = {
   async collect(context: CollectorContext): Promise<CollectorResult> {
     const startedAt = new Date().toISOString();
     const repos = context.sharedState?.repositories ?? [];
-    const operation = {
-      id: 'rest.packages.list-packages-for-organization',
-      transport: 'rest' as const,
-      verifiedReadOnly: true as const,
-      path: '/orgs/{org}/packages',
-      pathParams: { org: context.organizationId },
-      queryParams: { package_type: 'npm' },
-    };
-
-    const res = await context.adapter.fetchAll<GitHubPackageItem>(
-      operation,
-      context.signal,
-    );
+    const responses = [];
+    for (const packageType of packageTypes) {
+      if (context.signal.aborted) break;
+      responses.push(
+        await context.adapter.fetchAll<GitHubPackageItem>(
+          {
+            id: 'rest.packages.list-packages-for-organization',
+            transport: 'rest' as const,
+            verifiedReadOnly: true as const,
+            path: '/orgs/{org}/packages',
+            pathParams: { org: context.organizationId },
+            queryParams: { package_type: packageType },
+          },
+          context.signal,
+        ),
+      );
+    }
     const completedAt = new Date().toISOString();
 
-    const entities: Entity[] = [];
-    if (repos.length > 0 && res.items.length > 0) {
-      const defaultRepo = repos[0]!;
-      for (const p of res.items) {
-        entities.push({
-          id: `org:${context.organizationId}:asset:${p.name}`,
+    const projectedEntities: Entity[] = responses.flatMap((response) =>
+      response.items.map((p) => {
+        const repository = p.repository?.name
+          ? repos.find((repo) => repo.name === p.repository?.name)
+          : undefined;
+        const ecosystem = packageTypes.includes(
+          p.package_type as (typeof packageTypes)[number],
+        )
+          ? (p.package_type as (typeof packageTypes)[number])
+          : 'unknown';
+        const visibility = ['public', 'private', 'internal'].includes(
+          p.visibility ?? '',
+        )
+          ? (p.visibility as 'public' | 'private' | 'internal')
+          : 'unknown';
+        return {
+          id: `org:${context.organizationId}:package:${ecosystem}:${p.id}`,
           organizationId: context.organizationId,
           collectorExecutionId: context.executionId,
           provenance: {
             source: 'rest',
             operation: 'rest.packages.list-packages-for-organization',
-            observedAt: res.observedAt,
+            observedAt: response.observedAt,
             apiVersion: '2026-03-10',
           },
-          kind: 'asset',
-          repositoryId: defaultRepo.id,
-          assetKind: 'package',
+          kind: 'package',
           name: p.name,
+          ecosystem,
+          visibility,
+          owner: p.owner?.login ?? null,
+          repositoryId: repository?.id ?? null,
+          versionCount:
+            typeof p.version_count === 'number'
+              ? {
+                  value: p.version_count,
+                  unit: 'count',
+                  availability: 'observed',
+                  reason: null,
+                }
+              : {
+                  value: null,
+                  unit: 'count',
+                  availability: 'unknown',
+                  reason: 'Package version count was not returned by the API',
+                },
           size: {
             value: null,
             unit: 'bytes',
             availability: 'unknown',
-            reason: 'Package size requires individual version asset inspection',
+            reason:
+              'Package content is never downloaded; total size was not reported',
           },
-        });
-      }
-    }
+          createdAt: p.created_at ?? null,
+          updatedAt: p.updated_at ?? null,
+          disposition: 'unknown',
+        } satisfies Entity;
+      }),
+    );
+    // Defensive de-duplication protects against API/mirror responses that
+    // return the same package from more than one registry-filtered request.
+    const entities = [
+      ...new Map(
+        projectedEntities.map((entity) => [entity.id, entity]),
+      ).values(),
+    ];
+
+    const observedAt = responses.at(-1)?.observedAt ?? startedAt;
 
     return {
       execution: {
@@ -68,7 +126,7 @@ export const collector: Collector = {
           {
             source: 'rest',
             operation: 'rest.packages.list-packages-for-organization',
-            observedAt: res.observedAt,
+            observedAt,
             apiVersion: '2026-03-10',
           },
         ],

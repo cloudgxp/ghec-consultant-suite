@@ -1,7 +1,9 @@
 import React from 'react';
+import { PageHeader, SurfaceCard } from '../components/ui/index.js';
+import { Button, Flash, Label } from '@primer/react';
+import { DownloadIcon, ShieldCheckIcon } from '@primer/octicons-react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import type { EvaluatedInsights } from '@ghec/analysis';
-import { resolveOrgName } from '../lib/formatters.js';
 import {
   generateRepositoriesCsv,
   generateMigrationReadinessCsv,
@@ -14,19 +16,22 @@ import {
   generateExecutiveSummaryCsv,
   downloadCsv,
 } from '../lib/export-csv.js';
+import { downloadPdfReport } from '../lib/export-pdf.js';
 
 interface ExportCenterTabProps {
   bundle: DiscoveryBundle;
   insights: EvaluatedInsights;
-  selectedOrgId: string;
+  selectedOrgIds: readonly string[];
 }
 
 export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
   bundle,
   insights,
-  selectedOrgId,
+  selectedOrgIds,
 }) => {
-  const orgFilter = selectedOrgId || undefined;
+  const orgFilter = selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined;
+  const includesOrganization = (organizationId: string) =>
+    selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId);
 
   const exportOptions = [
     {
@@ -48,8 +53,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
         'Detailed inventory of all discovered repositories including size, visibility, branch, LFS status, security status, and actions workflows.',
       rowsCount: bundle.entities.filter(
         (e) =>
-          e.kind === 'repository' &&
-          (!orgFilter || e.organizationId === orgFilter),
+          e.kind === 'repository' && includesOrganization(e.organizationId),
       ).length,
       columns:
         'Org, Repo ID, Name, Visibility, Archived, Size (Formatted/Bytes), LFS, Actions, Dependabot, Code Scanning',
@@ -61,8 +65,8 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `migration-findings-${bundle.scan.id}.csv`,
       description:
         'Documented analytical and advisory findings with severity, confidence, affected entity IDs, collector evidence references, and limitations.',
-      rowsCount: insights.findings.filter(
-        (f) => !orgFilter || f.organizationId === orgFilter,
+      rowsCount: insights.findings.filter((f) =>
+        includesOrganization(f.organizationId),
       ).length,
       columns:
         'Rule ID, Severity, Classification, Confidence, Org, Title, Description, Entity IDs, Evidence IDs, Limitations',
@@ -78,7 +82,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       rowsCount: bundle.entities.filter(
         (e) =>
           (e.kind === 'actions' || e.kind === 'actions-secret') &&
-          (!orgFilter || e.organizationId === orgFilter),
+          includesOrganization(e.organizationId),
       ).length,
       columns:
         'Kind, Org, Target Repo, Name, Config Type, Level, Workflows, Runners, Last Updated',
@@ -91,8 +95,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       description:
         'Team organizational hierarchies, membership counts, and mapped repository permission grants.',
       rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'team' && (!orgFilter || e.organizationId === orgFilter),
+        (e) => e.kind === 'team' && includesOrganization(e.organizationId),
       ).length,
       columns:
         'Org, Team ID, Team Name, Parent Team, Members, Target Repo, Granted Permission',
@@ -105,9 +108,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       description:
         'Repository-level security configurations for Dependabot, Code Scanning, and open alert counts with coverage caveats.',
       rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'security' &&
-          (!orgFilter || e.organizationId === orgFilter),
+        (e) => e.kind === 'security' && includesOrganization(e.organizationId),
       ).length,
       columns:
         'Org, Repo ID, Code Scanning, Dependabot, Open Alert Count, Availability, Reason',
@@ -121,8 +122,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
         'Discovered webhooks, GitHub Apps, and deploy keys requiring cutover planning and re-authorization.',
       rowsCount: bundle.entities.filter(
         (e) =>
-          e.kind === 'integration' &&
-          (!orgFilter || e.organizationId === orgFilter),
+          e.kind === 'integration' && includesOrganization(e.organizationId),
       ).length,
       columns: 'Org, Integration ID, Kind, Label, Target Repo, Active Status',
       generator: () => generateIntegrationsCsv(bundle, orgFilter),
@@ -134,9 +134,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       description:
         'Pseudonymized human identities with membership roles, outside collaborator flags, and SAML/SCIM SSO link statuses.',
       rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'identity' &&
-          (!orgFilter || e.organizationId === orgFilter),
+        (e) => e.kind === 'identity' && includesOrganization(e.organizationId),
       ).length,
       columns:
         'Org, Pseudonym, Membership Role, Outside Collaborator, SSO Status',
@@ -148,8 +146,8 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `collector-health-${bundle.scan.id}.csv`,
       description:
         'Full execution audit of every collector module including terminal states, coverage ratios, warnings, and errors.',
-      rowsCount: bundle.collectors.filter(
-        (c) => !orgFilter || c.organizationId === orgFilter,
+      rowsCount: bundle.collectors.filter((c) =>
+        includesOrganization(c.organizationId),
       ).length,
       columns:
         'Module, Org, Status, Started At, Completed At, Coverage State, Observed, Expected, Errors, Warnings',
@@ -159,94 +157,118 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-base-100 p-6 rounded-xl border border-base-300 shadow-xs">
-        <h2 className="text-2xl font-bold text-base-content">
-          CSV Export Center
-        </h2>
-        <p className="text-sm text-base-content/70 mt-1">
-          Download structured, formula-safe CSV reports ready for import into
-          spreadsheets, reporting tools, or customer deliverables.
-          {selectedOrgId && (
-            <span className="font-semibold text-primary ml-1">
-              (Filtered by {resolveOrgName(bundle, selectedOrgId)})
-            </span>
-          )}
-        </p>
+      <PageHeader
+        title="Report Export Center"
+        description={
+          <>
+            Generate presentation-ready PDFs or download structured,
+            formula-safe CSV reports. All exports are created in browser memory.
+            {selectedOrgIds.length > 0 && (
+              <span className="font-semibold text-[var(--fgColor-accent)] ml-1">
+                (Filtered by {selectedOrgIds.length} organization(s))
+              </span>
+            )}
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SurfaceCard className="p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-sm text-[var(--fgColor-default)]">
+              Executive Assessment PDF
+            </h3>
+            <p className="text-xs text-[var(--fgColor-muted)] mt-2">
+              Executive scorecard, KPIs, scope disclosures, and prioritized
+              migration blockers.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={() =>
+              downloadPdfReport('executive', bundle, insights, orgFilter)
+            }
+            className="mt-4 self-start"
+          >
+            Download Executive PDF
+          </Button>
+        </SurfaceCard>
+        <SurfaceCard className="p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-sm text-[var(--fgColor-default)]">
+              Technical Discovery PDF
+            </h3>
+            <p className="text-xs text-[var(--fgColor-muted)] mt-2">
+              Repository inventory, CI/CD, security posture, and collector
+              provenance audit.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={DownloadIcon}
+            onClick={() =>
+              downloadPdfReport('technical', bundle, insights, orgFilter)
+            }
+            className="mt-4 self-start"
+          >
+            Download Technical PDF
+          </Button>
+        </SurfaceCard>
       </div>
 
-      {/* Security & Neutralization Guarantee Card */}
-      <div className="alert alert-neutral py-3 text-xs shadow-xs">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="stroke-current shrink-0 h-5 w-5 text-primary"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-          />
-        </svg>
-        <span>
-          <strong>Spreadsheet Formula Injection Protected</strong>: In
-          compliance with <code>DASH-EXPORT-001</code>, all text cells beginning
-          with <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>,
-          or control characters are safely neutralized. Unknown metrics are
-          explicitly marked without coercing to zero.
-        </span>
-      </div>
+      {/* Security & Neutralization Guarantee Banner */}
+      <Flash variant="default">
+        <div className="flex items-start gap-2 text-xs">
+          <ShieldCheckIcon className="shrink-0 text-[var(--fgColor-accent)] mt-0.5" />
+          <span>
+            <strong>Spreadsheet Formula Injection Protected</strong>: In
+            compliance with <code>DASH-EXPORT-001</code>, all text cells
+            beginning with <code>=</code>, <code>+</code>, <code>-</code>,{' '}
+            <code>@</code>, or control characters are safely neutralized.
+            Unknown metrics are explicitly marked without coercing to zero.
+          </span>
+        </div>
+      </Flash>
 
       {/* Export Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {exportOptions.map((opt) => (
-          <div
+          <SurfaceCard
             key={opt.id}
-            className="card bg-base-100 p-5 rounded-xl border border-base-300 shadow-xs flex flex-col justify-between"
+            className="p-5 flex flex-col justify-between"
           >
             <div>
               <div className="flex items-start justify-between gap-2">
-                <h3 className="font-bold text-base text-base-content">
+                <h3 className="font-bold text-sm text-[var(--fgColor-default)]">
                   {opt.title}
                 </h3>
-                <span className="badge badge-sm badge-neutral shrink-0">
+                <Label size="small" variant="secondary" className="shrink-0">
                   {opt.rowsCount} rows
-                </span>
+                </Label>
               </div>
-              <p className="text-xs text-base-content/70 mt-2">
+              <p className="text-xs text-[var(--fgColor-muted)] mt-2">
                 {opt.description}
               </p>
-              <div className="mt-3 bg-base-200/50 p-2 rounded text-[11px] text-base-content/60 font-mono">
+              <div className="mt-3 bg-[var(--bgColor-muted)] p-2 rounded text-[11px] text-[var(--fgColor-muted)] font-mono border border-[var(--borderColor-default)]">
                 <strong>Columns:</strong> {opt.columns}
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-base-200">
-              <button
-                type="button"
+            <div className="mt-5 pt-3 border-t border-[var(--borderColor-default)]">
+              <Button
+                block
+                size="small"
+                variant="primary"
+                leadingVisual={DownloadIcon}
                 onClick={() => downloadCsv(opt.filename, opt.generator())}
-                className="btn btn-primary btn-sm w-full gap-2"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
                 Download CSV
-              </button>
+              </Button>
             </div>
-          </div>
+          </SurfaceCard>
         ))}
       </div>
     </div>
