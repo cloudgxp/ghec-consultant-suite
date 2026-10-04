@@ -31,6 +31,25 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Codex — DASH-VISUAL-CI — Complete
+
+- Summary: Made dashboard visual regression checks deterministic on GitHub-hosted
+  Ubuntu runners by selecting an explicit runner profile, committing the exact
+  runner-generated baselines, and keeping pixel comparison strict rather than
+  widening visual tolerances. The dashboard workflow now builds shared workspace
+  packages before its type-check and browser stages.
+- Files: `.github/workflows/dashboard-quality.yml`,
+  `apps/dashboard/playwright.config.ts`,
+  `apps/dashboard/e2e/__screenshots__/github-ubuntu/`, and
+  `docs/specs/dashboard-ui-quality-gate.md`.
+- Verification: [Dashboard quality run 37179681306](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37179681306)
+  passed on the up-to-date PR head with all 11 interaction/accessibility tests
+  and all 13 exact visual comparisons green. Required
+  [Monorepo quality run 37179681327](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37179681327),
+  dependency review, and all CodeQL jobs also passed.
+- Follow-up: Refresh the named GitHub Ubuntu baseline deliberately when the
+  repository adopts a new runner image; do not update it automatically in CI.
+
 ### 2026-10-04 — Antigravity — RECONCILE-TASKS — Complete
 
 - Summary: Reconciled task dispositions for DASH-1 through DASH-5, DASH-11 through DASH-15,
