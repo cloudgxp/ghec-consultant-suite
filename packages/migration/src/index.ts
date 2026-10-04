@@ -14,6 +14,8 @@ export * from './modules/repo-variables/index.js';
 export * from './modules/org-variables/index.js';
 export * from './modules/org-secrets/index.js';
 export * from './modules/webhooks/index.js';
+export * from './modules/org-custom-properties/index.js';
+export * from './modules/repo-custom-properties/index.js';
 export * from './modules/repo-secrets/index.js';
 export * from './modules/environments/index.js';
 export * from './modules/rulesets/index.js';

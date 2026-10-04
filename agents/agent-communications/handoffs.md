@@ -620,3 +620,19 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   secret replacement is supplied only by a client-owned provider.
 - **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
   test suite).
+
+### [2026-10-04] Task 026 (Custom Properties) — implementation handoff
+
+- **From:** Codex
+- **To:** Antigravity
+- **Status:** Core implementation is committed, but task completion validation
+  remains outstanding.
+- **Available:** `OrgCustomPropertiesMigrationModule` discovers, diffs,
+  upserts, and verifies organization schemas. `RepoCustomPropertiesMigrationModule`
+  discovers repository values, plans a batch organization-level value patch, and
+  verifies target values. The repository module depends on `gei-repo` and
+  `org-custom-properties` and both are registered/exported.
+- **Remaining:** Add `custom-properties.test.ts`, module README, completion
+  record, run `npm run check`, and push the resulting completion commit to
+  `feature/migration` / PR #29.
+- **Test Evidence:** `npm run typecheck -w @ghec/migration` passes.
