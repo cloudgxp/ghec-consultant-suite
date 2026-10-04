@@ -372,3 +372,21 @@ All material engineering work, test completions, and milestone deliveries are re
   - Implemented `.github/workflows/migration-resume.yml` enabling automated resumption from checkpoint manifests for interrupted runs.
   - Authored comprehensive enterprise operator runbook in `docs/guides/github-actions-migration.md` covering architecture diagrams, self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover playbook.
 - **Tests:** Validated workflow YAML syntax; `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity & Codex
+
+- **Task:** 019 GitHub Actions Structured Output & Step Summary Generator
+- **Changes:**
+  - Implemented `packages/migration/src/reporting/` containing:
+    - `types.ts`: `MigrationRunSummary`, `StepSummaryOptions`, and stage-by-stage summary interfaces for Preflight, CoreTransfer, Rehydration, PostMigration, and Verification.
+    - `step-summary.ts`: Markdown formatting with status badges, summary metadata tables, per-stage operation counts, expandable detail blocks (`<details><summary>`), formula injection sanitization (`sanitizeFormula`), and atomic appending to `$GITHUB_STEP_SUMMARY`.
+    - `summary-reporter.ts`: Extraction helpers `buildSummaryFromExecutionReport` and `buildSummaryFromVerification`, plus JSON reader/writer (`writeJsonSummaryFile`, `readJsonSummaryFile`).
+    - `index.ts`: Exported reporting utilities through `@ghec/migration`.
+  - Updated `apps/cli/src/commands/migrate.ts` and `apps/cli/src/commands/verify.ts` with `--json-summary <path>` options and automated `$GITHUB_STEP_SUMMARY` markdown reporting.
+  - Added unit test suite `packages/migration/tests/reporting/summary.test.ts` with 9 unit tests covering formula escaping, markdown formatting, summary building, and file I/O.
+- **Tests:** `npm run check` passed 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+

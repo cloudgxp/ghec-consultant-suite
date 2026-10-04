@@ -17,3 +17,4 @@ export * from './modules/rulesets/index.js';
 export * from './modules/branch-protection/index.js';
 export * from './modules/teams/index.js';
 export * from './post-migration/mannequins/index.js';
+export * from './reporting/index.js';

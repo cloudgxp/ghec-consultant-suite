@@ -562,3 +562,36 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 - **Test Evidence:**
   - Workflow and action YAML files validated syntactically with standard YAML parsers.
   - `npm run check` passes 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 019 Complete: GitHub Actions Structured Output & Step Summary Generator
+
+- **From:** Antigravity & Codex
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 019** (`packages/migration/src/reporting/`): GitHub Actions Step Summary Reporter & JSON Machine Output.
+- **Exported Deliverables:**
+  - `packages/migration/src/reporting/`:
+    - `types.ts`: `MigrationRunSummary`, `StepSummaryOptions`, stage breakdown interfaces (`PreflightSummary`, `CoreTransferSummary`, `RehydrationSummary`, `PostMigrationSummary`, `VerificationSummary`).
+    - `step-summary.ts`: `sanitizeFormula`, `formatStepSummaryMarkdown`, `appendStepSummary`.
+    - `summary-reporter.ts`: `buildSummaryFromExecutionReport`, `buildSummaryFromVerification`, `writeJsonSummaryFile`, `readJsonSummaryFile`.
+    - `index.ts`: module exports.
+  - CLI integration:
+    - Added `--json-summary <path>` option to `apps/cli/src/commands/migrate.ts` and `apps/cli/src/commands/verify.ts`.
+    - Automated detection and writing to `$GITHUB_STEP_SUMMARY` environment variable or explicit file paths.
+- **Files Modified / Created:**
+  - `packages/migration/src/reporting/types.ts`
+  - `packages/migration/src/reporting/step-summary.ts`
+  - `packages/migration/src/reporting/summary-reporter.ts`
+  - `packages/migration/src/reporting/index.ts`
+  - `packages/migration/src/index.ts`
+  - `apps/cli/src/commands/migrate.ts`
+  - `apps/cli/src/commands/verify.ts`
+  - `packages/migration/tests/reporting/summary.test.ts`
+  - `agents/agent-tasks/codex/019-github-actions-step-summary-reporter.md`
+- **Behavior Notes:**
+  - All dynamic inputs formatted in Markdown or CSV undergo formula injection sanitization (`=`, `+`, `-`, `@`, `\t`, `\r`) with single-quote escaping.
+  - Adheres strictly to Zero-Exposure Secrets (DEC-004): only secret count metrics and names are logged; raw values are never read, printed, or recorded.
+- **Test Evidence:**
+  - Unit test suite `packages/migration/tests/reporting/summary.test.ts` (9 tests) verifying formula sanitization, markdown formatting, summary building, and file roundtrips.
+  - `npm run check` passes 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
