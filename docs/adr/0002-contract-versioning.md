@@ -20,6 +20,10 @@ Migration tools, when needed, run only on explicit user request, validate both i
 
 Maintaining fixtures/readers costs more than permissive parsing but prevents silent interpretation changes. Every contract change requires compatibility tests and a release note identifying supported producer/reader pairs. Bundle migration implementation and cross-major support are deferred; no automatic rewrites exist.
 
+ADR 0004 applies this policy to the current release: the implemented `1.0.0`
+shape is the frozen release baseline, and proposed v2 mappings remain deferred
+until a separately registered contract and migration are approved.
+
 ## Acceptance
 
 v1 fixtures validate; future/unknown versions reject clearly; an added reader must pass old/new fixture tests before claiming compatibility. These rules implement DATA-VERSION-001 and DASH-COMPAT-001.

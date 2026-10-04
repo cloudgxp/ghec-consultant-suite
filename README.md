@@ -1,58 +1,113 @@
-# ghec-consulting-suite
+# GHEC Consultant Suite
 
-A Node.js/TypeScript monorepo for consultants assessing GitHub Enterprise Cloud discovery, migration readiness, and security posture. CLI discovery will produce portable JSON evidence; a local dashboard will analyze that evidence without GitHub access.
+A Node.js/TypeScript monorepo for consultants assessing GitHub Enterprise
+Cloud discovery, migration readiness, and security posture. The read-only CLI
+produces portable JSON evidence bundles; the local dashboard validates and
+analyzes those bundles without connecting to GitHub.
 
-**Current scope: repository scaffolding and product/specification design.** Buildable npm workspaces, strict shared contracts and validation, synthetic fixtures, CLI syntax validation and placeholder collectors, a static React shell, and specifications are included. Authentication, live API collection, a working dry-run, bundle writing/import, analytics, and exports are intentionally not implemented. A syntactically valid discovery command exits `3` with `NOT_IMPLEMENTED`.
+## Current Status
+
+The product is implemented and undergoing release verification. It is no
+longer a static scaffold.
+
+- The CLI supports organization and enterprise discovery, GraphQL-first
+  aggregation with REST fallbacks, GitHub App or token authentication,
+  capability preflight, adaptive rate limiting, checkpoints/resume, partial
+  results, atomic bundle publishing, and HMAC identity pseudonymization.
+- The air-gapped dashboard supports local bundle import, worker-based parsing,
+  virtualized inventories, multi-organization analysis, scan comparison,
+  migration target tuning, dependency mapping, CSV export, and client-side PDF
+  reports.
+- The shared v1.0.0 contract, deterministic analysis, synthetic fixtures,
+  offline API research, and Primer-based interface have automated coverage.
+- The latest recorded root quality gate passed 114 tests. Browser-level release
+  evidence, approved live-read validation, bundle-size work, and several
+  release decisions remain open.
+
+This repository is not yet approved for customer production use. Consult
+[`agent-tasks/CURRENT-TASKS.md`](agent-tasks/CURRENT-TASKS.md) for the current
+release backlog and [`agent-tasks/CHANGELOG.md`](agent-tasks/CHANGELOG.md) for
+verification evidence.
 
 ## Workspace
 
 ```text
-apps/cli/               ghec-consultant-cli; commands and collector/API boundaries
-apps/dashboard/         Vite + React + TypeScript + Tailwind CSS + DaisyUI shell
-packages/contracts/     public JSON contract v1.0.0; Zod schemas and validation
-packages/analysis/      pure analysis-rule interface (no implemented rules)
-docs/specs/             requirements, acceptance criteria, architecture and roadmap
-docs/architecture/      system boundaries
+apps/cli/               read-only GHEC discovery CLI and bundle publisher
+apps/dashboard/         offline Vite/React/Primer assessment dashboard
+packages/contracts/     public JSON contract v1.0.0 and Zod validation
+packages/analysis/      deterministic migration-readiness analysis
+docs/specs/             requirements, architecture, security, and roadmap
+docs/architecture/      deployment and system boundaries
 docs/data-contracts/    public contract guidance
-docs/security/          review checklist
-docs/adr/              architecture decisions
-fixtures/synthetic/     fictional organization and enterprise examples
-scripts/                fixture validation
+docs/security/          security review material
+docs/adr/               architecture decisions
+fixtures/synthetic/     fictional evidence bundles only
+agent-tasks/            shared agent backlog, specifications, and changelog
+scripts/                fixture, manifest, API-probe, and setup tooling
 ```
 
-Shared TypeScript, ESLint, and Prettier configuration lives at the root; a separate config package would add no value yet. The npm project name is `ghec-consulting-suite`; the existing checkout directory need not be renamed.
+The npm project name is `ghec-consulting-suite`; the checkout directory does
+not need to match it.
 
-## Local development
+## Local Development
 
-Use Node.js 22.13+ and npm 10+ (`.nvmrc` selects Node 22). No GitHub account or token is needed for this scaffold.
+Use Node.js 22.13+ and npm 10+ (`.nvmrc` selects Node 22). Building, testing,
+fixture validation, API drift probing, and the dashboard require no GitHub
+credentials.
 
 ```bash
 npm ci
-npm run build
-npm run lint
-npm run typecheck
-npm test
-npm run validate:fixtures
-npm run dev                   # static dashboard shell on loopback
+npm run check                 # lint, formatting, type checking, build, tests
+npm run validate:fixtures     # validate tracked fictional bundles
+npm run validate:manifests    # validate research manifests and collector DAG
+npm run probe:api             # offline OpenAPI and GraphQL drift verification
+npm run dev                   # local dashboard on 127.0.0.1
 npm run dev:cli -- --help
-npm run dev:cli -- discover --modules all --organization fictional-north
-# Last command deliberately exits 3; it does not create a bundle.
-npm run check                 # formatting/lint, type checking, build and tests
-npm run format
+npm run dev:cli -- discover --modules all --organization fictional-north --dry-run
 ```
 
-After building, `npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli --help` runs the local executable. See the authoritative [CLI README](apps/cli/README.md) for the full grammar and the [specification index](docs/specs/README.md) for implementation status.
+After building, run the workspace executable with:
 
-## Proposed evidence flow
+```bash
+npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli --help
+```
+
+Live discovery requires explicitly authorized credentials and a permitted
+target. Start with `--dry-run`, a synthetic test organization, and the
+least-privilege guidance in the [CLI README](apps/cli/README.md).
+
+## Evidence Flow
 
 ```text
-Environment/local credential → read-only CLI adapters → independent collectors
-→ allowlisted, validated JSON bundle → explicit local file import
-→ shared validation + pure analysis → customer-facing CSV / jsPDF reports
+Local credential → read-only CLI adapters → bounded collectors
+→ allowlisted, validated v1.0.0 JSON bundle → explicit local import
+→ shared validation + deterministic analysis → local CSV / PDF reports
 ```
 
-The dashboard will never receive CLI credentials or connect to GitHub. No accounts, cloud persistence, tracking, or server-side customer-data storage are planned. Fixtures are entirely synthetic. Secret values, tokens, private keys, and webhook secrets must never be collected, logged, persisted, or displayed. A schema is a structural guard, not a substitute for field allowlists and log redaction.
+The dashboard never receives CLI credentials and does not connect to GitHub.
+No account, cloud persistence, analytics, or server-side customer-data storage
+is required. Secret values, tokens, private keys, variable values, and webhook
+secrets must never be collected, logged, persisted, or displayed.
 
-## Decisions still open
+## Supported and Planned Scope
 
-Stakeholders must approve migration targets and thresholds, the PII allowlist and retention policy, supported enterprise identity models, large-bundle performance budgets, and report branding. Before live work ships, implementers must verify exact endpoint capabilities, token minima, role requirements, and enterprise enumeration against official GitHub documentation. See the [permissions matrix](docs/specs/permissions-matrix.md) and [implementation plan](docs/specs/implementation-plan.md).
+The executable reader and writer support contract **v1.0.0 only**. ADR 0004
+freezes the implemented shape as the current release baseline. Documents that
+mention v2 describe deferred proposals, not a registered or compatible runtime
+contract.
+
+The runtime exposes 11 user-facing discovery modules and combines selected
+GraphQL and REST operations into typed evidence. The 237-entry collector
+registry is a broader researched implementation catalog; it must not be read as
+a claim that all 237 operations execute in the current CLI.
+
+## Remaining Release Gates
+
+- Run approved live-read validation against synthetic GitHub resources.
+- Record browser interaction, accessibility, responsive, and visual evidence.
+- Run the monorepo workflow on GitHub and make its root quality job required.
+- Land the current implementation as reviewable commits or pull requests.
+
+See the [implementation plan](docs/specs/implementation-plan.md),
+[phased collector roadmap](docs/specs/phased-roadmap.md), and
+[security guidance](docs/specs/security-and-privacy.md) for the detailed gates.

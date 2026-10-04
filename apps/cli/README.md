@@ -72,18 +72,18 @@ Help/version/offline syntax checks need no token or GitHub role. Future `discove
 
 Fine-grained tokens may be restricted by resource owner, selected repositories, approval and policy. A classic PAT scope does not override account privileges. SSO, licensing and access changes can independently affect visibility. Confirm all exact capabilities and permission requirements against official GitHub documentation and approved synthetic live tests before any release. Enterprise access must not be inferred from a slug or a token's existence.
 
-## Organization versus enterprise behavior (planned)
+## Organization versus enterprise behavior
 
 An organization scan remains inside the requested organization. An enterprise scan enumerates accessible organizations and retains an organization ID on every execution and entity. Enterprise totals describe observed scope only. Failed or incomplete enumeration is disclosed; unknown inaccessible counts are null. IDs, not display names, identify relationships. Dependencies run before dependent collectors; missing repository anchors cause explicit skipped results.
 
-## Output and dashboard handoff (planned)
+## Output and dashboard handoff
 
 Each run writes one versioned UTF-8 JSON bundle. Directory targets receive `ghec-discovery-<scope-kind>-<sanitized-scope>-<YYYYMMDDTHHmmssSSSZ>-<run-id>.json`; explicit `.json` paths are honored. Writes are restricted, atomic and non-overwriting. No companion customer logs or per-organization files are required.
 
 ```text
-scans/                          # ignored; actual CLI output is deferred
+scans/                          # ignored local CLI output
   ghec-discovery-enterprise-fictional-enterprise-20260101T120000000Z-example.json
-reports/                        # ignored; export features are deferred
+reports/                        # ignored local dashboard exports
 fixtures/synthetic/             # tracked, fictional examples only
   enterprise-v1.json
   organization-v1.json
@@ -91,7 +91,10 @@ fixtures/synthetic/             # tracked, fictional examples only
 
 Top-level fields: schemaVersion, synthetic, scan, configuration, scope, organizations, collectors, entities, findings, limitations, errors, summary. Each collector has timestamps, provenance, status, warnings/errors and coverage; entities carry organization/execution references. Configuration omits tokens, raw argv and absolute customer paths. See [data contract](../../docs/specs/data-contract.md).
 
-Future handoff: start the local dashboard (`npm run dev`), choose Import bundle, select the local JSON file, validate its version/schema, review coverage, then inspect views and export reports. **Import controls do not exist in the current static shell.** Today use `npm run validate:fixtures` to exercise contract validation. The dashboard never needs a GitHub token or network connection to GitHub.
+To hand off a bundle, start the local dashboard (`npm run dev`), choose Import
+bundle, select the local JSON file, validate its version/schema, review
+coverage, then inspect views and export reports. The dashboard never needs a
+GitHub token or a network connection to GitHub.
 
 The current reader supports schema 1.0.0 only. Future readers retain registered older-compatible versions through explicit normalizers; unknown future/minor or major versions reject clearly. No silent migration or original-file overwrite is allowed.
 
@@ -113,11 +116,23 @@ For full setup instructions, required permissions, and installation steps, see t
 
 Complete, partial, failed, skipped and unavailable executions are distinct. Missing data is not zero, false or safe. Successful enumeration can coexist with unavailable individual fields. Warnings do not automatically imply failure; errors are sanitized codes/messages, not raw responses.
 
-With `--continue-on-error`, future discovery continues independent modules and produces a usable partial bundle. Without it, stop new work after a fatal collector failure, mark unscheduled work skipped, and preserve completed evidence where safe. Exit codes: 0 complete/successful future preflight; 1 fatal runtime/output error; 2 invalid command; 3 scaffold not implemented; 4 usable partial bundle; 130 interrupted. An invalid output or unknown scope may prevent bundle creation entirely.
+With `--continue-on-error`, discovery continues independent modules and
+produces a usable partial bundle. Without it, the orchestrator stops new work
+after a fatal collector failure and preserves completed evidence where safe.
+Exit codes: 0 complete/successful preflight; 1 fatal runtime/output error; 2
+invalid command; 4 usable partial bundle; 130 interrupted. An invalid output or
+unknown scope may prevent bundle creation entirely.
 
 ## API limits and scan practices
 
-The planned adapter uses Octokit with GraphQL and REST fallbacks; it must respect primary and secondary rate limits, pagination and bounded retries. There is no universal requests-per-hour assumption. Start with one organization and a small module selection, use least-privilege access, avoid concurrent scans with the same credential, schedule broad scans thoughtfully, and inspect coverage rather than repeatedly retrying denied resources. Dry-run will be useful only after verified preflight exists. LFS storage, enterprise enumeration, SSO, billing and registry capabilities may not be completely observable through available APIs.
+The adapter uses Octokit with GraphQL and REST fallbacks and applies pagination,
+bounded retries, and rate-limit pacing. There is no universal
+requests-per-hour assumption. Start with one organization and a small module
+selection, use least-privilege access, avoid concurrent scans with the same
+credential, schedule broad scans thoughtfully, and inspect coverage rather
+than repeatedly retrying denied resources. LFS storage, enterprise
+enumeration, SSO, billing, and registry capabilities may not be completely
+observable through available APIs.
 
 ## Data handling
 
