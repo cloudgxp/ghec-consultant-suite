@@ -114,6 +114,15 @@ This file is the single source of truth for work tracking across all categories 
 | **DASH-10** | Accessibility & Visual Regression             | Complete | [`dash-task-10-accessibility-responsive-and-visual-regression.md`](bug-fixes/completed/dash-task-10-accessibility-responsive-and-visual-regression.md)   | 0 WCAG violations, 5 viewports, 44px touch targets.       |
 | **DASH-20** | Remove DaisyUI/Tailwind & Primer Quality Gate | Complete | [`dash-task-20-remove-daisyui-tailwind-and-primer-quality-gate.md`](bug-fixes/completed/dash-task-20-remove-daisyui-tailwind-and-primer-quality-gate.md) | AST quality gate script `scripts/check-styles.mjs` green. |
 
+#### PR CI Remediation Backlog
+
+| Task(s)       | Title / Domain                                 |  Status  | Specification File                                                                                                             | Target PR | Evidence                                                                                                                             |
+| :------------ | :--------------------------------------------- | :------: | :----------------------------------------------------------------------------------------------------------------------------- | :-------- | :----------------------------------------------------------------------------------------------------------------------------------- |
+| **PR-FIX-27** | Fix Prettier Formatting for PR #27             | Complete | [`pr-fix-27-prettier-formatting-publisher-test.md`](bug-fixes/completed/pr-fix-27-prettier-formatting-publisher-test.md)       | PR #27    | Formatted `publisher.test.ts` (commit `3741409`); 6/6 checks green on GitHub Actions.                                                |
+| **PR-FIX-33** | Fix Prettier Formatting for PR #33             | Complete | [`pr-fix-33-prettier-formatting-codeql-doc.md`](bug-fixes/completed/pr-fix-33-prettier-formatting-codeql-doc.md)               | PR #33    | Formatted `codeql-01-...md` for Prettier 3.9.9 (commit `3a55e15`); 7/7 checks green on GitHub Actions.                               |
+| **PR-FIX-25** | Trigger and Verify CI Quality Gates for PR #25 | Complete | [`pr-fix-25-trigger-and-verify-ci-checks.md`](bug-fixes/completed/pr-fix-25-trigger-and-verify-ci-checks.md)                   | PR #25    | Merged `main`, resolved conflict in `formatters.test.ts` (commit `d29b394`); 7/7 checks green on GitHub Actions.                     |
+| **PR-FIX-07** | Resolve TypeScript 7 Peer Dependency Conflict  | Complete | [`pr-fix-07-typescript-7-peer-dependency-conflict.md`](bug-fixes/completed/pr-fix-07-typescript-7-peer-dependency-conflict.md) | PR #7     | Used `@typescript/typescript6` bridge & added `types: ["node"]` (commit `e697280`); `npm ci` & all 7 checks green on GitHub Actions. |
+
 ---
 
 ## Reconciliation Evidence
