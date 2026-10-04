@@ -31,6 +31,110 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Codex — REVIEW-HISTORY — Complete
+
+- Summary: Converted the shared working tree into focused review history rather
+  than one mixed change. Fixture/test coverage, dashboard performance, and the
+  contract/release decision can now be reviewed or reverted independently.
+- Files: All previously uncommitted release work, grouped by concern; this
+  tracker and changelog remain a final bookkeeping-only commit.
+- Verification: `af1faeb` contains synthetic fixtures and cross-package tests;
+  `85196fc` contains dashboard lazy loading, warning fixes, vendor splitting,
+  and bundle budgets; `cdcd660` contains ADR 0004, exact version-policy tests,
+  and reconciled release documentation. The pre-commit `npm run check` passed
+  all 116 tests, formatting, lint, type checking, production builds, Primer
+  style checks, and bundle budgets.
+- Follow-up: Push the `init` branch or open a pull request, then activate the
+  GitHub-hosted `Monorepo quality / Root quality gate` as a required check.
+
+### 2026-10-04 — Codex + Antigravity — DASH-BUNDLE — Complete
+
+- Summary: Split dashboard feature pages and the design-system preview into
+  lazy chunks, separated stable React/Primer/vendor groups, and kept the PDF
+  export stack outside the initial page load. Added an enforced production
+  bundle budget to prevent payload regressions.
+- Files: `apps/dashboard/src/main.tsx`, `apps/dashboard/vite.config.ts`,
+  `apps/dashboard/scripts/check-bundle-size.mjs`,
+  `apps/dashboard/package.json`, `docs/specs/dashboard-ui-quality-gate.md`,
+  `README.md`, and `agent-tasks/CURRENT-TASKS.md`.
+- Verification: The production build completes without chunk warnings. The
+  measured baseline is 520.9 KiB for the largest raw JavaScript chunk, 254.1
+  KiB initial JavaScript gzip, and 73.0 KiB initial CSS gzip, within enforced
+  budgets of 600, 270, and 80 KiB respectively. PDF dependencies are asserted
+  absent from the initial asset graph. `npm run check` passes all 116 tests.
+- Follow-up: Browser-level performance and interaction evidence remains part of
+  the shared release validation gate.
+
+### 2026-10-04 — Codex — DASH-HOOKS / Verification — Complete
+
+- Summary: Verified Antigravity's React dependency cleanup. Memoized scope
+  filtering in `ActionsTab` and graph derivation in `DependencyMapTab` now have
+  complete, stable hook dependencies.
+- Files: `apps/dashboard/src/features/ActionsTab.tsx`,
+  `apps/dashboard/src/features/DependencyMapTab.tsx`, and
+  `agent-tasks/CURRENT-TASKS.md`.
+- Verification: The full `npm run check` lint phase completed with no React hook
+  warnings; the complete gate passed with 116 tests and zero failures.
+- Follow-up: Browser-level responsive and accessibility verification remains a
+  shared release gate.
+
+### 2026-10-04 — Codex — ADR-0004 / CONTRACT — Complete
+
+- Summary: Resolved the release contract decision by freezing the implemented
+  v1.0.0 shape. Proposed v2 collector mappings remain deferred research until a
+  separately approved reader, writer, fixture set, compatibility path, and
+  migration exist.
+- Files: `docs/adr/0004-stabilize-v1-contract-for-current-release.md`,
+  `docs/adr/0002-contract-versioning.md`,
+  `packages/contracts/tests/version-policy.test.ts`, `README.md`, contract and
+  release specifications, and `agent-tasks/CURRENT-TASKS.md`.
+- Verification: `npm run check` passed formatting, lint, type checking, the
+  production build, the Primer style gate, and all 116 tests. The new tests
+  assert `SCHEMA_VERSION` and every tracked fixture are v1.0.0 and reject an
+  exact v2.0.0 bundle. The dashboard bundle-size warning remains non-fatal.
+- Follow-up: Any incompatible standalone migration-app output requires a
+  separately scoped v2 contract and preserved-source migration design.
+
+### 2026-10-04 — Codex — DOCS / RELEASE — Complete
+
+- Summary: Reconciled release documentation with the implemented repository.
+  Removed obsolete scaffold claims, documented the working CLI/dashboard and
+  v1 contract boundary, separated the 11 runtime modules from the 237-operation
+  research catalog, and made pending live/browser/CI evidence explicit.
+- Files: `README.md`, `apps/cli/README.md`, `docs/specs/README.md`,
+  `docs/specs/implementation-plan.md`, `docs/specs/phased-roadmap.md`, and
+  `agent-tasks/README.md`.
+- Verification: A stale-claim search found no remaining scaffold or
+  planned-runtime claims in the reconciled status sections. `npm run check`
+  passed with formatting, type checking, the production build, the Primer style
+  gate, and all 114 tests green. The six tracked hook warnings and dashboard
+  bundle-size warning remain non-fatal follow-up work.
+- Follow-up: Documentation reconciliation is complete. The remaining shared P0
+  work is the v1-versus-v2 contract decision and GitHub CI activation.
+
+### 2026-10-04 — Antigravity — FIXTURES / CLI-9..10 — Complete
+
+- Summary: Added versioned executable synthetic fixtures covering all specialized
+  Actions and infrastructure entities (`fixtures/synthetic/specialized-v1.json`)
+  and modeling HTTP 403 Forbidden permission-denied scenarios with honest unknown
+  metrics (`fixtures/synthetic/partial-denied-v1.json`). Integrated fixtures into
+  validator scripts, contracts tests, dashboard sample loader/UI, and added 18
+  automated tests across contracts, dashboard, and CLI.
+- Files: `fixtures/synthetic/specialized-v1.json`,
+  `fixtures/synthetic/partial-denied-v1.json`, `fixtures/synthetic/README.md`,
+  `scripts/validate-fixtures.ts`, `packages/contracts/tests/bundle.test.ts`,
+  `apps/dashboard/src/lib/samples.ts`, `apps/dashboard/src/lib/importer.ts`,
+  `apps/dashboard/src/components/FileUpload.tsx`,
+  `apps/dashboard/tests/specialized-fixtures.test.ts`,
+  `apps/dashboard/tests/partial-denied.test.ts`, `apps/cli/tests/fixtures.test.ts`,
+  `agent-tasks/CURRENT-TASKS.md`, `agent-tasks/CHANGELOG.md`.
+- Verification: `npm run validate:fixtures` succeeded for all 4 fixtures.
+  `npm run check` passed cleanly with 114 tests passing across 21 test suites
+  (contracts, analysis, dashboard, and CLI), 0 failures, 0 lint errors, and 0
+  Primer style violations.
+- Follow-up: The P1 Antigravity synthetic coverage task is complete. The remaining
+  shared P0 items are documentation reconciliation and bundle contract versioning.
+
 ### 2026-10-01 — Codex — CI / QUALITY — Verification needed
 
 - Summary: Added a full-monorepo GitHub Actions workflow for pull requests,
