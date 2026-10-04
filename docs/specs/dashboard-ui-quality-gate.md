@@ -21,6 +21,14 @@ npm run test:visual:update -w @ghec/dashboard
 
 Review every changed PNG before committing it. Playwright uses its pinned Chromium build; install it once with `npx playwright install chromium`.
 
+Visual baselines are exact for their rendering environment. Local runs use the
+root `e2e/__screenshots__` set. GitHub Actions sets
+`PLAYWRIGHT_SNAPSHOT_PROFILE=github-ubuntu` and uses the separately reviewed
+`e2e/__screenshots__/github-ubuntu` set. This avoids hiding real layout changes
+behind a broad pixel-difference tolerance while accounting for host font and
+rasterization differences. A failed CI run uploads its candidate profile for
+review; CI never updates committed baselines automatically.
+
 ## Production bundle budget
 
 The dashboard build fails when any of these measured limits is exceeded:
