@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -77,4 +77,11 @@ To prevent migration modules from coupling tightly to CLI argument parsing, a ce
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Initialized `@ghec/migration` workspace package (`packages/migration/`) with TypeScript ESM configuration and exports map.
+- Implemented core migration interfaces in `src/core/types.ts`: `MigrationContext`, `MigrationScopeTarget`, `StructuredLogger`, along with re-exports of `@ghec/contracts` migration plan/result schemas.
+- Implemented `MigrationModule<TDiscovered>` base lifecycle contract in `src/core/module.ts` enforcing `discover`, `plan`, `apply`, and `verify`.
+- Implemented `ModuleRegistry` in `src/core/registry.ts` with duplicate registration rejection and plan resolution.
+- Implemented topological dependency resolver in `src/core/dag.ts` with cycle detection (`ModuleCycleError`) and missing dependency detection (`MissingDependencyError`).
+- Added comprehensive unit tests in `tests/registry.test.ts` and `tests/dag.test.ts` (12 tests passing).
+- Documented contracts, registry, and DAG resolution in `packages/migration/README.md`.
+- Verified `npm run check` green with 136/136 tests passing across all workspaces.

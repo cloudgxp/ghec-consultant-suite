@@ -44,3 +44,19 @@ All material engineering work, test completions, and milestone deliveries are re
   - Probe script path updated; root build/typecheck order extended.
 - **Tests:** `npm run check` green, 116/116.
 - **Follow-Up:** Task 005 (needs 004) and Task 030 (needs 005) depend on this.
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 005 Migration Core Framework & Module Registry in `@ghec/migration`
+- **Changes:**
+  - Initialized workspace package `packages/migration` (`package.json`, `tsconfig.json`, `README.md`).
+  - Implemented core execution types and `MigrationModule` lifecycle contract (`discover`, `plan`, `apply`, `verify`).
+  - Implemented `ModuleRegistry` and topological dependency resolution (`sortModulesTopologically`, `ModuleCycleError`, `MissingDependencyError`).
+  - Added unit test suites `packages/migration/tests/registry.test.ts` and `packages/migration/tests/dag.test.ts`.
+  - Registered package in root `package.json` build, typecheck, and test scripts.
+- **Tests:** `npm run check` passed 136/136 tests green.
+- **Follow-Up:** Unblocks downstream migration tasks: Task 007 (Planner/Diff Engine), Task 008 (Repo Variables Module), Task 014 (GEI Wrapper), Task 017 (Teams), Task 022 (Preflight Engine), Task 030 (Advisory Planner).

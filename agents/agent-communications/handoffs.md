@@ -86,3 +86,32 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/contracts/README.md`
 - **Behavior Notes:** All migration schemas are strict and locked to `1.0.0`. Scope validation prevents repository mappings from crossing a declared organization tenant pair; plan and verification summaries are reconciled against their items; `emu-saml` mannequin reclamation requires `skipInvitation`.
 - **Test Evidence:** Unit tests in `packages/contracts/tests/` validated with test runner.
+
+### [2026-10-04] Task 005 (Migration Core Framework & Module Registry) -> Tasks 006 / 007 / 008 / 014 / 017 / 022 / 030
+
+- **From:** Antigravity
+- **To:** Codex / Antigravity
+- **Completed Task:** 005
+- **Unblocked Tasks:** 007, 008, 014, 017, 022, 030 (and downstream module implementations)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - Lifecycle interface: `MigrationModule<TDiscovered>`
+    - Types: `MigrationContext`, `MigrationScopeTarget`, `MigrationScopeLevel`, `StructuredLogger`
+    - Registry: `ModuleRegistry`, `ModuleRegistrationError`
+    - DAG: `sortModulesTopologically`, `ModuleCycleError`, `MissingDependencyError`
+    - Contract re-exports: `ModulePlan`, `PlannedOperation`, `ModuleExecutionResult`, `OperationExecutionResult`, `ModuleVerificationResult`, `VerificationDiscrepancy`
+- **Files Modified / Created:**
+  - `packages/migration/package.json`
+  - `packages/migration/tsconfig.json`
+  - `packages/migration/README.md`
+  - `packages/migration/src/core/types.ts`
+  - `packages/migration/src/core/module.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/core/dag.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/registry.test.ts`
+  - `packages/migration/tests/dag.test.ts`
+  - `package.json` (build, typecheck, test scripts)
+  - `package-lock.json`
+- **Behavior Notes:** Module IDs must be unique in `ModuleRegistry`. `resolveExecutionPlan` automatically orders dependencies before dependent modules, auto-includes missing prerequisites by default, and throws typed errors on circular or missing dependencies.
+- **Test Evidence:** `npm run check` passes 136/136 tests green.
