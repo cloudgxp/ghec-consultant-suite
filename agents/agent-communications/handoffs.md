@@ -535,3 +535,30 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Secret rehydration uses `libsodium-wrappers` sealed box against target environment public key (`GET .../environments/{env}/secrets/public-key`).
   - Zero-exposure DEC-004 compliance: raw secret values are never printed, logged, or serialized into migration plans.
 - **Test Evidence:** `npm run check` passes 271/271 tests across 31 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 021 Complete: Production GitHub Actions Workflow Templates & CI/CD Integration
+
+- **From:** Antigravity
+- **To:** Codex & Engineering Operations
+- **Completed Task:**
+  - **Task 021**: Production GitHub Actions Workflow Templates, Composite Action, and Cutover Documentation.
+- **Exported Deliverables:**
+  - `action.yml`: Composite action for running GHEC Consultant Suite operations (`plan`, `migrate`, `verify`, `discover`) in CI.
+  - `.github/workflows/migration-plan-pr.yml`: Automated pre-migration diffing on PRs modifying scope JSON files, uploading plan artifacts and commenting summaries on PRs.
+  - `.github/workflows/migration-execute-wave.yml`: 3-stage parallel matrix migration pipeline with scope slicing, parallel matrix execution under environment gate approval (`production-migration`), and fan-in verification summary reporting.
+  - `.github/workflows/migration-resume.yml`: Checkpoint resumption workflow for interrupted migration runs.
+  - `docs/guides/github-actions-migration.md`: Enterprise operator runbook covering self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover schedule.
+- **Files Modified / Created:**
+  - `action.yml`
+  - `.github/workflows/migration-plan-pr.yml`
+  - `.github/workflows/migration-execute-wave.yml`
+  - `.github/workflows/migration-resume.yml`
+  - `docs/guides/github-actions-migration.md`
+  - `agents/agent-tasks/antigravity/021-github-actions-workflow-templates.md`
+- **Behavior Notes:**
+  - Workflows use `secrets.GHEC_SOURCE_TOKEN` and `secrets.GHEC_TARGET_TOKEN` strictly without echoing them to outputs or logs.
+  - Slicer outputs matrix dynamically via `jq` JSON encoding for direct consumption by `fromJSON(needs.slicer.outputs.matrix)`.
+  - Self-hosted runners with persistent mounts are recommended to avoid 6-hour runner timeout limits on large Git LFS repos.
+- **Test Evidence:**
+  - Workflow and action YAML files validated syntactically with standard YAML parsers.
+  - `npm run check` passes 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.

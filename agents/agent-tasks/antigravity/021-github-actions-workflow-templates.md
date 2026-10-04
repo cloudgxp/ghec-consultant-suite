@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -77,4 +77,9 @@ The ultimate execution target for enterprise GHEC $\rightarrow$ GHEC-EMU migrati
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Created `action.yml` (Composite Action) with Node 22, GitHub CLI (`gh`), `gh-gei` extension installation, dependency caching, and CLI argument mapping.
+- Created `.github/workflows/migration-plan-pr.yml` providing automated dry-run planning on pull requests modifying scope JSON files, uploading plan artifacts and commenting summaries on the PR.
+- Created `.github/workflows/migration-execute-wave.yml` orchestrating 3-stage parallel matrix migration waves (`slicer` partitioning, parallel matrix worker execution with `production-migration` environment approval gate, and fan-in aggregation/verification reporting to `$GITHUB_STEP_SUMMARY`).
+- Created `.github/workflows/migration-resume.yml` enabling automated resumption from checkpoint manifests for interrupted runs.
+- Authored production operator runbook in `docs/guides/github-actions-migration.md` detailing architecture diagrams, self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover playbook.
+- Validated YAML syntax for all workflows and composite action. Full monorepo quality gate (`npm run check`) passing green.

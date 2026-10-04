@@ -357,3 +357,18 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/modules/environments.test.ts` (8 tests) and module documentation in `README.md`.
 - **Tests:** `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
 - **Follow-Up:** Unblocks Task 016 (`org-variables` and `org-secrets`), Task 018 (`webhooks`), Task 019 (`step-summary`), Task 025 (repo visibility/settings), and Task 026 (custom properties).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 021 Production GitHub Actions Workflow Templates & CI/CD Integration
+- **Changes:**
+  - Implemented reusable composite action `action.yml` automating Node 22 runtime setup, GitHub CLI verification, `gh-gei` extension installation, dependency caching, monorepo compilation, and mapped CLI command invocation.
+  - Implemented `.github/workflows/migration-plan-pr.yml` running automated pre-migration diffing on PRs modifying `scopes/**.json`, uploading plan artifacts and commenting summaries on PRs.
+  - Implemented `.github/workflows/migration-execute-wave.yml` orchestrating 3-stage parallel matrix migration waves (`slicer` partitioning, parallel matrix worker execution with `production-migration` environment approval gate, and fan-in aggregation/verification reporting to `$GITHUB_STEP_SUMMARY`).
+  - Implemented `.github/workflows/migration-resume.yml` enabling automated resumption from checkpoint manifests for interrupted runs.
+  - Authored comprehensive enterprise operator runbook in `docs/guides/github-actions-migration.md` covering architecture diagrams, self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover playbook.
+- **Tests:** Validated workflow YAML syntax; `npm run check` passed 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.

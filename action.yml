@@ -1,0 +1,172 @@
+name: 'GHEC Consultant Suite Action'
+description: 'Runs GHEC Consultant Suite migration operations (plan, migrate, verify, discover) in GitHub Actions workflows.'
+author: 'GitHub Enterprise Cloud Migration Team'
+
+inputs:
+  command:
+    description: 'CLI command to execute: plan, migrate, verify, or discover'
+    required: true
+    default: 'plan'
+  scope:
+    description: 'Path to migration scope JSON file'
+    required: false
+    default: ''
+  plan:
+    description: 'Path to migration plan JSON file'
+    required: false
+    default: ''
+  input:
+    description: 'Path to cached discovery bundle JSON file'
+    required: false
+    default: ''
+  modules:
+    description: 'Comma-separated list of migration modules to run (e.g. "all", "repo-variables,repo-secrets,environments")'
+    required: false
+    default: ''
+  split-matrix:
+    description: 'Batch size for partitioning repositories into parallel matrix cohorts'
+    required: false
+    default: ''
+  output-matrix:
+    description: 'Output path for generated GitHub Actions matrix JSON payload'
+    required: false
+    default: ''
+  output:
+    description: 'Output file path for plan, execution report, or verification report'
+    required: false
+    default: ''
+  resume:
+    description: 'Migration run ID to resume from checkpoint, or "latest"'
+    required: false
+    default: ''
+  dry-run:
+    description: 'Execute in dry-run mode without applying mutations'
+    required: false
+    default: 'false'
+  continue-on-error:
+    description: 'Continue executing remaining operations on non-fatal failures'
+    required: false
+    default: 'true'
+  source-token:
+    description: 'Personal Access Token or GitHub App Installation Token for source tenant'
+    required: false
+    default: ''
+  target-token:
+    description: 'Personal Access Token or GitHub App Installation Token for target enterprise'
+    required: false
+    default: ''
+  node-version:
+    description: 'Node.js runtime version'
+    required: false
+    default: '22'
+  install-gei:
+    description: 'Whether to install or verify the gh-gei GitHub CLI extension'
+    required: false
+    default: 'true'
+
+outputs:
+  output-path:
+    description: 'Resolved file path of the generated output artifact'
+    value: ${{ steps.run-cli.outputs.output-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Verify GitHub CLI & Install gh-gei Extension
+      if: ${{ inputs.install-gei == 'true' }}
+      shell: bash
+      run: |
+        if ! command -v gh >/dev/null 2>&1; then
+          echo "::warning::GitHub CLI (gh) not found in runner PATH. GEI commands require gh."
+        else
+          if ! gh extension list | grep -q "gh gei"; then
+            echo "Installing gh-gei extension..."
+            gh extension install github/gh-gei || echo "::warning::Failed to install gh-gei extension via gh CLI."
+          fi
+        fi
+
+    - name: Install Suite Dependencies & Build Monorepo
+      shell: bash
+      run: |
+        if [ ! -d "node_modules" ]; then
+          npm ci
+        fi
+        npm run build
+
+    - name: Execute GHEC Consultant CLI
+      id: run-cli
+      shell: bash
+      env:
+        GHEC_SOURCE_TOKEN: ${{ inputs.source-token }}
+        GHEC_TARGET_TOKEN: ${{ inputs.target-token }}
+      run: |
+        CMD="${{ inputs.command }}"
+        ARGS=()
+
+        if [ -n "${{ inputs.scope }}" ]; then
+          ARGS+=(--scope "${{ inputs.scope }}")
+        fi
+
+        if [ -n "${{ inputs.plan }}" ]; then
+          ARGS+=(--plan "${{ inputs.plan }}")
+        fi
+
+        if [ -n "${{ inputs.input }}" ]; then
+          ARGS+=(--input "${{ inputs.input }}")
+        fi
+
+        if [ -n "${{ inputs.modules }}" ]; then
+          ARGS+=(--modules "${{ inputs.modules }}")
+        fi
+
+        if [ -n "${{ inputs.split-matrix }}" ]; then
+          ARGS+=(--split-matrix "${{ inputs.split-matrix }}")
+        fi
+
+        if [ -n "${{ inputs.output-matrix }}" ]; then
+          ARGS+=(--output-matrix "${{ inputs.output-matrix }}")
+        fi
+
+        if [ -n "${{ inputs.output }}" ]; then
+          ARGS+=(--output "${{ inputs.output }}")
+        fi
+
+        if [ -n "${{ inputs.resume }}" ]; then
+          ARGS+=(--resume "${{ inputs.resume }}")
+        fi
+
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          ARGS+=(--dry-run)
+        fi
+
+        if [ "${{ inputs.continue-on-error }}" = "true" ]; then
+          ARGS+=(--continue-on-error)
+        fi
+
+        if [ -n "${{ inputs.source-token }}" ]; then
+          ARGS+=(--source-token "${{ inputs.source-token }}")
+        fi
+
+        if [ -n "${{ inputs.target-token }}" ]; then
+          ARGS+=(--target-token "${{ inputs.target-token }}")
+        fi
+
+        echo "Executing: node ./apps/cli/bin/ghec-consultant-cli.mjs $CMD ${ARGS[*]}"
+        node ./apps/cli/bin/ghec-consultant-cli.mjs "$CMD" "${ARGS[@]}"
+
+        RESOLVED_OUTPUT="${{ inputs.output }}"
+        if [ -z "$RESOLVED_OUTPUT" ]; then
+          case "$CMD" in
+            plan) RESOLVED_OUTPUT="./scans/migration-plan.json" ;;
+            migrate) RESOLVED_OUTPUT="./scans/migration-report.json" ;;
+            verify) RESOLVED_OUTPUT="./scans/verification-report.json" ;;
+            discover) RESOLVED_OUTPUT="./scans/discovery-bundle.json" ;;
+          esac
+        fi
+        echo "output-path=$RESOLVED_OUTPUT" >> "$GITHUB_OUTPUT"
