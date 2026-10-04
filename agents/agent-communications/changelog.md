@@ -549,3 +549,18 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** Prettier check on all workflows and action.yml clean. Resolves CodeQL alerts #28 through #51 (24 alerts).
 - **Follow-Up:** Proceed to Task 03 (`codeql-03-fix-reusable-token-workflow-injection.md`).
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** CodeQL Remediation Task 03: Remediate GitHub Actions Code Injection in Token Minting Workflow (`codeql-03-fix-reusable-token-workflow-injection.md`)
+- **Changes:**
+  - Removed bash script step (`token-gen`) completely from `.github/workflows/reusable-ghec-token.yml`.
+  - Resolved job outputs directly via GitHub Actions expressions (`${{ steps.ent-token.outputs.token || steps.org-token.outputs.token }}` and `${{ steps.ent-token.outputs.installation-id || steps.org-token.outputs.installation-id }}`).
+  - Moved task specification to `agents/agent-tasks/security/completed/`.
+- **Tests:** Prettier check clean on workflow file. Resolves CodeQL alerts #2 through #6 (5 alerts).
+- **Follow-Up:** Proceed to Task 04 (`codeql-04-secure-temporary-file-creation.md`).
+
+
