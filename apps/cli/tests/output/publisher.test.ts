@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve, join } from 'node:path';
-import { generateBundleFilename, type PublishOptions } from '../../src/output/publisher.js';
+import {
+  generateBundleFilename,
+  type PublishOptions,
+} from '../../src/output/publisher.js';
 
 describe('generateBundleFilename', () => {
   it('should return resolved outputPath if it ends with .json', () => {
@@ -27,7 +30,8 @@ describe('generateBundleFilename', () => {
     };
 
     const result = generateBundleFilename(options);
-    const expectedFilename = 'ghec-discovery-organization-test-org-20240101T120000Z-12345.json';
+    const expectedFilename =
+      'ghec-discovery-organization-test-org-20240101T120000Z-12345.json';
     assert.equal(result, join(resolve('output-dir'), expectedFilename));
   });
 
@@ -41,7 +45,8 @@ describe('generateBundleFilename', () => {
     };
 
     const result = generateBundleFilename(options);
-    const expectedFilename = 'ghec-discovery-enterprise-my-enterprise-20241231T235959Z-999.json';
+    const expectedFilename =
+      'ghec-discovery-enterprise-my-enterprise-20241231T235959Z-999.json';
     assert.equal(result, join(resolve('out'), expectedFilename));
   });
 
@@ -55,7 +60,8 @@ describe('generateBundleFilename', () => {
     };
 
     const result = generateBundleFilename(options);
-    const expectedFilename = 'ghec-discovery-organization-Bad_Name_______-20240101T120000Z-111.json';
+    const expectedFilename =
+      'ghec-discovery-organization-Bad_Name_______-20240101T120000Z-111.json';
     assert.equal(result, join(resolve('dir'), expectedFilename));
   });
 
@@ -71,7 +77,8 @@ describe('generateBundleFilename', () => {
     const result = generateBundleFilename(options);
     // The replace(/\..+/, '') in the code removes everything after the period, including the 'Z'
     // It is a bug in the code, but we're writing characterisation tests for existing behavior
-    const expectedFilename = 'ghec-discovery-organization-org-20240510T083015-1.json';
+    const expectedFilename =
+      'ghec-discovery-organization-org-20240510T083015-1.json';
     assert.equal(result, join(resolve('dir'), expectedFilename));
   });
 
@@ -85,7 +92,8 @@ describe('generateBundleFilename', () => {
     };
 
     const result = generateBundleFilename(options);
-    const expectedFilename = 'ghec-discovery-organization-org-20240510T083015-1.json';
+    const expectedFilename =
+      'ghec-discovery-organization-org-20240510T083015-1.json';
     assert.equal(result, join(resolve('dir'), expectedFilename));
   });
 });
