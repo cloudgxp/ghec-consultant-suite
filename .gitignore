@@ -8,6 +8,30 @@ test-results/
 .env
 .env.*
 !.env.example
+
+# Credentials and private-key material
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.ppk
+*.jks
+*.keystore
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+credentials.json
+credentials.*.json
+service-account*.json
+**/.secrets/
+**/secrets/
+
+# Raw vendor/research snapshots can contain realistic credential examples.
+research/**/sources/*.json
+research/**/sources/*.json.gz
+
 scans/
 reports/
 customer-data/

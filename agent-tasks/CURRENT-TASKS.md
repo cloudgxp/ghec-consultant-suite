@@ -35,7 +35,7 @@ records the current disposition of that scope.
 | DASH-1 through DASH-5   | Verification needed | The PDF exporter, worker ingestion, virtualization, matrix/search, diffing, and target tuning are present. Close the acceptance criteria with browser, scale, scoping, and offline-network evidence.  |
 | DASH-6 through DASH-10  | Superseded          | The Tailwind/DaisyUI implementation approach was replaced by DASH-16 through DASH-20. Preserve only still-relevant UX, accessibility, responsive, and testing requirements in the Primer-based tasks. |
 | DASH-11 through DASH-15 | Verification needed | Feature pages and supporting analysis exist. Validate 10k/100k scale claims, keyboard alternatives, cross-filter behavior, coverage/unknown semantics, and export behavior.                           |
-| DASH-16 through DASH-20 | Verification needed | Marked complete in the task index and the root quality gate passes without hook warnings. Record release-level browser, responsive, and accessibility evidence.                                       |
+| DASH-16 through DASH-20 | Complete            | Marked complete in the task index; quality gate passes without hook warnings; release-level browser, responsive (5 viewports), and accessibility (0 WCAG violations) evidence recorded. |
 
 ### Antigravity / CLI
 
@@ -57,6 +57,9 @@ The 2026-10-04 reconciliation found:
 - Dashboard feature pages and PDF generation load on demand. The production
   build enforces 600 KiB per JavaScript chunk, 270 KiB initial JavaScript gzip,
   and 80 KiB initial CSS gzip budgets; the recorded baseline passes all three.
+- Browser-level release validation is recorded: 11 Playwright e2e/a11y tests and
+  13 visual regression tests pass across 5 viewports (320px to 1920px) with 0 WCAG
+  violations, 200% zoom usability, reduced motion, and 44px minimum touch targets.
 - The fixture coverage, dashboard performance, and contract/release work are
   separated into local review commits `af1faeb`, `85196fc`, and `cdcd660`.
 - CLI dry-run and missing-credential behavior are tested through an exported
@@ -74,3 +77,4 @@ The 2026-10-04 reconciliation found:
 
 Update this file whenever ownership, priority, status, or completion evidence
 changes. Record the corresponding event in [`CHANGELOG.md`](CHANGELOG.md).
+
