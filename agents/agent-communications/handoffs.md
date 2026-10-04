@@ -69,3 +69,20 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `packages/discovery/**` (new; moved from `apps/cli/src/{collectors,engine,output,permissions}`), `apps/cli/src/{index,commands/discover,config/index}.ts`, shims under `apps/cli/src/{collectors,engine,output,permissions}`, `scripts/collectors/probe-api-surface.ts`, root/CLI `package.json`, `package-lock.json`
 - **Behavior Notes:** No behavior change. The package takes a plan and config from its host and reads no env vars or argv. Tests remain in `apps/cli/tests` and import through shims; the package's own test suite and glob are Task 002 follow-up territory.
 - **Test Evidence:** `npm run check`, 116/116 green.
+
+### [2026-10-04] Task 004 (Migration Schemas & Validation) -> Tasks 005 / 007 / 020 / 022 / 026 / 027
+
+- **From:** Codex
+- **To:** Antigravity / Codex
+- **Completed Task:** 004
+- **Unblocked Tasks:** 005, 007, 020, 022, 026, 027
+- **Exported Interfaces / Packages:**
+  - `@ghec/contracts`: `MigrationScopeSchema`, `MigrationPreflightReportSchema`, `MigrationPlanSchema`, `PlannedOperationSchema`, `ModuleExecutionResultSchema`, `VerificationReportSchema`, `MannequinReclamationPlanSchema`, `CustomPropertyMappingSchema`, their inferred types, and `validate*` safe-parse helpers.
+- **Files Modified / Created:**
+  - `packages/contracts/src/migration-common.ts`
+  - `packages/contracts/src/{scope,plan,preflight,results,verification}/**`
+  - `packages/contracts/src/index.ts`
+  - `packages/contracts/tests/{migration-scope,migration-plan,preflight-report,verification-report}.test.ts`
+  - `packages/contracts/README.md`
+- **Behavior Notes:** All migration schemas are strict and locked to `1.0.0`. Scope validation prevents repository mappings from crossing a declared organization tenant pair; plan and verification summaries are reconciled against their items; `emu-saml` mannequin reclamation requires `skipInvitation`.
+- **Test Evidence:** Unit tests in `packages/contracts/tests/` validated with test runner.
