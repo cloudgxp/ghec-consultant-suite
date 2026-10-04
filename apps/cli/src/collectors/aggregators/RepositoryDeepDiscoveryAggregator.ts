@@ -80,6 +80,74 @@ export const ORG_REPOSITORIES_DEEP_QUERY = `query OrgRepositoriesDeep($login: St
   }
 }`;
 
+export const ORG_REPOSITORIES_DEEP_QUERY_WITHOUT_PACKAGES = `query OrgRepositoriesDeepWithoutPackages($login: String!, $cursor: String) {
+  rateLimit {
+    cost
+    remaining
+    resetAt
+  }
+  organization(login: $login) {
+    repositories(
+      first: 100
+      after: $cursor
+      orderBy: { field: NAME, direction: ASC }
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+      nodes {
+        id
+        name
+        visibility
+        isArchived
+        isFork
+        diskUsage
+        defaultBranchRef {
+          name
+        }
+        branchProtectionRules(first: 10) {
+          nodes {
+            pattern
+            requiresApprovingReviews
+            requiredApprovingReviewCount
+            requiresStatusChecks
+            requiresStrictStatusChecks
+          }
+        }
+        rulesets(first: 10) {
+          nodes {
+            name
+            enforcement
+            target
+          }
+        }
+        languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+          edges {
+            size
+            node {
+              name
+            }
+          }
+        }
+        releases(first: 5) {
+          nodes {
+            name
+            releaseAssets(first: 10) {
+              nodes {
+                name
+                size
+                downloadCount
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+
 export interface DeepRepoNode {
   id: string;
   name: string;
@@ -161,16 +229,45 @@ export class RepositoryDeepDiscoveryAggregator {
     let lastObservedAt = startedAt;
     let totalCount: number | null = null;
 
+    const shouldQueryPackages =
+      context.configuration.modules.includes('packages');
+    let activeQuery = shouldQueryPackages
+      ? ORG_REPOSITORIES_DEEP_QUERY
+      : ORG_REPOSITORIES_DEEP_QUERY_WITHOUT_PACKAGES;
+    let packagesDenied = false;
+
     while (hasNextPage && !context.signal.aborted) {
-      const response: GraphQLResponse<OrgRepositoriesDeepData> =
-        await context.adapter.queryGraphQL<OrgRepositoriesDeepData>(
-          ORG_REPOSITORIES_DEEP_QUERY,
+      let response: GraphQLResponse<OrgRepositoriesDeepData>;
+      try {
+        response = await context.adapter.queryGraphQL<OrgRepositoriesDeepData>(
+          activeQuery,
           {
             login: context.organizationId,
             cursor,
           },
           context.signal,
         );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          activeQuery === ORG_REPOSITORIES_DEEP_QUERY &&
+          /read:packages|packages|INSUFFICIENT_SCOPES/i.test(msg)
+        ) {
+          packagesDenied = true;
+          activeQuery = ORG_REPOSITORIES_DEEP_QUERY_WITHOUT_PACKAGES;
+          response =
+            await context.adapter.queryGraphQL<OrgRepositoriesDeepData>(
+              activeQuery,
+              {
+                login: context.organizationId,
+                cursor,
+              },
+              context.signal,
+            );
+        } else {
+          throw err;
+        }
+      }
 
       lastObservedAt = response.observedAt;
       const reposPayload = response.data?.organization?.repositories;
@@ -376,7 +473,11 @@ export class RepositoryDeepDiscoveryAggregator {
     }
 
     // Build executions for covered modules
-    const coveredModules: ModuleId[] = ['repos', 'policies', 'packages'];
+    const coveredModules: ModuleId[] = ['repos', 'policies'];
+    if (shouldQueryPackages) {
+      coveredModules.push('packages');
+    }
+
     const executions: CollectorExecution[] = [
       {
         id: reposExecId,
@@ -426,11 +527,14 @@ export class RepositoryDeepDiscoveryAggregator {
           reason: null,
         },
       },
-      {
+    ];
+
+    if (shouldQueryPackages) {
+      executions.push({
         id: packagesExecId,
         module: 'packages',
         organizationId: context.organizationId,
-        status: 'complete',
+        status: packagesDenied ? 'failed' : 'complete',
         startedAt,
         completedAt,
         provenance: [
@@ -442,15 +546,30 @@ export class RepositoryDeepDiscoveryAggregator {
           },
         ],
         warnings: [],
-        errors: [],
-        coverage: {
-          state: 'complete',
-          observed: assetCount,
-          expected: assetCount,
-          reason: null,
-        },
-      },
-    ];
+        errors: packagesDenied
+          ? [
+              {
+                code: 'permission_denied',
+                message: 'Access denied: missing read:packages scope',
+                retryable: false,
+              },
+            ]
+          : [],
+        coverage: packagesDenied
+          ? {
+              state: 'none',
+              observed: 0,
+              expected: null,
+              reason: 'Access denied: missing read:packages scope',
+            }
+          : {
+              state: 'complete',
+              observed: assetCount,
+              expected: assetCount,
+              reason: null,
+            },
+      });
+    }
 
     return {
       execution: executions[0]!,

@@ -1,7 +1,7 @@
 {
   "$schema": "./schemas/api-drift-report.schema.json",
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-10-01T15:00:02.661Z",
+  "generatedAt": "2026-10-04T05:38:45.898Z",
   "targetApiVersion": "2026-03-10",
   "summary": {
     "totalOperationsAudited": 776,
@@ -1531,7 +1531,13 @@
       "path": "/orgs/{org}",
       "openApiMatch": true,
       "deprecated": false,
-      "category": "orgs"
+      "category": "orgs",
+      "liveProbe": {
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "rateLimitRemaining": 4781,
+        "verdict": "verified"
+      }
     },
     {
       "operationId": "rest.actions.get-actions-cache-usage-for-org",
@@ -2601,7 +2607,13 @@
       "path": "/orgs/{org}/members",
       "openApiMatch": true,
       "deprecated": false,
-      "category": "users"
+      "category": "users",
+      "liveProbe": {
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "rateLimitRemaining": 4780,
+        "verdict": "verified"
+      }
     },
     {
       "operationId": "rest.orgs.check-membership-for-user",
@@ -2905,7 +2917,13 @@
       "path": "/orgs/{org}/repos",
       "openApiMatch": true,
       "deprecated": false,
-      "category": "repos"
+      "category": "repos",
+      "liveProbe": {
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "rateLimitRemaining": 4779,
+        "verdict": "verified"
+      }
     },
     {
       "operationId": "rest.orgs.list-repo-fine-grained-permissions",
@@ -3004,7 +3022,13 @@
       "category": "orgs",
       "warnings": [
         "Operation marked deprecated in official OpenAPI description"
-      ]
+      ],
+      "liveProbe": {
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "rateLimitRemaining": 4777,
+        "verdict": "verified"
+      }
     },
     {
       "operationId": "rest.billing.get-github-advanced-security-billing-org",
@@ -3068,7 +3092,13 @@
       "path": "/orgs/{org}/teams",
       "openApiMatch": true,
       "deprecated": false,
-      "category": "teams"
+      "category": "teams",
+      "liveProbe": {
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "rateLimitRemaining": 4778,
+        "verdict": "verified"
+      }
     },
     {
       "operationId": "rest.teams.get-by-name",

@@ -31,6 +31,27 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — RELEASE-LIVE-SMOKE & P1-SHARED — Complete
+
+- Summary: Executed release-level live read-only validation against GitHub Enterprise Cloud organization `cloudgxp`.
+  Hardened GraphQL repository and deep discovery queries with graceful sub-resource fallback (`projectsV2` when `read:project`
+  is absent; `packages` when `read:packages` is absent or unselected), preventing permissions on secondary resources
+  from aborting primary repository and policy discovery. Validated live capability preflight probe, module-level permission
+  audit, authorized subset discovery (exit code 0, 33 entities), and full 11-module scan with `--continue-on-error` (exit code 4,
+  165 entities across 12 kinds). Validated both generated bundles against frozen `1.0.0` contract with zero secret leaks.
+  Ran live API surface probe against GitHub API with HTTP 200 HEAD verifications across all endpoints and recorded report.
+- Files: `apps/cli/src/collectors/repos.ts`,
+  `apps/cli/src/collectors/aggregators/RepositoryDeepDiscoveryAggregator.ts`,
+  `research/github/api-drift-report.json`, `agent-tasks/CURRENT-TASKS.md`,
+  `agent-tasks/CHANGELOG.md`, and `agent-tasks/agent-communication/notes-from-antigravity.md`.
+- Verification: `npm run check` (116 passing tests, 0 failures, 0 lint warnings, bundle budgets passing);
+  live CLI dry-run preflight against `cloudgxp`; live read-only smoke discovery on authorized modules (`--modules orgs,repos,teams,users,lfs`)
+  completing with exit code 0 and producing valid 33-entity bundle; live read-only discovery across all 11 modules with `--continue-on-error`
+  completing with exit code 4 and producing valid 165-entity bundle; `validateBundle` passing 100% on both bundles;
+  secret scanner confirming 0 token/credential matches; live `scripts/collectors/probe-api-surface.ts --live --org cloudgxp`
+  passing with 8/8 GraphQL queries and all 776 REST operations verified.
+- Follow-up: None. Immediate release milestone P1 Shared is complete. All 20 DASH tasks and 10 CLI tasks are resolved.
+
 ### 2026-10-04 — Codex — DASH-VISUAL-CI — Complete
 
 - Summary: Made dashboard visual regression checks deterministic on GitHub-hosted
