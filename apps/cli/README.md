@@ -17,14 +17,35 @@ npm test
 
 The package is private and not published. After building, the npm workspace executable is available through `npm exec --workspace ghec-consultant-cli -- ...`; no global installation is required. Credential input is read safely from `GHEC_TOKEN` (or an approved local credential store). Optional `GHEC_BASE_URL` allows targeting GitHub Enterprise Server or local test proxies. `.env.example` is explanatory only; `.env` is ignored and not automatically loaded. Tokens are never accepted via command line arguments, logged to stdout/stderr, or written to bundles.
 
-## Commands
+## Commands Overview
+
+The CLI provides four primary subcommands representing the full migration lifecycle:
+
+- `discover`: Enumerate source tenant metadata and emit versioned `DiscoveryBundle`.
+- `plan`: Compute an immutable, auditable `MigrationPlan` comparing source and target tenant states.
+- `migrate`: Execute a pre-approved plan (or scope) with dry-run safety and error recovery.
+- `verify`: Perform post-migration compliance audit of the target tenant state against the plan.
 
 ```bash
+# Global help & version
 ghec-consultant-cli --help
 ghec-consultant-cli --version
+
+# Subcommand-specific help
 ghec-consultant-cli discover --help
+ghec-consultant-cli plan --help
+ghec-consultant-cli migrate --help
+ghec-consultant-cli verify --help
+```
+
+---
+
+## 1. Discovery (`discover`)
+
+```bash
 # Dry-run preflight planning (exits 0 without API calls or writing files)
 ghec-consultant-cli discover --modules all --organization "$YOUR_GITHUB_ORG" --dry-run
+
 # Live discovery invocations
 ghec-consultant-cli discover --modules all --organization "$YOUR_GITHUB_ORG"
 ghec-consultant-cli discover --modules repos,teams,lfs,actions --organization "$YOUR_GITHUB_ORG"
@@ -33,8 +54,6 @@ ghec-consultant-cli discover --modules repos --organization fictional-north --ou
 ghec-consultant-cli discover --modules all --enterprise fictional-enterprise --continue-on-error --output ./scans/engagement.json
 ghec-consultant-cli discover --modules users,integrations --organization fictional-north --redaction-profile standard
 ```
-
-The example scope names are fictional. `--modules` is the only spelling; no `--module` alias is supported. Exactly one scope is required. `all` must stand alone; names are case-sensitive, whitespace is trimmed, duplicates are removed, empty/unknown names fail. `orgs` is always added; any module other than `orgs` or `users` adds `repos` for reference anchors. Catalog order determines execution-plan order. Repeated scalar options take the last occurrence.
 
 | Option                                    | Default / behavior                                                                                                              |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -49,6 +68,93 @@ The example scope names are fictional. `--modules` is the only spelling; no `--m
 | `--continue-on-error`                     | False; continuation on collector error emitting partial bundle with exit code 4                                                 |
 | `--verbose`                               | False; allowlisted redacted diagnostics only                                                                                    |
 | `--help`, `--version`                     | Root help/version; discover also accepts `--help`                                                                               |
+
+---
+
+## 2. Planning (`plan`)
+
+Computes a diff between source metadata (from live API or cached discovery bundle) and target tenant state, producing a validated `migration-plan.json`.
+
+```bash
+# Generate plan from scope and live tenant connections
+ghec-consultant-cli plan --scope ./scopes/org-scope.json --output ./scans/migration-plan.json
+
+# Generate plan using offline cached discovery bundle
+ghec-consultant-cli plan --scope ./scopes/org-scope.json --input ./scans/discovery-bundle.json --output ./scans/migration-plan.json
+
+# Filter specific modules during planning
+ghec-consultant-cli plan --scope ./scopes/org-scope.json --modules repo-variables --output ./scans/migration-plan.json
+```
+
+| Option                             | Default / behavior                                                               |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `--scope <file>`                   | **Required**; Path to validated `MigrationScope` JSON definition                 |
+| `--input <file>`                   | Optional path to cached `DiscoveryBundle` (avoids source tenant network calls)   |
+| `--modules <list>`                 | Comma-separated module IDs to include (defaults to all modules in scope)         |
+| `--output <file>`                  | Output path for `MigrationPlan` JSON (default: `./scans/migration-plan.json`)    |
+| `--source-token`, `--target-token` | Explicit tenant token overrides (defaults to `GHEC_TOKEN` / `GHEC_TARGET_TOKEN`) |
+
+---
+
+## 3. Migration (`migrate`)
+
+Applies planned mutations to the destination tenant. When `--plan` is supplied, the pre-approved plan is executed without re-running discovery or diffing.
+
+```bash
+# Dry-run execution of a pre-approved plan (simulates mutations without writing to target)
+ghec-consultant-cli migrate --plan ./scans/migration-plan.json --dry-run
+
+# Live execution of a pre-approved plan
+ghec-consultant-cli migrate --plan ./scans/migration-plan.json --output ./scans/execution-report.json
+
+# Resilient migration with error continuation
+ghec-consultant-cli migrate --plan ./scans/migration-plan.json --continue-on-error
+
+# Direct migration from scope (runs planning then apply)
+ghec-consultant-cli migrate --scope ./scopes/org-scope.json --dry-run
+```
+
+| Option                  | Default / behavior                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------- |
+| `--plan <file>`         | Pre-approved `MigrationPlan` JSON file (mutually exclusive or paired with `--scope`)     |
+| `--scope <file>`        | `MigrationScope` JSON file (used if `--plan` not supplied)                               |
+| `--dry-run`             | Simulates mutations safely without writing to target; returns exit code 0                |
+| `--continue-on-error`   | Continues executing remaining modules on error; returns exit code 4 on partial success   |
+| `--output <file>`       | Output path for `MigrationExecutionReport` (default: `./scans/migration-execution.json`) |
+| `--resume [id\|latest]` | Checkpoint resumption token                                                              |
+
+---
+
+## 4. Verification (`verify`)
+
+Audits the destination tenant post-migration and reconciles state against the migration plan, generating a comprehensive `verification-report.json`.
+
+```bash
+# Verify destination compliance against migration plan
+ghec-consultant-cli verify --plan ./scans/migration-plan.json --output ./scans/verification-report.json
+
+# Verify with scope context
+ghec-consultant-cli verify --plan ./scans/migration-plan.json --scope ./scopes/org-scope.json
+```
+
+| Option            | Default / behavior                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| `--plan <file>`   | **Required**; Path to `MigrationPlan` JSON to audit against                        |
+| `--scope <file>`  | Optional path to `MigrationScope` JSON for tenant metadata                         |
+| `--output <file>` | Output path for `VerificationReport` (default: `./scans/verification-report.json`) |
+| `--target-token`  | Destination tenant token override                                                  |
+
+---
+
+## Standardized Exit Codes
+
+All CLI subcommands adhere strictly to standardized process exit codes:
+
+- `0`: Complete success (or dry-run success).
+- `1`: Fatal error (authentication failure, network error, or verification discrepancies).
+- `2`: Invalid command syntax, missing required options, or unrecognized arguments.
+- `4`: Partial success (one or more modules failed with `--continue-on-error`).
+- `130`: Interrupted by operator (`SIGINT` / Ctrl+C).
 
 ## Modules and permissions matrix
 

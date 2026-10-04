@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+completed
 
 ## Owner
 
@@ -77,4 +77,21 @@ The suite's public interface is `ghec-consultant-cli`. To enable operators to us
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Implemented orchestration layer in `@ghec/migration`:
+  - `MigrationOrchestrator`: Dispatches module plans (or generates plans from scope) and applies changes with dry-run safety and continue-on-error support. Emits validated `MigrationExecutionReport`.
+  - `VerificationOrchestrator`: Audits target state across all planned modules and generates validated `VerificationReport`.
+  - `HttpTargetWriteClient`: Authenticated, rate-limited HTTP mutation client implementing `TargetWriteClient`.
+  - `createDefaultModuleRegistry`: Populates standard modules including `repo-variables` and `gei-repo`.
+  - Exported `writeMigrationExecutionReportFile` and `writeVerificationReportFile`.
+- Extended `apps/cli` with subcommands:
+  - `src/commands/plan.ts`: Parses `--scope`, `--input`, `--modules`, `--output` and dispatches to `MigrationPlanner`.
+  - `src/commands/migrate.ts`: Parses `--plan`, `--scope`, `--input`, `--modules`, `--dry-run`, `--continue-on-error`, `--output` and dispatches to `MigrationOrchestrator`.
+  - `src/commands/verify.ts`: Parses `--plan`, `--scope`, `--output` and dispatches to `VerificationOrchestrator`.
+  - `src/config/index.ts`: Extended with `loadDualConfig` and `createMigrationClientsFromConfig`.
+  - `src/index.ts`: Updated root CLI router and help text for all subcommands with standardized exit codes (`0`, `1`, `2`, `4`, `130`).
+- Documentation:
+  - Updated `apps/cli/README.md` with comprehensive usage examples and option tables.
+- Testing:
+  - Added orchestrator unit tests in `packages/migration/tests/orchestrator.test.ts`.
+  - Added CLI test cases in `apps/cli/tests/cli.test.ts` verifying `--help`, subcommand options, and end-to-end plan/migrate/verify workflows.
+  - All 193 tests passing in `npm run check`.

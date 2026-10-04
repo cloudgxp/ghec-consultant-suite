@@ -134,3 +134,31 @@ All material engineering work, test completions, and milestone deliveries are re
   - Added unit test suite `packages/migration/tests/modules/repo-variables.test.ts` (8 test cases).
 - **Tests:** `npm run check` passed 182/182 tests green.
 - **Follow-Up:** Unblocks downstream migration modules & integration: Task 009 (CLI subcommands plan/migrate/verify), Task 010 (E2E tests), Task 011 (Secrets metadata), Task 012 (Environments), Task 013 (Rulesets), Task 016 (Org variables), Task 017 (Teams), Task 018 (Webhooks), Task 025 (Repo settings), Task 026 (Custom properties), and Task 029 (GHAS sync).
+
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 009 CLI Integration for `plan`, `migrate`, and `verify` Subcommands
+- **Changes:**
+  - Extended `@ghec/migration` with orchestration and mutation client:
+    - Implemented `HttpTargetWriteClient` executing authenticated mutations with rate limiting and retry handling.
+    - Implemented `MigrationOrchestrator` executing pre-approved plans or generating plans from scope with dry-run safety and error continuation.
+    - Implemented `VerificationOrchestrator` auditing destination state against plan and emitting validated `VerificationReport`.
+    - Implemented `createDefaultModuleRegistry` pre-populating standard migration modules.
+    - Added atomic file writers `writeMigrationExecutionReportFile` and `writeVerificationReportFile`.
+  - Added new subcommands to `apps/cli`:
+    - `apps/cli/src/commands/plan.ts`: Parses `--scope`, `--input`, `--modules`, `--output`, `--source-token`, `--target-token` and runs `MigrationPlanner`.
+    - `apps/cli/src/commands/migrate.ts`: Parses `--plan`, `--scope`, `--input`, `--modules`, `--resume`, `--continue-on-error`, `--dry-run`, `--output` and runs `MigrationOrchestrator`.
+    - `apps/cli/src/commands/verify.ts`: Parses `--plan`, `--scope`, `--output`, `--target-token` and runs `VerificationOrchestrator`.
+    - `apps/cli/src/config/index.ts`: Added `loadDualConfig` and `createMigrationClientsFromConfig`.
+    - `apps/cli/src/index.ts`: Expanded CLI entrypoint with subcommand router, help text for all subcommands, and standardized exit codes (`0`, `1`, `2`, `4`, `130`).
+  - Added tests:
+    - `packages/migration/tests/orchestrator.test.ts`: 7 tests covering orchestrators, execution reports, verification reports, and target write client.
+    - `apps/cli/tests/cli.test.ts`: Added tests for `--help`, command parsers, and end-to-end plan/migrate/verify CLI workflows.
+  - Documented all commands and flags in `apps/cli/README.md`.
+- **Tests:** `npm run check` passed 193/193 tests green.
+- **Follow-Up:** Unblocks Task 010 (Codex E2E Mock Integration Tests for `repo-variables`), Task 015 (GEI Orchestrator Pipeline Integration), Task 019 (Actions Step Summary Reporter), and Task 020 (Scope Matrix Slicer).
+

@@ -231,3 +231,51 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 - - `noop` operations generate 0 write requests during apply.
 - - Supports both offline discovery via cached `DiscoveryBundle` and live REST discovery via `sourceClient`.
     -- **Test Evidence:** `npm run check` passes 182/182 tests green.
+
+### [2026-10-04] Task 009 (CLI Subcommands `plan`, `migrate`, `verify`) -> Task 010 / 015 / 019 / 020
+
+- **From:** Antigravity
+- **To:** Codex / Antigravity
+- **Completed Task:** 009
+- **Unblocked Tasks:**
+  - Task 010 (E2E Mock Integration Tests for `repo-variables`)
+  - Task 015 (GEI Orchestrator Pipeline Integration)
+  - Task 019 (GitHub Actions Step Summary Reporter)
+  - Task 020 (Scope Matrix Slicer & Parallel Topologies)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `MigrationOrchestrator`, `MigrationOrchestratorOptions`, `MigrationExecutionReport`
+    - `VerificationOrchestrator`, `VerificationOrchestratorOptions`, `VerificationOrchestratorResult`
+    - `HttpTargetWriteClient`, `HttpTargetWriteClientOptions`
+    - `createDefaultModuleRegistry`
+    - `writeMigrationExecutionReportFile`, `writeVerificationReportFile`
+  - `ghec-consultant-cli`:
+    - Subcommands: `discover`, `plan`, `migrate`, `verify`
+    - `parsePlanOptions`, `executePlanCommand`
+    - `parseMigrateOptions`, `executeMigrateCommand`
+    - `parseVerifyOptions`, `executeVerifyCommand`
+    - `loadDualConfig`, `createMigrationClientsFromConfig`
+- **Files Modified / Created:**
+  - `packages/migration/src/client/http-target-write-client.ts`
+  - `packages/migration/src/orchestrator/types.ts`
+  - `packages/migration/src/orchestrator/migration-orchestrator.ts`
+  - `packages/migration/src/orchestrator/verification-orchestrator.ts`
+  - `packages/migration/src/orchestrator/index.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/orchestrator.test.ts`
+  - `apps/cli/package.json`
+  - `apps/cli/src/config/index.ts`
+  - `apps/cli/src/commands/plan.ts`
+  - `apps/cli/src/commands/migrate.ts`
+  - `apps/cli/src/commands/verify.ts`
+  - `apps/cli/src/index.ts`
+  - `apps/cli/tests/cli.test.ts`
+  - `apps/cli/README.md`
+- **Behavior Notes:**
+  - `plan`: Compares source metadata against destination and emits validated `migration-plan.json`.
+  - `migrate`: Runs pre-approved plan (or generates plan from scope) and applies with `dryRun` safety and `--continue-on-error`.
+  - `verify`: Runs post-migration audit against destination and emits validated `verification-report.json`.
+  - Standardized exit codes: `0` (Success), `1` (Fatal / Discrepancy), `2` (Syntax Error), `4` (Partial Success), `130` (Interrupted).
+- **Test Evidence:** `npm run check` passes 193/193 tests green.
+

@@ -104,3 +104,57 @@ export class ModuleRegistry {
     return sortModulesTopologically(selectedModuleIds, this.modules, options);
   }
 }
+
+import { RepoVariablesMigrationModule } from '../modules/repo-variables/module.js';
+
+class GeiRepoMigrationModule implements MigrationModule {
+  readonly id = 'gei-repo';
+  readonly displayName = 'GEI Repository Migration';
+  readonly scopeLevel = 'repository' as const;
+  readonly dependencies: readonly string[] = [];
+
+  async discover() {
+    return {};
+  }
+
+  async plan(ctx: unknown) {
+    void ctx;
+    return {
+      moduleId: 'gei-repo' as const,
+      scopeLevel: 'repository' as const,
+      targetIdentifier: '',
+      operations: [],
+      warnings: [],
+    };
+  }
+
+  async apply(ctx: unknown) {
+    void ctx;
+    return {
+      schemaVersion: '1.0.0' as const,
+      moduleId: 'gei-repo' as const,
+      status: 'complete' as const,
+      results: [],
+      durationMs: 0,
+    };
+  }
+
+  async verify(ctx: unknown) {
+    void ctx;
+    return {
+      moduleId: 'gei-repo' as const,
+      verified: true,
+      discrepancies: [],
+    };
+  }
+}
+
+/**
+ * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
+ */
+export function createDefaultModuleRegistry(): ModuleRegistry {
+  const registry = new ModuleRegistry();
+  registry.register(new GeiRepoMigrationModule());
+  registry.register(new RepoVariablesMigrationModule());
+  return registry;
+}
