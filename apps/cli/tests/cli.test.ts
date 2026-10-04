@@ -815,7 +815,7 @@ test('CLI plan, migrate, and verify workflow end-to-end with mock adapter', asyn
       version: MIGRATION_SCHEMA_VERSION,
       name: 'test-scope',
       organizations: [
-        { source: 'fictional-north', target: 'fictional-target' },
+        { source: 'fictional-north', target: 'fictional-target', modules: [] },
       ],
       repositories: [
         {

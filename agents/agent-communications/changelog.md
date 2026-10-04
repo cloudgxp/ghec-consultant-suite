@@ -194,3 +194,32 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Tests:** `npm run check` passed 201/201 tests across 25 test suites green (100% pass).
 - **Follow-Up:** Unblocks Task 015 (Orchestrate GEI with Post-GEI API Module Pipeline).
 
+---
+
+## 2026-10-04
+
+### Agent: Antigravity
+
+- **Task:** 017 Implement `teams` & Identity Mapping Migration Module
+- **Changes:**
+  - Implemented `TeamsMigrationModule` under `packages/migration/src/modules/teams/`:
+    - Full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - Topologically sorts team creation DAG using DFS (`sortTeamsTopologically`) to guarantee parent teams are created before child teams, with cycle prevention.
+    - Captures created parent team IDs in-flight during `apply` to dynamically link child teams (`parent_team_id`).
+    - Plans and binds repository access rights (`read`, `triage`, `write`, `maintain`, `admin`) via `PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}`.
+    - Synchronizes base organization repository default permissions (`PATCH /orgs/{org}`).
+    - Emits a `teamSlugMap` (`sourceSlug -> targetSlug`) translation dictionary.
+  - Implemented `IdentityMappingEngine` in `identity-mapper.ts`:
+    - Handles GHEC-EMU username transformations (`_suffix`).
+    - Evaluates explicit dictionary overrides before suffix fallbacks.
+    - Generates structured advisories (`warn`) for unmapped identities without crashing the pipeline.
+  - Implemented `exportIdpGroupSyncBlueprint` in `idp-exporter.ts`:
+    - Generates sanitized IdP Group Sync CSV blueprint (`idp-group-sync-blueprint.csv`) for directory administrators.
+    - Sanitizes against CSV formula injection (`=`, `+`, `-`, `@`, `\t`, `\r`).
+  - Registered `TeamsMigrationModule` in `createDefaultModuleRegistry()` in `core/registry.ts`.
+  - Exported module, mapper, exporter, and types from `packages/migration/src/index.ts`.
+  - Created module documentation in `packages/migration/src/modules/teams/README.md`.
+  - Added unit test suite `packages/migration/tests/modules/teams.test.ts` (5 tests).
+- **Tests:** `npm run check` passed 206/206 tests across 25 test suites green (100% pass).
+- **Follow-Up:** Unblocks Task 027 (Mannequin Reclamation & Attribution Engine) and Task 028 (CODEOWNERS & Team References Repair Module).
+

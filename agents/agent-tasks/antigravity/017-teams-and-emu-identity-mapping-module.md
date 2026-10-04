@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+completed
 
 ## Owner
 
@@ -90,4 +90,11 @@ In GEI, organization migrations transfer teams and repository permissions but le
 
 ## Completion Notes
 
-_To be filled by Antigravity upon task completion._
+- Built `TeamsMigrationModule` under `packages/migration/src/modules/teams/` adhering to `MigrationModule<TeamsMigrationData>` with full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+- Implemented `IdentityMappingEngine` in `identity-mapper.ts` supporting EMU suffix transformation (`_suffix`), explicit dictionary mappings, and fallback warning generation.
+- Implemented `sortTeamsTopologically` in `module.ts` guaranteeing parent teams are created before child teams using DFS DAG resolution with cycle detection.
+- Implemented `exportIdpGroupSyncBlueprint` in `idp-exporter.ts` generating sanitized IdP Group Sync CSV blueprint (`idp-group-sync-blueprint.csv`) defending against spreadsheet formula injection.
+- Reconciles repository permission bindings (`admin`, `maintain`, `push`/write, `triage`, `pull`/read) and base organization default repository permissions.
+- Emits `teamSlugMap` (`sourceSlug -> targetSlug`) translation dictionary for downstream CODEOWNERS team reference repair (Task 028).
+- Registered in `createDefaultModuleRegistry()` in `core/registry.ts` and exported from `packages/migration/src/index.ts`.
+- Added unit test suite `packages/migration/tests/modules/teams.test.ts` (5 tests). All 206 monorepo tests pass.

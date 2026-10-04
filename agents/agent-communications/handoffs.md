@@ -312,3 +312,35 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `branch-protection`: Reconciles the 7 specific settings omitted by GEI (DEC-009) without overwriting existing settings. Emits clean updates via `PUT /repos/{owner}/{repo}/branches/{branch}/protection`. Includes `convertBranchProtectionToRuleset` utility adhering to GitHub's official conversion rules.
 - **Test Evidence:** `npm run check` passes 201/201 tests across 25 test suites green.
 
+### [2026-10-04] Task 017 (Implement `teams` & Identity Mapping Migration Module) -> Task 027 / 028
+
+- **From:** Antigravity
+- **To:** Codex / Antigravity
+- **Completed Task:** 017
+- **Unblocked Tasks:**
+  - Task 027 (Mannequin Reclamation & Attribution Engine)
+  - Task 028 (CODEOWNERS & Team References Repair Module)
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `TeamsMigrationModule`, `sortTeamsTopologically`, `deriveTeamRepoPermission`
+    - `IdentityMappingEngine`, `IdentityMappingConfig`, `IdentityMappingResult`, `IdentityMappingStatus`
+    - `exportIdpGroupSyncBlueprint`, `IdpGroupSyncBlueprintRow`
+    - `TeamDefinition`, `TeamPrivacy`, `TeamRepoPermission`, `TeamRepositoryAccess`, `TeamsMigrationData`
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/teams/types.ts`
+  - `packages/migration/src/modules/teams/identity-mapper.ts`
+  - `packages/migration/src/modules/teams/idp-exporter.ts`
+  - `packages/migration/src/modules/teams/module.ts`
+  - `packages/migration/src/modules/teams/index.ts`
+  - `packages/migration/src/modules/teams/README.md`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/modules/teams.test.ts`
+  - `packages/migration/tests/orchestrator.test.ts`
+  - `apps/cli/tests/cli.test.ts`
+- **Behavior Notes:**
+  - `teams`: 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`). Recreates team hierarchy using DFS topological sorting to create parent teams before child teams. Captures created team IDs in-flight to link `parent_team_id`. Binds repository access permissions (`read`, `triage`, `write`, `maintain`, `admin`) via `PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}`. Emits a `teamSlugMap` (`sourceSlug -> targetSlug`) translation dictionary.
+  - `IdentityMappingEngine`: Handles GHEC-EMU username transformations (`_suffix`), evaluates dictionary mappings, and issues structured warnings on unmapped users.
+  - `exportIdpGroupSyncBlueprint`: Generates sanitized CSV blueprint (`idp-group-sync-blueprint.csv`) for directory administrators configuring SCIM / SAML groups.
+- **Test Evidence:** `npm run check` passes 206/206 tests across 25 test suites green.
+
