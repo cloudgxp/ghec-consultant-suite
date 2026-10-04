@@ -23,7 +23,7 @@ _Rationale:_ `scripts/register-app.mjs` runs a local HTTP callback server to han
 1. An incoming `code` parameter from the HTTP request is interpolated directly into an outbound API URL without character validation, allowing Server-Side Request Forgery / URL manipulation (`js/request-forgery`, Alert #9).
 2. The converted GitHub App ID (`id`) and multiline PEM private key (`pem`) returned by the API are interpolated directly into shell strings executed via `execSync`:
    `execSync(\`gh secret set GHEC_APP_ID --body "${id}"\`)`
-   `execSync(\`gh secret set GHEC_APP_PRIVATE_KEY --body "${pem}"\`)`
+`execSync(\`gh secret set GHEC_APP_PRIVATE_KEY --body "${pem}"\`)`
 Passing raw multiline private key material into a shell command line allows command injection (`js/command-line-injection`, Alerts #10 and #11), exposes sensitive private keys in the host process table (`ps aux`), and can fail when keys contain shell characters.
 
 ---
