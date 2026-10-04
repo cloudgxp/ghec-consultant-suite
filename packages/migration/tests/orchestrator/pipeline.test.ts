@@ -597,7 +597,7 @@ test('MigrationOrchestrator throttles repository pipelines to configured concurr
     ): Promise<{ data: T; status: number; observedAt: string }> {
       activePipelines++;
       maxObservedPipelines = Math.max(maxObservedPipelines, activePipelines);
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((r) => setTimeout(r, 2));
       activePipelines--;
       return super.readSingle<T>(op);
     }

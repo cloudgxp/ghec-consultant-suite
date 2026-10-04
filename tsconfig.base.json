@@ -12,6 +12,8 @@
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
     "declaration": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "incremental": true,
+    "types": ["node"]
   }
 }

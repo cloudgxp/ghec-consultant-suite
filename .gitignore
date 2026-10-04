@@ -39,4 +39,15 @@ ghec-discovery-*.json
 !fixtures/synthetic/ghec-discovery-*.json
 *.log
 *.tmp
+
+# Profiler & diagnostic dumps
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+
+# Caches and OS artifacts
+.eslintcache
+__pycache__/
+*.pyc
 .DS_Store
+
