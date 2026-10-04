@@ -87,55 +87,55 @@ export function formatDuration(startedAt: string, completedAt: string): string {
 }
 
 /**
- * Return CSS badge class for finding severity.
+ * Return Primer Label variant for finding severity.
  */
 export function getSeverityBadgeClass(severity: string): string {
   switch (severity) {
     case 'high':
-      return 'badge-error text-error-content font-bold';
+      return 'danger';
     case 'medium':
-      return 'badge-warning text-warning-content font-semibold';
+      return 'attention';
     case 'low':
-      return 'badge-info text-info-content';
+      return 'accent';
     case 'info':
     default:
-      return 'badge-neutral';
+      return 'secondary';
   }
 }
 
 /**
- * Return CSS badge class for dimension status.
+ * Return Primer Label variant for dimension status.
  */
 export function getDimensionStatusBadgeClass(status: string): string {
   switch (status) {
     case 'review_required':
-      return 'badge-warning font-semibold';
+      return 'attention';
     case 'no_issue_observed':
-      return 'badge-success font-semibold';
+      return 'success';
     case 'unknown':
-      return 'badge-ghost text-base-content/70';
+      return 'secondary';
     case 'not_applicable':
-      return 'badge-neutral';
+      return 'default';
     default:
-      return 'badge-outline';
+      return 'secondary';
   }
 }
 
 /**
- * Return CSS badge class for collector terminal status.
+ * Return Primer Label variant for collector terminal status.
  */
 export function getCollectorStatusBadgeClass(status: string): string {
   switch (status) {
     case 'complete':
-      return 'badge-success';
+      return 'success';
     case 'partial':
-      return 'badge-warning';
+      return 'attention';
     case 'failed':
-      return 'badge-error';
+      return 'danger';
     case 'skipped':
     case 'unavailable':
     default:
-      return 'badge-neutral';
+      return 'secondary';
   }
 }
 

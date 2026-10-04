@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,13 +9,24 @@ import { MODULE_IDS, validateBundle } from '@ghec/contracts';
 import { parseDiscoveryOptions } from '../src/commands/discover.js';
 import { collectors } from '../src/collectors/index.js';
 import { DiscoveryOrchestrator } from '../src/engine/orchestrator.js';
+import { runCli } from '../src/index.js';
 import type {
   GitHubReadAdapter,
+  GraphQLResponse,
   ReadOperation,
   ReadPage,
 } from '../src/github/adapter.js';
 
 const org = ['--organization', 'fictional-north'];
+
+function childProcessEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env = { ...process.env, ...overrides };
+  // The Node test runner uses this internal variable to identify its direct
+  // children. Forwarding it to a nested Node process causes ordinary CLI
+  // stdout to be interpreted as test-runner protocol output.
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+}
 
 test('all and selected modules resolve deterministic dependencies', () => {
   assert.deepEqual(
@@ -60,62 +71,71 @@ test('all catalog modules are implemented', () => {
   assert.ok(collectors.every((c) => c.implementation === 'implemented'));
 });
 
-test('CLI dry-run prints preflight plan and writes no bundle', () => {
+test('CLI dry-run prints preflight plan and writes no bundle', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-dry-'));
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const originalLog = console.log;
+  const originalError = console.error;
   try {
-    const cli = new URL('../bin/ghec-consultant-cli.mjs', import.meta.url);
-    const r = spawnSync(
-      process.execPath,
-      [
-        cli.pathname,
-        'discover',
-        ...org,
-        '--modules',
-        'all',
-        '--dry-run',
-        '--output',
-        dir,
-      ],
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+    console.error = (...values: unknown[]) => stderr.push(values.join(' '));
+
+    const status = await runCli(
+      ['discover', ...org, '--modules', 'all', '--dry-run', '--output', dir],
       {
-        encoding: 'utf8',
-        env: { ...process.env, GHEC_TOKEN: 'SENSITIVE_TEST_SENTINEL' },
+        token: 'SENSITIVE_TEST_SENTINEL',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
       },
     );
-    assert.equal(r.status, 0);
-    assert.match(r.stdout, /PREFLIGHT DISCOVERY PLAN/);
-    assert.match(r.stdout, /Target Scope:\s+ORGANIZATION "fictional-north"/);
-    assert.match(r.stdout, /Execution DAG Order:/);
-    assert.doesNotMatch(r.stderr + r.stdout, /SENSITIVE_TEST_SENTINEL/);
+    assert.equal(status, 0);
+    assert.match(stdout.join('\n'), /PREFLIGHT DISCOVERY PLAN/);
+    assert.match(
+      stdout.join('\n'),
+      /Target Scope:\s+ORGANIZATION "fictional-north"/,
+    );
+    assert.match(stdout.join('\n'), /Execution DAG Order:/);
+    assert.doesNotMatch(
+      stderr.join('\n') + stdout.join('\n'),
+      /SENSITIVE_TEST_SENTINEL/,
+    );
     assert.deepEqual(readdirSync(dir), []);
 
-    const bad = spawnSync(
-      process.execPath,
-      [cli.pathname, 'discover', '--SENSITIVE_TEST_SENTINEL'],
-      { encoding: 'utf8' },
-    );
-    assert.equal(bad.status, 2);
-    assert.doesNotMatch(bad.stderr, /SENSITIVE_TEST_SENTINEL/);
+    const badStatus = await runCli(['discover', '--SENSITIVE_TEST_SENTINEL'], {
+      baseUrl: 'https://api.github.com',
+      apiVersion: '2026-03-10',
+    });
+    assert.equal(badStatus, 2);
+    assert.doesNotMatch(stderr.join('\n'), /SENSITIVE_TEST_SENTINEL/);
   } finally {
+    console.log = originalLog;
+    console.error = originalError;
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test('CLI live run requires GHEC_TOKEN', () => {
+test('CLI live run requires GHEC_TOKEN', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-notoken-'));
+  const stderr: string[] = [];
+  const originalError = console.error;
   try {
-    const cli = new URL('../bin/ghec-consultant-cli.mjs', import.meta.url);
-    const env = { ...process.env };
-    delete env.GHEC_TOKEN;
-
-    const r = spawnSync(
-      process.execPath,
-      [cli.pathname, 'discover', ...org, '--modules', 'all', '--output', dir],
-      { encoding: 'utf8', env },
+    console.error = (...values: unknown[]) => stderr.push(values.join(' '));
+    const status = await runCli(
+      ['discover', ...org, '--modules', 'all', '--output', dir],
+      {
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+      },
     );
-    assert.equal(r.status, 1);
-    assert.match(r.stderr, /GHEC_TOKEN environment variable is required/);
+    assert.equal(status, 1);
+    assert.match(
+      stderr.join('\n'),
+      /GHEC_TOKEN environment variable is required/,
+    );
     assert.deepEqual(readdirSync(dir), []);
   } finally {
+    console.error = originalError;
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -137,6 +157,133 @@ class MockGitHubReadAdapter implements GitHubReadAdapter {
     ) {
       throw new Error(`Synthetic error for ${operationId}`);
     }
+  }
+
+  async queryGraphQL<T>(
+    query: string,
+    _variables: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<GraphQLResponse<T>> {
+    if (signal.aborted) throw new Error('Aborted');
+    const now = new Date().toISOString();
+
+    if (query.includes('EnterpriseOrganizations')) {
+      this.checkFailure('graphql.enterprise.organizations');
+      return {
+        data: {
+          rateLimit: { cost: 1, remaining: 4999, resetAt: now },
+          enterprise: {
+            id: 'ENT_123',
+            name: 'Fictional Enterprise',
+            slug: 'fictional-enterprise',
+            organizations: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              totalCount: 1,
+              nodes: [
+                {
+                  id: 'org:fictional-north',
+                  login: 'fictional-north',
+                  name: 'Fictional North Corp',
+                },
+              ],
+            },
+          },
+        } as unknown as T,
+        observedAt: now,
+        cost: 1,
+        remainingPoints: 4999,
+        resetAt: now,
+      };
+    }
+
+    if (query.includes('OrgRepositories')) {
+      this.checkFailure('graphql.org.repositories');
+      return {
+        data: {
+          rateLimit: { cost: 1, remaining: 4999, resetAt: now },
+          organization: {
+            repositories: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              totalCount: 1,
+              nodes: [
+                {
+                  id: 'R_kgDO1234',
+                  name: 'core-repo',
+                  visibility: 'PRIVATE',
+                  isArchived: false,
+                  isFork: false,
+                  diskUsage: 1024,
+                  defaultBranchRef: { name: 'main' },
+                  branchProtectionRules: {
+                    nodes: [
+                      {
+                        pattern: 'main',
+                        requiresApprovingReviews: true,
+                        requiredApprovingReviewCount: 1,
+                        requiresStatusChecks: true,
+                        requiresStrictStatusChecks: false,
+                      },
+                    ],
+                  },
+                  rulesets: {
+                    nodes: [
+                      {
+                        name: 'main-ruleset',
+                        enforcement: 'ACTIVE',
+                        target: 'branch',
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        } as unknown as T,
+        observedAt: now,
+        cost: 1,
+        remainingPoints: 4999,
+        resetAt: now,
+      };
+    }
+
+    if (query.includes('OrgTeams')) {
+      this.checkFailure('graphql.org.teams');
+      return {
+        data: {
+          rateLimit: { cost: 1, remaining: 4998, resetAt: now },
+          organization: {
+            teams: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [
+                {
+                  slug: 'platform-team',
+                  name: 'Platform Team',
+                  parentTeam: null,
+                  members: { totalCount: 5 },
+                  repositories: {
+                    edges: [
+                      {
+                        permission: 'ADMIN',
+                        node: { name: 'core-repo' },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        } as unknown as T,
+        observedAt: now,
+        cost: 1,
+        remainingPoints: 4998,
+        resetAt: now,
+      };
+    }
+
+    return {
+      data: {} as T,
+      observedAt: now,
+    };
   }
 
   async readSingle<T>(
@@ -451,6 +598,40 @@ test('CLI end-to-end execution against mock HTTP server', async () => {
       );
       return;
     }
+    if (url === '/graphql') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          data: {
+            rateLimit: {
+              cost: 1,
+              remaining: 4999,
+              resetAt: new Date().toISOString(),
+            },
+            organization: {
+              repositories: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                totalCount: 1,
+                nodes: [
+                  {
+                    id: 'R_kgDO1234',
+                    name: 'core-repo',
+                    visibility: 'PRIVATE',
+                    isArchived: false,
+                    isFork: false,
+                    diskUsage: 1024,
+                    defaultBranchRef: { name: 'main' },
+                    branchProtectionRules: { nodes: [] },
+                    rulesets: { nodes: [] },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      );
+      return;
+    }
     res.writeHead(404);
     res.end();
   });
@@ -481,11 +662,10 @@ test('CLI end-to-end execution against mock HTTP server', async () => {
           dir,
         ],
         {
-          env: {
-            ...process.env,
+          env: childProcessEnv({
             GHEC_BASE_URL: `http://127.0.0.1:${port}`,
             GHEC_TOKEN: 'mock-token',
-          },
+          }),
         },
       );
       let stdout = '';

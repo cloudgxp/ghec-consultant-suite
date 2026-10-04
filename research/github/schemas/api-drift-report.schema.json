@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/api-drift-report.schema.json",
+  "title": "GHEC API Drift Report Schema",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "generatedAt",
+    "targetApiVersion",
+    "summary",
+    "graphQLVerification",
+    "driftDetails"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "targetApiVersion": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalOperationsAudited",
+        "validOperations",
+        "driftWarnings",
+        "deprecatedEndpoints"
+      ],
+      "properties": {
+        "totalOperationsAudited": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "validOperations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "driftWarnings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deprecatedEndpoints": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "graphQLVerification": {
+      "type": "object",
+      "required": [
+        "totalQueries",
+        "validQueries",
+        "syntaxErrors"
+      ],
+      "properties": {
+        "totalQueries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "validQueries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "syntaxErrors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "queryDetails": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "queryName",
+              "valid",
+              "fieldCount"
+            ],
+            "properties": {
+              "queryName": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "valid": {
+                "type": "boolean"
+              },
+              "fieldCount": {
+                "type": "integer"
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "driftDetails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "operationId",
+          "status",
+          "path",
+          "openApiMatch"
+        ],
+        "properties": {
+          "operationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "drift-warning",
+              "deprecated",
+              "seed-only",
+              "error"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "openApiMatch": {
+            "type": "boolean"
+          },
+          "deprecated": {
+            "type": "boolean"
+          },
+          "category": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "liveProbe": {
+            "type": "object",
+            "properties": {
+              "httpStatus": {
+                "type": "integer"
+              },
+              "contentType": {
+                "type": "string"
+              },
+              "rateLimitRemaining": {
+                "type": "integer"
+              },
+              "verdict": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

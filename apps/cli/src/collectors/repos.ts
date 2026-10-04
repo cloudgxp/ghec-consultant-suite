@@ -1,16 +1,134 @@
 import type { Entity } from '@ghec/contracts';
-import type { Collector, CollectorContext, CollectorResult } from './types.js';
+import type { GraphQLResponse } from '../github/adapter.js';
+import type {
+  Collector,
+  CollectorContext,
+  CollectorResult,
+  DiscoveredPolicyItem,
+} from './types.js';
 
-interface GitHubRepoItem {
-  id: number;
-  node_id?: string;
+export const ORG_REPOSITORIES_QUERY = `query OrgRepositories($login: String!, $cursor: String) {
+  rateLimit {
+    cost
+    remaining
+    resetAt
+  }
+  organization(login: $login) {
+    projectsV2(first: 100) {
+      nodes {
+        id
+        number
+        title
+        closed
+        updatedAt
+        items(first: 1) { totalCount }
+        fields(first: 1) { totalCount }
+        repositories(first: 100) { nodes { name } totalCount }
+      }
+    }
+    repositories(
+      first: 100
+      after: $cursor
+      orderBy: { field: NAME, direction: ASC }
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      totalCount
+      nodes {
+        id
+        name
+        visibility
+        isArchived
+        isFork
+        isTemplate
+        pushedAt
+        diskUsage
+        primaryLanguage { name }
+        repositoryTopics(first: 100) { nodes { topic { name } } }
+        defaultBranchRef {
+          name
+        }
+        branchProtectionRules(first: 10) {
+          nodes {
+            pattern
+            requiresApprovingReviews
+            requiredApprovingReviewCount
+            requiresStatusChecks
+            requiresStrictStatusChecks
+          }
+        }
+        rulesets(first: 10) {
+          nodes {
+            name
+            enforcement
+            target
+          }
+        }
+      }
+    }
+  }
+}`;
+
+interface GraphQLRepoNode {
+  id: string;
   name: string;
-  visibility?: string;
-  private?: boolean;
-  archived?: boolean;
-  default_branch?: string;
-  size?: number;
-  fork?: boolean;
+  visibility?: string | null;
+  isArchived?: boolean | null;
+  isFork?: boolean | null;
+  isTemplate?: boolean | null;
+  pushedAt?: string | null;
+  diskUsage?: number | null;
+  primaryLanguage?: { name?: string | null } | null;
+  repositoryTopics?: {
+    nodes?: Array<{ topic?: { name?: string | null } | null }>;
+  } | null;
+  defaultBranchRef?: { name: string } | null;
+  branchProtectionRules?: {
+    nodes?: Array<{
+      pattern: string;
+      requiresApprovingReviews?: boolean | null;
+      requiredApprovingReviewCount?: number | null;
+      requiresStatusChecks?: boolean | null;
+      requiresStrictStatusChecks?: boolean | null;
+    }>;
+  } | null;
+  rulesets?: {
+    nodes?: Array<{
+      name: string;
+      enforcement: string;
+      target?: string | null;
+    }>;
+  } | null;
+}
+
+interface OrgRepositoriesData {
+  organization?: {
+    projectsV2?: {
+      nodes?: Array<{
+        id: string;
+        number?: number;
+        title?: string;
+        closed?: boolean;
+        updatedAt?: string | null;
+        items?: { totalCount?: number };
+        fields?: { totalCount?: number };
+        repositories?: {
+          nodes?: Array<{ name?: string }>;
+          totalCount?: number;
+        };
+      }>;
+    };
+    repositories?: {
+      pageInfo?: {
+        hasNextPage: boolean;
+        endCursor: string | null;
+      };
+      totalCount?: number;
+      nodes?: GraphQLRepoNode[];
+    };
+  };
 }
 
 export const collector: Collector = {
@@ -18,44 +136,68 @@ export const collector: Collector = {
   implementation: 'implemented',
   async collect(context: CollectorContext): Promise<CollectorResult> {
     const startedAt = new Date().toISOString();
-    const operation = {
-      id: 'rest.repos.list-for-org',
-      transport: 'rest' as const,
-      verifiedReadOnly: true as const,
-      path: '/orgs/{org}/repos',
-      pathParams: { org: context.organizationId },
-      queryParams: { per_page: 100 },
-    };
+    let cursor: string | null = null;
+    let hasNextPage = true;
+    const allRepoNodes: GraphQLRepoNode[] = [];
+    let projectNodes: NonNullable<
+      NonNullable<OrgRepositoriesData['organization']>['projectsV2']
+    >['nodes'] = [];
+    let lastObservedAt = startedAt;
 
-    const res = await context.adapter.fetchAll<GitHubRepoItem>(
-      operation,
-      context.signal,
-    );
+    while (hasNextPage && !context.signal.aborted) {
+      const response: GraphQLResponse<OrgRepositoriesData> =
+        await context.adapter.queryGraphQL<OrgRepositoriesData>(
+          ORG_REPOSITORIES_QUERY,
+          {
+            login: context.organizationId,
+            cursor,
+          },
+          context.signal,
+        );
+
+      lastObservedAt = response.observedAt;
+      const reposPayload = response.data?.organization?.repositories;
+      projectNodes =
+        response.data?.organization?.projectsV2?.nodes ?? projectNodes;
+      const nodes = reposPayload?.nodes ?? [];
+      allRepoNodes.push(...nodes);
+
+      const pageInfo = reposPayload?.pageInfo;
+      hasNextPage = Boolean(pageInfo?.hasNextPage && pageInfo?.endCursor);
+      cursor = pageInfo?.endCursor ?? null;
+    }
+
     const completedAt = new Date().toISOString();
 
-    const entities: Entity[] = res.items.map((r) => {
-      const repoId = `org:${context.organizationId}:repo:${r.name}`;
-      const sizeValue = typeof r.size === 'number' ? r.size * 1024 : null;
+    const repositories: Entity[] = allRepoNodes.map((node) => {
+      const repoId = `org:${context.organizationId}:repo:${node.name}`;
+      const sizeValue =
+        typeof node.diskUsage === 'number' ? node.diskUsage * 1024 : null;
+      const rawVis = node.visibility?.toLowerCase();
+      const visibility =
+        rawVis === 'public'
+          ? 'public'
+          : rawVis === 'internal'
+            ? 'internal'
+            : rawVis === 'private'
+              ? 'private'
+              : 'unknown';
+
       return {
         id: repoId,
         organizationId: context.organizationId,
         collectorExecutionId: context.executionId,
         provenance: {
-          source: 'rest',
-          operation: 'rest.repos.list-for-org',
-          observedAt: res.observedAt,
+          source: 'graphql',
+          operation: 'graphql.org.repositories',
+          observedAt: lastObservedAt,
           apiVersion: '2026-03-10',
         },
         kind: 'repository',
-        name: r.name,
-        visibility:
-          r.visibility === 'public'
-            ? 'public'
-            : r.visibility === 'internal'
-              ? 'internal'
-              : 'private',
-        archived: Boolean(r.archived),
-        defaultBranch: r.default_branch ?? 'main',
+        name: node.name,
+        visibility,
+        archived: Boolean(node.isArchived),
+        defaultBranch: node.defaultBranchRef?.name ?? 'main',
         size:
           sizeValue !== null
             ? {
@@ -70,9 +212,175 @@ export const collector: Collector = {
                 availability: 'unknown',
                 reason: 'Repository size metric unavailable from source',
               },
-        fork: Boolean(r.fork),
+        fork: Boolean(node.isFork),
       };
     });
+    const repoIds = new Map(
+      allRepoNodes.map((node) => [
+        node.name,
+        `org:${context.organizationId}:repo:${node.name}`,
+      ]),
+    );
+    const portfolioEntities: Entity[] = allRepoNodes.flatMap((node) => {
+      const repositoryId = repoIds.get(node.name)!;
+      const provenance = {
+        source: 'graphql' as const,
+        operation: 'graphql.org.repositories.portfolio',
+        observedAt: lastObservedAt,
+        apiVersion: '2026-03-10',
+      };
+      return [
+        {
+          id: `${repositoryId}:portfolio`,
+          organizationId: context.organizationId,
+          collectorExecutionId: context.executionId,
+          provenance,
+          kind: 'repository-portfolio' as const,
+          repositoryId,
+          primaryLanguage: node.primaryLanguage?.name ?? null,
+          topics: (node.repositoryTopics?.nodes ?? []).flatMap((item) =>
+            item.topic?.name ? [item.topic.name] : [],
+          ),
+          template: node.isTemplate ?? null,
+          pushedAt: node.pushedAt ?? null,
+          businessClassification: null,
+          migrationWave: null,
+          customProperties: [],
+          metadataCoverage: 'partial' as const,
+        },
+        {
+          id: `${repositoryId}:code-ownership`,
+          organizationId: context.organizationId,
+          collectorExecutionId: context.executionId,
+          provenance: {
+            ...provenance,
+            operation: 'codeowners-metadata-coverage',
+          },
+          kind: 'code-ownership' as const,
+          repositoryId,
+          presence: 'unknown' as const,
+          location: 'unknown' as const,
+          syntaxStatus: 'unknown' as const,
+          ruleCount: {
+            value: null,
+            unit: 'count' as const,
+            availability: 'unknown' as const,
+            reason:
+              'Raw CODEOWNERS content is prohibited from standard collection',
+          },
+          ownerCount: {
+            value: null,
+            unit: 'count' as const,
+            availability: 'unknown' as const,
+            reason: 'Approved source-side aggregate parser is unavailable',
+          },
+          resolvableTeamCount: {
+            value: null,
+            unit: 'count' as const,
+            availability: 'unknown' as const,
+            reason: 'Owner aggregates were not collected',
+          },
+          resolvableUserCount: {
+            value: null,
+            unit: 'count' as const,
+            availability: 'unknown' as const,
+            reason: 'Owner aggregates were not collected',
+          },
+          unresolvedOwnerCount: {
+            value: null,
+            unit: 'count' as const,
+            availability: 'unknown' as const,
+            reason: 'Owner aggregates were not collected',
+          },
+          reviewPolicyIntegrated: null,
+          updatedAt: null,
+          coverage: 'unsupported' as const,
+          coverageReason:
+            'Metadata-safe source-side CODEOWNERS aggregate parser is not enabled; raw file content was not fetched',
+        },
+      ];
+    });
+    const projectEntities: Entity[] = (projectNodes ?? []).map((project) => ({
+      id: `org:${context.organizationId}:project:${project.id}`,
+      organizationId: context.organizationId,
+      collectorExecutionId: context.executionId,
+      provenance: {
+        source: 'graphql',
+        operation: 'graphql.org.projectsV2.metadata',
+        observedAt: lastObservedAt,
+        apiVersion: '2026-03-10',
+      },
+      kind: 'project',
+      title: project.title ?? `Project ${project.number ?? 0}`,
+      number: project.number ?? 0,
+      status:
+        project.closed === true
+          ? 'closed'
+          : project.closed === false
+            ? 'open'
+            : 'unknown',
+      ownerScope: 'organization',
+      linkedRepositoryIds: (project.repositories?.nodes ?? []).flatMap(
+        (repo) =>
+          repo.name && repoIds.has(repo.name) ? [repoIds.get(repo.name)!] : [],
+      ),
+      itemCount:
+        typeof project.items?.totalCount === 'number'
+          ? {
+              value: project.items.totalCount,
+              unit: 'count',
+              availability: 'observed',
+              reason: null,
+            }
+          : {
+              value: null,
+              unit: 'count',
+              availability: 'unknown',
+              reason: 'Project item aggregate unavailable',
+            },
+      fieldCount:
+        typeof project.fields?.totalCount === 'number'
+          ? {
+              value: project.fields.totalCount,
+              unit: 'count',
+              availability: 'observed',
+              reason: null,
+            }
+          : {
+              value: null,
+              unit: 'count',
+              availability: 'unknown',
+              reason: 'Project field aggregate unavailable',
+            },
+      updatedAt: project.updatedAt ?? null,
+      coverage: 'complete',
+    }));
+    const entities = [
+      ...repositories,
+      ...portfolioEntities,
+      ...projectEntities,
+    ];
+
+    const repositoryPolicies: DiscoveredPolicyItem[] = allRepoNodes.map(
+      (node) => ({
+        repositoryName: node.name,
+        branchProtectionRules: (node.branchProtectionRules?.nodes ?? []).map(
+          (bp) => ({
+            pattern: bp.pattern,
+            requiresApprovingReviews: bp.requiresApprovingReviews ?? null,
+            requiredApprovingReviewCount:
+              bp.requiredApprovingReviewCount ?? null,
+            requiresStatusChecks: bp.requiresStatusChecks ?? null,
+            requiresStrictStatusChecks: bp.requiresStrictStatusChecks ?? null,
+          }),
+        ),
+        rulesets: (node.rulesets?.nodes ?? []).map((rs) => ({
+          name: rs.name,
+          enforcement: rs.enforcement,
+          target: rs.target ?? null,
+        })),
+      }),
+    );
 
     return {
       execution: {
@@ -84,9 +392,9 @@ export const collector: Collector = {
         completedAt,
         provenance: [
           {
-            source: 'rest',
-            operation: 'rest.repos.list-for-org',
-            observedAt: res.observedAt,
+            source: 'graphql',
+            operation: 'graphql.org.repositories',
+            observedAt: lastObservedAt,
             apiVersion: '2026-03-10',
           },
         ],
@@ -101,6 +409,7 @@ export const collector: Collector = {
       },
       entities,
       organizations: [],
+      repositoryPolicies,
     };
   },
 };

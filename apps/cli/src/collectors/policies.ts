@@ -1,10 +1,43 @@
 import type { Entity } from '@ghec/contracts';
-import type { Collector, CollectorContext, CollectorResult } from './types.js';
+import type { GraphQLResponse } from '../github/adapter.js';
+import { ORG_REPOSITORIES_QUERY } from './repos.js';
+import type {
+  Collector,
+  CollectorContext,
+  CollectorResult,
+  DiscoveredPolicyItem,
+} from './types.js';
 
-interface GitHubRulesetItem {
-  id: number;
+interface GraphQLRepoPolicyNode {
   name: string;
-  enforcement?: string;
+  branchProtectionRules?: {
+    nodes?: Array<{
+      pattern: string;
+      requiresApprovingReviews?: boolean | null;
+      requiredApprovingReviewCount?: number | null;
+      requiresStatusChecks?: boolean | null;
+      requiresStrictStatusChecks?: boolean | null;
+    }>;
+  } | null;
+  rulesets?: {
+    nodes?: Array<{
+      name: string;
+      enforcement: string;
+      target?: string | null;
+    }>;
+  } | null;
+}
+
+interface OrgRepositoriesPolicyData {
+  organization?: {
+    repositories?: {
+      pageInfo?: {
+        hasNextPage: boolean;
+        endCursor: string | null;
+      };
+      nodes?: GraphQLRepoPolicyNode[];
+    };
+  };
 }
 
 export const collector: Collector = {
@@ -12,43 +45,113 @@ export const collector: Collector = {
   implementation: 'implemented',
   async collect(context: CollectorContext): Promise<CollectorResult> {
     const startedAt = new Date().toISOString();
-    const operation = {
-      id: 'rest.repos.get-org-rulesets',
-      transport: 'rest' as const,
-      verifiedReadOnly: true as const,
-      path: '/orgs/{org}/rulesets',
-      pathParams: { org: context.organizationId },
-    };
+    let lastObservedAt = startedAt;
+    let policyData: readonly DiscoveredPolicyItem[] =
+      context.sharedState?.repositoryPolicies ?? [];
 
-    const res = await context.adapter.fetchAll<GitHubRulesetItem>(
-      operation,
-      context.signal,
-    );
+    if (policyData.length === 0) {
+      let cursor: string | null = null;
+      let hasNextPage = true;
+      const fetchedPolicies: DiscoveredPolicyItem[] = [];
+
+      while (hasNextPage && !context.signal.aborted) {
+        const response: GraphQLResponse<OrgRepositoriesPolicyData> =
+          await context.adapter.queryGraphQL<OrgRepositoriesPolicyData>(
+            ORG_REPOSITORIES_QUERY,
+            {
+              login: context.organizationId,
+              cursor,
+            },
+            context.signal,
+          );
+
+        lastObservedAt = response.observedAt;
+        const reposPayload = response.data?.organization?.repositories;
+        const nodes = reposPayload?.nodes ?? [];
+
+        for (const node of nodes) {
+          fetchedPolicies.push({
+            repositoryName: node.name,
+            branchProtectionRules: (
+              node.branchProtectionRules?.nodes ?? []
+            ).map((bp) => ({
+              pattern: bp.pattern,
+              requiresApprovingReviews: bp.requiresApprovingReviews ?? null,
+              requiredApprovingReviewCount:
+                bp.requiredApprovingReviewCount ?? null,
+              requiresStatusChecks: bp.requiresStatusChecks ?? null,
+              requiresStrictStatusChecks: bp.requiresStrictStatusChecks ?? null,
+            })),
+            rulesets: (node.rulesets?.nodes ?? []).map((rs) => ({
+              name: rs.name,
+              enforcement: rs.enforcement,
+              target: rs.target ?? null,
+            })),
+          });
+        }
+
+        const pageInfo = reposPayload?.pageInfo;
+        hasNextPage = Boolean(pageInfo?.hasNextPage && pageInfo?.endCursor);
+        cursor = pageInfo?.endCursor ?? null;
+      }
+
+      policyData = fetchedPolicies;
+    }
+
     const completedAt = new Date().toISOString();
 
-    const entities: Entity[] = res.items.map((r) => ({
-      id: `org:${context.organizationId}:policy:${r.name}`,
-      organizationId: context.organizationId,
-      collectorExecutionId: context.executionId,
-      provenance: {
-        source: 'rest',
-        operation: 'rest.repos.get-org-rulesets',
-        observedAt: res.observedAt,
-        apiVersion: '2026-03-10',
-      },
-      kind: 'policy',
-      repositoryId: null,
-      policyKind: 'ruleset',
-      name: r.name,
-      enforcement:
-        r.enforcement === 'active'
-          ? 'active'
-          : r.enforcement === 'evaluate'
-            ? 'evaluate'
-            : r.enforcement === 'disabled'
-              ? 'disabled'
-              : 'unknown',
-    }));
+    const entities: Entity[] = [];
+    for (const item of policyData) {
+      const repoId = `org:${context.organizationId}:repo:${item.repositoryName}`;
+
+      for (const bp of item.branchProtectionRules) {
+        entities.push({
+          id: `org:${context.organizationId}:repo:${item.repositoryName}:policy:bp:${bp.pattern}`,
+          organizationId: context.organizationId,
+          collectorExecutionId: context.executionId,
+          provenance: {
+            source: 'graphql',
+            operation: 'graphql.org.repositories',
+            observedAt: lastObservedAt,
+            apiVersion: '2026-03-10',
+          },
+          kind: 'policy',
+          repositoryId: repoId,
+          policyKind: 'branch_protection',
+          name: bp.pattern,
+          enforcement: 'active',
+        });
+      }
+
+      for (const rs of item.rulesets) {
+        const rawEnf = rs.enforcement.toLowerCase();
+        const enforcement =
+          rawEnf === 'active'
+            ? 'active'
+            : rawEnf === 'evaluate'
+              ? 'evaluate'
+              : rawEnf === 'disabled'
+                ? 'disabled'
+                : 'unknown';
+
+        entities.push({
+          id: `org:${context.organizationId}:repo:${item.repositoryName}:policy:ruleset:${rs.name}`,
+          organizationId: context.organizationId,
+          collectorExecutionId: context.executionId,
+          provenance: {
+            source: 'graphql',
+            operation: 'graphql.org.repositories',
+            observedAt: lastObservedAt,
+            apiVersion: '2026-03-10',
+          },
+          kind: 'policy',
+          repositoryId: repoId,
+          policyKind: 'ruleset',
+          name: rs.name,
+          enforcement,
+        });
+      }
+    }
 
     return {
       execution: {
@@ -60,9 +163,9 @@ export const collector: Collector = {
         completedAt,
         provenance: [
           {
-            source: 'rest',
-            operation: 'rest.repos.get-org-rulesets',
-            observedAt: res.observedAt,
+            source: 'graphql',
+            operation: 'graphql.org.repositories',
+            observedAt: lastObservedAt,
             apiVersion: '2026-03-10',
           },
         ],

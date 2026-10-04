@@ -1,0 +1,725 @@
+{
+  "schemaVersion": "1.0.0",
+  "synthetic": true,
+  "scan": {
+    "id": "fictional-scan-partial-denied",
+    "startedAt": "2026-01-01T12:00:00Z",
+    "completedAt": "2026-01-01T12:00:00Z",
+    "producer": "ghec-consultant-cli",
+    "producerVersion": "0.1.0",
+    "status": "partial"
+  },
+  "configuration": {
+    "modules": [
+      "orgs",
+      "repos",
+      "lfs",
+      "teams",
+      "actions",
+      "actions-secrets",
+      "policies",
+      "security",
+      "integrations",
+      "users",
+      "packages"
+    ],
+    "format": "json",
+    "includeSensitiveMetadata": false,
+    "redactionProfile": "standard",
+    "continueOnError": true
+  },
+  "scope": {
+    "kind": "organization",
+    "organizationId": "org:fictional-restricted"
+  },
+  "organizations": [
+    {
+      "id": "org:fictional-restricted",
+      "login": "fictional-restricted",
+      "displayName": "Fictional Restricted Organization"
+    }
+  ],
+  "collectors": [
+    {
+      "id": "org:fictional-restricted:orgs",
+      "module": "orgs",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-restricted:repos",
+      "module": "repos",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-restricted:lfs",
+      "module": "lfs",
+      "organizationId": "org:fictional-restricted",
+      "status": "partial",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": ["HTTP 403: Shared storage billing endpoint is inaccessible"],
+      "errors": [
+        {
+          "code": "permission_denied",
+          "message": "HTTP 403: Shared storage billing requires admin:org or billing permissions",
+          "retryable": false
+        }
+      ],
+      "coverage": {
+        "state": "partial",
+        "observed": 0,
+        "expected": 1,
+        "reason": "HTTP 403: Shared storage billing inaccessible"
+      }
+    },
+    {
+      "id": "org:fictional-restricted:teams",
+      "module": "teams",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-restricted:actions",
+      "module": "actions",
+      "organizationId": "org:fictional-restricted",
+      "status": "partial",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [
+        "HTTP 403 Forbidden received when accessing organization runner infrastructure"
+      ],
+      "errors": [
+        {
+          "code": "permission_denied",
+          "message": "HTTP 403: Administer organization permission required for runner infrastructure",
+          "retryable": false
+        }
+      ],
+      "coverage": {
+        "state": "partial",
+        "observed": 1,
+        "expected": 2,
+        "reason": "HTTP 403: Organization runner endpoints protected by policy"
+      }
+    },
+    {
+      "id": "org:fictional-restricted:actions-secrets",
+      "module": "actions-secrets",
+      "organizationId": "org:fictional-restricted",
+      "status": "partial",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [
+        "HTTP 403 Forbidden received when accessing organization-level secrets"
+      ],
+      "errors": [
+        {
+          "code": "permission_denied",
+          "message": "HTTP 403: Organization secrets require admin:org scope",
+          "retryable": false
+        }
+      ],
+      "coverage": {
+        "state": "partial",
+        "observed": 1,
+        "expected": 2,
+        "reason": "HTTP 403: Repository configuration accessible, organization secrets denied"
+      }
+    },
+    {
+      "id": "org:fictional-restricted:policies",
+      "module": "policies",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-restricted:security",
+      "module": "security",
+      "organizationId": "org:fictional-restricted",
+      "status": "partial",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [
+        "HTTP 403 Forbidden received when accessing repository security alerts"
+      ],
+      "errors": [
+        {
+          "code": "permission_denied",
+          "message": "HTTP 403: Security events and alert endpoints require security_events permission",
+          "retryable": false
+        }
+      ],
+      "coverage": {
+        "state": "partial",
+        "observed": 0,
+        "expected": 1,
+        "reason": "HTTP 403: Dependabot and code scanning alerts denied"
+      }
+    },
+    {
+      "id": "org:fictional-restricted:integrations",
+      "module": "integrations",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-restricted:users",
+      "module": "users",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-restricted:packages",
+      "module": "packages",
+      "organizationId": "org:fictional-restricted",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-partial-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    }
+  ],
+  "entities": [
+    {
+      "id": "org:fictional-restricted:repo:app",
+      "kind": "repository",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "restricted-app",
+      "visibility": "private",
+      "archived": false,
+      "defaultBranch": "main",
+      "size": {
+        "value": 1048576,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "fork": false
+    },
+    {
+      "id": "org:fictional-restricted:repo:app:ownership",
+      "kind": "code-ownership",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "presence": "unknown",
+      "location": "unknown",
+      "syntaxStatus": "unknown",
+      "ruleCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Read permissions denied for repository root config"
+      },
+      "ownerCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Read permissions denied for repository root config"
+      },
+      "resolvableTeamCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Read permissions denied for repository root config"
+      },
+      "resolvableUserCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Read permissions denied for repository root config"
+      },
+      "unresolvedOwnerCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Read permissions denied for repository root config"
+      },
+      "reviewPolicyIntegrated": null,
+      "updatedAt": null,
+      "coverage": "denied",
+      "coverageReason": "HTTP 403 Forbidden: Insufficient repository permissions to inspect CODEOWNERS"
+    },
+    {
+      "id": "org:fictional-restricted:lfs",
+      "kind": "lfs",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:lfs",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "storage": {
+        "value": null,
+        "unit": "bytes",
+        "availability": "unknown",
+        "reason": "HTTP 403: Billing shared-storage endpoint inaccessible"
+      },
+      "objectCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Billing shared-storage endpoint inaccessible"
+      },
+      "indicator": "unknown"
+    },
+    {
+      "id": "org:fictional-restricted:team:dev",
+      "kind": "team",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:teams",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "Dev Team",
+      "parentTeamId": null,
+      "membershipCount": {
+        "value": 3,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "repositoryAccess": [
+        {
+          "repositoryId": "org:fictional-restricted:repo:app",
+          "permission": "write"
+        }
+      ]
+    },
+    {
+      "id": "org:fictional-restricted:actions:app",
+      "kind": "actions",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "enabled": true,
+      "workflowCount": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "runnerCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403 Forbidden: Missing admin:org scope to list runners"
+      },
+      "usage": {
+        "value": null,
+        "unit": "minutes",
+        "availability": "unknown",
+        "reason": "HTTP 403 Forbidden: Usage metrics restricted"
+      },
+      "workflowNames": ["ci.yml"],
+      "runnerTypes": ["unknown"]
+    },
+    {
+      "id": "org:fictional-restricted:workflow:ci",
+      "kind": "action-workflow",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "name": "Continuous Integration",
+      "path": ".github/workflows/ci.yml",
+      "state": "active",
+      "reusable": false,
+      "createdAt": "2025-11-01T00:00:00Z",
+      "updatedAt": "2025-11-01T00:00:00Z",
+      "lastRunAt": null,
+      "runCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Runs list access denied"
+      }
+    },
+    {
+      "id": "org:fictional-restricted:action-policy:app",
+      "kind": "action-policy",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "allowedActions": "unknown",
+      "defaultTokenPermission": "read",
+      "canApprovePullRequests": null,
+      "forkPolicy": "unknown"
+    },
+    {
+      "id": "org:fictional-restricted:cfg:repo-secret",
+      "kind": "configuration-metadata",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "domain": "actions",
+      "configurationKind": "secret",
+      "name": "APP_KEY",
+      "level": "repository",
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "environmentName": null,
+      "parentId": "org:fictional-restricted:repo:app",
+      "accessMode": "all_repositories",
+      "selectedRepositoryIds": [],
+      "selectedRepositoryCount": {
+        "value": 0,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2025-12-01T00:00:00Z",
+      "updatedAt": "2025-12-01T00:00:00Z"
+    },
+    {
+      "id": "org:fictional-restricted:cfg-cov:actions-denied",
+      "kind": "configuration-coverage",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "domain": "actions",
+      "state": "denied",
+      "reason": "HTTP 403 Forbidden: Organization-level secrets require admin:org scope"
+    },
+    {
+      "id": "org:fictional-restricted:policy:branch",
+      "kind": "policy",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:policies",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "policyKind": "branch_protection",
+      "name": "main",
+      "enforcement": "active"
+    },
+    {
+      "id": "org:fictional-restricted:security:app",
+      "kind": "security",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:security",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "codeScanning": "unknown",
+      "dependabot": "unknown",
+      "openAlertCount": {
+        "value": null,
+        "unit": "count",
+        "availability": "unknown",
+        "reason": "HTTP 403: Security events permission required"
+      }
+    },
+    {
+      "id": "org:fictional-restricted:int:hook",
+      "kind": "integration",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:integrations",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "integrationKind": "webhook",
+      "label": "https://audit.example.com/events",
+      "active": true
+    },
+    {
+      "id": "org:fictional-restricted:user:1",
+      "kind": "identity",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:users",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "pseudonym": "pseudonym-restricted-dev",
+      "outsideCollaborator": false,
+      "ssoStatus": "unknown",
+      "membership": "member"
+    },
+    {
+      "id": "org:fictional-restricted:pkg:app",
+      "kind": "package",
+      "organizationId": "org:fictional-restricted",
+      "collectorExecutionId": "org:fictional-restricted:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-partial-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "restricted-app",
+      "ecosystem": "npm",
+      "visibility": "private",
+      "owner": "fictional-restricted",
+      "repositoryId": "org:fictional-restricted:repo:app",
+      "versionCount": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "size": {
+        "value": null,
+        "unit": "bytes",
+        "availability": "unknown",
+        "reason": "HTTP 403: Package size metadata restricted"
+      },
+      "createdAt": "2025-11-01T00:00:00Z",
+      "updatedAt": "2025-11-01T00:00:00Z",
+      "disposition": "review"
+    }
+  ],
+  "findings": [
+    {
+      "id": "fictional-perm-finding-001",
+      "organizationId": "org:fictional-restricted",
+      "classification": "advisory",
+      "ruleId": "MIG-PERM-001",
+      "ruleVersion": "0.1.0",
+      "severity": "medium",
+      "title": "Insufficient permissions for complete assessment",
+      "description": "Discovery collector encountered HTTP 403 Forbidden when requesting organization runner infrastructure and organization secrets. Regenerate credentials with admin:org to unlock full inventory.",
+      "entityIds": ["org:fictional-restricted:actions:app"],
+      "evidenceExecutionIds": [
+        "org:fictional-restricted:actions",
+        "org:fictional-restricted:actions-secrets"
+      ],
+      "confidence": "high",
+      "limitations": [
+        "Runner infrastructure and organization secrets are not reflected in this scan."
+      ]
+    }
+  ],
+  "limitations": [
+    "Scan is intentionally partial due to HTTP 403 Forbidden responses on restricted endpoints.",
+    "Exercises denied configuration coverage, unknown metric preservation, and non-zero honest fallbacks."
+  ],
+  "errors": [
+    {
+      "code": "permission_denied",
+      "message": "HTTP 403: Administer organization permission required for runner infrastructure",
+      "retryable": false
+    }
+  ],
+  "summary": {
+    "organizationCount": 1,
+    "repositoryCount": 1,
+    "completeCollectorCount": 7,
+    "incompleteCollectorCount": 4
+  }
+}

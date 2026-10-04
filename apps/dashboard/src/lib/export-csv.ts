@@ -5,6 +5,17 @@ import {
   formatCountMetric,
   resolveOrgName,
 } from './formatters.js';
+import type {
+  PackageInventoryRecord,
+  ReleaseAssetInventoryRecord,
+} from './supply-chain.js';
+import {
+  environmentPolicyInventory,
+  operationsInventory,
+  runnersInventory,
+  workflowInventory,
+} from './action-operations.js';
+import type { ConfigurationRecord } from './configuration-metadata.js';
 
 /**
  * Neutralizes spreadsheet formula injection per DASH-EXPORT-001.
@@ -42,10 +53,243 @@ export function downloadCsv(filename: string, csvContent: string): void {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+  window.dispatchEvent(
+    new CustomEvent('ghec:download-complete', { detail: { filename } }),
+  );
 }
 
 function buildCsvRow(fields: unknown[]): string {
   return fields.map(sanitizeCsvField).join(',');
+}
+
+export function generatePackagesCsv(
+  bundle: DiscoveryBundle,
+  records: readonly PackageInventoryRecord[],
+): string {
+  const headers = [
+    'Organization',
+    'Package',
+    'Ecosystem',
+    'Visibility',
+    'Owner',
+    'Repository ID',
+    'Version Count',
+    'Known Size Bytes',
+    'Size Availability',
+    'Created',
+    'Updated',
+    'Disposition',
+    'Evidence Source',
+    'Evidence Operation',
+    'Compatibility',
+  ];
+  return [
+    buildCsvRow(headers),
+    ...records.map((item) =>
+      buildCsvRow([
+        resolveOrgName(bundle, item.organizationId),
+        item.name,
+        item.ecosystem,
+        item.visibility,
+        item.owner,
+        item.repositoryId,
+        item.versionCount,
+        item.sizeBytes,
+        item.sizeAvailability,
+        item.createdAt,
+        item.updatedAt,
+        item.disposition,
+        item.provenance.source,
+        item.provenance.operation,
+        item.compatibility,
+      ]),
+    ),
+  ].join('\r\n');
+}
+
+export function generateReleaseAssetsCsv(
+  bundle: DiscoveryBundle,
+  records: readonly ReleaseAssetInventoryRecord[],
+): string {
+  const headers = [
+    'Organization',
+    'Kind',
+    'Name',
+    'Repository ID',
+    'Parent ID',
+    'Known Size Bytes',
+    'Size Availability',
+    'Lifecycle Date',
+    'Detail',
+    'Evidence Source',
+    'Evidence Operation',
+    'Compatibility',
+  ];
+  return [
+    buildCsvRow(headers),
+    ...records.map((item) =>
+      buildCsvRow([
+        resolveOrgName(bundle, item.organizationId),
+        item.kind,
+        item.name,
+        item.repositoryId,
+        item.parentId,
+        item.sizeBytes,
+        item.sizeAvailability,
+        item.lifecycleAt,
+        item.detail,
+        item.provenance.source,
+        item.provenance.operation,
+        item.compatibility,
+      ]),
+    ),
+  ].join('\r\n');
+}
+
+/** Metadata-only Actions export. Secret/variable entities are deliberately excluded. */
+export function generateActionsOperationsCsv(bundle: DiscoveryBundle): string {
+  const headers = [
+    'Kind',
+    'Organization',
+    'Repository ID',
+    'Name',
+    'State / Type',
+    'Metric',
+    'Last Activity',
+    'Evidence Source',
+    'Evidence Operation',
+  ];
+  const workflowRows = workflowInventory(bundle).map((item) =>
+    buildCsvRow([
+      'workflow',
+      resolveOrgName(bundle, item.organizationId),
+      item.repositoryId,
+      item.name,
+      item.state,
+      item.runCount,
+      item.lastActivityAt,
+      item.provenance.source,
+      item.provenance.operation,
+    ]),
+  );
+  const runnerRows = runnersInventory(bundle).map((item) =>
+    buildCsvRow([
+      item.kind,
+      resolveOrgName(bundle, item.organizationId),
+      item.kind === 'action-runner' ? item.repositoryId : '',
+      item.name,
+      item.kind === 'action-runner' ? item.runnerType : item.scope,
+      item.kind === 'action-runner' ? item.status : item.runnerCount.value,
+      '',
+      item.provenance.source,
+      item.provenance.operation,
+    ]),
+  );
+  const operationRows = operationsInventory(bundle).map((item) =>
+    buildCsvRow([
+      item.kind,
+      resolveOrgName(bundle, item.organizationId),
+      item.repositoryId,
+      item.kind === 'action-cache' ? item.key : item.name,
+      item.kind === 'action-artifact' ? item.expired : '',
+      item.size.value,
+      item.kind === 'action-cache' ? item.lastAccessedAt : item.createdAt,
+      item.provenance.source,
+      item.provenance.operation,
+    ]),
+  );
+  const policyRows = environmentPolicyInventory(bundle).map((item) =>
+    buildCsvRow([
+      item.kind,
+      resolveOrgName(bundle, item.organizationId),
+      item.repositoryId,
+      item.kind === 'action-environment' ? item.name : 'Actions policy',
+      item.kind === 'action-environment'
+        ? item.deploymentBranchPolicy
+        : item.allowedActions,
+      item.kind === 'action-environment'
+        ? item.protectionRuleCount.value
+        : item.defaultTokenPermission,
+      '',
+      item.provenance.source,
+      item.provenance.operation,
+    ]),
+  );
+  return [
+    buildCsvRow(headers),
+    ...workflowRows,
+    ...runnerRows,
+    ...operationRows,
+    ...policyRows,
+  ].join('\r\n');
+}
+
+/** Protected metadata-only export. This format has no field for secret values. */
+export function generateConfigurationMetadataCsv(
+  bundle: DiscoveryBundle,
+  records: readonly ConfigurationRecord[],
+): string {
+  const notice = buildCsvRow([
+    'NOTICE',
+    'ZERO VALUES: secret and variable values, hashes, lengths, ciphertext, and inferred sensitivity are never collected or exported.',
+  ]);
+  const headers = [
+    'Organization',
+    'Name',
+    'Kind',
+    'Domain',
+    'Level',
+    'Repository ID',
+    'Environment',
+    'Parent Scope',
+    'Access Mode',
+    'Selected Repository Count',
+    'Selected Repository IDs',
+    'Created',
+    'Updated',
+    'Evidence Source',
+    'Evidence Operation',
+    'Compatibility',
+  ];
+  return [
+    notice,
+    '',
+    buildCsvRow(headers),
+    ...records.map((item) =>
+      buildCsvRow([
+        resolveOrgName(bundle, item.organizationId),
+        item.name,
+        item.configurationKind,
+        item.domain,
+        item.level,
+        item.repositoryId,
+        item.environmentName,
+        item.parentId,
+        item.accessMode,
+        item.selectedRepositoryCount,
+        item.selectedRepositoryIds.join('; '),
+        item.createdAt,
+        item.updatedAt,
+        item.provenance.source,
+        item.provenance.operation,
+        item.compatibility,
+      ]),
+    ),
+  ].join('\r\n');
+}
+
+function analysisProfileRows(insights: EvaluatedInsights): unknown[][] {
+  return [
+    ['Active Target Platform', insights.options.targetPlatform],
+    [
+      'Critical Repository Size (Bytes)',
+      insights.options.repoSizeCriticalBytes,
+    ],
+    ['Warning Repository Size (Bytes)', insights.options.repoSizeWarningBytes],
+    ['LFS Cutover Strictness', insights.options.lfsCutoverStrictness],
+    ['Branch Protection Policy', insights.options.branchProtectionPolicy],
+    ['Security Severity Cutoff', insights.options.securitySeverityCutoff],
+  ];
 }
 
 /**
@@ -175,7 +419,12 @@ export function generateMigrationReadinessCsv(
     ]),
   );
 
-  return [buildCsvRow(headers), ...rows].join('\r\n');
+  return [
+    ...analysisProfileRows(insights).map((row) => buildCsvRow(row)),
+    '',
+    buildCsvRow(headers),
+    ...rows,
+  ].join('\r\n');
 }
 
 /**
@@ -509,6 +758,7 @@ export function generateExecutiveSummaryCsv(
     ['Complete Collectors', bundle.summary.completeCollectorCount],
     ['Incomplete Collectors', bundle.summary.incompleteCollectorCount],
     ['Total Advisory Findings', insights.findings.length],
+    ...analysisProfileRows(insights),
     [],
     ['Migration Dimension', 'Status', 'Summary', 'Caveats'],
   ];

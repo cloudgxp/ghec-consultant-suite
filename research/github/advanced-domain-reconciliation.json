@@ -1,0 +1,174 @@
+{
+  "$schema": "./schemas/advanced-domain-reconciliation.schema.json",
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-09-25T13:30:00Z",
+  "summary": {
+    "unresolvedInitial": 10,
+    "unresolvedResolved": 10,
+    "unresolvedRemaining": 0,
+    "dispositionTransfers": {
+      "Planned": 4,
+      "Deferred": 2,
+      "Excluded": 4
+    }
+  },
+  "lfsStrategy": {
+    "recommendedDiscoveryOperation": "rest.billing.get-shared-storage-billing-org",
+    "fallbackMechanism": "GraphQL diskUsage delta combined with repository .gitattributes LFS indicator detection",
+    "nonDestructiveConstraint": "Discovery must operate read-only without cloning repository git objects or calling destructive git commands",
+    "contractsAlignment": "Maps to Entity[kind = 'lfs'] with storage (BytesMetric availability: 'observed' | 'unknown' with reason), objectCount, and indicator ('detected' | 'not_detected' | 'unknown')",
+    "reasoning": "GitHub does not provide a single endpoint for per-repository Git LFS object sizes without querying the Git LFS batch protocol or cloning. Non-destructive assessment relies on organization-level shared storage billing and repository-level LFS tracking indicators, honestly reporting availability as unknown when precise byte counts cannot be observed without repo pack inspection."
+  },
+  "billingReconciliation": [
+    {
+      "path": "/organizations/{org}/settings/billing/budgets",
+      "method": "GET",
+      "scope": "organization",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Planned",
+      "rationale": "Organization budget limits and spend caps. Reconciled with GitHub Organization Billing API.",
+      "permissions": {
+        "classic": ["admin:org"],
+        "fineGrained": ["organization_administration:read"]
+      }
+    },
+    {
+      "path": "/organizations/{org}/settings/billing/budgets/{budget_id}",
+      "method": "GET",
+      "scope": "organization",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Planned",
+      "rationale": "Individual organization budget details and thresholds. Reconciled with GitHub Organization Billing API.",
+      "permissions": {
+        "classic": ["admin:org"],
+        "fineGrained": ["organization_administration:read"]
+      }
+    },
+    {
+      "path": "/organizations/{org}/settings/billing/usage",
+      "method": "GET",
+      "scope": "organization",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Planned",
+      "rationale": "Line-item metered billing usage (Actions minutes, Packages, storage) for organization.",
+      "permissions": {
+        "classic": ["admin:org"],
+        "fineGrained": ["organization_administration:read"]
+      }
+    },
+    {
+      "path": "/organizations/{org}/settings/billing/usage/summary",
+      "method": "GET",
+      "scope": "organization",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Planned",
+      "rationale": "Aggregated monthly billing usage summary for organization.",
+      "permissions": {
+        "classic": ["admin:org"],
+        "fineGrained": ["organization_administration:read"]
+      }
+    },
+    {
+      "path": "/organizations/{org}/settings/billing/ai_credit/usage",
+      "method": "GET",
+      "scope": "organization",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Deferred",
+      "rationale": "Metered AI credit usage for organizations on the new billing platform. Deferred to Phase C3 as non-essential for initial migration discovery baseline.",
+      "permissions": {
+        "classic": ["admin:org"],
+        "fineGrained": ["organization_administration:read"]
+      }
+    },
+    {
+      "path": "/organizations/{org}/settings/billing/premium_request/usage",
+      "method": "GET",
+      "scope": "organization",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Deferred",
+      "rationale": "Premium request usage metering for organizations. Deferred to Phase C3.",
+      "permissions": {
+        "classic": ["admin:org"],
+        "fineGrained": ["organization_administration:read"]
+      }
+    },
+    {
+      "path": "/users/{username}/settings/billing/ai_credit/usage",
+      "method": "GET",
+      "scope": "user",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Excluded",
+      "rationale": "Personal user account billing usage is outside enterprise organizational discovery boundaries and excluded on privacy/architectural grounds.",
+      "permissions": {
+        "classic": ["user"],
+        "fineGrained": ["account_billing:read"]
+      }
+    },
+    {
+      "path": "/users/{username}/settings/billing/premium_request/usage",
+      "method": "GET",
+      "scope": "user",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Excluded",
+      "rationale": "Personal user account premium request usage is outside enterprise discovery boundaries and excluded on privacy/architectural grounds.",
+      "permissions": {
+        "classic": ["user"],
+        "fineGrained": ["account_billing:read"]
+      }
+    },
+    {
+      "path": "/users/{username}/settings/billing/usage",
+      "method": "GET",
+      "scope": "user",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Excluded",
+      "rationale": "Personal user account metered usage is outside enterprise discovery boundaries and excluded on privacy/architectural grounds.",
+      "permissions": {
+        "classic": ["user"],
+        "fineGrained": ["account_billing:read"]
+      }
+    },
+    {
+      "path": "/users/{username}/settings/billing/usage/summary",
+      "method": "GET",
+      "scope": "user",
+      "initialDisposition": "Unresolved",
+      "resolvedDisposition": "Excluded",
+      "rationale": "Personal user account usage summary is outside enterprise discovery boundaries and excluded on privacy/architectural grounds.",
+      "permissions": {
+        "classic": ["user"],
+        "fineGrained": ["account_billing:read"]
+      }
+    }
+  ],
+  "copilotDomain": {
+    "enterpriseEndpoints": [
+      "/enterprises/{enterprise}/copilot/billing/seats",
+      "/enterprises/{enterprise}/copilot/usage-records"
+    ],
+    "organizationEndpoints": [
+      "/orgs/{org}/copilot/billing/seats"
+    ],
+    "requiredPermissions": {
+      "enterprise": [
+        "manage_billing:copilot",
+        "enterprise_admin"
+      ],
+      "organization": [
+        "manage_billing:copilot",
+        "admin:org"
+      ]
+    },
+    "assessmentScope": "Auditing allocated Copilot seats, active editor adoption, and organization-level policy assignments during cloud migration."
+  },
+  "emuIdentityDomain": {
+    "endpoints": [
+      "/orgs/{org}/teams/{team_slug}/external-groups",
+      "/orgs/{org}/external-groups",
+      "/enterprises/{enterprise}/saml/sso/users"
+    ],
+    "pseudonymizationEnforcement": "All user logins and external identity names returned must be pseudonymized via HMAC-SHA256 (usr_<hash>) before writing discovery entities.",
+    "teamSyncMapping": "Maps external IdP groups to GitHub teams without storing corporate employee directory personal data.",
+    "piiProtection": "Prohibits retention or display of corporate email addresses, real names, or employee IDs."
+  }
+}

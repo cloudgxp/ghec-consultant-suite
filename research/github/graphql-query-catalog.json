@@ -1,0 +1,1345 @@
+{
+  "$schema": "./schemas/graphql-query-catalog.schema.json",
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-09-25T17:15:50.294Z",
+  "targetApiVersion": "2026-03-10",
+  "summary": {
+    "totalPlannedCollectors": 237,
+    "satisfiedByGraphQL": 35,
+    "restOnly": 202,
+    "consolidationRatio": "35 collectors consolidated into 4 GraphQL queries (>85% request volume reduction)"
+  },
+  "queries": [
+    {
+      "id": "graphql.org.metadata-deep",
+      "purpose": "Consolidated organization profile, membership counts, security managers, and project fields",
+      "targetScope": "organization",
+      "satisfiedCollectorIds": [
+        "rest.orgs.get",
+        "rest.orgs.list-members",
+        "rest.orgs.list-outside-collaborators",
+        "rest.orgs.get-membership-for-user",
+        "rest.orgs.list-security-manager-teams",
+        "rest.projects.list-for-org",
+        "rest.projects.list-fields-for-org"
+      ],
+      "queryText": "query OrgMetadataDeep($login: String!) {\n  rateLimit { cost remaining resetAt }\n  organization(login: $login) {\n    id\n    login\n    name\n    description\n    websiteUrl\n    isVerified\n    requiresTwoFactorAuthentication\n    defaultRepositoryPermission\n    membersWithRole { totalCount }\n    pendingMembers { totalCount }\n    securityManagers(first: 20) {\n      nodes { slug name }\n    }\n    projectsV2(first: 20) {\n      nodes {\n        id\n        title\n        fields(first: 20) {\n          nodes {\n            ... on ProjectV2FieldCommon { id name dataType }\n          }\n        }\n      }\n    }\n  }\n}",
+      "variables": {
+        "login": "String!"
+      },
+      "pageSize": 1,
+      "estimatedPointCost": 2,
+      "fieldMappings": {
+        "id": "organization.id",
+        "login": "organization.login",
+        "name": "organization.displayName",
+        "defaultRepositoryPermission": "organization.defaultRepositoryPermission",
+        "securityManagers": "Entity[kind=policy]"
+      }
+    },
+    {
+      "id": "graphql.org.repositories-deep",
+      "purpose": "Paged repository discovery with nested branch protections, repo rulesets, languages, release assets, and topics",
+      "targetScope": "organization",
+      "satisfiedCollectorIds": [
+        "rest.repos.list-for-org",
+        "rest.repos.get",
+        "rest.repos.list-branches",
+        "rest.repos.get-branch-protection",
+        "rest.repos.get-branch-rules",
+        "rest.repos.get-status-checks-protection",
+        "rest.repos.get-repo-rulesets",
+        "rest.repos.get-repo-ruleset",
+        "rest.repos.list-languages",
+        "rest.repos.list-forks",
+        "rest.repos.get-all-topics",
+        "rest.repos.list-release-assets",
+        "rest.packages.list-packages-for-organization",
+        "rest.packages.get-package-for-organization"
+      ],
+      "queryText": "query OrgRepositoriesDeep($login: String!, $cursor: String) {\n  rateLimit { cost remaining resetAt }\n  organization(login: $login) {\n    repositories(first: 100, after: $cursor, orderBy: {field: NAME, direction: ASC}) {\n      pageInfo { hasNextPage endCursor }\n      totalCount\n      nodes {\n        id\n        name\n        visibility\n        isArchived\n        isFork\n        diskUsage\n        defaultBranchRef { name }\n        refs(refPrefix: \"refs/heads/\", first: 20) {\n          nodes { name prefix }\n        }\n        branchProtectionRules(first: 10) {\n          nodes {\n            pattern\n            requiresApprovingReviews\n            requiredApprovingReviewCount\n            requiresStatusChecks\n            requiresStrictStatusChecks\n            requiredStatusCheckContexts\n          }\n        }\n        rulesets(first: 10) {\n          nodes {\n            name\n            enforcement\n            target\n          }\n        }\n        languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {\n          edges { size node { name } }\n        }\n        repositoryTopics(first: 10) {\n          nodes { topic { name } }\n        }\n        releases(first: 5) {\n          nodes {\n            name\n            releaseAssets(first: 10) {\n              nodes { name size downloadCount }\n            }\n          }\n        }\n        packages(first: 10) {\n          nodes { name packageType }\n        }\n      }\n    }\n  }\n}",
+      "variables": {
+        "login": "String!",
+        "cursor": "String"
+      },
+      "pageSize": 100,
+      "estimatedPointCost": 5,
+      "fieldMappings": {
+        "id": "Entity[kind=repository].id",
+        "name": "Entity[kind=repository].name",
+        "visibility": "Entity[kind=repository].visibility",
+        "diskUsage": "Entity[kind=repository].size (bytes = diskUsage * 1024)",
+        "defaultBranchRef.name": "Entity[kind=repository].defaultBranch",
+        "branchProtectionRules.nodes": "Entity[kind=policy]",
+        "rulesets.nodes": "Entity[kind=policy]",
+        "releaseAssets.nodes": "Entity[kind=asset]"
+      }
+    },
+    {
+      "id": "graphql.org.teams-deep",
+      "purpose": "Team hierarchy, parent/child team linkages, members count, and repository permissions",
+      "targetScope": "organization",
+      "satisfiedCollectorIds": [
+        "rest.teams.list",
+        "rest.teams.get-by-name",
+        "rest.teams.list-child-in-org",
+        "rest.teams.list-members-in-org",
+        "rest.teams.list-repos-in-org",
+        "rest.repos.list-teams",
+        "rest.repos.list-collaborators",
+        "rest.repos.get-collaborator-permission-level"
+      ],
+      "queryText": "query OrgTeamsDeep($login: String!, $cursor: String) {\n  rateLimit { cost remaining resetAt }\n  organization(login: $login) {\n    teams(first: 100, after: $cursor, rootTeamsOnly: true) {\n      pageInfo { hasNextPage endCursor }\n      totalCount\n      nodes {\n        id\n        slug\n        name\n        description\n        members { totalCount }\n        childTeams(first: 20) {\n          nodes { id slug name members { totalCount } }\n        }\n        repositories(first: 100) {\n          edges {\n            permission\n            node { id name }\n          }\n        }\n      }\n    }\n  }\n}",
+      "variables": {
+        "login": "String!",
+        "cursor": "String"
+      },
+      "pageSize": 100,
+      "estimatedPointCost": 4,
+      "fieldMappings": {
+        "slug": "Entity[kind=team].name",
+        "childTeams": "Entity[kind=team].parentTeamId",
+        "members.totalCount": "Entity[kind=team].membershipCount",
+        "repositories.edges": "Entity[kind=team].repositoryAccess"
+      }
+    },
+    {
+      "id": "graphql.enterprise.orgs-deep",
+      "purpose": "Enterprise member organizations, license counts, enterprise teams, and assignments",
+      "targetScope": "enterprise",
+      "satisfiedCollectorIds": [
+        "rest.enterprise-admin.get-consumed-licenses",
+        "rest.enterprise-teams.list",
+        "rest.enterprise-team-memberships.list",
+        "rest.enterprise-team-memberships.get",
+        "rest.enterprise-team-organizations.get-assignments",
+        "rest.enterprise-team-organizations.get-assignment"
+      ],
+      "queryText": "query EnterpriseOrgsDeep($slug: String!, $cursor: String) {\n  rateLimit { cost remaining resetAt }\n  enterprise(slug: $slug) {\n    id\n    name\n    slug\n    organizations(first: 100, after: $cursor) {\n      pageInfo { hasNextPage endCursor }\n      totalCount\n      nodes { id login name }\n    }\n    teams(first: 50) {\n      nodes {\n        slug\n        name\n        members { totalCount }\n      }\n    }\n  }\n}",
+      "variables": {
+        "slug": "String!",
+        "cursor": "String"
+      },
+      "pageSize": 100,
+      "estimatedPointCost": 3,
+      "fieldMappings": {
+        "organizations.nodes": "DiscoveryBundle.organizations",
+        "teams.nodes": "Entity[kind=team]"
+      }
+    }
+  ],
+  "restOnlyCollectors": [
+    {
+      "id": "rest.actions.get-actions-cache-retention-limit-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-storage-limit-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-usage-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.list-hosted-runners-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.list-custom-images-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-custom-image-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.list-custom-image-versions-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-custom-image-version-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-github-owned-images-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-partner-images-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-limits-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-machine-specs-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-platforms-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-hosted-runner-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-github-actions-permissions-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-artifact-and-log-retention-settings",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-fork-pr-contributor-approval-permissions",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-private-repo-fork-pr-workflows-settings",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-selected-organizations-enabled-github-actions-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-allowed-actions-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-self-hosted-runners-permissions",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-github-actions-default-workflow-permissions-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-enterprise-actions-policies",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.actions.get-enterprise-actions-policy",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-self-hosted-runner-groups-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-self-hosted-runner-group-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-org-access-to-self-hosted-runner-group-in-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-self-hosted-runners-in-group-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-self-hosted-runners-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-runner-version-deprecation-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-runner-applications-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-self-hosted-runner-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-labels-for-self-hosted-runner-for-enterprise",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.code-security.get-configurations-for-enterprise",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.code-security.get-default-configurations-for-enterprise",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.code-security.get-single-configuration-for-enterprise",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.code-security.get-repositories-for-enterprise-configuration",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.secret-scanning.get-security-analysis-settings-for-enterprise",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.copilot.list-copilot-seats-for-enterprise",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-enterprise-roles",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-enterprise-role",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-enterprise-role-teams",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-enterprise-role-users",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.get-license-sync-status",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.hosted-compute.list-network-configurations-for-enterprise",
+      "module": "network",
+      "reason": "Hosted compute network configurations for enterprise and org are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.hosted-compute.get-network-configuration-for-enterprise",
+      "module": "network",
+      "reason": "Hosted compute network configurations for enterprise and org are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.custom-properties-for-orgs-get-enterprise-definitions",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.custom-properties-for-orgs-get-enterprise-definition",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.custom-properties-for-repos-get-enterprise-definitions",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.custom-properties-for-repos-get-enterprise-definition",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-all-budgets",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-budget",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-budget-user-states",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-all-cost-centers",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-cost-center",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-github-billing-usage-report-ghe",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.billing.get-github-billing-usage-summary-report-ghe",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-teams.get",
+      "module": "teams",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.enterprise-admin.list-vss",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "enterprise"
+    },
+    {
+      "id": "rest.apps.list-repos-accessible-to-installation",
+      "module": "integrations",
+      "reason": "GitHub App installations and private registries are REST-only",
+      "requiredScope": "platform-or-caller-resource"
+    },
+    {
+      "id": "rest.orgs.list-custom-roles",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-retention-limit-for-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-storage-limit-for-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-usage-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-usage-by-repo-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-hosted-runners-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-custom-images-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-custom-image-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-custom-image-versions-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-custom-image-version-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-github-owned-images-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-partner-images-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-limits-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-machine-specs-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-hosted-runners-platforms-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-hosted-runner-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-github-actions-permissions-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-artifact-and-log-retention-settings-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-fork-pr-contributor-approval-permissions-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-private-repo-fork-pr-workflows-settings-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-selected-repositories-enabled-github-actions-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-allowed-actions-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-self-hosted-runners-permissions-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-selected-repositories-self-hosted-runners-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-github-actions-default-workflow-permissions-organization",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-org-actions-policies",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-org-actions-policy",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-self-hosted-runner-groups-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-self-hosted-runner-group-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-github-hosted-runners-in-group-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-repo-access-to-self-hosted-runner-group-in-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-self-hosted-runners-in-group-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-self-hosted-runners-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-runner-version-deprecation-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-runner-applications-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.get-self-hosted-runner-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-labels-for-self-hosted-runner-for-org",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-org-secrets",
+      "module": "actions-secrets",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-selected-repos-for-org-secret",
+      "module": "actions-secrets",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.agents.list-org-secrets",
+      "module": "copilot",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.agents.list-selected-repos-for-org-secret",
+      "module": "copilot",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.campaigns.list-org-campaigns",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.campaigns.get-campaign-summary",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.code-scanning.get-ai-scan-enablement-for-org",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.code-security.get-configurations-for-org",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.code-security.get-default-configurations",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.code-security.get-configuration",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.code-security.get-repositories-for-configuration",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.codespaces.list-in-organization",
+      "module": "codespaces",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.codespaces.list-org-secrets",
+      "module": "codespaces",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.codespaces.list-selected-repos-for-org-secret",
+      "module": "codespaces",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.copilot.get-copilot-organization-details",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.copilot.list-copilot-seats",
+      "module": "billing",
+      "reason": "Enterprise budgets and license sync endpoints are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.copilot.get-copilot-coding-agent-permissions-organization",
+      "module": "copilot",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.copilot.list-copilot-coding-agent-selected-repositories-for-organization",
+      "module": "copilot",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-saml-sso-authorizations",
+      "module": "users",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-custom-repo-roles",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.get-custom-repo-role",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.dependabot.list-org-secrets",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.dependabot.list-selected-repos-for-org-secret",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.teams.list-external-idp-groups-for-org",
+      "module": "users",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-failed-invitations",
+      "module": "teams",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.api-insights.get-subject-stats",
+      "module": "api-activity",
+      "reason": "API Insights summary and time statistics are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.api-insights.get-summary-stats",
+      "module": "api-activity",
+      "reason": "API Insights summary and time statistics are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.api-insights.get-time-stats",
+      "module": "api-activity",
+      "reason": "API Insights summary and time statistics are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.apps.get-org-installation",
+      "module": "integrations",
+      "reason": "GitHub App installations and private registries are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-app-installations",
+      "module": "integrations",
+      "reason": "GitHub App installations and private registries are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-pending-invitations",
+      "module": "teams",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-invitation-teams",
+      "module": "teams",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-issue-fields",
+      "module": "orgs",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-issue-types",
+      "module": "orgs",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.migrations.list-for-org",
+      "module": "migration",
+      "reason": "Migration status and archive metadata endpoints are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.migrations.get-status-for-org",
+      "module": "migration",
+      "reason": "Migration status and archive metadata endpoints are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.migrations.list-repos-for-org",
+      "module": "migration",
+      "reason": "Migration status and archive metadata endpoints are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-org-roles",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.get-org-role",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-org-role-teams",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-org-role-users",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.packages.get-all-package-versions-for-package-owned-by-org",
+      "module": "packages",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.packages.get-package-version-for-organization",
+      "module": "packages",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-pat-grant-requests",
+      "module": "orgs",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-pat-grant-request-repositories",
+      "module": "orgs",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-pat-grants",
+      "module": "orgs",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.list-pat-grant-repositories",
+      "module": "orgs",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.private-registries.list-org-private-registries",
+      "module": "integrations",
+      "reason": "GitHub App installations and private registries are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.private-registries.get-org-private-registry",
+      "module": "integrations",
+      "reason": "GitHub App installations and private registries are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.custom-properties-for-repos-get-organization-definitions",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.custom-properties-for-repos-get-organization-definition",
+      "module": "governance",
+      "reason": "Custom properties definitions and enterprise roles are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.repos.get-org-rulesets",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.repos.get-org-ruleset",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.get-immutable-releases-settings",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.orgs.get-immutable-releases-settings-repositories",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.hosted-compute.list-network-configurations-for-org",
+      "module": "network",
+      "reason": "Hosted compute network configurations for enterprise and org are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.hosted-compute.get-network-configuration-for-org",
+      "module": "network",
+      "reason": "Hosted compute network configurations for enterprise and org are REST-only",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.teams.list-idp-groups-for-org",
+      "module": "users",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.teams.list-linked-external-idp-groups-to-team-for-org",
+      "module": "users",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.teams.get-membership-for-user-in-org",
+      "module": "teams",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.teams.list-idp-groups-in-org",
+      "module": "users",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "organization"
+    },
+    {
+      "id": "rest.actions.list-artifacts-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-artifact",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-usage",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-actions-cache-list",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-github-actions-permissions-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-workflow-access-to-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-artifact-and-log-retention-settings-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-fork-pr-contributor-approval-permissions-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-private-repo-fork-pr-workflows-settings-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-allowed-actions-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-github-actions-default-workflow-permissions-repository",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-self-hosted-runners-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-runner-version-deprecation-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-runner-applications-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-self-hosted-runner-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-labels-for-self-hosted-runner-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-workflow-runs-for-repo",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-workflow-run-artifacts",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-jobs-for-workflow-run",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-repo-secrets",
+      "module": "actions-secrets",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-repo-workflows",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.get-workflow",
+      "module": "actions",
+      "reason": "GitHub Actions runner infrastructure, runner groups, runner machine specs, custom runner images, and cache limits are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.agents.list-repo-secrets",
+      "module": "copilot",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.code-scanning.get-default-setup",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.codespaces.list-repo-secrets",
+      "module": "codespaces",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.copilot.get-copilot-cloud-agent-configuration",
+      "module": "copilot",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.dependabot.list-repo-secrets",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.get-all-environments",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.get-environment",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.list-deployment-branch-policies",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.get-all-deployment-protection-rules",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.list-custom-deployment-rule-integrations",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.get-custom-deployment-protection-rule",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.actions.list-environment-secrets",
+      "module": "actions-secrets",
+      "reason": "Secret and variable metadata names/timestamps are restricted to REST API endpoints to enforce secret security boundaries",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.check-immutable-releases",
+      "module": "policies",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.apps.get-repo-installation",
+      "module": "integrations",
+      "reason": "GitHub App installations and private registries are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.list-invitations",
+      "module": "teams",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.list-issue-types",
+      "module": "repos",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.get-pages",
+      "module": "deployments",
+      "reason": "GitHub Pages configuration and build history are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.list-pages-builds",
+      "module": "deployments",
+      "reason": "GitHub Pages configuration and build history are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.check-private-vulnerability-reporting",
+      "module": "repos",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.secret-scanning.get-scan-history",
+      "module": "security",
+      "reason": "Code scanning default setup, code security configurations, and secret scanning push protection history are REST-only",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.list-tags",
+      "module": "repos",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    },
+    {
+      "id": "rest.repos.check-vulnerability-alerts",
+      "module": "repos",
+      "reason": "Endpoint provides specialized metadata not exposed via GitHub GraphQL API",
+      "requiredScope": "repository"
+    }
+  ]
+}

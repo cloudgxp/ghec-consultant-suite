@@ -12,6 +12,7 @@
     "dev": "node --import tsx src/index.ts"
   },
   "dependencies": {
-    "@ghec/contracts": "0.1.0"
+    "@ghec/contracts": "0.1.0",
+    "octokit": "^5.0.5"
   }
 }

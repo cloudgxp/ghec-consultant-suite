@@ -1,49 +1,57 @@
 # Implementation Plan and Verification Gates
 
-**PLAN-001.** Status changes require implementation and recorded acceptance evidence. Build success alone never completes a live capability. All live phases are deferred in this task.
-
----
+**PLAN-001.** Status changes require implementation and recorded acceptance
+evidence. Build success alone never completes a live capability. The current
+task status and evidence log are maintained in
+[`agent-tasks/CURRENT-TASKS.md`](../../agent-tasks/CURRENT-TASKS.md) and
+[`agent-tasks/CHANGELOG.md`](../../agent-tasks/CHANGELOG.md).
 
 ## 1. Engineering Phases and Release Status
 
-See the authoritative [Phased Implementation Roadmap](phased-roadmap.md) for detailed collector-level progression.
+| Phase                              | Current status                                    | Implemented scope and remaining completion gate                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Workspace Setup**             | Verified                                          | npm workspaces, strict TypeScript, lint/format, CLI binary, Vite/React/Primer dashboard, locked dependencies, and root quality command. GitHub-hosted monorepo workflow still needs its first successful run and required-check configuration.                                                    |
+| **2. Contracts & Fixtures**        | Verified offline                                  | Executable v1.0.0 schema, semantic validation, privacy rejection, and fictional organization, enterprise, specialized-entity, and permission-denied fixtures are exercised across contracts, CLI, and dashboard tests.                                                                            |
+| **3. CLI Framework**               | Implemented; live verification pending            | Command parser, dry-run/preflight, GraphQL/REST adapter, topological orchestration, enterprise enumeration, checkpoints/resume, sanitized errors, and atomic output are covered offline. Approved live-read evidence remains required.                                                            |
+| **4. Permission Model & Research** | Implemented offline; live verification pending    | Pinned sources, 776-operation inventory, permission checker, query catalog, drift probe, and offline manifest validation exist. Exact live token/role behavior must be verified against approved synthetic targets.                                                                               |
+| **5. Collector Specifications**    | Verified as specifications                        | The 237 planned collector specifications and dependency DAG validate offline. This catalog is a researched backlog, not a claim that 237 individual runtime collectors are implemented.                                                                                                           |
+| **6. Core Anchors (Phase C1)**     | Implemented; live gate pending                    | Organization/repository anchors, pagination, GraphQL repository aggregation, provenance, bounded retries, and contract output pass mock integration tests. Synthetic live pagination, permission, and failure evidence remains.                                                                   |
+| **7. Default Metadata (Phase C2)** | Partially implemented                             | Eleven user-facing modules emit typed evidence for repositories, teams, Actions, policies, security, integrations, identities, packages, and LFS using selected GraphQL/REST operations. Full execution of the 234-operation C2 catalog is not implemented; ADR 0004 defers proposed v2 mappings. |
+| **8. Dashboard Ingestion**         | Implemented; browser verification pending         | Local file import, v1 validation, worker parsing, explicit partial/error states, organization filters, navigation, and virtualized inventories exist. Release browser and large-file evidence remains.                                                                                            |
+| **9. Analysis Engine**             | Implemented offline                               | Deterministic migration rules, target profiles, scan diffing, dependency traversal/cohorts, unknown semantics, and synthetic tests exist. Customer-approved thresholds remain configurable rather than universal guarantees.                                                                      |
+| **10. CSV/PDF Reporting**          | Implemented offline; browser verification pending | Injection-safe CSV and client-side jsPDF reports, organization scoping, and unit tests exist. Final browser pagination, download, accessibility, and network-isolation evidence remains.                                                                                                          |
+| **11. Security Hardening**         | Implemented in part; release review pending       | Credential isolation, field allowlists, secret rejection, diagnostics sanitization, HMAC pseudonymization, atomic restricted output, cancellation, and dependency review exist. Approved live security review and retention decisions remain.                                                     |
+| **12. End-to-End Validation**      | In progress                                       | Offline CLI, contract, analysis, dashboard unit, accessibility, interaction, and visual assets exist. The release gate still requires recorded GitHub CI, approved synthetic live discovery, full browser validation, and reviewable integration history.                                         |
 
-| Phase                              | Current Status                       | Deliverables / Completion Gate                                                                                                                                                                                                                                                           |
-| ---------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Workspace Setup**             | Implemented (Verified)               | npm workspaces, strict TS, lint/format, CLI binary, Vite/React/Tailwind/DaisyUI shell; clean install/build/check.                                                                                                                                                                        |
-| **2. Contracts & Fixtures**        | Implemented (Verified)               | v1.0.0 schema, semantic validation, and fictional fixtures; contract positives/negatives and privacy-field rejection.                                                                                                                                                                    |
-| **3. CLI Framework**               | Scaffolded                           | Offline syntax parser and help exist; manifest-driven collector registry integration designed; mock command tests pass.                                                                                                                                                                  |
-| **4. Permission Model & Research** | **Fully Specified**                  | Pinned primary sources recorded in [source-manifest.json](../../research/github/source-manifest.json); 776 operations inventoried in [endpoint-inventory.json](../../research/github/endpoint-inventory.json); verified offline via [validate.py](../../scripts/collectors/validate.py). |
-| **5. Collector Specifications**    | **Fully Specified (237 Collectors)** | 237 planned collectors specified in [collector-catalog.md](collector-catalog.md) and `docs/specs/collectors/`; manifest schemas verified; dependency DAG acyclic. Live collection is deferred.                                                                                           |
-| **6. Core Anchors (Phase C1)**     | **Planned Next Step**                | Implement `rest.orgs.get`, `rest.repos.list-for-org`, and `rest.repos.get` with live Octokit adapter in synthetic test org.                                                                                                                                                              |
-| **7. Default Metadata (Phase C2)** | Specified                            | 234 default configuration collectors (Actions, branch protection, rulesets, secrets metadata, teams, code security).                                                                                                                                                                     |
-| **8. Dashboard Ingestion**         | Static Shell Scaffolded              | Implement import validation and explicit error/partial states, inventory/navigation/filtering; offline validation.                                                                                                                                                                       |
-| **9. Analysis Engine**             | Interface Scaffolded                 | Approved evidence-backed rules, unknown semantics, target-specific thresholds; deterministic tests.                                                                                                                                                                                      |
-| **10. CSV/PDF Reporting**          | Specified                            | CSV injection-safe export, jsPDF local reporting, redacted scoped content; accessibility checks.                                                                                                                                                                                         |
-| **11. Security Hardening**         | Specified                            | Credential isolation, allowlists, diagnostics, write restrictions, cancellation, resource limits and dependency review.                                                                                                                                                                  |
-| **12. End-to-End Validation**      | Specified                            | Synthetic test orgs → CLI → bundle → offline dashboard → reports; zero credential or mutation leakage.                                                                                                                                                                                   |
-
----
-
-## 2. Dependency Order and Execution Flow
+## 2. Current Dependency Order
 
 ```text
-Workspace & Contracts → Collector Registry & Specs (Completed)
-  → Read Adapter & Phase C1 Core Anchors
-  → Phase C2 Configuration Collectors
-  → Dashboard Bundle Import & Analysis
-  → CSV / PDF Local Exports
-  → Security Hardening & End-to-End Synthetic Validation
+frozen v1.0.0 release contract
+  → reviewed branch / monorepo CI evidence
+  → approved live-read and browser release validation
+  → production release decision
 ```
 
-Release is release-blocked until security and end-to-end gates pass. Do not use the scaffold on customer data.
-
----
+Implementation may continue in parallel, but the suite is release-blocked
+until the contract, security, live-read, browser, and CI gates are recorded. Do
+not use unapproved builds on customer data.
 
 ## 3. Implementation Exit Criteria
 
-**PLAN-RELEASE-001.** A phase is verified only when its requirement IDs are mapped to executed tests and review artifacts. Release notes must disclose implemented modules and exclusions; no unverified permission capability may ship as verified.
+**PLAN-RELEASE-001.** A phase is verified only when its requirement IDs map to
+executed tests or review artifacts. Release notes must disclose implemented
+modules, partial coverage, and exclusions; no unverified permission capability
+may ship as verified.
 
-**PLAN-LIVE-001.** Live tests use explicit operator authorization and synthetic resources, separate from default tests. CI never requires customer credentials; read-only review, field allowlist review, and safe output review precede any live execution.
+**PLAN-LIVE-001.** Live tests require explicit operator authorization and
+synthetic resources. CI never requires customer credentials. Read-only review,
+field-allowlist review, and safe-output review precede live execution.
 
-**PLAN-NEXT-001.** Recommended immediate implementation target: **Phase C1 (Core Anchors)**. Implement the HTTP read adapter and the 3 anchor collectors (`rest.orgs.get`, `rest.repos.list-for-org`, `rest.repos.get`) to validate live pagination, rate-limit backoff, and data contract compliance against a synthetic organization.
+**PLAN-CONTRACT-001.** ADR 0004 freezes the current executable contract at
+v1.0.0 for this release. A v2 release requires a separate approved ADR, a
+registered reader/writer, migration behavior, fixtures, producer updates, and
+dashboard compatibility messaging. Proposed v2 documentation alone does not
+change runtime support.
+
+**PLAN-NEXT-001.** The immediate release target is closure, not another broad
+collector phase: activate monorepo CI and record approved live/browser evidence.

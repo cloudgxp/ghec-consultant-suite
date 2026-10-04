@@ -1,4 +1,5 @@
 import type { DiscoveryBundle, ModuleId } from '@ghec/contracts';
+export * from './dependency-graph.js';
 
 /** Contract only. Rules must be pure, deterministic, versioned, and evidence-backed. */
 export interface AnalysisRule {
@@ -6,8 +7,65 @@ export interface AnalysisRule {
   readonly version: string;
   readonly dimension: string;
   readonly requiredModule: ModuleId;
-  evaluate(bundle: Readonly<DiscoveryBundle>): DiscoveryBundle['findings'];
+  evaluate(
+    bundle: Readonly<DiscoveryBundle>,
+    options: Readonly<AnalysisOptions>,
+  ): DiscoveryBundle['findings'];
 }
+
+export interface AnalysisOptions {
+  readonly targetPlatform: 'ghec_emu' | 'ghec_standard' | 'ghes_3_x';
+  readonly repoSizeCriticalBytes: number;
+  readonly repoSizeWarningBytes: number;
+  readonly lfsCutoverStrictness: 'block_unmeasured' | 'warn_only';
+  readonly branchProtectionPolicy: 'require_rulesets' | 'allow_classic';
+  readonly securitySeverityCutoff:
+    'critical_only' | 'high_and_critical' | 'all';
+}
+
+const GB = 1024 * 1024 * 1024;
+export const DEFAULT_ANALYSIS_OPTIONS: AnalysisOptions = {
+  targetPlatform: 'ghec_emu',
+  repoSizeCriticalBytes: 5 * GB,
+  repoSizeWarningBytes: 1 * GB,
+  lfsCutoverStrictness: 'block_unmeasured',
+  branchProtectionPolicy: 'require_rulesets',
+  securitySeverityCutoff: 'all',
+};
+
+export const ANALYSIS_PRESETS = {
+  ghec_emu: {
+    label: 'GHEC Enterprise Managed Users',
+    options: DEFAULT_ANALYSIS_OPTIONS,
+  },
+  aggressive_cutover: {
+    label: 'Aggressive Weekend Cutover',
+    options: {
+      ...DEFAULT_ANALYSIS_OPTIONS,
+      repoSizeCriticalBytes: 2 * GB,
+      repoSizeWarningBytes: 512 * 1024 * 1024,
+    },
+  },
+  ghes_on_prem: {
+    label: 'GHES On-Premises Destination',
+    options: {
+      ...DEFAULT_ANALYSIS_OPTIONS,
+      targetPlatform: 'ghes_3_x' as const,
+      repoSizeCriticalBytes: 10 * GB,
+      repoSizeWarningBytes: 5 * GB,
+      lfsCutoverStrictness: 'warn_only' as const,
+      branchProtectionPolicy: 'allow_classic' as const,
+    },
+  },
+  strict_compliance: {
+    label: 'Strict Compliance & Security',
+    options: {
+      ...DEFAULT_ANALYSIS_OPTIONS,
+      securitySeverityCutoff: 'all' as const,
+      lfsCutoverStrictness: 'block_unmeasured' as const,
+    },
+  },
+} as const;
 
 export type DimensionStatus =
   'review_required' | 'no_issue_observed' | 'unknown' | 'not_applicable';
@@ -25,6 +83,7 @@ export interface MigrationDimensionAssessment {
 }
 
 export interface EvaluatedInsights {
+  readonly options: AnalysisOptions;
   readonly dimensions: MigrationDimensionAssessment[];
   readonly findings: DiscoveryBundle['findings'];
   readonly scopeLimitations: string[];
@@ -46,7 +105,7 @@ export const MigSizeRule: AnalysisRule = {
   version: RULE_VERSION,
   dimension: 'Repository Size & Storage',
   requiredModule: 'repos',
-  evaluate(bundle) {
+  evaluate(bundle, options) {
     const findings: DiscoveryBundle['findings'] = [];
     const executionMap = new Map(
       bundle.collectors.map((c) => [`${c.organizationId}:repos`, c.id]),
@@ -78,8 +137,7 @@ export const MigSizeRule: AnalysisRule = {
             confidence: 'medium',
             limitations: ['Size metric unavailable from evidence.'],
           });
-        } else if (repo.size.value > 5 * 1024 * 1024 * 1024) {
-          // > 5 GB
+        } else if (repo.size.value > options.repoSizeCriticalBytes) {
           findings.push({
             id: `finding:${org.id}:${repo.id}:size-critical`,
             organizationId: org.id,
@@ -87,7 +145,7 @@ export const MigSizeRule: AnalysisRule = {
             ruleId: 'MIG-SIZE-001',
             ruleVersion: RULE_VERSION,
             severity: 'high',
-            title: `Large repository exceeding 5 GB: ${repo.name}`,
+            title: `Large repository exceeding ${(options.repoSizeCriticalBytes / GB).toFixed(1)} GB: ${repo.name}`,
             description: `Repository size is ${(repo.size.value / (1024 * 1024 * 1024)).toFixed(2)} GB. Destination transfer limits and migration windows require migration rehearsal.`,
             entityIds: [repo.id],
             evidenceExecutionIds: [execId],
@@ -96,8 +154,7 @@ export const MigSizeRule: AnalysisRule = {
               'Network throughput and destination git pack limits may apply.',
             ],
           });
-        } else if (repo.size.value > 1024 * 1024 * 1024) {
-          // > 1 GB
+        } else if (repo.size.value > options.repoSizeWarningBytes) {
           findings.push({
             id: `finding:${org.id}:${repo.id}:size-warning`,
             organizationId: org.id,
@@ -105,7 +162,7 @@ export const MigSizeRule: AnalysisRule = {
             ruleId: 'MIG-SIZE-001',
             ruleVersion: RULE_VERSION,
             severity: 'low',
-            title: `Repository size exceeds 1 GB: ${repo.name}`,
+            title: `Repository size exceeds ${(options.repoSizeWarningBytes / GB).toFixed(1)} GB: ${repo.name}`,
             description: `Repository size is ${(repo.size.value / (1024 * 1024 * 1024)).toFixed(2)} GB. Review history pruning or shallow transfer options.`,
             entityIds: [repo.id],
             evidenceExecutionIds: [execId],
@@ -125,7 +182,7 @@ export const MigLfsRule: AnalysisRule = {
   version: RULE_VERSION,
   dimension: 'Git LFS Storage',
   requiredModule: 'lfs',
-  evaluate(bundle) {
+  evaluate(bundle, options) {
     const findings: DiscoveryBundle['findings'] = [];
     const executionMap = new Map(
       bundle.collectors.map((c) => [`${c.organizationId}:lfs`, c.id]),
@@ -152,7 +209,11 @@ export const MigLfsRule: AnalysisRule = {
             classification: 'advisory',
             ruleId: 'MIG-LFS-001',
             ruleVersion: RULE_VERSION,
-            severity: isUnknown ? 'medium' : 'low',
+            severity: isUnknown
+              ? options.lfsCutoverStrictness === 'block_unmeasured'
+                ? 'high'
+                : 'medium'
+              : 'low',
             title: `Git LFS detected${isUnknown ? ' with unmeasured storage' : ''}`,
             description: isUnknown
               ? `Git LFS is active on repository ${lfs.repositoryId}, but storage metrics could not be established (${lfs.storage.reason ?? 'Unknown'}). Dedicated LFS measurement required.`
@@ -179,7 +240,7 @@ export const MigActionsRule: AnalysisRule = {
   version: RULE_VERSION,
   dimension: 'Actions & Runners',
   requiredModule: 'actions',
-  evaluate(bundle) {
+  evaluate(bundle, options) {
     const findings: DiscoveryBundle['findings'] = [];
     const executionMap = new Map(
       bundle.collectors.map((c) => [`${c.organizationId}:actions`, c.id]),
@@ -203,7 +264,7 @@ export const MigActionsRule: AnalysisRule = {
             classification: 'calculated',
             ruleId: 'MIG-ACTIONS-001',
             ruleVersion: RULE_VERSION,
-            severity: 'high',
+            severity: options.targetPlatform === 'ghec_emu' ? 'high' : 'medium',
             title: 'Self-hosted Actions runners detected',
             description: `Repository ${action.repositoryId} utilizes self-hosted runners (${action.runnerCount.value ?? 'unknown'} runners). Runner infrastructure, VPC networking, and runner group memberships must be provisioned in the target enterprise.`,
             entityIds: [action.id, action.repositoryId],
@@ -214,6 +275,77 @@ export const MigActionsRule: AnalysisRule = {
             ],
           });
         }
+      }
+
+      const operationalEntities = bundle.entities.filter(
+        (entity) => entity.organizationId === org.id,
+      );
+      for (const entity of operationalEntities) {
+        const finding = (
+          suffix: string,
+          severity: 'low' | 'medium' | 'high',
+          title: string,
+          description: string,
+        ) =>
+          findings.push({
+            id: `finding:${org.id}:${entity.id}:${suffix}`,
+            organizationId: org.id,
+            classification: 'advisory',
+            ruleId: 'MIG-ACTIONS-001',
+            ruleVersion: RULE_VERSION,
+            severity,
+            title,
+            description,
+            entityIds: [entity.id],
+            evidenceExecutionIds: [execId],
+            confidence: 'high',
+            limitations: [
+              'Assessment uses metadata and aggregates only; logs and workflow source are not collected.',
+            ],
+          });
+        if (
+          entity.kind === 'action-runner' &&
+          (entity.runnerType === 'self-hosted' || entity.customImage === true)
+        )
+          finding(
+            'runner-dependency',
+            options.targetPlatform === 'ghec_emu' ? 'high' : 'medium',
+            `Runner dependency requires migration planning: ${entity.name}`,
+            'Self-hosted infrastructure or a custom runner image must be safely rebuilt, scoped, and validated at the target.',
+          );
+        if (
+          (entity.kind === 'action-cache' ||
+            entity.kind === 'action-artifact') &&
+          entity.size.value !== null &&
+          entity.size.value >= 500 * 1024 * 1024
+        )
+          finding(
+            'large-storage',
+            'medium',
+            `Large Actions ${entity.kind === 'action-cache' ? 'cache' : 'artifact'}: ${entity.kind === 'action-cache' ? entity.key : entity.name}`,
+            `Observed size is ${(entity.size.value / 1024 / 1024).toFixed(1)} MB. Confirm retention and rebuild requirements rather than transferring contents by default.`,
+          );
+        if (
+          entity.kind === 'action-run-summary' &&
+          (entity.failed.value ?? 0) > 0
+        )
+          finding(
+            'run-failures',
+            'medium',
+            'Actions failures observed in the activity window',
+            `${entity.failed.value} failed runs were observed between ${entity.windowStartedAt} and ${entity.windowEndedAt}${entity.truncated ? '; the window was truncated' : ''}.`,
+          );
+        if (
+          entity.kind === 'action-policy' &&
+          (entity.allowedActions === 'disabled' ||
+            entity.allowedActions === 'selected')
+        )
+          finding(
+            'restrictive-policy',
+            'medium',
+            'Restrictive Actions policy requires target validation',
+            `Allowed Actions mode is ${entity.allowedActions}. Confirm allowlists and reusable workflow dependencies at the selected target.`,
+          );
       }
     }
     return findings;
@@ -240,13 +372,22 @@ export const MigConfigRule: AnalysisRule = {
       if (!execId) continue;
 
       const secrets = bundle.entities.filter(
-        (e) => e.organizationId === org.id && e.kind === 'actions-secret',
+        (
+          e,
+        ): e is Extract<
+          DiscoveryBundle['entities'][number],
+          { kind: 'actions-secret' | 'configuration-metadata' }
+        > =>
+          e.organizationId === org.id &&
+          (e.kind === 'actions-secret' || e.kind === 'configuration-metadata'),
       );
 
       if (secrets.length > 0) {
         const secretKinds = secrets.filter(
           (s) =>
-            s.kind === 'actions-secret' && s.configurationKind === 'secret',
+            (s.kind === 'actions-secret' ||
+              s.kind === 'configuration-metadata') &&
+            s.configurationKind === 'secret',
         );
         findings.push({
           id: `finding:${org.id}:secrets-recreation`,
@@ -262,8 +403,46 @@ export const MigConfigRule: AnalysisRule = {
           confidence: 'high',
           limitations: [
             'Only metadata names and scopes are collected; secret values are not accessible or stored.',
+            'Presence does not establish workflow or runtime use.',
           ],
         });
+
+        const names = new Map<string, Set<string>>();
+        for (const item of secrets) {
+          const domain =
+            item.kind === 'configuration-metadata' ? item.domain : 'actions';
+          const key = `${domain}:${item.name}`;
+          const scopes = names.get(key) ?? new Set<string>();
+          scopes.add(
+            `${item.level}:${item.repositoryId ?? (item.kind === 'configuration-metadata' ? item.environmentName : null) ?? 'org'}`,
+          );
+          names.set(key, scopes);
+        }
+        const duplicateIds = secrets
+          .filter((item) => {
+            const domain =
+              item.kind === 'configuration-metadata' ? item.domain : 'actions';
+            return (names.get(`${domain}:${item.name}`)?.size ?? 0) > 1;
+          })
+          .map((item) => item.id);
+        if (duplicateIds.length)
+          findings.push({
+            id: `finding:${org.id}:configuration-scope-duplicates`,
+            organizationId: org.id,
+            classification: 'advisory',
+            ruleId: 'MIG-CONFIG-001',
+            ruleVersion: RULE_VERSION,
+            severity: 'medium',
+            title: 'Same-name configuration metadata exists across scopes',
+            description:
+              'Review precedence, ownership, and destination mappings for configuration names repeated across organization, repository, or environment scopes.',
+            entityIds: duplicateIds,
+            evidenceExecutionIds: [execId],
+            confidence: 'high',
+            limitations: [
+              'Metadata names do not reveal values or prove that records are semantically equivalent.',
+            ],
+          });
       }
     }
     return findings;
@@ -276,7 +455,7 @@ export const MigPolicyRule: AnalysisRule = {
   version: RULE_VERSION,
   dimension: 'Policies & Rulesets',
   requiredModule: 'policies',
-  evaluate(bundle) {
+  evaluate(bundle, options) {
     const findings: DiscoveryBundle['findings'] = [];
     const executionMap = new Map(
       bundle.collectors.map((c) => [`${c.organizationId}:policies`, c.id]),
@@ -293,6 +472,33 @@ export const MigPolicyRule: AnalysisRule = {
       const activeRulesets = policies.filter(
         (p) => p.kind === 'policy' && p.enforcement === 'active',
       );
+
+      const modernRulesets = activeRulesets.filter(
+        (policy) => policy.kind === 'policy' && policy.policyKind === 'ruleset',
+      );
+
+      if (
+        options.branchProtectionPolicy === 'require_rulesets' &&
+        modernRulesets.length === 0
+      ) {
+        findings.push({
+          id: `finding:${org.id}:ruleset-required`,
+          organizationId: org.id,
+          classification: 'calculated',
+          ruleId: 'MIG-POLICY-001',
+          ruleVersion: RULE_VERSION,
+          severity: 'high',
+          title: 'Modern repository ruleset required',
+          description:
+            'The active target profile requires modern GitHub rulesets, but no actively enforced ruleset was observed.',
+          entityIds: policies.map((policy) => policy.id),
+          evidenceExecutionIds: [execId],
+          confidence: 'high',
+          limitations: [
+            'Ruleset coverage must be verified for each target repository.',
+          ],
+        });
+      }
 
       if (activeRulesets.length > 0) {
         findings.push({
@@ -323,7 +529,7 @@ export const MigSecurityRule: AnalysisRule = {
   version: RULE_VERSION,
   dimension: 'Security Posture',
   requiredModule: 'security',
-  evaluate(bundle) {
+  evaluate(bundle, options) {
     const findings: DiscoveryBundle['findings'] = [];
     const executionMap = new Map(
       bundle.collectors.map((c) => [`${c.organizationId}:security`, c.id]),
@@ -342,15 +548,21 @@ export const MigSecurityRule: AnalysisRule = {
 
         if (
           item.dependabot === 'disabled' ||
-          item.codeScanning === 'disabled'
+          item.codeScanning === 'disabled' ||
+          (options.securitySeverityCutoff === 'all' &&
+            item.codeScanning === 'unknown')
         ) {
+          if (options.securitySeverityCutoff === 'critical_only') continue;
           findings.push({
             id: `finding:${org.id}:${item.id}:security-disabled`,
             organizationId: org.id,
             classification: 'calculated',
             ruleId: 'MIG-SECURITY-001',
             ruleVersion: RULE_VERSION,
-            severity: 'low',
+            severity:
+              options.securitySeverityCutoff === 'high_and_critical'
+                ? 'high'
+                : 'low',
             title: `Security tooling disabled on repository`,
             description: `Dependabot is ${item.dependabot} and Code Scanning is ${item.codeScanning} on repository ${item.repositoryId}. Destination security baseline should be evaluated.`,
             entityIds: [item.id, item.repositoryId],
@@ -464,6 +676,150 @@ export const MigIntegrationRule: AnalysisRule = {
   },
 };
 
+export const MigPackageSupplyChainRule: AnalysisRule = {
+  id: 'MIG-PACKAGE-001',
+  version: RULE_VERSION,
+  dimension: 'Packages, Releases & Artifact Supply Chain',
+  requiredModule: 'packages',
+  evaluate(bundle, options) {
+    const findings: DiscoveryBundle['findings'] = [];
+    const executionMap = new Map(
+      bundle.collectors.map((c) => [`${c.organizationId}:packages`, c.id]),
+    );
+    for (const entity of bundle.entities) {
+      if (entity.kind !== 'package') continue;
+      const execId = executionMap.get(`${entity.organizationId}:packages`);
+      if (!execId) continue;
+      const limitations = [
+        'Package content and binaries are intentionally not downloaded.',
+      ];
+      if (!entity.repositoryId) {
+        findings.push({
+          id: `finding:${entity.organizationId}:${entity.id}:package-unlinked`,
+          organizationId: entity.organizationId,
+          classification: 'advisory',
+          ruleId: 'MIG-PACKAGE-001',
+          ruleVersion: RULE_VERSION,
+          severity: 'medium',
+          title: `Unlinked package: ${entity.name}`,
+          description:
+            'No source repository relationship was observed. Confirm ownership and transfer or rebuild responsibility before cutover.',
+          entityIds: [entity.id],
+          evidenceExecutionIds: [execId],
+          confidence: 'high',
+          limitations,
+        });
+      }
+      if (entity.size.availability !== 'observed') {
+        findings.push({
+          id: `finding:${entity.organizationId}:${entity.id}:package-size-unknown`,
+          organizationId: entity.organizationId,
+          classification: 'advisory',
+          ruleId: 'MIG-PACKAGE-001',
+          ruleVersion: RULE_VERSION,
+          severity: 'low',
+          title: `Unknown package bytes: ${entity.name}`,
+          description: `Package bytes were not observed (${entity.size.reason ?? 'reason unavailable'}). Do not use zero for capacity planning.`,
+          entityIds: [entity.id],
+          evidenceExecutionIds: [execId],
+          confidence: 'high',
+          limitations,
+        });
+      }
+      if (
+        options.targetPlatform === 'ghes_3_x' &&
+        entity.ecosystem === 'container'
+      ) {
+        findings.push({
+          id: `finding:${entity.organizationId}:${entity.id}:package-target-review`,
+          organizationId: entity.organizationId,
+          classification: 'advisory',
+          ruleId: 'MIG-PACKAGE-001',
+          ruleVersion: RULE_VERSION,
+          severity: 'medium',
+          title: `Target-sensitive container package: ${entity.name}`,
+          description:
+            'The selected GHES target requires destination-version and registry transfer validation for this container package.',
+          entityIds: [entity.id],
+          evidenceExecutionIds: [execId],
+          confidence: 'medium',
+          limitations: [
+            ...limitations,
+            'Destination capability must be confirmed against the selected GHES release.',
+          ],
+        });
+      }
+    }
+    return findings;
+  },
+};
+
+export const MigPortfolioRule: AnalysisRule = {
+  id: 'MIG-PORTFOLIO-001',
+  version: RULE_VERSION,
+  dimension: 'Ownership, Projects & Portfolio',
+  requiredModule: 'repos',
+  evaluate(bundle) {
+    const findings: DiscoveryBundle['findings'] = [];
+    const executions = new Map(
+      bundle.collectors.map((c) => [`${c.organizationId}:repos`, c.id]),
+    );
+    for (const org of bundle.organizations) {
+      const execId = executions.get(`${org.id}:repos`);
+      if (!execId) continue;
+      const portfolio = bundle.entities.filter(
+        (e) => e.organizationId === org.id && e.kind === 'repository-portfolio',
+      );
+      const uncategorized = portfolio.filter(
+        (e) =>
+          e.kind === 'repository-portfolio' &&
+          (!e.businessClassification || !e.migrationWave),
+      );
+      if (uncategorized.length)
+        findings.push({
+          id: `finding:${org.id}:portfolio-classification-gaps`,
+          organizationId: org.id,
+          classification: 'advisory',
+          ruleId: 'MIG-PORTFOLIO-001',
+          ruleVersion: RULE_VERSION,
+          severity: 'medium',
+          title: `${uncategorized.length} repositories lack portfolio classification or migration wave`,
+          description:
+            'Assign approved business classifications and migration waves before cohort planning.',
+          entityIds: uncategorized.map((e) => e.id),
+          evidenceExecutionIds: [execId],
+          confidence: 'high',
+          limitations: [
+            'Missing metadata does not imply a repository lacks a business owner.',
+          ],
+        });
+      const unlinked = bundle.entities.filter(
+        (e) =>
+          e.organizationId === org.id &&
+          e.kind === 'project' &&
+          e.linkedRepositoryIds.length === 0,
+      );
+      if (unlinked.length)
+        findings.push({
+          id: `finding:${org.id}:unlinked-projects`,
+          organizationId: org.id,
+          classification: 'advisory',
+          ruleId: 'MIG-PORTFOLIO-001',
+          ruleVersion: RULE_VERSION,
+          severity: 'low',
+          title: `${unlinked.length} projects have no observed repository links`,
+          description:
+            'Review whether these projects are stale, cross-organization, or require separate migration mapping.',
+          entityIds: unlinked.map((e) => e.id),
+          evidenceExecutionIds: [execId],
+          confidence: 'high',
+          limitations: ['Project item content is intentionally not collected.'],
+        });
+    }
+    return findings;
+  },
+};
+
 export const IMPLEMENTED_RULES: readonly AnalysisRule[] = [
   MigSizeRule,
   MigLfsRule,
@@ -473,6 +829,8 @@ export const IMPLEMENTED_RULES: readonly AnalysisRule[] = [
   MigSecurityRule,
   MigIdentityRule,
   MigIntegrationRule,
+  MigPackageSupplyChainRule,
+  MigPortfolioRule,
 ];
 
 /**
@@ -482,13 +840,27 @@ export const IMPLEMENTED_RULES: readonly AnalysisRule[] = [
  */
 export function evaluateBundle(
   bundle: Readonly<DiscoveryBundle>,
+  options: Partial<AnalysisOptions> = {},
 ): EvaluatedInsights {
+  const resolvedOptions: AnalysisOptions = {
+    ...DEFAULT_ANALYSIS_OPTIONS,
+    ...options,
+  };
+  if (
+    resolvedOptions.repoSizeWarningBytes <= 0 ||
+    resolvedOptions.repoSizeCriticalBytes <=
+      resolvedOptions.repoSizeWarningBytes
+  ) {
+    throw new Error(
+      'Repository thresholds must be positive and the critical threshold must exceed the warning threshold.',
+    );
+  }
   // 1. Gather all findings (bundle-supplied + rule-evaluated)
   const existingFindingIds = new Set(bundle.findings.map((f) => f.id));
   const allFindings = [...bundle.findings];
 
   for (const rule of IMPLEMENTED_RULES) {
-    const generated = rule.evaluate(bundle);
+    const generated = rule.evaluate(bundle, resolvedOptions);
     for (const f of generated) {
       if (!existingFindingIds.has(f.id)) {
         existingFindingIds.add(f.id);
@@ -592,6 +964,7 @@ export function evaluateBundle(
   );
 
   return {
+    options: resolvedOptions,
     dimensions,
     findings: allFindings,
     scopeLimitations,

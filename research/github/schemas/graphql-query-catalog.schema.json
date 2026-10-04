@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ghec-consultant-suite/schemas/graphql-query-catalog.schema.json",
+  "title": "GHEC GraphQL Query Catalog Schema",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "generatedAt",
+    "targetApiVersion",
+    "summary",
+    "queries",
+    "restOnlyCollectors"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "type": "string", "enum": ["1.0.0"] },
+    "generatedAt": { "type": "string" },
+    "targetApiVersion": { "type": "string" },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalPlannedCollectors",
+        "satisfiedByGraphQL",
+        "restOnly",
+        "consolidationRatio"
+      ],
+      "properties": {
+        "totalPlannedCollectors": { "type": "integer", "minimum": 0 },
+        "satisfiedByGraphQL": { "type": "integer", "minimum": 0 },
+        "restOnly": { "type": "integer", "minimum": 0 },
+        "consolidationRatio": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "purpose",
+          "targetScope",
+          "satisfiedCollectorIds",
+          "queryText",
+          "variables",
+          "pageSize",
+          "estimatedPointCost",
+          "fieldMappings"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "purpose": { "type": "string" },
+          "targetScope": {
+            "type": "string",
+            "enum": ["organization", "enterprise", "repository"]
+          },
+          "satisfiedCollectorIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "queryText": { "type": "string" },
+          "variables": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "estimatedPointCost": { "type": "integer", "minimum": 1 },
+          "fieldMappings": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "restOnlyCollectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "module", "reason", "requiredScope"],
+        "properties": {
+          "id": { "type": "string" },
+          "module": { "type": "string" },
+          "reason": { "type": "string" },
+          "requiredScope": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

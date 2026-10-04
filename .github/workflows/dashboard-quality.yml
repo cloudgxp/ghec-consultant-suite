@@ -1,0 +1,40 @@
+name: Dashboard quality
+
+on:
+  pull_request:
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/analysis/**'
+      - 'packages/contracts/**'
+      - 'fixtures/synthetic/**'
+      - 'package*.json'
+      - '.github/workflows/dashboard-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck -w @ghec/dashboard
+      - run: npm run build -w @ghec/dashboard
+      - run: npm run test:e2e -w @ghec/dashboard
+      - run: npm run test:visual -w @ghec/dashboard
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-playwright-report
+          path: |
+            apps/dashboard/playwright-report
+            apps/dashboard/test-results
+          retention-days: 14

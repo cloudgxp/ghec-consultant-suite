@@ -299,8 +299,8 @@
       "errors": [],
       "coverage": {
         "state": "complete",
-        "observed": 1,
-        "expected": 1,
+        "observed": 2,
+        "expected": 2,
         "reason": null
       }
     }
@@ -500,6 +500,38 @@
       "outsideCollaborator": false,
       "ssoStatus": "unknown",
       "membership": "member"
+    },
+    {
+      "id": "org:fictional-north:package:npm:demo",
+      "kind": "package",
+      "organizationId": "org:fictional-north",
+      "collectorExecutionId": "org:fictional-north:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "fictional-package",
+      "ecosystem": "npm",
+      "visibility": "private",
+      "owner": "fictional-north",
+      "repositoryId": "org:fictional-north:repo:demo",
+      "versionCount": {
+        "value": 3,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "size": {
+        "value": null,
+        "unit": "bytes",
+        "availability": "unknown",
+        "reason": "Synthetic API response did not report aggregate package bytes"
+      },
+      "createdAt": "2025-12-01T12:00:00Z",
+      "updatedAt": "2026-01-01T12:00:00Z",
+      "disposition": "review"
     },
     {
       "id": "org:fictional-north:asset",

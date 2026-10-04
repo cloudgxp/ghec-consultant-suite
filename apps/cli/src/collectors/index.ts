@@ -23,3 +23,5 @@ export const collectors: readonly Collector[] = [
   c9,
   c10,
 ];
+
+export * from './aggregators/index.js';

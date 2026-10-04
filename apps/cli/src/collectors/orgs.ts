@@ -24,6 +24,13 @@ export const collector: Collector = {
       operation,
       context.signal,
     );
+    if (res.status >= 400) {
+      const error = new Error(
+        `Failed to retrieve organization "${context.organizationId}" (HTTP ${res.status}).`,
+      );
+      (error as unknown as { status: number }).status = res.status;
+      throw error;
+    }
     const completedAt = new Date().toISOString();
     const orgData = res.data ?? {};
     const orgLogin = orgData.login ?? context.organizationId;
