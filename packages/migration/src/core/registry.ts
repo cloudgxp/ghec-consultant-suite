@@ -106,6 +106,7 @@ export class ModuleRegistry {
 }
 
 import { RepoVariablesMigrationModule } from '../modules/repo-variables/module.js';
+import { RepoSecretsMigrationModule } from '../modules/repo-secrets/module.js';
 
 class GeiRepoMigrationModule implements MigrationModule {
   readonly id = 'gei-repo';
@@ -161,6 +162,7 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(new GeiRepoMigrationModule());
   registry.register(new RepoVariablesMigrationModule());
+  registry.register(new RepoSecretsMigrationModule());
   registry.register(new RulesetsMigrationModule());
   registry.register(new BranchProtectionReconciliationModule());
   registry.register(new TeamsMigrationModule());

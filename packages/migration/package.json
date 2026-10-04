@@ -21,6 +21,7 @@
     "@ghec/contracts": "0.1.0",
     "@ghec/discovery": "0.1.0",
     "@ghec/github-client": "0.1.0",
+    "libsodium-wrappers": "^0.8.4",
     "zod": "^3.25.0"
   }
 }

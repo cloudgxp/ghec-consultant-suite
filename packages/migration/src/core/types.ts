@@ -7,6 +7,7 @@ import type {
   VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
+import type { SecretValueProvider } from '../modules/repo-secrets/types.js';
 
 export type MigrationScopeLevel = 'organization' | 'repository';
 
@@ -46,6 +47,7 @@ export interface MigrationContext {
   readonly sourceClient: GitHubReadAdapter;
   readonly targetClient: GitHubReadAdapter;
   readonly targetWriteClient?: TargetWriteClient | undefined;
+  readonly secretValueProvider?: SecretValueProvider | undefined;
   readonly signal: AbortSignal;
   readonly dryRun: boolean;
   readonly continueOnError: boolean;

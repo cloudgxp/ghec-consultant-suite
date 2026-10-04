@@ -387,6 +387,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - All 16 completed tasks (001, 002, 003, 004, 005, 006, 007, 008, 009, 013, 014, 017, 022, 023, 024, 030) are now fully available and verified together.
 - **Test Evidence:** `npm run check` passes 234/234 tests across 25 test suites green (100% pass).
 
+<<<<<<< HEAD
 ### [2026-10-04] Task 015 Complete: Orchestrate GEI with Post-GEI API Module Pipeline
 
 - **From:** Antigravity
@@ -478,3 +479,27 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Suffix and explicit dictionary transformations from `IdentityMappingEngine` are evaluated to map contributors.
   - Generates clear platform advisory documenting that Git commit author emails cannot be added as secondary emails in GHEC-EMU (DEC-013).
 - **Test Evidence:** `npm run check` passes 257/257 tests across 29 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 011 (Repository Secret Metadata Rehydration) -> Downstream migration orchestration
+
+- **From:** Codex
+- **To:** Codex / Antigravity
+- **Completed Task:** 011
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`: `RepoSecretsMigrationModule`, `RepoSecretDomain`,
+    `RepoSecretMetadata`, `RepoSecretsData`, and `SecretValueProvider`.
+  - `MigrationContext.secretValueProvider`: optional client-owned vault hook;
+    values are only available ephemerally to apply.
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/repo-secrets/**`
+  - `packages/migration/tests/modules/repo-secrets.test.ts`
+  - `packages/migration/src/core/types.ts`, registry, and package exports
+- **Behavior Notes:** The module inventories Actions, Dependabot, and Codespaces
+  secret names, never source values. Missing names are created by encrypting a
+  blank placeholder with the target domain's public key, unless a client vault
+  supplies a value. Plans and reports contain no values; apply errors are
+  intentionally generic.
+- **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
+  test suite). Consulted
+  `references/github-docs/content/rest/guides/encrypting-secrets-for-the-rest-api.md`.
+
