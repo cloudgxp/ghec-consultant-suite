@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -68,4 +68,8 @@ With `repo-variables` implemented and the CLI subcommands wired, we must prove t
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+Completed on 2026-10-04 by Codex:
+
+- Added native `node:http` end-to-end integration test suite in `apps/cli/tests/migration-e2e.test.ts`.
+- Added test fixtures in `fixtures/migration/sample-discovery.json` and `sample-scope.json`.
+- Tested cached planning & approved application, live discovery, post-migration verification, and idempotent re-execution.

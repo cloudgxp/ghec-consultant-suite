@@ -2,7 +2,7 @@
 
 ## Status
 
-not-started
+complete
 
 ## Owner
 
@@ -81,4 +81,10 @@ GitHub APIs are write-only for secret values: `GET /repos/{owner}/{repo}/actions
 
 ## Completion Notes
 
-_To be filled by Codex upon task completion._
+Completed on 2026-10-04 by Codex:
+
+- Implemented `RepoSecretsMigrationModule` under `packages/migration/src/modules/repo-secrets/`.
+- Multi-domain secret discovery and reconciliation across Actions, Dependabot, and Codespaces domains.
+- Encrypts secrets using libsodium-wrappers sealed-box encryption using target public key.
+- Supports optional external `SecretValueProvider` vault hook for live values, defaulting to blank secrets (DEC-004).
+- Added unit test suite in `packages/migration/tests/modules/repo-secrets.test.ts` (9 tests).

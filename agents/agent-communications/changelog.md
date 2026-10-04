@@ -321,4 +321,3 @@ All material engineering work, test completions, and milestone deliveries are re
 - **Fix:** Corrected cached repository-variable discovery to select Actions `variable` metadata rather than `secret` metadata.
 - **Tests:** `npx tsx --test apps/cli/tests/migration-e2e.test.ts` passes in under one second.
 - **Tests:** `npm run check` passes (lint, type checks, build, and full test suite).
-
