@@ -1,0 +1,1199 @@
+{
+  "schemaVersion": "1.0.0",
+  "synthetic": true,
+  "scan": {
+    "id": "fictional-scan-specialized",
+    "startedAt": "2026-01-01T12:00:00Z",
+    "completedAt": "2026-01-01T12:00:00Z",
+    "producer": "ghec-consultant-cli",
+    "producerVersion": "0.1.0",
+    "status": "complete"
+  },
+  "configuration": {
+    "modules": [
+      "orgs",
+      "repos",
+      "lfs",
+      "teams",
+      "actions",
+      "actions-secrets",
+      "policies",
+      "security",
+      "integrations",
+      "users",
+      "packages"
+    ],
+    "format": "json",
+    "includeSensitiveMetadata": false,
+    "redactionProfile": "standard",
+    "continueOnError": true
+  },
+  "scope": {
+    "kind": "organization",
+    "organizationId": "org:fictional-specialized"
+  },
+  "organizations": [
+    {
+      "id": "org:fictional-specialized",
+      "login": "fictional-specialized",
+      "displayName": "Fictional Specialized Systems"
+    }
+  ],
+  "collectors": [
+    {
+      "id": "org:fictional-specialized:orgs",
+      "module": "orgs",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:repos",
+      "module": "repos",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:lfs",
+      "module": "lfs",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:teams",
+      "module": "teams",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 2,
+        "expected": 2,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:actions",
+      "module": "actions",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:actions-secrets",
+      "module": "actions-secrets",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 2,
+        "expected": 2,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:policies",
+      "module": "policies",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:security",
+      "module": "security",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:integrations",
+      "module": "integrations",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 3,
+        "expected": 3,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:users",
+      "module": "users",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:packages",
+      "module": "packages",
+      "organizationId": "org:fictional-specialized",
+      "status": "complete",
+      "startedAt": "2026-01-01T12:00:00Z",
+      "completedAt": "2026-01-01T12:00:00Z",
+      "provenance": [
+        {
+          "source": "synthetic",
+          "operation": "fictional-specialized-example",
+          "observedAt": "2026-01-01T12:00:00Z",
+          "apiVersion": null
+        }
+      ],
+      "warnings": [],
+      "errors": [],
+      "coverage": {
+        "state": "complete",
+        "observed": 1,
+        "expected": 1,
+        "reason": null
+      }
+    }
+  ],
+  "entities": [
+    {
+      "id": "org:fictional-specialized:repo:core",
+      "kind": "repository",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "specialized-core",
+      "visibility": "private",
+      "archived": false,
+      "defaultBranch": "main",
+      "size": {
+        "value": 5242880,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "fork": false
+    },
+    {
+      "id": "org:fictional-specialized:repo:core:portfolio",
+      "kind": "repository-portfolio",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "primaryLanguage": "TypeScript",
+      "topics": ["backend", "microservice", "infrastructure"],
+      "template": false,
+      "pushedAt": "2026-01-01T12:00:00Z",
+      "businessClassification": "tier-1-mission-critical",
+      "migrationWave": "wave-1",
+      "customProperties": [
+        { "name": "compliance-scope", "value": "pci-dss" },
+        { "name": "cost-center", "value": "eng-core" }
+      ],
+      "metadataCoverage": "complete"
+    },
+    {
+      "id": "org:fictional-specialized:repo:core:ownership",
+      "kind": "code-ownership",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "presence": "present",
+      "location": "github",
+      "syntaxStatus": "valid",
+      "ruleCount": {
+        "value": 5,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "ownerCount": {
+        "value": 3,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "resolvableTeamCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "resolvableUserCount": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "unresolvedOwnerCount": {
+        "value": 0,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "reviewPolicyIntegrated": true,
+      "updatedAt": "2026-01-01T10:00:00Z",
+      "coverage": "complete",
+      "coverageReason": "Parsed successfully"
+    },
+    {
+      "id": "org:fictional-specialized:project:1",
+      "kind": "project",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "title": "Cloud Migration Tracker",
+      "number": 1,
+      "status": "open",
+      "ownerScope": "organization",
+      "linkedRepositoryIds": ["org:fictional-specialized:repo:core"],
+      "itemCount": {
+        "value": 42,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "fieldCount": {
+        "value": 8,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "updatedAt": "2026-01-01T11:00:00Z",
+      "coverage": "complete"
+    },
+    {
+      "id": "org:fictional-specialized:dep:core",
+      "kind": "dependency-node",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "stableKey": "specialized-core",
+      "label": "specialized-core",
+      "external": false,
+      "scanned": true
+    },
+    {
+      "id": "org:fictional-specialized:dep:external-lib",
+      "kind": "dependency-node",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": null,
+      "stableKey": "pkg:npm/@primer/react",
+      "label": "@primer/react",
+      "external": true,
+      "scanned": true
+    },
+    {
+      "id": "org:fictional-specialized:dep-edge:1",
+      "kind": "dependency-edge",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:repos",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "fromNodeId": "org:fictional-specialized:dep:core",
+      "toNodeId": "org:fictional-specialized:dep:external-lib",
+      "relationshipType": "package",
+      "ecosystem": "npm",
+      "confidence": "high",
+      "evidenceMethod": "first_party"
+    },
+    {
+      "id": "org:fictional-specialized:team:platform",
+      "kind": "team",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:teams",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "Platform Engineering",
+      "parentTeamId": null,
+      "membershipCount": {
+        "value": 6,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "repositoryAccess": [
+        {
+          "repositoryId": "org:fictional-specialized:repo:core",
+          "permission": "admin"
+        }
+      ]
+    },
+    {
+      "id": "org:fictional-specialized:team:core-devs",
+      "kind": "team",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:teams",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "Core Developers",
+      "parentTeamId": "org:fictional-specialized:team:platform",
+      "membershipCount": {
+        "value": 12,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "repositoryAccess": [
+        {
+          "repositoryId": "org:fictional-specialized:repo:core",
+          "permission": "write"
+        }
+      ]
+    },
+    {
+      "id": "org:fictional-specialized:lfs:core",
+      "kind": "lfs",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:lfs",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "storage": {
+        "value": 104857600,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "objectCount": {
+        "value": 24,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "indicator": "detected"
+    },
+    {
+      "id": "org:fictional-specialized:actions:core",
+      "kind": "actions",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "enabled": true,
+      "workflowCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "runnerCount": {
+        "value": 3,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "usage": {
+        "value": 1240,
+        "unit": "minutes",
+        "availability": "observed",
+        "reason": null
+      },
+      "workflowNames": ["Build and Test", "Deploy Production"],
+      "runnerTypes": ["hosted", "self-hosted"]
+    },
+    {
+      "id": "org:fictional-specialized:workflow:build",
+      "kind": "action-workflow",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "name": "Build and Test",
+      "path": ".github/workflows/ci.yml",
+      "state": "active",
+      "reusable": false,
+      "createdAt": "2025-10-01T08:00:00Z",
+      "updatedAt": "2025-12-15T10:00:00Z",
+      "lastRunAt": "2026-01-01T11:45:00Z",
+      "runCount": {
+        "value": 154,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:workflow:deploy",
+      "kind": "action-workflow",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "name": "Deploy Production",
+      "path": ".github/workflows/deploy.yml",
+      "state": "active",
+      "reusable": true,
+      "createdAt": "2025-10-10T09:00:00Z",
+      "updatedAt": "2025-12-20T14:00:00Z",
+      "lastRunAt": "2025-12-30T16:00:00Z",
+      "runCount": {
+        "value": 48,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:run-summary:core",
+      "kind": "action-run-summary",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "workflowId": "org:fictional-specialized:workflow:build",
+      "windowStartedAt": "2025-12-01T00:00:00Z",
+      "windowEndedAt": "2026-01-01T00:00:00Z",
+      "truncated": false,
+      "total": {
+        "value": 50,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "succeeded": {
+        "value": 45,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "failed": {
+        "value": 4,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "cancelled": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "usage": {
+        "value": 450,
+        "unit": "minutes",
+        "availability": "observed",
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:runner-group:prod",
+      "kind": "action-runner-group",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "Production-SelfHosted-Group",
+      "scope": "organization",
+      "visibility": "selected",
+      "runnerCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "repositoryCount": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:runner:sh-01",
+      "kind": "action-runner",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": null,
+      "runnerGroupId": "org:fictional-specialized:runner-group:prod",
+      "name": "linux-x64-prod-01",
+      "runnerType": "self-hosted",
+      "operatingSystem": "linux",
+      "labels": ["self-hosted", "linux", "x64", "gpu"],
+      "status": "online",
+      "busy": true,
+      "customImage": true
+    },
+    {
+      "id": "org:fictional-specialized:runner:gh-01",
+      "kind": "action-runner",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "runnerGroupId": null,
+      "name": "ubuntu-latest-standard",
+      "runnerType": "hosted",
+      "operatingSystem": "linux",
+      "labels": ["ubuntu-latest"],
+      "status": "online",
+      "busy": false,
+      "customImage": false
+    },
+    {
+      "id": "org:fictional-specialized:cache:npm-cache",
+      "kind": "action-cache",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "key": "Linux-node-cache-v1-abc123def",
+      "ref": "refs/heads/main",
+      "size": {
+        "value": 157286400,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2025-12-28T04:00:00Z",
+      "lastAccessedAt": "2026-01-01T11:40:00Z"
+    },
+    {
+      "id": "org:fictional-specialized:artifact:dist-bundle",
+      "kind": "action-artifact",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "name": "release-dist-bundle",
+      "size": {
+        "value": 31457280,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "expired": false,
+      "createdAt": "2025-12-30T16:05:00Z",
+      "expiresAt": "2026-03-30T16:05:00Z"
+    },
+    {
+      "id": "org:fictional-specialized:env:production",
+      "kind": "action-environment",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "name": "production",
+      "protectionRuleCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "reviewerCount": {
+        "value": 3,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "deploymentBranchPolicy": "protected"
+    },
+    {
+      "id": "org:fictional-specialized:action-policy:core",
+      "kind": "action-policy",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "allowedActions": "selected",
+      "defaultTokenPermission": "read",
+      "canApprovePullRequests": false,
+      "forkPolicy": "restricted"
+    },
+    {
+      "id": "org:fictional-specialized:cfg:actions-npm-token",
+      "kind": "configuration-metadata",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "domain": "actions",
+      "configurationKind": "secret",
+      "name": "NPM_PUBLISH_TOKEN",
+      "level": "organization",
+      "repositoryId": null,
+      "environmentName": null,
+      "parentId": null,
+      "accessMode": "selected_repositories",
+      "selectedRepositoryIds": ["org:fictional-specialized:repo:core"],
+      "selectedRepositoryCount": {
+        "value": 1,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2025-06-01T00:00:00Z",
+      "updatedAt": "2025-11-01T00:00:00Z"
+    },
+    {
+      "id": "org:fictional-specialized:cfg:dep-secret",
+      "kind": "configuration-metadata",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "domain": "dependabot",
+      "configurationKind": "secret",
+      "name": "PRIVATE_REGISTRY_KEY",
+      "level": "repository",
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "environmentName": null,
+      "parentId": "org:fictional-specialized:repo:core",
+      "accessMode": "all_repositories",
+      "selectedRepositoryIds": [],
+      "selectedRepositoryCount": {
+        "value": 0,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2025-08-15T00:00:00Z",
+      "updatedAt": "2025-08-15T00:00:00Z"
+    },
+    {
+      "id": "org:fictional-specialized:cfg-cov:actions",
+      "kind": "configuration-coverage",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:actions-secrets",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "domain": "actions",
+      "state": "complete",
+      "reason": "All organization and repository configuration metadata collected"
+    },
+    {
+      "id": "org:fictional-specialized:policy:ruleset",
+      "kind": "policy",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:policies",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "policyKind": "ruleset",
+      "name": "Enforce Linear History & Signed Commits",
+      "enforcement": "active"
+    },
+    {
+      "id": "org:fictional-specialized:security:core",
+      "kind": "security",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:security",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "codeScanning": "enabled",
+      "dependabot": "enabled",
+      "openAlertCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:int:gh-app",
+      "kind": "integration",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:integrations",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": null,
+      "integrationKind": "github_app",
+      "label": "fictional-deploy-bot",
+      "active": true
+    },
+    {
+      "id": "org:fictional-specialized:int:deploy-key",
+      "kind": "integration",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:integrations",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "integrationKind": "deploy_key",
+      "label": "CI Read-Only Deploy Key",
+      "active": true
+    },
+    {
+      "id": "org:fictional-specialized:int:webhook",
+      "kind": "integration",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:integrations",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "integrationKind": "webhook",
+      "label": "https://events.example.com/github",
+      "active": true
+    },
+    {
+      "id": "org:fictional-specialized:user:lead",
+      "kind": "identity",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:users",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "pseudonym": "pseudonym-lead-dev-01",
+      "outsideCollaborator": false,
+      "ssoStatus": "linked",
+      "membership": "member"
+    },
+    {
+      "id": "org:fictional-specialized:pkg:npm:core-sdk",
+      "kind": "package",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "name": "@fictional/core-sdk",
+      "ecosystem": "npm",
+      "visibility": "private",
+      "owner": "fictional-specialized",
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "versionCount": {
+        "value": 5,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "size": {
+        "value": 12582912,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2025-06-01T12:00:00Z",
+      "updatedAt": "2026-01-01T10:00:00Z",
+      "disposition": "transfer"
+    },
+    {
+      "id": "org:fictional-specialized:pkg-ver:2.1.0",
+      "kind": "package-version",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "packageId": "org:fictional-specialized:pkg:npm:core-sdk",
+      "name": "2.1.0",
+      "size": {
+        "value": 2516582,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2026-01-01T10:00:00Z",
+      "updatedAt": "2026-01-01T10:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "org:fictional-specialized:rel:v2.1.0",
+      "kind": "release",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "name": "Release v2.1.0",
+      "tagName": "v2.1.0",
+      "draft": false,
+      "prerelease": false,
+      "createdAt": "2026-01-01T09:00:00Z",
+      "publishedAt": "2026-01-01T10:00:00Z",
+      "assetCount": {
+        "value": 2,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "size": {
+        "value": 15728640,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      }
+    },
+    {
+      "id": "org:fictional-specialized:rel-asset:bin-tar",
+      "kind": "release-asset",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "releaseId": "org:fictional-specialized:rel:v2.1.0",
+      "name": "core-sdk-linux-x64.tar.gz",
+      "contentType": "application/gzip",
+      "downloadCount": {
+        "value": 342,
+        "unit": "count",
+        "availability": "observed",
+        "reason": null
+      },
+      "size": {
+        "value": 10485760,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "createdAt": "2026-01-01T09:30:00Z",
+      "updatedAt": "2026-01-01T09:30:00Z"
+    },
+    {
+      "id": "org:fictional-specialized:large-asset:db-seed",
+      "kind": "large-asset",
+      "organizationId": "org:fictional-specialized",
+      "collectorExecutionId": "org:fictional-specialized:packages",
+      "provenance": {
+        "source": "synthetic",
+        "operation": "fictional-specialized-example",
+        "observedAt": "2026-01-01T12:00:00Z",
+        "apiVersion": null
+      },
+      "repositoryId": "org:fictional-specialized:repo:core",
+      "name": "test-database-seed.sql.gz",
+      "path": "fixtures/db-seed.sql.gz",
+      "size": {
+        "value": 52428800,
+        "unit": "bytes",
+        "availability": "observed",
+        "reason": null
+      },
+      "source": "repository"
+    }
+  ],
+  "findings": [
+    {
+      "id": "fictional-spec-finding-001",
+      "organizationId": "org:fictional-specialized",
+      "classification": "advisory",
+      "ruleId": "MIG-ACTIONS-001",
+      "ruleVersion": "0.1.0",
+      "severity": "low",
+      "title": "Self-hosted runners detected in specialized inventory",
+      "description": "Production runner group contains 1 active self-hosted runner which requires cloud migration planning.",
+      "entityIds": ["org:fictional-specialized:runner:sh-01"],
+      "evidenceExecutionIds": ["org:fictional-specialized:actions"],
+      "confidence": "high",
+      "limitations": []
+    }
+  ],
+  "limitations": [
+    "Entire bundle is synthetic; entity models exercise advanced collector schemas.",
+    "Contains native action workflows, runners, runner groups, policies, caches, artifacts, and configuration metadata."
+  ],
+  "errors": [],
+  "summary": {
+    "organizationCount": 1,
+    "repositoryCount": 1,
+    "completeCollectorCount": 11,
+    "incompleteCollectorCount": 0
+  }
+}

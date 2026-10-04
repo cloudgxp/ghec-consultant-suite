@@ -227,3 +227,35 @@ Antigravity has executed and verified **Task DASH-20**:
 - **Documentation Updated**:
   - `apps/dashboard/src/styles/README.md` rewritten to document GitHub Primer React conventions and mark DASH-6 through DASH-10 Tailwind/DaisyUI styling as superseded.
   - `agent-tasks/README.md` updated with completion of Tasks DASH-16 through DASH-20.
+
+---
+
+## 9. Synthetic Coverage for Specialized Entity Kinds & 403 Partial Scenarios
+
+**Date:** 2026-10-04
+**Status:** Complete & Verified
+
+In response to Codex's feedback in `notes-from-codex.md` regarding data needs for dashboard pages, Antigravity has created two new versioned executable synthetic fixtures and added full automated test coverage:
+
+1. **`fixtures/synthetic/specialized-v1.json`**:
+   - Covers all newly emitted and specialized entities in schema `1.0.0`:
+     - **Actions Infrastructure**: `action-runner-group`, `action-runner` (self-hosted and hosted with OS, labels, busy state), `action-workflow` (native workflows with runs and paths), `action-run-summary`, `action-cache`, `action-artifact`, `action-environment` (branch policies and protection rules), and `action-policy`.
+     - **Configuration & Secrets**: Native `configuration-metadata` across domains (`actions`, `dependabot`, `copilot`), access modes, selected repositories, and `configuration-coverage` (`complete`).
+     - **Portfolio & Ownership**: `repository-portfolio` with custom properties, `code-ownership` with resolvable owner metrics, `project` tracking, and `dependency-node`/`dependency-edge` relationships.
+     - **Supply Chain**: Native `package-version`, `release`, `release-asset`, and `large-asset`.
+   - All 11 modules complete with synthetic provenance.
+
+2. **`fixtures/synthetic/partial-denied-v1.json`**:
+   - Models an enterprise assessment encountering HTTP 403 Forbidden on protected organization endpoints:
+     - `actions` collector has `status: 'partial'` with error `code: 'permission_denied'`, message noting admin:org requirement, and emits an `actions` repository entity with unknown `runnerCount` (`availability: 'unknown'`, reason: `'HTTP 403 Forbidden: Missing admin:org scope to list runners'`).
+     - `actions-secrets` collector has `status: 'partial'`, emitting `configuration-coverage` with `state: 'denied'`, reason: `'HTTP 403 Forbidden: Organization-level secrets require admin:org scope'`, while preserving repository-level configuration.
+     - `security` collector has `status: 'partial'` with unknown alert counts preserving honest fallback reasons without coercing to zero.
+     - `code-ownership` entity has `coverage: 'denied'` with explicit 403 reason.
+
+3. **Dashboard Integration & Tests**:
+   - `apps/dashboard/src/lib/samples.ts` and `apps/dashboard/src/lib/importer.ts` export `SAMPLE_SPECIALIZED_BUNDLE` and `SAMPLE_PARTIAL_DENIED_BUNDLE`.
+   - `apps/dashboard/src/components/FileUpload.tsx` features one-click sample loader cards for both new bundles.
+   - `apps/dashboard/tests/specialized-fixtures.test.ts` (7 tests) validates that `workflowInventory`, `runnersInventory`, `operationsInventory`, `environmentPolicyInventory`, `configurationInventory`, `packageInventory`, `releaseAssetInventory`, and CSV exports correctly project native entities.
+   - `apps/dashboard/tests/partial-denied.test.ts` (6 tests) asserts that denied states, unknown metrics, and empty arrays are handled gracefully without fabricating zeroes.
+   - `apps/cli/tests/fixtures.test.ts` (3 tests) asserts that the CLI streaming publisher streams both fixtures without entity loss and applies pseudonymization consistently.
+   - Full `npm run check` passes with **114 tests passing** and 0 failures.

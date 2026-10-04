@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { validateBundle } from '@ghec/contracts';
-for (const name of ['enterprise-v1', 'organization-v1']) {
+for (const name of [
+  'enterprise-v1',
+  'organization-v1',
+  'specialized-v1',
+  'partial-denied-v1',
+]) {
   const input: unknown = JSON.parse(
     readFileSync(
       new URL(`../fixtures/synthetic/${name}.json`, import.meta.url),

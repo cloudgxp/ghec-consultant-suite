@@ -60,7 +60,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setIsDragging(false);
   };
 
-  const handleSampleLoad = (type: 'organization' | 'enterprise') => {
+  const handleSampleLoad = (
+    type: 'organization' | 'enterprise' | 'specialized' | 'partial-denied',
+  ) => {
     setIsLoading(true);
     try {
       const result = loadSampleBundle(type);
@@ -340,6 +342,44 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               <code>enterprise-v1.json</code>: 2 organizations, partial
               enterprise enumeration, failed security collector, and multiple
               repos.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => handleSampleLoad('specialized')}
+            className="flex cursor-pointer flex-col items-start rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-default)] p-4 text-left transition-colors hover:border-[var(--borderColor-accent-emphasis)]"
+          >
+            <div className="flex w-full items-center justify-between">
+              <span className="text-sm font-bold text-[var(--fgColor-default)]">
+                Specialized Infrastructure Sample
+              </span>
+              <Label variant="accent">Native v1</Label>
+            </div>
+            <p className="mt-1 text-xs font-normal text-[var(--fgColor-muted)]">
+              <code>specialized-v1.json</code>: Self-hosted runners, runner
+              groups, native workflows, caches, artifacts, and configuration
+              metadata.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => handleSampleLoad('partial-denied')}
+            className="flex cursor-pointer flex-col items-start rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-default)] p-4 text-left transition-colors hover:border-[var(--borderColor-accent-emphasis)]"
+          >
+            <div className="flex w-full items-center justify-between">
+              <span className="text-sm font-bold text-[var(--fgColor-default)]">
+                403 Partial-Permission Sample
+              </span>
+              <Label variant="attention">HTTP 403</Label>
+            </div>
+            <p className="mt-1 text-xs font-normal text-[var(--fgColor-muted)]">
+              <code>partial-denied-v1.json</code>: Denied configuration
+              coverage, protected runner endpoints, and honest unknown metric
+              preservation.
             </p>
           </button>
         </div>

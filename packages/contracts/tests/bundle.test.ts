@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validateBundle, type DiscoveryBundle } from '../src/index.js';
+import {
+  validateBundle,
+  type DiscoveryBundle,
+  type Entity,
+} from '../src/index.js';
 function fixture(name = 'enterprise-v1'): DiscoveryBundle {
   return JSON.parse(
     readFileSync(
@@ -10,9 +14,80 @@ function fixture(name = 'enterprise-v1'): DiscoveryBundle {
     ),
   ) as DiscoveryBundle;
 }
-test('organization and partial enterprise fixtures validate', () => {
-  for (const name of ['enterprise-v1', 'organization-v1'])
+test('all synthetic fixtures validate', () => {
+  for (const name of [
+    'enterprise-v1',
+    'organization-v1',
+    'specialized-v1',
+    'partial-denied-v1',
+  ])
     assert.equal(validateBundle(fixture(name)).success, true);
+});
+
+test('specialized fixture covers newly emitted entity kinds', () => {
+  const b = fixture('specialized-v1');
+  const kinds = new Set(b.entities.map((e) => e.kind));
+  for (const expectedKind of [
+    'repository',
+    'repository-portfolio',
+    'code-ownership',
+    'project',
+    'dependency-node',
+    'dependency-edge',
+    'lfs',
+    'team',
+    'actions',
+    'action-workflow',
+    'action-run-summary',
+    'action-runner',
+    'action-runner-group',
+    'action-cache',
+    'action-artifact',
+    'action-environment',
+    'action-policy',
+    'configuration-metadata',
+    'configuration-coverage',
+    'policy',
+    'security',
+    'integration',
+    'identity',
+    'package',
+    'package-version',
+    'release',
+    'release-asset',
+    'large-asset',
+  ]) {
+    assert.ok(
+      kinds.has(expectedKind as Entity['kind']),
+      `Missing expected specialized kind: ${expectedKind}`,
+    );
+  }
+});
+
+test('partial-denied fixture models HTTP 403 permission failures and honest unknown metrics', () => {
+  const b = fixture('partial-denied-v1');
+  assert.equal(b.scan.status, 'partial');
+  assert.ok(b.errors.some((e) => e.code === 'permission_denied'));
+
+  const actionsCollector = b.collectors.find((c) => c.module === 'actions');
+  assert.ok(actionsCollector);
+  assert.equal(actionsCollector.status, 'partial');
+  assert.ok(
+    actionsCollector.errors.some((e) => e.code === 'permission_denied'),
+  );
+  assert.equal(actionsCollector.coverage.state, 'partial');
+
+  const deniedConfig = b.entities.find(
+    (e) => e.kind === 'configuration-coverage',
+  );
+  assert.ok(deniedConfig && deniedConfig.kind === 'configuration-coverage');
+  assert.equal(deniedConfig.state, 'denied');
+  assert.match(deniedConfig.reason, /403/);
+
+  const actionsEntity = b.entities.find((e) => e.kind === 'actions');
+  assert.ok(actionsEntity && actionsEntity.kind === 'actions');
+  assert.equal(actionsEntity.runnerCount.availability, 'unknown');
+  assert.match(actionsEntity.runnerCount.reason ?? '', /403/);
 });
 test('unsupported versions are rejected explicitly without reflecting input', () => {
   const result = validateBundle({

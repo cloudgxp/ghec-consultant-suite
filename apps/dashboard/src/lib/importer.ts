@@ -4,6 +4,8 @@ import type { ImportStage, ImportWorkerMessage } from './importer.worker.js';
 import {
   SAMPLE_ORGANIZATION_BUNDLE,
   SAMPLE_ENTERPRISE_BUNDLE,
+  SAMPLE_SPECIALIZED_BUNDLE,
+  SAMPLE_PARTIAL_DENIED_BUNDLE,
 } from './samples.js';
 
 export type ImportResult =
@@ -85,12 +87,20 @@ export async function importBundleFile(
  * Loads one of the pre-bundled synthetic fixtures for instant demo and critique.
  */
 export function loadSampleBundle(
-  type: 'organization' | 'enterprise',
+  type: 'organization' | 'enterprise' | 'specialized' | 'partial-denied',
 ): ImportResult {
-  const sample =
-    type === 'organization'
-      ? SAMPLE_ORGANIZATION_BUNDLE
-      : SAMPLE_ENTERPRISE_BUNDLE;
+  const sample = (() => {
+    switch (type) {
+      case 'organization':
+        return SAMPLE_ORGANIZATION_BUNDLE;
+      case 'enterprise':
+        return SAMPLE_ENTERPRISE_BUNDLE;
+      case 'specialized':
+        return SAMPLE_SPECIALIZED_BUNDLE;
+      case 'partial-denied':
+        return SAMPLE_PARTIAL_DENIED_BUNDLE;
+    }
+  })();
   const validation = validateBundle(sample);
   if (!validation.success) {
     return {
