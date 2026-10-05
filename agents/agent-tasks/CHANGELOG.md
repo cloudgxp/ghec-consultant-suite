@@ -31,6 +31,18 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — TEST-STAGE3-REPO-CUSTOM-PROPERTIES-AND-SETTINGS — Complete
+
+- Summary: Validated Stage 3 repository custom properties and settings reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Handled EMU enterprise policy constraints prohibiting public repository visibility by catching HTTP 422 errors and automatically falling back to `internal` visibility. Both `dummy-repo-public` and `dummy-repo-private-lfs` settings and custom properties reconciled and verified with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage3-repo-custom-properties-and-settings.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `packages/migration/src/client/http-target-write-client.ts`
+  - `packages/migration/src/modules/repo-settings/module.ts`
+  - `.github/workflows/test-migration-dispatch.yml`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=repo-custom-properties,repo-settings`. Dry-run [37251854316](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251854316) completed in 43s; live apply [37252842471](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37252842471) completed with status `complete` (exitCode: 0) in 44s. Post-migration verification confirmed 0 discrepancies across all modules. All 359 tests passed.
+- Follow-up: Proceed to Stage 3 Task 2 (`security/test-stage3-repo-variables-and-secrets.md`).
+
 ### 2026-10-04 — Antigravity — TEST-STAGE2-TEAMS-AND-EMU-IDENTITY-MAPPING — Complete
 
 - Summary: Validated Stage 2 team hierarchies, parentage DFS ordering, and EMU identity mapping reconciliation against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Resolved team-repo-permission handling for unmigrated target repositories to safely defer binding until repository migration. Reconciled 7 teams (including nested `engineering` -> `platform-infra`) and default base repository permissions with zero token leaks.

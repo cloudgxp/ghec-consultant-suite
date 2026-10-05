@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+completed
 
 ## Priority
 
@@ -125,11 +125,20 @@ gh workflow run test-migration-dispatch.yml \
 
 ---
 
+## Verification Record
+
+- **Dry-Run Workflow Run:** [37251854316](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251854316) (Status: complete, dryRun: true, 0 write calls)
+- **Live Apply Workflow Run:** [37252842471](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37252842471) (Status: complete, exitCode: 0)
+- **Target Verification:** `repo-settings`: verified `true` (0 discrepancies), `repo-custom-properties`: verified `true` (0 discrepancies)
+- **EMU Policy Fallback:** Automatic fallback from `public` to `internal` visibility on HTTP 422 policy constraint.
+
+---
+
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Zero local migration credentials exposed in `.env`, shell, or chat.
-- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
-- [ ] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}` or `/orgs/{org}/properties/values`.
-- [ ] Actions Step Summary accurately presents planned visibility updates and custom property diffs.
-- [ ] Offline unit tests for `repo-settings` and `repo-custom-properties` pass cleanly.
-- [ ] Post-apply verification reports `verified: true` with 0 discrepancies.
+- [x] Zero local migration credentials exposed in `.env`, shell, or chat.
+- [x] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [x] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}` or `/orgs/{org}/properties/values`.
+- [x] Actions Step Summary accurately presents planned visibility updates and custom property diffs.
+- [x] Offline unit tests for `repo-settings` and `repo-custom-properties` pass cleanly.
+- [x] Post-apply verification reports `verified: true` with 0 discrepancies.
