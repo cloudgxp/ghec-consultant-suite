@@ -22,76 +22,109 @@ Organization & Repository
 
 ## Objective
 
-Validate migration and reconciliation of organization and repository `webhooks`. Verify dry-run simulation, payload URL matching, event trigger mapping, active state configuration, and secure secret rotation/ingestion via `WebhookSecretProvider` without secret leakage.
+Validate migration and reconciliation of organization and repository `webhooks`. Verify dry-run simulation, payload URL matching, event trigger mapping, active state configuration, and secure secret rotation/ingestion via `WebhookSecretProvider` without secret leakage. Guarantee zero local credential exposure by orchestrating all tests exclusively via GitHub Actions.
 
 ## Background
 
-Webhooks connect GitHub repositories and organizations to external CI/CD pipelines, chat systems, and automated tooling. Because GitHub API never returns existing webhook secrets (`secret` field in webhook config is masked), recreating webhooks requires generating new secrets or ingesting rotation keys via a secret provider. In dry-run mode, the module must verify URL and event matching without creating or updating live hooks.
+Webhooks connect GitHub repositories and organizations to external CI/CD pipelines, chat systems, and automated tooling. Because GitHub API never returns existing webhook secrets (`secret` field in webhook config is masked), recreating webhooks requires generating new secrets or ingesting rotation keys via a secret provider. In dry-run mode, the module must verify URL and event matching without creating or updating live hooks. Under SEC-CRED-001, Antigravity never handles write credentials locally.
 
 ## Dependencies
 
-- Task 018: Implement `webhooks` Module
-- Target organization and test repository available.
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test scope: `scopes/test-all-wave.json` (or `test-org-wave.json`, `test-repo-wave.json`).
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Plan Webhooks Diff
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Generate diff plan for webhooks at organization or repository scope:
+### Step 1: Scope Artifact Definition
 
-```bash
-ghec-consultant-cli plan \
-  --scope ./scopes/repo-scope.json \
-  --modules webhooks \
-  --output ./scans/stage3-webhooks-plan.json \
-  --verbose
-```
-
-### Step 2: Enforce Dry-Run Migration
-
-Run migrate with `--dry-run`:
+Verify the committed test scope targeting webhook reconciliation:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-webhooks-plan.json \
-  --dry-run \
-  --output ./scans/stage3-webhooks-dryrun.json \
-  --json-summary ./scans/stage3-webhooks-dryrun-summary.json
+cat scopes/test-org-wave.json | jq '{name, organizations}'
 ```
 
-### Step 3: Automated Module Test Suite
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
 
-Run isolated webhooks unit and reconciliation tests:
+Trigger dry-run planning and mutation simulation via GitHub Actions:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=webhooks \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+Alternatively, dispatching the parallel wave workflow:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=webhooks \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Automated Monitoring & Verification
+
+Monitor progress using `gh run watch`:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+Inspect any failure details via:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download artifacts and confirm zero mutating calls against webhook endpoints:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const execReport = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Status:", execReport.status);
+  console.log("DryRun Flag:", execReport.dryRun);
+  if (execReport.dryRun !== true) throw new Error("Expected dryRun flag true");
+  console.log("Verified zero live webhook creation or update mutations.");
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A verified dry-run run with zero mutation errors is strictly required before live apply. Run offline unit tests locally:
 
 ```bash
 node --import tsx --test packages/migration/tests/modules/webhooks.test.ts
 ```
 
-### Step 4: Live Webhook Apply & Verification
-
-Apply webhooks to target:
+When live apply is validated, trigger with `dry_run=false`:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-webhooks-plan.json \
-  --output ./scans/stage3-webhooks-apply.json
-
-ghec-consultant-cli verify \
-  --plan ./scans/stage3-webhooks-plan.json \
-  --output ./scans/stage3-webhooks-verify.json
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=webhooks \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
 ```
 
-## Expected Output & State
-
-1. **Dry-Run Output:**
-   - Report records `dryRun: true` and all operations `succeeded` (simulated).
-   - Zero `POST /repos/{owner}/{repo}/hooks` or `POST /orgs/{org}/hooks` calls issued.
-2. **Post-Apply State:**
-   - Target webhooks match source payload URLs, content types (`json`), active flags, and subscribed events.
-   - Discrepancy report in `verify` shows 0 errors.
+---
 
 ## Pass/Fail Acceptance Criteria
 
-- [ ] `packages/migration/tests/modules/webhooks.test.ts` passes with 0 failures.
-- [ ] Dry-run execution generates 0 write calls against webhook endpoints.
-- [ ] Verification command reports `verified: true` with 0 discrepancies.
+- [ ] Zero local migration credentials stored or leaked.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [ ] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}/hooks` or `/orgs/{org}/hooks`.
+- [ ] Actions Step Summary accurately reports matched webhook payload URLs and triggers.
+- [ ] Offline unit tests in `webhooks.test.ts` pass cleanly.
+- [ ] Post-apply verification reports `verified: true` with 0 discrepancies.

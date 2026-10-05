@@ -34,12 +34,12 @@ on:
         type: boolean
         default: true
       runner_labels:
-        description: 'Comma-separated labels for runner selection (e.g. "self-hosted,linux")'
+        description: 'Comma-separated labels for runner selection (e.g. "ubuntu-latest" for test runs or "self-hosted,linux" for production)'
         required: false
         type: string
         default: 'self-hosted,linux'
       environment_gate:
-        description: 'Target GitHub Environment with review protection gates'
+        description: 'Target GitHub Environment with review protection gates (e.g. "production-migration" or "test")'
         required: false
         type: string
         default: 'production-migration'
@@ -102,9 +102,7 @@ jobs:
             --modules "${{ inputs.modules }}" \
             --split-matrix "${{ inputs.batch_size }}" \
             --output-matrix ./scans/migration-matrix.json \
-            --output ./scans/migration-plan.json \
-            --source-token "$GHEC_SOURCE_TOKEN" \
-            --target-token "$GHEC_TARGET_TOKEN"
+            --output ./scans/migration-plan.json
 
           if [ ! -f ./scans/migration-matrix.json ]; then
             echo "::error::Matrix output file ./scans/migration-matrix.json was not generated."

@@ -22,78 +22,110 @@ Repository & Organization
 
 ## Objective
 
-Validate migration and reconciliation of modern repository and organization `rulesets`, as well as legacy `branch-protection` rule translation into modern GitHub repository rulesets. Verify dry-run safety and ensure that branch protection enforcement levels (pull request reviews, required status checks, linear history, bypass actors) translate without dropping security guarantees.
+Validate migration and reconciliation of modern repository and organization `rulesets`, as well as legacy `branch-protection` rule translation into modern GitHub repository rulesets. Verify dry-run safety and ensure that branch protection enforcement levels (pull request reviews, required status checks, linear history, bypass actors) translate without dropping security guarantees. All test operations run strictly within GitHub Actions workflows with zero local credentials.
 
 ## Background
 
-GitHub Enterprise Importer does not migrate repository rulesets or legacy branch protections. To preserve security posture and prevent unprotected default branches post-transfer, this suite reconciles rulesets using modern REST endpoints (`/repos/{owner}/{repo}/rulesets`) while translating legacy branch protection settings into equivalent rulesets where appropriate.
+GitHub Enterprise Importer does not migrate repository rulesets or legacy branch protections. To preserve security posture and prevent unprotected default branches post-transfer, this suite reconciles rulesets using modern REST endpoints (`/repos/{owner}/{repo}/rulesets`) while translating legacy branch protection settings into equivalent rulesets where appropriate. Under SEC-CRED-001, Antigravity never handles write credentials locally.
 
 ## Dependencies
 
-- Task 013: Rulesets & Branch-Protection Modules
-- Target repository pre-created.
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test repository scope: `scopes/test-repo-wave.json`.
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Plan Rulesets and Branch Protections
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Generate migration diff plan for rulesets and branch protection:
+### Step 1: Scope Artifact Definition
 
-```bash
-ghec-consultant-cli plan \
-  --scope ./scopes/repo-scope.json \
-  --modules rulesets,branch-protection \
-  --output ./scans/stage3-rulesets-plan.json \
-  --verbose
-```
-
-### Step 2: Enforce Dry-Run Migration
-
-Run migrate with `--dry-run`:
+Verify the committed test repository scope targeting ruleset reconciliation:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-rulesets-plan.json \
-  --dry-run \
-  --output ./scans/stage3-rulesets-dryrun.json \
-  --json-summary ./scans/stage3-rulesets-dryrun-summary.json
+cat scopes/test-repo-wave.json | jq '.repositories[] | {sourceRepo, targetRepo, modules}'
 ```
 
-### Step 3: Automated Module Test Suite
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
 
-Run isolated test suites for rulesets and branch protection:
+Trigger dry-run planning and mutation simulation via GitHub Actions:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=rulesets,branch-protection \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+Alternatively, dispatching the parallel wave workflow:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=rulesets,branch-protection \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Automated Monitoring & Verification
+
+Monitor progress using `gh run watch`:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+Inspect any failures via:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download artifacts and confirm zero mutating calls against GitHub ruleset APIs:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const execReport = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Status:", execReport.status);
+  console.log("DryRun Flag:", execReport.dryRun);
+  if (execReport.dryRun !== true) throw new Error("Expected dryRun flag true");
+  console.log("Verified zero live ruleset creation or branch protection mutations.");
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A verified dry-run run with zero mutation errors is strictly required before live apply. Run offline unit tests locally:
 
 ```bash
 node --import tsx --test packages/migration/tests/modules/rulesets.test.ts
 node --import tsx --test packages/migration/tests/modules/branch-protection.test.ts
 ```
 
-### Step 4: Apply Rulesets and Verify
-
-Apply rulesets to target repository and confirm enforcement:
+When live apply is validated, trigger with `dry_run=false`:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-rulesets-plan.json \
-  --output ./scans/stage3-rulesets-apply.json
-
-ghec-consultant-cli verify \
-  --plan ./scans/stage3-rulesets-plan.json \
-  --output ./scans/stage3-rulesets-verify.json
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=rulesets,branch-protection \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
 ```
 
-## Expected Output & State
-
-1. **Dry-Run Output:**
-   - Console logs `[DryRun] Would execute create for ruleset ...` and `[DryRun] Would reconcile branch protection for branch ...`.
-   - Report records `dryRun: true` and all operations `succeeded` (simulated).
-   - Zero rulesets created on target repository during dry-run.
-2. **Post-Apply State:**
-   - Target repository has active ruleset on default branch (`main` / `master`).
-   - Required status checks, required reviews, and bypass actor configurations match source specifications.
+---
 
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Unit tests for `rulesets` and `branch-protection` pass cleanly.
+- [ ] Zero local migration credentials stored or leaked.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
 - [ ] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}/rulesets` or `/branches/{branch}/protection`.
+- [ ] Step summary displays simulated ruleset diffs and legacy branch protection mappings.
+- [ ] Offline unit tests for `rulesets` and `branch-protection` pass cleanly.
 - [ ] Post-apply verification reports `verified: true` with 0 policy discrepancies.

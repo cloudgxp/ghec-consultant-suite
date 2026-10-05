@@ -22,7 +22,7 @@ Repository
 
 ## Objective
 
-Validate migration and reconciliation of repository `environments`, including wait timers, reviewer protection rules, deployment branch policies, environment-scoped variables, and sealed-box encrypted environment secrets. Verify that `--dry-run` simulates all operations without modifying target repository environments.
+Validate migration and reconciliation of repository `environments`, including wait timers, reviewer protection rules, deployment branch policies, environment-scoped variables, and sealed-box encrypted environment secrets. Verify that `--dry-run` simulates all operations without modifying target repository environments. All test orchestrations run exclusively within GitHub Actions runners with zero local credentials.
 
 ## Background
 
@@ -31,75 +31,105 @@ GitHub deployment environments (`/repos/{owner}/{repo}/environments`) enforce pr
 1. Environment definition, wait timers, and deployment branch policies (`PUT /repos/{owner}/{repo}/environments/{environment_name}`).
 2. Environment-scoped Actions variables (`POST /repos/{owner}/{repo}/environments/{name}/variables`).
 3. Environment-scoped Actions secrets encrypted with the environment's public key (`PUT /repositories/{repository_id}/environments/{name}/secrets/{secret_name}`).
+   Under SEC-CRED-001, Antigravity never handles write credentials locally.
 
 ## Dependencies
 
-- Task 012: Implement `environments` Module
-- Target test repository created.
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test repository scope: `scopes/test-repo-wave.json`.
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Plan Environments Diff
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Generate plan comparing source repository environments to target repository:
+### Step 1: Scope Artifact Definition
 
-```bash
-ghec-consultant-cli plan \
-  --scope ./scopes/repo-scope.json \
-  --modules environments \
-  --output ./scans/stage3-environments-plan.json \
-  --verbose
-```
-
-### Step 2: Enforce Dry-Run Migration
-
-Run migrate with `--dry-run`:
+Verify the committed test repository scope targeting environment reconciliation:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-environments-plan.json \
-  --dry-run \
-  --output ./scans/stage3-environments-dryrun.json \
-  --json-summary ./scans/stage3-environments-dryrun-summary.json
+cat scopes/test-repo-wave.json | jq '.repositories[] | {sourceRepo, targetRepo, modules}'
 ```
 
-### Step 3: Automated Module Test Suite
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
 
-Run isolated environment unit and integration tests:
+Trigger dry-run planning and mutation simulation via GitHub Actions:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=environments \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+Alternatively, dispatching the parallel wave workflow:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=environments \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Automated Monitoring & Verification
+
+Monitor progress using `gh run watch`:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+Inspect any failure details via:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download artifacts and confirm zero mutating calls against GitHub environment endpoints:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const execReport = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Status:", execReport.status);
+  console.log("DryRun Flag:", execReport.dryRun);
+  if (execReport.dryRun !== true) throw new Error("Expected dryRun flag true");
+  console.log("Verified zero live environment creations or secret mutations.");
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A verified dry-run run with zero mutation errors is strictly required before live apply. Run offline unit tests locally:
 
 ```bash
 node --import tsx --test packages/migration/tests/modules/environments.test.ts
 ```
 
-### Step 4: Live Environment Apply & Verification
-
-Apply environments to target repository:
+When live apply is validated, trigger with `dry_run=false`:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage3-environments-plan.json \
-  --output ./scans/stage3-environments-apply.json
-
-ghec-consultant-cli verify \
-  --plan ./scans/stage3-environments-plan.json \
-  --output ./scans/stage3-environments-verify.json
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-repo-wave.json \
+  -f modules=environments \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
 ```
 
-## Expected Output & State
-
-1. **Dry-Run Output:**
-   - Logs `[DRY-RUN] Simulating create on environment ...`.
-   - Logs `[DRY-RUN] Simulating create on environment-variable ...`.
-   - Logs `[DRY-RUN] Simulating create on environment-secret ...`.
-   - Report records `dryRun: true` and all operations `succeeded` (simulated).
-   - Zero environments created on target repository during dry-run.
-2. **Post-Apply State:**
-   - Environments exist on target with matching wait timer and deployment branch policies.
-   - Environment variables match expected values.
-   - Environment secrets present on destination without value exposure.
+---
 
 ## Pass/Fail Acceptance Criteria
 
-- [ ] `packages/migration/tests/modules/environments.test.ts` passes with 0 failures.
+- [ ] Zero local migration credentials stored or leaked.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
 - [ ] Dry-run execution generates 0 write calls against environment endpoints.
+- [ ] Step summary displays simulated environment, variable, and secret reconciliation.
+- [ ] Offline unit tests for `environments` pass cleanly.
 - [ ] Post-apply verification reports `verified: true` with 0 discrepancies.

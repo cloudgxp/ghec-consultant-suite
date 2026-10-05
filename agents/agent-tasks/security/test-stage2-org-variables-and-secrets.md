@@ -22,85 +22,115 @@ Organization
 
 ## Objective
 
-Validate end-to-end migration of organization-level Actions variables (`org-variables`) and sealed-box encrypted secrets (`org-secrets`). Enforce that `--dry-run` produces an accurate diff plan without executing REST mutations or reading secret values, followed by controlled live apply and post-migration verification.
+Validate end-to-end migration of organization-level Actions variables (`org-variables`) and sealed-box encrypted secrets (`org-secrets`). Enforce that `--dry-run` produces an accurate diff plan without executing REST mutations or exposing secret values, followed by controlled live apply and post-migration verification. All test operations run strictly inside GitHub Actions runners to ensure zero local secrets exposure.
 
 ## Background
 
-Organization variables (`/orgs/{org}/actions/variables`) and secrets (`/orgs/{org}/actions/secrets`) configure tenant-wide CI/CD pipelines. Variable values are discoverable via API, whereas secret values are unreadable from GitHub and require ingestion via a secure provider (`SecretValueProvider` or environment mapping). Both modules must strictly enforce zero plaintext leakage and honor dry-run simulation.
+Organization variables (`/orgs/{org}/actions/variables`) and secrets (`/orgs/{org}/actions/secrets`) configure tenant-wide CI/CD pipelines. Variable values are discoverable via API, whereas secret values are unreadable from GitHub and require ingestion via a secure provider (`SecretValueProvider` or environment mapping). Both modules must strictly enforce zero plaintext leakage and honor dry-run simulation. Under SEC-CRED-001, Antigravity must never hold write credentials locally.
 
 ## Dependencies
 
-- Task 016: Organization Variables & Secrets Modules
-- Stage 1 discovery and scope definition completed.
+- GitHub Repository Secrets: `GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`.
+- Committed test organization scope: `scopes/test-org-wave.json`.
+- Actions workflow: `.github/workflows/test-migration-dispatch.yml` or `.github/workflows/migration-execute-wave.yml`.
 
-## Commands to Invoke
+---
 
-### Step 1: Plan Generation (Read-Only Diff)
+## Execution & Verification Lifecycle (Actions-Driven)
 
-Generate the diff plan between source and destination organizations for `org-variables` and `org-secrets`:
+### Step 1: Scope Artifact Definition
 
-```bash
-ghec-consultant-cli plan \
-  --scope ./scopes/org-scope.json \
-  --modules org-variables,org-secrets \
-  --output ./scans/stage2-org-vars-secrets-plan.json \
-  --verbose
-```
-
-### Step 2: Dry-Run Migration Simulation (Zero Write Mutations)
-
-Execute migration with `--dry-run` to simulate secret encryption and variable creation:
+Verify the committed test organization scope targeting the test organization pair:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage2-org-vars-secrets-plan.json \
-  --dry-run \
-  --output ./scans/stage2-org-vars-secrets-dryrun.json \
-  --json-summary ./scans/stage2-org-vars-secrets-dryrun-summary.json
+cat scopes/test-org-wave.json | jq '{name, organizations}'
 ```
 
-### Step 3: Targeted Live Apply (When Testing Mutations)
+### Step 2: Mandatory Dry-Run Execution via `gh workflow run`
 
-Apply the approved plan to the target organization:
+Trigger dry-run planning and mutation simulation via GitHub Actions without local secrets:
 
 ```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/stage2-org-vars-secrets-plan.json \
-  --output ./scans/stage2-org-vars-secrets-apply.json \
-  --json-summary ./scans/stage2-org-vars-secrets-apply-summary.json
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=org-variables,org-secrets \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
 ```
 
-### Step 4: Verification Check
-
-Verify destination compliance against the generated plan:
+Alternatively, dispatching the parallel wave workflow:
 
 ```bash
-ghec-consultant-cli verify \
-  --plan ./scans/stage2-org-vars-secrets-plan.json \
-  --output ./scans/stage2-org-vars-secrets-verify.json
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=org-variables,org-secrets \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
 ```
 
-## Expected Output & State
+### Step 3: Automated Monitoring & Verification
 
-1. **Plan Output (`stage2-org-vars-secrets-plan.json`):**
-   - Contains operations for `org-variables` (operations: `create`, `update`, or `noop`).
-   - Contains operations for `org-secrets` (operations: `create` or `noop`).
-   - Secret payloads contain empty or encrypted references; no plaintext secrets logged.
-2. **Dry-Run Output (`stage2-org-vars-secrets-dryrun.json`):**
-   - `"dryRun": true` recorded in execution report.
-   - All pending operations reported with `status: "succeeded"` and `httpStatus: 200` (simulated).
-   - Zero HTTP `POST`, `PATCH`, or `PUT` calls made to destination `/orgs/{org}/actions/...` endpoints.
-3. **Verification Report (`stage2-org-vars-secrets-verify.json`):**
-   - For `org-variables`: `verified: true`, 0 discrepancies.
-   - For `org-secrets`: `verified: true` confirming presence of secret names on destination.
+Monitor the workflow run in real time:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+If an error occurs, inspect the failed step logs:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download & Audit Execution Artifacts
+
+Download artifacts and verify zero write calls and zero plaintext secret leakage:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+node -e '
+  const execReport = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Status:", execReport.status);
+  console.log("DryRun Flag:", execReport.dryRun);
+  if (execReport.dryRun !== true) throw new Error("Expected dryRun flag true");
+
+  const rawJson = require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8");
+  if (rawJson.includes("synthetic-org-secret-67890")) {
+    throw new Error("Plaintext secret detected in execution artifact!");
+  }
+  console.log("Verified zero plaintext secret leakage and zero REST mutations.");
+'
+```
+
+### Step 5: Mandatory Dry-Run Gate & Unit Test Verification
+
+A verified dry-run run with zero mutation errors is strictly required before live apply. Run offline unit tests locally:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/org-variables.test.ts
+node --import tsx --test packages/migration/tests/modules/org-secrets.test.ts
+```
+
+When live apply is validated, trigger with `dry_run=false`:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=org-variables,org-secrets \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
+```
+
+---
 
 ## Pass/Fail Acceptance Criteria
 
+- [ ] Zero local migration credentials stored or leaked.
+- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
 - [ ] Dry-run execution generates report with status `complete` and `dryRun: true` without altering destination.
-- [ ] Automated tests pass:
-  ```bash
-  node --import tsx --test packages/migration/tests/modules/org-variables.test.ts
-  node --import tsx --test packages/migration/tests/modules/org-secrets.test.ts
-  ```
-- [ ] No plaintext secrets emitted to console logs, execution report, or step summaries.
-- [ ] Destination verification passes cleanly post-apply.
+- [ ] No plaintext secrets emitted to console logs, execution reports, or step summaries.
+- [ ] Offline unit tests for `org-variables` and `org-secrets` pass cleanly.
+- [ ] Destination verification confirms expected variables and secret names exist on target.

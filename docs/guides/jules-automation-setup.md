@@ -98,6 +98,7 @@ Maintainers can delegate bug fixes, documentation corrections, or review remedia
   /jules fix
   ```
   _(or `/jules`, `/jules <custom instructions>`, `!jules fix`, or `jules: fix`)_
+- **Workflow:** `.github/workflows/jules-agent.yml` triggers on `issue_comment: created`.
 - **Pull Request Remediation**: When posted on a pull request, Jules automatically targets the PR's head branch, ingests the PR description and review comments, and pushes remediation commits directly to that branch.
 - **Acknowledgement:** The comment receives a `:rocket:` reaction.
 

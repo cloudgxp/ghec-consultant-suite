@@ -1,0 +1,517 @@
+{
+  "version": "1.0.0",
+  "name": "demogxp-to-antigravity-all",
+  "organizations": [
+    {
+      "source": "demogxp",
+      "target": "antigravity-migration-test",
+      "modules": [
+        "org-variables",
+        "org-secrets",
+        "teams",
+        "org-custom-properties",
+        "webhooks"
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "react",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "react",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "nest",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "nest",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "prometheus",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "prometheus",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "TypeScript",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "TypeScript",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "express",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "express",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "rust",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "rust",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "node",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "node",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "terraform",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "terraform",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "ghe-actions-migration-framework",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "ghe-actions-migration-framework",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "next.js",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "next.js",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "kubernetes",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "kubernetes",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "core",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "core",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "svelte",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "svelte",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "ghec-content-filler",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "ghec-content-filler",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "migration-demo-1361857985-companion",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "migration-demo-1361857985-companion",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "migration-demo-1361857985-fork",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "migration-demo-1361857985-fork",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "grafana",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "grafana",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "demo",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "demo",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "juice-shop",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "juice-shop",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "ansible",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "ansible",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "cpython",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "cpython",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "flask",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "flask",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "go",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "go",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "django",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "django",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "fastify",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "fastify",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "vite",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "vite",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    }
+  ],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_gxp"
+  }
+}

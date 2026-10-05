@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "name": "demogxp-to-antigravity-repo",
+  "organizations": [
+    {
+      "source": "demogxp",
+      "target": "antigravity-migration-test"
+    }
+  ],
+  "repositories": [
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "ghec-content-filler",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "ghec-content-filler",
+      "useGei": true,
+      "targetRepoVisibility": "public",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "migration-demo-1361857985-companion",
+      "targetOrg": "antigravity-migration-test",
+      "targetRepo": "migration-demo-1361857985-companion",
+      "useGei": true,
+      "targetRepoVisibility": "private",
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": ["repo-settings", "repo-custom-properties", "rulesets"]
+    }
+  ],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_gxp"
+  }
+}

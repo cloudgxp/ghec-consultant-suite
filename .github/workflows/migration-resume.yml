@@ -98,7 +98,6 @@ jobs:
 
           OUTPUT_FILE="./scans/resumed-migration-report-${{ inputs.run_id }}.json"
           ARGS+=(--output "$OUTPUT_FILE")
-          ARGS+=(--source-token "$GHEC_SOURCE_TOKEN" --target-token "$GHEC_TARGET_TOKEN")
 
           echo "Resuming migration with arguments: ${ARGS[*]}"
           node ./apps/cli/bin/ghec-consultant-cli.mjs "${ARGS[@]}"

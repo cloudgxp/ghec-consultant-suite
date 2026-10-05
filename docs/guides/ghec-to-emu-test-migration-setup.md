@@ -4,24 +4,22 @@ This authoritative guide details the exact prerequisites, credentials, scopes, t
 
 ---
 
-## 1. Environment Variables & Secrets Checklist
+## 1. Secrets & Security Architecture (Zero-Local-Secrets Boundary)
 
-Configure the following environment variables. You may supply them via a `.env` file in the workspace root or export them in your current shell session.
+> [!IMPORTANT]
+> **Zero-Local-Secrets Security Boundary:**
+> To guarantee complete credential isolation and protect sensitive migration tokens, Antigravity and operators **never** request, receive, or store GitHub Personal Access Tokens or migration credentials in local `.env` files, shell variables, or chat messages.
+> All migration credentials must reside exclusively in **GitHub Repository / Organization Secrets** (`${{ secrets.GHEC_SOURCE_TOKEN }}`, `${{ secrets.GHEC_TARGET_TOKEN }}`).
+> All test executions, dry-runs, and live mutations are executed strictly within isolated GitHub Actions runners (`ubuntu-latest` or `self-hosted`).
 
-### Environment Variable Matrix
+### GitHub Repository Secrets Matrix
 
-| Variable Name              | Required | Default / Example        | Purpose / Component                                                    |
-| :------------------------- | :------: | :----------------------- | :--------------------------------------------------------------------- |
-| `GHEC_SOURCE_TOKEN`        | **Yes**  | `ghp_source123...`       | Source tenant read PAT (used by `@ghec/github-client` source adapter). |
-| `GHEC_TARGET_TOKEN`        | **Yes**  | `ghp_target456...`       | Target EMU tenant read/write PAT (used by `@ghec/migration` writer).   |
-| `GHEC_SOURCE_ORG`          | **Yes**  | `acme-corp-source`       | Source organization slug.                                              |
-| `GHEC_TARGET_ORG`          | **Yes**  | `acme-corp-emu-target`   | Destination organization slug under the target EMU enterprise.         |
-| `GHEC_BASE_URL`            |    No    | `https://api.github.com` | Base GitHub API URL (override for GHES / data residency instances).    |
-| `GHEC_SOURCE_BASE_URL`     |    No    | `https://api.github.com` | Specific base URL for source tenant.                                   |
-| `GHEC_TARGET_BASE_URL`     |    No    | `https://api.github.com` | Specific base URL for target tenant.                                   |
-| `GHEC_API_VERSION`         |    No    | `2026-03-10`             | GitHub REST API version header.                                        |
-| `GH_SOURCE_PAT`            |    No    | `$GHEC_SOURCE_TOKEN`     | Fallback token for GitHub Enterprise Importer (`gh gei`) source calls. |
-| `GH_PAT` / `GH_TARGET_PAT` |    No    | `$GHEC_TARGET_TOKEN`     | Fallback token for GitHub Enterprise Importer (`gh gei`) target calls. |
+Configure the following secrets in your repository settings (`Settings > Secrets and variables > Actions`) or using the GitHub CLI:
+
+| Secret Name         | Required | Scope / Justification                                                                |
+| :------------------ | :------: | :----------------------------------------------------------------------------------- |
+| `GHEC_SOURCE_TOKEN` | **Yes**  | Classic PAT with read access to source organization (`repo`, `read:org`, hook read). |
+| `GHEC_TARGET_TOKEN` | **Yes**  | Classic PAT under EMU account with Org Owner privileges in destination org.          |
 
 > [!CAUTION]
 > **Strict Tenant Credential Isolation Enforcement (SEC-CRED-001):**
@@ -29,32 +27,48 @@ Configure the following environment variables. You may supply them via a `.env` 
 > `Error: Source and target tenants must not share the same credential.`
 > Ensure you generate two independent Personal Access Tokens from their respective organizations.
 
-### Shell Export Template (`.env.migration`)
+### Configuring Secrets via GitHub CLI
+
+To set repository secrets securely without saving them to local files:
 
 ```bash
-# Source GHEC Credentials
-export GHEC_SOURCE_TOKEN="ghp_source_pat_here"
-export GHEC_SOURCE_ORG="cloudgxp-source"
+# Set source token
+gh secret set GHEC_SOURCE_TOKEN
 
-# Destination GHEC-EMU Credentials
-export GHEC_TARGET_TOKEN="ghp_emu_target_pat_here"
-export GHEC_TARGET_ORG="cloudgxp-emu-target"
-
-# Global CLI Settings
-export GHEC_BASE_URL="https://api.github.com"
-export GHEC_API_VERSION="2026-03-10"
-
-# GEI CLI Bindings
-export GH_SOURCE_PAT="$GHEC_SOURCE_TOKEN"
-export GH_PAT="$GHEC_TARGET_TOKEN"
-export GH_TARGET_PAT="$GHEC_TARGET_TOKEN"
+# Set destination EMU target token
+gh secret set GHEC_TARGET_TOKEN
 ```
 
-To load into your shell:
+### Specifying Source & Target Organizations (Migration Scopes)
 
-```bash
-set -a && source .env.migration && set +a
-```
+Unlike credentials (which belong in GitHub Secrets), organization slugs are non-sensitive declarative boundary metadata. In the GHEC Consultant Suite architecture, **source and target organizations are specified directly inside the Migration Scope JSON files** committed in `scopes/`:
+
+- `scopes/test-org-wave.json`: Contains the organization mapping:
+  ```json
+  "organizations": [
+    {
+      "source": "cloudgxp-source",
+      "target": "cloudgxp-emu-target",
+      "modules": ["org-variables", "org-secrets", "teams", "org-custom-properties", "webhooks"]
+    }
+  ]
+  ```
+- `scopes/test-repo-wave.json`: Contains repository mappings between source and target:
+  ```json
+  "repositories": [
+    {
+      "sourceOrg": "cloudgxp-source",
+      "sourceRepo": "dummy-repo-public",
+      "targetOrg": "cloudgxp-emu-target",
+      "targetRepo": "dummy-repo-public",
+      "useGei": true, ...
+    }
+  ]
+  ```
+
+> [!TIP]
+> **Using Custom Test Organizations:**
+> The repository's default test scopes target `cloudgxp-source` and `cloudgxp-emu-target`. If your test environment uses different organizations (e.g., `my-source-org` and `my-target-emu-org`), update the `source`, `target`, `sourceOrg`, and `targetOrg` fields in `scopes/test-*.json`, or create a custom scope file (e.g., `scopes/my-wave.json`).
 
 ---
 
@@ -111,7 +125,7 @@ Create a **Classic Personal Access Token** under an **Enterprise Managed User (E
 
 ## 3. Dummy Source Resources Checklist
 
-To thoroughly exercise all 12 modules and 2 strategies during test migration without affecting production assets, create the following dummy resources in your source test organization (`$GHEC_SOURCE_ORG`):
+To thoroughly exercise all 12 modules and 2 strategies during test migration without affecting production assets, create the following dummy resources in your source test organization (e.g., `cloudgxp-source` or your configured source organization):
 
 ### Repositories (2 total)
 
@@ -177,139 +191,120 @@ To thoroughly exercise all 12 modules and 2 strategies during test migration wit
 
 ---
 
-## 4. Execution Playbook: Full Dry-Run Sequence
+## 4. Execution Playbook: Actions-Driven Migration Testing (Zero-Local-Secrets)
 
-Follow this exact command sequence to validate the entire suite safely in dry-run mode. **No resources will be created or modified on the destination organization.**
+Follow this lifecycle to validate migration planning, execution, and verification safely without handling or exposing credentials locally. **All API calls and simulations execute within GitHub Actions runners.**
 
-### Step 1: Preflight Capability & Scope Matrix Probe
+### Step 1: Select Committed Scope Artifact
 
-Verify credential validity, rate limits, and scopes offline and online:
+Select one of the pre-committed scope definitions in `scopes/`:
 
-```bash
-# 1. Source tenant preflight dry-run probe
-ghec-consultant-cli discover \
-  --organization "$GHEC_SOURCE_ORG" \
-  --modules all \
-  --dry-run \
-  --verbose
+- `scopes/test-org-wave.json`: Organization-level wave (`org-variables`, `org-secrets`, `teams`, `org-custom-properties`, `webhooks`).
+- `scopes/test-repo-wave.json`: Repository-level wave (`dummy-repo-public`, `dummy-repo-private-lfs`).
+- `scopes/test-all-wave.json`: Unified full test wave.
 
-# 2. Destination EMU tenant preflight dry-run probe
-ghec-consultant-cli discover \
-  --organization "$GHEC_TARGET_ORG" \
-  --modules all \
-  --dry-run \
-  --verbose
-```
-
-### Step 2: Source Discovery & Bundle Generation
-
-Extract full configuration metadata and generate an encrypted, pseudonymized JSON discovery bundle:
+Validate the scope structure locally without credentials:
 
 ```bash
-mkdir -p ./scans ./scopes
-
-ghec-consultant-cli discover \
-  --organization "$GHEC_SOURCE_ORG" \
-  --modules all \
-  --output ./scans/source-discovery-bundle.json \
-  --format json \
-  --redaction-profile standard
-```
-
-### Step 3: Migration Scope Definition
-
-Create your migration scope descriptor mapping source resources to target EMU resources:
-
-```bash
-cat <<EOF > ./scopes/test-migration-scope.json
-{
-  "version": "1.0.0",
-  "migrationId": "emu-test-migration-run-001",
-  "organizations": [
-    {
-      "source": "$GHEC_SOURCE_ORG",
-      "target": "$GHEC_TARGET_ORG"
-    }
-  ],
-  "repositories": [
-    {
-      "sourceOrg": "$GHEC_SOURCE_ORG",
-      "sourceRepo": "dummy-repo-public",
-      "targetOrg": "$GHEC_TARGET_ORG",
-      "targetRepo": "dummy-repo-public"
-    },
-    {
-      "sourceOrg": "$GHEC_SOURCE_ORG",
-      "sourceRepo": "dummy-repo-private-lfs",
-      "targetOrg": "$GHEC_TARGET_ORG",
-      "targetRepo": "dummy-repo-private-lfs"
-    }
-  ]
-}
-EOF
-```
-
-### Step 4: Plan Generation (Diff Engine)
-
-Generate the comprehensive migration plan comparing source bundle/APIs with target state:
-
-```bash
-ghec-consultant-cli plan \
-  --scope ./scopes/test-migration-scope.json \
-  --input ./scans/source-discovery-bundle.json \
-  --output ./scans/test-migration-plan.json \
-  --split-matrix 2 \
-  --output-matrix ./scans/test-migration-matrix.json \
-  --verbose
-```
-
-Review `./scans/test-migration-plan.json` to inspect the planned operations across all modules (`org-variables`, `org-secrets`, `teams`, `rulesets`, `environments`, `repo-variables`, `repo-secrets`, etc.).
-
-### Step 5: Universal Dry-Run Migration Execution
-
-Execute the full migration in **dry-run mode**. The orchestrator will simulate all 12 modules, log operations, evaluate LFS/release transfers, and write an audit report without making target mutations:
-
-```bash
-ghec-consultant-cli migrate \
-  --plan ./scans/test-migration-plan.json \
-  --dry-run \
-  --output ./scans/test-dryrun-execution-report.json \
-  --json-summary ./scans/test-dryrun-summary.json \
-  --verbose
-```
-
-### Step 6: Validate Dry-Run Results
-
-Verify that dry-run recorded clean completion and zero target mutations:
-
-```bash
-# Check execution status
-node -e '
-  const report = JSON.parse(require("fs").readFileSync("./scans/test-dryrun-execution-report.json", "utf8"));
-  console.log("Status:", report.status);
-  console.log("DryRun Flag:", report.dryRun);
-  console.log("Total Module Results:", report.results.length);
-  if (report.dryRun !== true || report.status !== "complete") {
-    console.error("Dry-run validation failed!");
-    process.exit(1);
-  }
-  console.log("Universal dry-run succeeded without mutations.");
+node --input-type=module -e '
+  import { validateMigrationScope } from "./packages/contracts/dist/index.js";
+  import fs from "fs";
+  const parsed = JSON.parse(fs.readFileSync("scopes/test-org-wave.json", "utf8"));
+  const res = validateMigrationScope(parsed);
+  if (!res.success) throw new Error("Scope invalid");
+  console.log("Scope artifact valid.");
 '
 ```
 
-### Step 7: Post-Migration Compliance Verification Probe
+> [!NOTE]
+> **Customizing Source & Target Organizations:**
+> The committed scopes map `source: "cloudgxp-source"` to `target: "cloudgxp-emu-target"`. If your test environment uses different organizations, edit the slugs in `scopes/test-*.json` (or commit a custom scope `scopes/my-wave.json`) prior to triggering the workflow:
+>
+> ```bash
+> # Example: Adapt scope to your own test org slugs
+> sed -i 's/cloudgxp-source/my-source-org/g' scopes/test-org-wave.json
+> sed -i 's/cloudgxp-emu-target/my-target-emu-org/g' scopes/test-org-wave.json
+> ```
 
-Run the verification compliance engine against the plan to prove discrepancy reporting:
+### Step 2: Trigger Workflow Dispatch via `gh workflow run`
+
+Trigger testing on GitHub Actions runners (`ubuntu-latest`). All migration credentials are automatically injected from repository secrets:
+
+#### Option A: Dedicated Fast-Test Dispatch (`test-migration-dispatch.yml`)
 
 ```bash
-ghec-consultant-cli verify \
-  --plan ./scans/test-migration-plan.json \
-  --output ./scans/test-verification-report.json \
-  --json-summary ./scans/test-verification-summary.json \
-  --verbose
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=org-variables,org-secrets,teams \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
 ```
 
-_(Note: Prior to live apply, `verify` will report that planned resources are not yet present on destination, confirming that discrepancy detection is fully functional.)_
+#### Option B: Parallel Wave Slicer Dispatch (`migration-execute-wave.yml`)
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=org-variables,org-secrets,teams \
+  -f dry_run=true \
+  -f runner_labels=ubuntu-latest
+```
+
+### Step 3: Monitor Workflow Progress
+
+Track execution in real time:
+
+```bash
+RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+If the run encounters any unexpected failures, inspect failed step logs directly:
+
+```bash
+gh run view "$RUN_ID" --log-failed
+```
+
+### Step 4: Download and Audit Artifacts
+
+Download the verified plan, execution report, and verification summary:
+
+```bash
+mkdir -p ./scans/downloads
+gh run download "$RUN_ID" --dir ./scans/downloads
+
+# Verify zero mutations and status complete
+node -e '
+  const exec = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
+  console.log("Status:", exec.status);
+  console.log("DryRun Flag:", exec.dryRun);
+  if (exec.dryRun !== true || exec.status !== "complete") {
+    console.error("Dry-run audit failed!");
+    process.exit(1);
+  }
+  console.log("Dry-run verified successfully with zero write mutations.");
+'
+```
+
+### Step 5: Review Actions Step Summary
+
+Every workflow run emits a rich GitHub Actions Step Summary table containing:
+
+- Planned operations breakdown (`creates`, `updates`, `no-ops`, `warnings`).
+- Cohort execution status and duration.
+- Post-migration target verification discrepancy count.
+
+### Step 6: Mandatory Dry-Run Gate before Live Apply
+
+A clean, passing `dry_run: true` workflow run is mandatory before any live mutations are performed. Once the plan and simulation have been reviewed and approved, trigger live apply:
+
+```bash
+gh workflow run test-migration-dispatch.yml \
+  -f scope=scopes/test-org-wave.json \
+  -f modules=org-variables,org-secrets,teams \
+  -f dry_run=false \
+  -f runner_labels=ubuntu-latest
+```
 
 ---
 
