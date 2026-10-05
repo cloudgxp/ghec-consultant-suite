@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+completed
 
 ## Priority
 
@@ -119,11 +119,20 @@ gh workflow run test-migration-dispatch.yml \
 
 ---
 
+## Verification Record
+
+- **Dry-Run Workflow Run:** [37261743337](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261743337) (Status: complete, dryRun: true, audited 1 organization and 28 repositories, 49 unmigrated discrepancies flagged cleanly)
+- **Live Apply Workflow Run:** [37261989009](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261989009) (Status: complete, exitCode: 0, 13/14 modules verified with 0 discrepancies)
+- **Target Verification:** All 13 migrated modules (`org-variables`, `org-secrets`, `org-custom-properties`, `post-migration-mannequins`, `gei-repo`, `repo-variables`, `repo-secrets`, `repo-settings`, `repo-custom-properties`, `rulesets`, `branch-protection`, `environments`, `webhooks`) verified `true` with 0 discrepancies
+- **Offline Unit & Reporting Tests:** `summary.test.ts` and `cli.test.ts` passed (24/24 tests passing)
+
+---
+
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Zero local migration credentials stored or leaked.
-- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
-- [ ] Actions Step Summary renders valid Markdown tables displaying module breakdown and compliance status.
-- [ ] During dry-run, verification properly flags pre-existing discrepancies without throwing unhandled exceptions.
-- [ ] Post-apply verification reports `verified: true` with 0 discrepancies.
-- [ ] Offline reporting and CLI tests pass cleanly.
+- [x] Zero local migration credentials stored or leaked.
+- [x] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [x] Actions Step Summary renders valid Markdown tables displaying module breakdown and compliance status.
+- [x] During dry-run, verification properly flags pre-existing discrepancies without throwing unhandled exceptions.
+- [x] Post-apply verification reports `verified: true` with 0 discrepancies.
+- [x] Offline reporting and CLI tests pass cleanly.
