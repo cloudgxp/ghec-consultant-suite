@@ -105,6 +105,17 @@ jobs:
             exit 1
           fi
 
+      - name: Ensure GitHub Enterprise Importer (GEI) CLI Extension
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh extension list | grep -q "gh gei"; then
+            echo "Installing gh-gei extension..."
+            gh extension install github/gh-gei
+          fi
+          gh gei --version || true
+
       - name: Execute Migration
         id: migrate
         shell: bash
