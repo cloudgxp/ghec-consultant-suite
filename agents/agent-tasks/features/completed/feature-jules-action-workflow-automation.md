@@ -75,7 +75,7 @@ By integrating `google-labs-code/jules-invoke@v1`, Google's asynchronous Gemini-
 
 ### 3. Acceptance Criteria
 
-- [x] Action uses `google-labs-code/jules-invoke@v1` with `${{ secrets.JULES_API_KEY }}`.
+- [x] Action uses `google-labs-code/jules-action@v1.0.0` with `${{ secrets.JULES_API_KEY }}`.
 - [x] Workflows define explicit GitHub token permissions (`contents: write`, `pull-requests: write`, `issues: write`, `actions: read`).
 - [x] Actor allowlists and author association guards prevent unauthorized quota usage.
 - [x] Auto-healer excludes Jules-generated branches to eliminate infinite failure loops.

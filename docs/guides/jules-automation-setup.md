@@ -1,6 +1,6 @@
 # Jules Autonomous Maintenance & CI Healing Setup Guide
 
-This guide describes how to configure, operate, and maintain the autonomous AI development workflows powered by Google Labs' **Jules** (`google-labs-code/jules-invoke@v1`) within the GHEC Consultant Suite monorepo.
+This guide describes how to configure, operate, and maintain the autonomous AI development workflows powered by Google Labs' **Jules** (`google-labs-code/jules-action@v1.0.0`) within the GHEC Consultant Suite monorepo.
 
 ---
 
@@ -22,7 +22,7 @@ flowchart TD
         G2{"Loop & Branch Guard<br/>(Skip main, combined, & jules/*)"}
     end
 
-    subgraph Jules["Jules Autonomous Execution (google-labs-code/jules-invoke@v1)"]
+    subgraph Jules["Jules Autonomous Execution (google-labs-code/jules-action@v1.0.0)"]
         J1["Cloud VM Environment"]
         J2["Contextual Codebase Analysis"]
         J3["Scoped Code Modification (< 100 lines)"]
