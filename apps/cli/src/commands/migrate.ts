@@ -203,6 +203,17 @@ export async function executeMigrateCommand(
     targetWriteClient = targetWriteClient ?? clients.targetWriteClient;
   }
 
+  const sourceToken =
+    options.sourceToken ??
+    process.env.GHEC_SOURCE_TOKEN?.trim() ??
+    process.env.GH_SOURCE_PAT?.trim() ??
+    process.env.GHEC_TOKEN?.trim();
+
+  const targetToken =
+    options.targetToken ??
+    process.env.GHEC_TARGET_TOKEN?.trim() ??
+    process.env.GH_PAT?.trim();
+
   const registry = createDefaultModuleRegistry();
 
   const orchestrator = new MigrationOrchestrator({
@@ -210,6 +221,8 @@ export async function executeMigrateCommand(
     sourceClient,
     targetClient,
     targetWriteClient,
+    sourceToken,
+    targetToken,
     plan,
     scope,
     cachedDiscoveryBundle: cachedBundle,
