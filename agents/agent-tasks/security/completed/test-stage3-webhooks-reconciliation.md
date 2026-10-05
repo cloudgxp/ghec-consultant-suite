@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+completed
 
 ## Priority
 
@@ -14,7 +14,7 @@ Security / Integrations & Webhooks
 
 ## Location
 
-`agents/agent-tasks/security/test-stage3-webhooks-reconciliation.md`
+`agents/agent-tasks/security/completed/test-stage3-webhooks-reconciliation.md`
 
 ## Scope Level
 
@@ -120,11 +120,20 @@ gh workflow run test-migration-dispatch.yml \
 
 ---
 
+## Verification Record
+
+- **Dry-Run Workflow Run:** [37254510502](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37254510502) (Status: complete, dryRun: true, 0 live mutations)
+- **Live Apply Workflow Run:** [37261060265](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261060265) (Status: complete, exitCode: 0)
+- **Target Verification:** `webhooks`: verified `true` (0 discrepancies)
+- **Unit Tests:** `packages/migration/tests/modules/webhooks.test.ts` passed (5/5)
+
+---
+
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Zero local migration credentials stored or leaked.
-- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
-- [ ] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}/hooks` or `/orgs/{org}/hooks`.
-- [ ] Actions Step Summary accurately reports matched webhook payload URLs and triggers.
-- [ ] Offline unit tests in `webhooks.test.ts` pass cleanly.
-- [ ] Post-apply verification reports `verified: true` with 0 discrepancies.
+- [x] Zero local migration credentials stored or leaked.
+- [x] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [x] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}/hooks` or `/orgs/{org}/hooks`.
+- [x] Actions Step Summary accurately reports matched webhook payload URLs and triggers.
+- [x] Offline unit tests in `webhooks.test.ts` pass cleanly.
+- [x] Post-apply verification reports `verified: true` with 0 discrepancies.
