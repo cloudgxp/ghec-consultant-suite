@@ -191,14 +191,17 @@ export class MigrationOrchestrator {
     }
 
     let modulePlans: readonly ModulePlan[] = activePlan.modules;
-    if (this.modulesFilter && this.modulesFilter.length > 0) {
+    if (
+      this.modulesFilter &&
+      this.modulesFilter.length > 0 &&
+      !this.modulesFilter.includes('all')
+    ) {
       const filterSet = new Set(this.modulesFilter);
       modulePlans = modulePlans.filter((mp) => filterSet.has(mp.moduleId));
     }
 
     const executionResults: ModuleExecutionResult[] = [];
     let hasFailure = false;
-    let allFailed = modulePlans.length > 0;
 
     for (const modulePlan of modulePlans) {
       if (this.signal.aborted) {
@@ -240,11 +243,8 @@ export class MigrationOrchestrator {
         if (isFailed) {
           hasFailure = true;
           if (!this.continueOnError) {
-            allFailed = executionResults.every((r) => r.status === 'failed');
             break;
           }
-        } else {
-          allFailed = false;
         }
       } catch (err) {
         hasFailure = true;
@@ -270,7 +270,6 @@ export class MigrationOrchestrator {
         executionResults.push(fallbackResult);
 
         if (!this.continueOnError) {
-          allFailed = executionResults.every((r) => r.status === 'failed');
           break;
         }
       }
@@ -278,6 +277,14 @@ export class MigrationOrchestrator {
 
     let status: 'complete' | 'partial' | 'failed';
     let exitCode: 0 | 1 | 4;
+
+    const hasSuccessfulOperation = executionResults.some(
+      (r) =>
+        r.status === 'complete' ||
+        r.status === 'partial' ||
+        r.results.some((op) => op.status === 'succeeded'),
+    );
+    const allFailed = !hasSuccessfulOperation && executionResults.length > 0;
 
     if (!hasFailure) {
       status = 'complete';

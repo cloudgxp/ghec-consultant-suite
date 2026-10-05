@@ -82,9 +82,7 @@ jobs:
             # Execute plan CLI
             node ./apps/cli/bin/ghec-consultant-cli.mjs plan \
               --scope "$SCOPE_FILE" \
-              --output "$PLAN_OUTPUT" \
-              --source-token "$GHEC_SOURCE_TOKEN" \
-              --target-token "$GHEC_TARGET_TOKEN" || {
+              --output "$PLAN_OUTPUT" || {
                 echo "::error file=$SCOPE_FILE::Migration planning failed for $SCOPE_FILE"
                 exit 1
               }

@@ -1,0 +1,279 @@
+name: Jules Agent
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  schedule:
+    # Daily codebase hygiene sweep at 04:00 UTC
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      task_type:
+        description: "Type of task for Jules"
+        required: true
+        default: "custom"
+        type: choice
+        options:
+          - "custom"
+          - "hygiene-sweep"
+          - "issue-fix"
+      prompt:
+        description: "Custom prompt instructions (for custom tasks or extra guidelines)"
+        required: false
+        default: ""
+        type: string
+      target_branch:
+        description: "Starting branch for Jules"
+        required: false
+        default: "main"
+        type: string
+      issue_number:
+        description: "Target issue number (when task_type is issue-fix)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  jules-agent:
+    name: Run Jules Task
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Jules Context & Prompt
+        id: prep
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+
+            function setOutput(name, value) {
+              const delimiter = 'DELIMITER_' + crypto.randomBytes(8).toString('hex');
+              const data = `${name}<<${delimiter}\n${value}\n${delimiter}\n`;
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, data);
+            }
+
+            const allowedAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+            const eventName = context.eventName;
+            let shouldRun = false;
+            let startingBranch = 'main';
+            let includeLastCommit = 'false';
+            let includeCommitLog = 'false';
+            let prompt = '';
+
+            const QUALITY_GUIDELINES = `
+            Strict Guidelines:
+            1. Scoped, minimal diff: Keep all modifications under 100 lines total.
+            2. Documentation & comments: Preserve existing docstrings, license headers, and architecture comments.
+            3. Quality verification: Run 'npm run check' locally in the VM before submitting. It must pass (0 lint warnings, 0 type errors, all unit tests green).
+            4. PR conventions: Ensure the PR has the 'jules' label applied, title starts with [Jules], and description includes 'PR created automatically by Jules'.
+            `;
+
+            if (eventName === 'schedule') {
+              core.info('Triggered by daily scheduled hygiene sweep.');
+              shouldRun = true;
+              startingBranch = 'main';
+              prompt = `Perform a daily codebase hygiene sweep on the GHEC Consultant Suite monorepo.
+            Focus on one small, high-confidence non-breaking maintenance task:
+            - Replace loose 'any' types in packages/contracts or packages/github-client with precise interfaces or generics.
+            - Clean up unused imports, dead variables, or unreferenced internal utilities.
+            - Update stale JSDoc annotations or markdown documentation to reflect current codebase signatures.
+            - Add unit tests for previously uncovered pure helper functions in packages/analysis/ or packages/migration/.
+
+            ${QUALITY_GUIDELINES}
+            `;
+            } else if (eventName === 'issues') {
+              const labelName = context.payload.label?.name;
+              if (labelName !== 'jules') {
+                core.info(`Issue labeled with '${labelName}', not 'jules'. Skipping.`);
+                setOutput('should_run', 'false');
+                return;
+              }
+
+              const senderAssoc = context.payload.sender?.author_association || '';
+              const issueAssoc = context.payload.issue?.author_association || '';
+              const isSenderAllowed = allowedAssociations.includes(senderAssoc);
+              const isIssueAllowed = allowedAssociations.includes(issueAssoc);
+
+              if (!isSenderAllowed && !isIssueAllowed) {
+                core.warning(`Unauthorized issue trigger by ${context.payload.sender?.login} (assoc: ${senderAssoc}).`);
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.issue.number,
+                  body: `⚠️ **Jules Automation**: Jules task invocation is restricted to repository maintainers (\`OWNER\`, \`MEMBER\`, \`COLLABORATOR\`). Sender \`@${context.payload.sender?.login}\` is not authorized.`
+                });
+                setOutput('should_run', 'false');
+                return;
+              }
+
+              const issue = context.payload.issue;
+              shouldRun = true;
+              startingBranch = 'main';
+
+              await github.rest.reactions.createForIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                content: 'eyes'
+              });
+
+              prompt = `Resolve GitHub Issue #${issue.number}: "${issue.title}".
+
+            Issue Description:
+            ${issue.body || 'No description provided.'}
+
+            Instructions:
+            - Implement a minimal, targeted fix directly addressing the issue requirements.
+            - Reference 'Fixes #${issue.number}' in the PR body.
+            ${QUALITY_GUIDELINES}
+            `;
+            } else if (eventName === 'issue_comment') {
+              const commentBody = context.payload.comment?.body || '';
+              const match = /(?:^\s*\/jules\b|\b\/jules\b|^\s*!jules\b|\bjules:\s*fix|\bjules\s+fix\b|@jules\b)/im.test(commentBody);
+              if (!match) {
+                core.info('Comment does not invoke /jules command. Skipping.');
+                setOutput('should_run', 'false');
+                return;
+              }
+
+              const commentAssoc = context.payload.comment?.author_association || '';
+              if (!allowedAssociations.includes(commentAssoc)) {
+                core.warning(`Unauthorized comment trigger by ${context.payload.comment?.user?.login} (assoc: ${commentAssoc}).`);
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.issue.number,
+                  body: `⚠️ **Jules Automation**: Jules task invocation is restricted to repository maintainers (\`OWNER\`, \`MEMBER\`, \`COLLABORATOR\`). Comment author \`@${context.payload.comment?.user?.login}\` is not authorized.`
+                });
+                setOutput('should_run', 'false');
+                return;
+              }
+
+              const isPR = Boolean(context.payload.issue?.pull_request);
+              shouldRun = true;
+
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'rocket'
+              });
+
+              if (isPR) {
+                const prRes = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.issue.number
+                });
+                const pr = prRes.data;
+                startingBranch = pr.head.ref;
+                includeLastCommit = 'true';
+                includeCommitLog = 'true';
+
+                prompt = `Address review feedback on Pull Request #${pr.number}: "${pr.title}".
+
+            Pull Request Context:
+            ${pr.body || 'No description provided.'}
+
+            Maintainer Instructions:
+            ${commentBody}
+
+            Target Starting Branch: ${pr.head.ref}
+
+            Instructions:
+            - Analyze the maintainer comment and implement the requested changes directly for branch '${pr.head.ref}'.
+            - Ensure modifications address the review comments without breaking existing functionality.
+            ${QUALITY_GUIDELINES}
+            `;
+              } else {
+                const issue = context.payload.issue;
+                startingBranch = 'main';
+
+                prompt = `Resolve GitHub Issue #${issue.number}: "${issue.title}".
+
+            Issue Description:
+            ${issue.body || 'No description provided.'}
+
+            Maintainer Comment:
+            ${commentBody}
+
+            Instructions:
+            - Implement a minimal, targeted fix directly addressing the issue and comment instructions.
+            - Reference 'Fixes #${issue.number}' in the PR body.
+            ${QUALITY_GUIDELINES}
+            `;
+              }
+            } else if (eventName === 'workflow_dispatch') {
+              const taskType = context.payload.inputs?.task_type || 'custom';
+              startingBranch = context.payload.inputs?.target_branch || 'main';
+              const customPrompt = context.payload.inputs?.prompt || '';
+              const issueNumber = context.payload.inputs?.issue_number;
+
+              shouldRun = true;
+
+              if (taskType === 'hygiene-sweep') {
+                prompt = `Perform a codebase hygiene sweep on branch '${startingBranch}'.
+            Focus on one small, high-confidence non-breaking maintenance task:
+            - Replace loose 'any' types in packages/contracts or packages/github-client with precise interfaces or generics.
+            - Clean up unused imports, dead variables, or unreferenced internal utilities.
+            - Update stale JSDoc annotations or markdown documentation to reflect current codebase signatures.
+            - Add unit tests for previously uncovered pure helper functions.
+
+            ${customPrompt ? `Additional Instructions:\n${customPrompt}\n` : ''}
+            ${QUALITY_GUIDELINES}
+            `;
+              } else if (taskType === 'issue-fix' && issueNumber) {
+                const num = parseInt(issueNumber, 10);
+                const issueRes = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: num
+                });
+                const issue = issueRes.data;
+
+                prompt = `Resolve GitHub Issue #${issue.number}: "${issue.title}".
+
+            Issue Description:
+            ${issue.body || 'No description provided.'}
+
+            ${customPrompt ? `Additional Instructions:\n${customPrompt}\n` : ''}
+            Instructions:
+            - Implement a minimal, targeted fix directly addressing the issue requirements.
+            - Reference 'Fixes #${issue.number}' in the PR body.
+            ${QUALITY_GUIDELINES}
+            `;
+              } else {
+                prompt = `${customPrompt || 'Perform targeted code improvement.'}
+
+            ${QUALITY_GUIDELINES}
+            `;
+              }
+            }
+
+            setOutput('should_run', shouldRun ? 'true' : 'false');
+            setOutput('starting_branch', startingBranch);
+            setOutput('include_last_commit', includeLastCommit);
+            setOutput('include_commit_log', includeCommitLog);
+            setOutput('prompt', prompt.trim());
+
+      - name: Invoke Jules Action
+        if: steps.prep.outputs.should_run == 'true'
+        uses: google-labs-code/jules-action@v1.0.0
+        with:
+          prompt: ${{ steps.prep.outputs.prompt }}
+          jules_api_key: ${{ secrets.JULES_API_KEY }}
+          starting_branch: ${{ steps.prep.outputs.starting_branch }}
+          include_last_commit: ${{ steps.prep.outputs.include_last_commit }}
+          include_commit_log: ${{ steps.prep.outputs.include_commit_log }}

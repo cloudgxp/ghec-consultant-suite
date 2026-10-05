@@ -80,12 +80,13 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     throw new Error('Either --plan <file> or --scope <file> is required.');
   }
 
-  const modules = values.modules
-    ? values.modules
-        .split(',')
-        .map((m) => m.trim())
-        .filter(Boolean)
-    : undefined;
+  const modules =
+    values.modules && values.modules.toLowerCase() !== 'all'
+      ? values.modules
+          .split(',')
+          .map((m) => m.trim())
+          .filter(Boolean)
+      : undefined;
 
   return {
     planPath: values.plan,
@@ -203,6 +204,17 @@ export async function executeMigrateCommand(
     targetWriteClient = targetWriteClient ?? clients.targetWriteClient;
   }
 
+  const sourceToken =
+    options.sourceToken ??
+    process.env.GHEC_SOURCE_TOKEN?.trim() ??
+    process.env.GH_SOURCE_PAT?.trim() ??
+    process.env.GHEC_TOKEN?.trim();
+
+  const targetToken =
+    options.targetToken ??
+    process.env.GHEC_TARGET_TOKEN?.trim() ??
+    process.env.GH_PAT?.trim();
+
   const registry = createDefaultModuleRegistry();
 
   const orchestrator = new MigrationOrchestrator({
@@ -210,6 +222,8 @@ export async function executeMigrateCommand(
     sourceClient,
     targetClient,
     targetWriteClient,
+    sourceToken,
+    targetToken,
     plan,
     scope,
     cachedDiscoveryBundle: cachedBundle,

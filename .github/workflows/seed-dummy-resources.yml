@@ -1,0 +1,77 @@
+name: Seed Dummy Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Provisioning mode: "source" (demogxp) or "target" (antigravity-migration-test)'
+        required: true
+        type: choice
+        options:
+          - source
+          - target
+        default: 'source'
+      organization:
+        description: 'Organization to provision (leave empty to use default: demogxp for source, antigravity-migration-test for target)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  seed-resources:
+    name: 'Seed Test Resources (${{ inputs.mode }})'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Execute Resource Provisioning
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_ORG: ${{ inputs.organization }}
+        run: |
+          if [ "$INPUT_MODE" = "target" ]; then
+            TARGET_ORG="${INPUT_ORG:-antigravity-migration-test}"
+            if [ -z "$GHEC_TARGET_TOKEN" ]; then
+              echo "::error::GHEC_TARGET_TOKEN secret is not set in this repository."
+              exit 1
+            fi
+            echo "Seeding target placeholder repositories in $TARGET_ORG..."
+            node ./scripts/seed-dummy-resources.mjs "$TARGET_ORG" --target-repos-only
+          else
+            SOURCE_ORG="${INPUT_ORG:-demogxp}"
+            if [ -z "$GHEC_SOURCE_TOKEN" ]; then
+              echo "::error::GHEC_SOURCE_TOKEN secret is not set in this repository."
+              exit 1
+            fi
+            echo "Seeding full dummy resources in $SOURCE_ORG..."
+            node ./scripts/seed-dummy-resources.mjs "$SOURCE_ORG"
+          fi
+
+      - name: Generate Actions Step Summary
+        if: always()
+        shell: bash
+        run: |
+          SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
+          echo "## 📦 Dummy Resources Provisioning Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "- **Organization:** \`${{ inputs.organization }}\`" >> "$SUMMARY_FILE"
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "### Expected Dummy Resources" >> "$SUMMARY_FILE"
+          echo "- \`dummy-repo-public\`: Public repo with Actions variables, workflow, and \`production\` environment." >> "$SUMMARY_FILE"
+          echo "- \`dummy-repo-private-lfs\`: Private repo with \`.gitattributes\` (Git LFS) and sample asset." >> "$SUMMARY_FILE"
+          echo "- Teams: \`engineering\` (parent), \`platform-infra\` (child)." >> "$SUMMARY_FILE"
+          echo "- Org Variables: \`GLOBAL_REGION\`, \`ENABLE_MAINTENANCE_MODE\`." >> "$SUMMARY_FILE"
+          echo "- Custom Properties: \`environment\`, \`cost_center\`." >> "$SUMMARY_FILE"

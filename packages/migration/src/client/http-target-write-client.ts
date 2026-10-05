@@ -108,9 +108,12 @@ export class HttpTargetWriteClient implements TargetWriteClient {
       } catch {
         // ignore read error
       }
-      throw new Error(
+      const err = new Error(
         `Mutation "${operation.id}" failed with HTTP ${res.status}: ${sanitizeDiagnostics(bodyText)}`,
       );
+      (err as unknown as { status: number }).status = res.status;
+      (err as unknown as { bodyText: string }).bodyText = bodyText;
+      throw err;
     }
 
     if (res.status === 204) {

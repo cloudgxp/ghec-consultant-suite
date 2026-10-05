@@ -8,6 +8,7 @@ import {
 } from '@ghec/contracts';
 import { SourceRepositoryInspector } from './source-inspector.js';
 import { DestinationBlockerInspector } from './destination-inspector.js';
+import { SourceCredentialInspector } from './credential-inspector.js';
 import type { PreflightEvaluatorOptions } from './types.js';
 
 export class PreflightEvaluator {
@@ -48,7 +49,15 @@ export class PreflightEvaluator {
       );
     }
 
-    // 1. Inspect source repositories
+    // 1. Inspect source credentials & capabilities
+    const credentialInspector = new SourceCredentialInspector({
+      adapter: sourceAdapter,
+      sourceOrg,
+      signal,
+    });
+    const credentialAssessment = await credentialInspector.inspect();
+
+    // 2. Inspect source repositories
     const sourceInspector = new SourceRepositoryInspector({
       adapter: sourceAdapter,
       sourceOrg,
@@ -66,7 +75,7 @@ export class PreflightEvaluator {
       initialRepoAssessments.push(assessment);
     }
 
-    // 2. Inspect destination organization
+    // 3. Inspect destination organization
     const destinationAdapter = targetAdapter ?? sourceAdapter;
     const targetReposToCheck = scope.repositories.map((r) => r.targetRepo);
 
@@ -86,7 +95,7 @@ export class PreflightEvaluator {
       nameConflicts: [...destInspection.nameConflicts],
     };
 
-    // 3. Reconcile destination blockers into repository assessments
+    // 4. Reconcile blockers into repository assessments
     const nameConflictSet = new Set(destinationAssessment.nameConflicts);
     const repoMappingBySource = new Map(
       scope.repositories.map((r) => [r.sourceRepo, r]),
@@ -98,6 +107,12 @@ export class PreflightEvaluator {
         let status = assessment.status;
         const mapping = repoMappingBySource.get(assessment.repo);
         const targetRepoName = mapping?.targetRepo ?? assessment.repo;
+
+        // Check source credential blockers
+        if (credentialAssessment.blockers.length > 0) {
+          status = 'blocked';
+          blockers.push(...credentialAssessment.blockers);
+        }
 
         // Check target name conflicts
         if (nameConflictSet.has(targetRepoName)) {

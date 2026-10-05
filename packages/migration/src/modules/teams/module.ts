@@ -544,14 +544,31 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             body: { permission: permState.permission },
           };
 
-          const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+          try {
+            const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
 
-          results.push({
-            operationId: op.id,
-            status: 'succeeded',
-            httpStatus: res.status,
-            completedAt: new Date().toISOString(),
-          });
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          } catch (err: unknown) {
+            const errMsg = (err as Error).message || String(err);
+            if (errMsg.includes('404') || errMsg.includes('Not Found')) {
+              ctx.logger?.warn?.(
+                `Skipping team permission binding for '${permState.teamSlug}' on '${permState.repositoryName}': target repository does not exist on '${targetOrg}' yet.`,
+              );
+              results.push({
+                operationId: op.id,
+                status: 'skipped',
+                httpStatus: 404,
+                completedAt: new Date().toISOString(),
+              });
+            } else {
+              throw err;
+            }
+          }
         } else if (op.resourceType === 'org-permission') {
           const permState = op.sourceState as {
             default_repository_permission: string;

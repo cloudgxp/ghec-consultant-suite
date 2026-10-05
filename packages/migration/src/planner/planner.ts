@@ -24,6 +24,8 @@ export interface MigrationPlannerOptions {
   readonly targetClient: GitHubReadAdapter;
   /** Cached discovery bundle. If supplied, validated and passed to discover() without source network calls. */
   readonly cachedDiscoveryBundle?: DiscoveryBundle | unknown | undefined;
+  /** Modules to restrict planning to (defaults to all modules in scope). */
+  readonly modules?: readonly string[] | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly runId?: string | undefined;
   readonly signal?: AbortSignal | undefined;
@@ -41,6 +43,7 @@ export class MigrationPlanner {
   private readonly sourceClient: GitHubReadAdapter;
   private readonly targetClient: GitHubReadAdapter;
   private readonly cachedBundle?: DiscoveryBundle | undefined;
+  private readonly modules?: readonly string[] | undefined;
   private readonly logger: StructuredLogger;
   private readonly runId: string;
   private readonly signal: AbortSignal;
@@ -50,6 +53,7 @@ export class MigrationPlanner {
     this.registry = options.registry;
     this.sourceClient = options.sourceClient;
     this.targetClient = options.targetClient;
+    this.modules = options.modules;
     this.logger = options.logger ?? defaultLogger;
     this.runId =
       options.runId ??
@@ -93,8 +97,15 @@ export class MigrationPlanner {
         targetOrg: orgMapping.target,
       };
 
-      const selectedModules =
+      let selectedModules: readonly string[] =
         orgMapping.modules ?? this.registry.getAll().map((m) => m.id);
+      if (
+        this.modules &&
+        this.modules.length > 0 &&
+        !this.modules.includes('all')
+      ) {
+        selectedModules = this.modules;
+      }
       const executionModules = this.registry
         .resolveExecutionPlan(selectedModules)
         .filter((m) => m.scopeLevel === 'organization');
@@ -142,8 +153,15 @@ export class MigrationPlanner {
         targetRepo: repoMapping.targetRepo,
       };
 
-      const selectedModules =
+      let selectedModules: readonly string[] =
         repoMapping.modules ?? this.registry.getAll().map((m) => m.id);
+      if (
+        this.modules &&
+        this.modules.length > 0 &&
+        !this.modules.includes('all')
+      ) {
+        selectedModules = this.modules;
+      }
       const executionModules = this.registry
         .resolveExecutionPlan(selectedModules)
         .filter((m) => m.scopeLevel === 'repository');

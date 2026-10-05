@@ -11,6 +11,10 @@ import {
 } from './commands/migrate.js';
 import { parseVerifyOptions, executeVerifyCommand } from './commands/verify.js';
 import {
+  parsePreflightOptions,
+  executePreflightCommand,
+} from './commands/preflight.js';
+import {
   loadConfig,
   sanitizeDiagnostics,
   type CliConfig,
@@ -39,6 +43,7 @@ Usage: ghec-consultant-cli <command> [options]
 
 Commands:
   discover    Enumerate source tenant metadata and emit DiscoveryBundle
+  preflight   Evaluate source & destination readiness, token scopes, and blockers
   plan        Generate immutable MigrationPlan from MigrationScope
   migrate     Execute pre-approved MigrationPlan or Scope against target tenant
   verify      Audit destination tenant state against plan and produce VerificationReport
@@ -120,6 +125,72 @@ Modules: ${MODULE_IDS.join(', ')}`);
         console.error(`Discovery failed: ${sanitizeDiagnostics(msg)}`);
         return 1;
       }
+    } finally {
+      process.removeListener('SIGINT', onSigint);
+    }
+  }
+
+  if (command === 'preflight') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli preflight — Evaluate migration readiness & credential capabilities
+Usage: ghec-consultant-cli preflight --scope <file> [options]
+Options: --output <file> --verbose
+         --app-id <id> --private-key-path <path> --installation-id <id>
+         --source-token <token> --target-token <token>`);
+      return 0;
+    }
+
+    let preflightOptions;
+    try {
+      preflightOptions = parsePreflightOptions(commandArgs);
+    } catch {
+      console.error('Invalid preflight options. Use preflight --help.');
+      return 2;
+    }
+
+    const controller = new AbortController();
+    const onSigint = () => controller.abort();
+    process.once('SIGINT', onSigint);
+
+    try {
+      const { report, filePath, hasBlockers, blockedCount } =
+        await executePreflightCommand(
+          preflightOptions,
+          {
+            sourceClient: configOverride?.sourceClient,
+            targetClient: configOverride?.targetClient,
+          },
+          controller.signal,
+        );
+      console.log(`Preflight report saved: ${filePath}`);
+      console.log(
+        `Evaluated repositories: ${report.repositoryAssessments.length}`,
+      );
+      console.log(`Blocked repositories: ${blockedCount}`);
+
+      if (hasBlockers) {
+        console.error('Preflight evaluation found blockers:');
+        const allBlockers = Array.from(
+          new Set(report.repositoryAssessments.flatMap((r) => r.blockers)),
+        );
+        for (const blocker of allBlockers) {
+          console.error(`  - ${blocker}`);
+        }
+        return 1;
+      }
+
+      console.log(
+        'Preflight evaluation completed successfully: 0 blockers found.',
+      );
+      return 0;
+    } catch (err) {
+      if (controller.signal.aborted) {
+        console.error('Preflight interrupted.');
+        return 130;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Preflight evaluation failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
     } finally {
       process.removeListener('SIGINT', onSigint);
     }

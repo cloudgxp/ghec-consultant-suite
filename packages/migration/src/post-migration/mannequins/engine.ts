@@ -138,8 +138,15 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
         ...(this.engineOptions.geiRunner
           ? { geiRunner: this.engineOptions.geiRunner }
           : {}),
-        ...(this.engineOptions.targetToken || process.env.GH_PAT
-          ? { token: this.engineOptions.targetToken ?? process.env.GH_PAT }
+        ...(this.engineOptions.targetToken ||
+        process.env.GH_PAT ||
+        process.env.GHEC_TARGET_TOKEN
+          ? {
+              token:
+                this.engineOptions.targetToken ??
+                process.env.GH_PAT ??
+                process.env.GHEC_TARGET_TOKEN,
+            }
           : {}),
         signal: ctx.signal,
       });
@@ -326,8 +333,15 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
           ...(this.engineOptions.geiRunner
             ? { geiRunner: this.engineOptions.geiRunner }
             : {}),
-          ...(this.engineOptions.targetToken || process.env.GH_PAT
-            ? { token: this.engineOptions.targetToken ?? process.env.GH_PAT }
+          ...(this.engineOptions.targetToken ||
+          process.env.GH_PAT ||
+          process.env.GHEC_TARGET_TOKEN
+            ? {
+                token:
+                  this.engineOptions.targetToken ??
+                  process.env.GH_PAT ??
+                  process.env.GHEC_TARGET_TOKEN,
+              }
             : {}),
           dryRun: isDryRun,
           signal: ctx.signal,
@@ -448,8 +462,15 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
             targetOrg: options.targetOrg,
             outputPath: tempCsvPath,
             ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
-            ...(options.targetToken || process.env.GH_PAT
-              ? { token: options.targetToken ?? process.env.GH_PAT }
+            ...(options.targetToken ||
+            process.env.GH_PAT ||
+            process.env.GHEC_TARGET_TOKEN
+              ? {
+                  token:
+                    options.targetToken ??
+                    process.env.GH_PAT ??
+                    process.env.GHEC_TARGET_TOKEN,
+                }
               : {}),
           });
         }
@@ -458,8 +479,15 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
           targetOrg: options.targetOrg,
           outputPath: tempCsvPath,
           ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
-          ...(options.targetToken || process.env.GH_PAT
-            ? { token: options.targetToken ?? process.env.GH_PAT }
+          ...(options.targetToken ||
+          process.env.GH_PAT ||
+          process.env.GHEC_TARGET_TOKEN
+            ? {
+                token:
+                  options.targetToken ??
+                  process.env.GH_PAT ??
+                  process.env.GHEC_TARGET_TOKEN,
+              }
             : {}),
         });
       }
@@ -490,8 +518,15 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
             csvPath: mappedCsvPath,
             isEmu: options.isEmu !== false,
             ...(options.geiRunner ? { geiRunner: options.geiRunner } : {}),
-            ...(options.targetToken || process.env.GH_PAT
-              ? { token: options.targetToken ?? process.env.GH_PAT }
+            ...(options.targetToken ||
+            process.env.GH_PAT ||
+            process.env.GHEC_TARGET_TOKEN
+              ? {
+                  token:
+                    options.targetToken ??
+                    process.env.GH_PAT ??
+                    process.env.GHEC_TARGET_TOKEN,
+                }
               : {}),
             ...(options.dryRun !== undefined ? { dryRun: options.dryRun } : {}),
           });
