@@ -118,7 +118,6 @@ node --import tsx --test apps/cli/tests/permissions.test.ts
 - [ ] No tokens, credentials, or private keys are printed in workflow logs or Step Summaries.
 - [ ] Offline preflight evaluator and permissions unit tests pass cleanly.
 
-
 ## Verification Proof
 
 - **GitHub Actions Run ID:** [37250661767](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250661767)

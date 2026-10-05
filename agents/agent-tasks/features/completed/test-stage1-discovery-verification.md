@@ -127,7 +127,6 @@ node --import tsx --test apps/cli/tests/permissions.test.ts
 - [ ] Artifact download contains well-formed plan conforming to `validateMigrationPlan()`.
 - [ ] Unit and contract tests pass with 0 errors.
 
-
 ## Verification Proof
 
 - **GitHub Actions Run ID:** [37250556440](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250556440)
