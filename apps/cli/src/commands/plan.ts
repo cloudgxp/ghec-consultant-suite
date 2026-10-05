@@ -64,12 +64,13 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
     throw new Error('The --scope <file> flag is required.');
   }
 
-  const modules = values.modules
-    ? values.modules
-        .split(',')
-        .map((m) => m.trim())
-        .filter(Boolean)
-    : undefined;
+  const modules =
+    values.modules && values.modules.toLowerCase() !== 'all'
+      ? values.modules
+          .split(',')
+          .map((m) => m.trim())
+          .filter(Boolean)
+      : undefined;
 
   let splitMatrix: number | undefined;
   if (values['split-matrix']) {

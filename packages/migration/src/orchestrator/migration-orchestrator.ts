@@ -191,7 +191,11 @@ export class MigrationOrchestrator {
     }
 
     let modulePlans: readonly ModulePlan[] = activePlan.modules;
-    if (this.modulesFilter && this.modulesFilter.length > 0) {
+    if (
+      this.modulesFilter &&
+      this.modulesFilter.length > 0 &&
+      !this.modulesFilter.includes('all')
+    ) {
       const filterSet = new Set(this.modulesFilter);
       modulePlans = modulePlans.filter((mp) => filterSet.has(mp.moduleId));
     }

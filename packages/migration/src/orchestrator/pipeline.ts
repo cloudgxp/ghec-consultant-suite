@@ -514,7 +514,10 @@ export class RepositoryMigrationPipeline {
         for (const task of postMigrationTasks) {
           const mod =
             this.options.registry.get(task) ??
-            this.options.registry.get(`post-migration-${task}`);
+            this.options.registry.get(`post-migration-${task}`) ??
+            (task === 'repo-visibility'
+              ? this.options.registry.get('repo-settings')
+              : undefined);
           if (mod) {
             try {
               const scopeTarget: MigrationScopeTarget = {

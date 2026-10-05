@@ -10,7 +10,8 @@
         "org-secrets",
         "teams",
         "org-custom-properties",
-        "webhooks"
+        "webhooks",
+        "post-migration-mannequins"
       ]
     }
   ],
