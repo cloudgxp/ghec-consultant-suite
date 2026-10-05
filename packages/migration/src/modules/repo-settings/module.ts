@@ -281,35 +281,57 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
         continue;
       }
 
+      const payload = (op.payload as Record<string, unknown>) ?? {};
+      let res:
+        | { status: number; data?: RawGitHubRepositoryResponse | undefined }
+        | undefined;
+      let is422 = false;
+      let failureError: string | undefined;
+
       try {
-        const payload = (op.payload as Record<string, unknown>) ?? {};
-        const res =
-          await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
-            {
-              id: 'rest.repos.update',
-              method: 'PATCH',
-              path: '/repos/{owner}/{repo}',
-              pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
-              body: payload,
-            },
-            ctx.signal,
+        res = await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+          {
+            id: 'rest.repos.update',
+            method: 'PATCH',
+            path: '/repos/{owner}/{repo}',
+            pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+            body: payload,
+          },
+          ctx.signal,
+        );
+
+        if (res.status === 422) {
+          is422 = true;
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const errStatus = (err as { status?: number })?.status;
+        failureError = errMsg;
+        if (
+          errStatus === 422 ||
+          errMsg.includes('HTTP 422') ||
+          errMsg.includes('Public repositories are not permitted')
+        ) {
+          is422 = true;
+        }
+      }
+
+      if (res && res.status >= 200 && res.status < 300) {
+        results.push({
+          operationId: op.id,
+          status: 'succeeded',
+          httpStatus: res.status,
+          completedAt: new Date().toISOString(),
+        });
+      } else if (is422 && payload.visibility === 'public') {
+        // Enterprise policy violation fallback check:
+        // An EMU enterprise may disallow public repositories.
+        if (this.options.enforceInternalForPublic !== false) {
+          ctx.logger.warn(
+            `Target enterprise policy disallows public visibility on ${targetRepo}. Attempting fallback to 'internal'...`,
           );
 
-        if (res.status >= 200 && res.status < 300) {
-          results.push({
-            operationId: op.id,
-            status: 'succeeded',
-            httpStatus: res.status,
-            completedAt: new Date().toISOString(),
-          });
-        } else if (res.status === 422 && payload.visibility === 'public') {
-          // Enterprise policy violation fallback check:
-          // An EMU enterprise may disallow public repositories.
-          if (this.options.enforceInternalForPublic !== false) {
-            ctx.logger.warn(
-              `Target enterprise policy disallows public visibility on ${targetRepo}. Attempting fallback to 'internal'...`,
-            );
-
+          try {
             const fallbackPayload = { ...payload, visibility: 'internal' };
             const fallbackRes =
               await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
@@ -335,31 +357,27 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
               });
               continue;
             }
+          } catch (fallbackErr) {
+            ctx.logger.warn(
+              `Fallback to internal visibility for ${targetRepo} failed: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`,
+            );
           }
-
-          results.push({
-            operationId: op.id,
-            status: 'failed',
-            httpStatus: res.status,
-            error: `GitHub enterprise policy prohibits public visibility on ${targetRepo}.`,
-            completedAt: new Date().toISOString(),
-          });
-          if (!ctx.continueOnError) break;
-        } else {
-          results.push({
-            operationId: op.id,
-            status: 'failed',
-            httpStatus: res.status,
-            error: `GitHub API error (HTTP ${res.status})`,
-            completedAt: new Date().toISOString(),
-          });
-          if (!ctx.continueOnError) break;
         }
-      } catch (err) {
+
         results.push({
           operationId: op.id,
           status: 'failed',
-          error: err instanceof Error ? err.message : String(err),
+          httpStatus: 422,
+          error: `GitHub enterprise policy prohibits public visibility on ${targetRepo}.`,
+          completedAt: new Date().toISOString(),
+        });
+        if (!ctx.continueOnError) break;
+      } else {
+        results.push({
+          operationId: op.id,
+          status: 'failed',
+          httpStatus: res?.status,
+          error: failureError ?? `GitHub API error (HTTP ${res?.status})`,
           completedAt: new Date().toISOString(),
         });
         if (!ctx.continueOnError) break;

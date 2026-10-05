@@ -129,13 +129,21 @@ jobs:
           fi
 
           echo "Executing migration for scope '$INPUT_SCOPE' (dry_run: $INPUT_DRY_RUN)..."
+          EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --plan ./scans/test-migration-plan.json \
             --scope "$INPUT_SCOPE" \
             --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
             "${CONT_ARG[@]}" \
-            --output ./scans/test-migration-execution.json
+            --output ./scans/test-migration-execution.json || EXIT_CODE=$?
+
+          if [ "$EXIT_CODE" -eq 0 ] || ([ "$EXIT_CODE" -eq 4 ] && [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]); then
+            echo "Migration step completed with status code $EXIT_CODE."
+          else
+            echo "Migration step failed with status code $EXIT_CODE."
+            exit "$EXIT_CODE"
+          fi
 
       - name: Execute Target Verification
         if: always()
