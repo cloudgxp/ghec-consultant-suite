@@ -1,0 +1,138 @@
+name: Generate Migration Scope
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_org:
+        description: 'Source organization slug (e.g. demogxp)'
+        required: true
+        type: string
+        default: 'demogxp'
+      target_org:
+        description: 'Target organization slug (e.g. antigravity-migration-test)'
+        required: true
+        type: string
+        default: 'antigravity-migration-test'
+      scope_type:
+        description: 'Repository selection mode'
+        required: true
+        type: choice
+        options:
+          - 'all_repositories'
+          - 'custom_list'
+          - 'org_resources_only'
+        default: 'all_repositories'
+      repositories_list:
+        description: 'Comma- or newline-separated repository names (if scope_type is custom_list)'
+        required: false
+        type: string
+      scope_name:
+        description: 'Scope name / filename (without .json). Leave blank for default.'
+        required: false
+        type: string
+      identity_suffix:
+        description: 'EMU identity suffix (e.g. _antigravity)'
+        required: false
+        type: string
+        default: '_antigravity'
+      lfs_strategy:
+        description: 'LFS migration strategy'
+        required: false
+        type: choice
+        options:
+          - 'dual-remote-stream'
+          - 'skip'
+        default: 'dual-remote-stream'
+      commit_to_branch:
+        description: 'Commit and push the generated scope file to this branch'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate-scope:
+    name: 'Generate Scope: ${{ inputs.source_org }} -> ${{ inputs.target_org }}'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Scope File
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GH_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+        run: |
+          ARGS=(
+            "--source" "${{ inputs.source_org }}"
+            "--target" "${{ inputs.target_org }}"
+            "--identity-suffix" "${{ inputs.identity_suffix }}"
+            "--lfs-strategy" "${{ inputs.lfs_strategy }}"
+          )
+
+          if [ -n "${{ inputs.scope_name }}" ]; then
+            ARGS+=("--name" "${{ inputs.scope_name }}")
+          fi
+
+          if [ "${{ inputs.scope_type }}" = "all_repositories" ]; then
+            ARGS+=("--all")
+          elif [ "${{ inputs.scope_type }}" = "org_resources_only" ]; then
+            ARGS+=("--org-only")
+          elif [ "${{ inputs.scope_type }}" = "custom_list" ]; then
+            CLEANED_REPOS=$(echo "${{ inputs.repositories_list }}" | tr '\n' ',' | sed 's/,,*/,/g' | sed 's/^,//' | sed 's/,$//')
+            if [ -z "$CLEANED_REPOS" ]; then
+              echo "::error::Custom list selected but no repositories were provided in repositories_list."
+              exit 1
+            fi
+            ARGS+=("--repos" "$CLEANED_REPOS")
+          fi
+
+          node scripts/generate-scope.mjs "${ARGS[@]}"
+
+      - name: Upload Generated Scopes as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-scopes
+          path: scopes/*.json
+          retention-days: 14
+
+      - name: Commit & Push Scope File
+        if: ${{ inputs.commit_to_branch }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scopes/
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(scope): generate migration scope for ${{ inputs.source_org }} -> ${{ inputs.target_org }}"
+            git push origin HEAD
+          fi
+
+      - name: Generate Actions Step Summary
+        if: always()
+        shell: bash
+        run: |
+          SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
+          echo "## 📋 Migration Scope Generation Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "- **Source:** \`${{ inputs.source_org }}\`" >> "$SUMMARY_FILE"
+          echo "- **Target:** \`${{ inputs.target_org }}\`" >> "$SUMMARY_FILE"
+          echo "- **Type:** \`${{ inputs.scope_type }}\`" >> "$SUMMARY_FILE"
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "Scope files in \`scopes/\` are validated and ready for \`test-migration-dispatch.yml\`." >> "$SUMMARY_FILE"
