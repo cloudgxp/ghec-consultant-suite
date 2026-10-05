@@ -10,9 +10,9 @@
   "repositories": [
     {
       "sourceOrg": "demogxp",
-      "sourceRepo": "dummy-repo-public",
+      "sourceRepo": "ghec-content-filler",
       "targetOrg": "antigravity-migration-test",
-      "targetRepo": "dummy-repo-public",
+      "targetRepo": "ghec-content-filler",
       "useGei": true,
       "targetRepoVisibility": "public",
       "modules": [
@@ -28,9 +28,9 @@
     },
     {
       "sourceOrg": "demogxp",
-      "sourceRepo": "dummy-repo-private-lfs",
+      "sourceRepo": "migration-demo-1361857985-companion",
       "targetOrg": "antigravity-migration-test",
-      "targetRepo": "dummy-repo-private-lfs",
+      "targetRepo": "migration-demo-1361857985-companion",
       "useGei": true,
       "targetRepoVisibility": "private",
       "skipReleases": false,
@@ -40,6 +40,6 @@
   ],
   "identityMapping": {
     "strategy": "emu-saml",
-    "suffix": "_antigravity"
+    "suffix": "_gxp"
   }
 }

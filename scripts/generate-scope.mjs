@@ -63,7 +63,7 @@ Configuration Options:
   --use-gei <true|false>       Whether to use GitHub Enterprise Importer (default: true)
   --skip-releases              Skip release asset migration fallback (default: false)
   --identity-strategy <strat>  Identity mapping strategy: 'emu-saml', 'manual', 'pass-through' (default: 'emu-saml')
-  --identity-suffix <suffix>   EMU identity suffix (default: '_antigravity')
+  --identity-suffix <suffix>   EMU identity suffix (default: '_gxp')
   --include-org-resources      Include org-level migration modules (default: true)
   --org-modules <list>         Comma-separated list of org modules to include
   --repo-modules <list>        Comma-separated list of repo modules to include
@@ -267,7 +267,7 @@ export async function generateScope(options) {
     useGei = true,
     skipReleases = false,
     identityStrategy = 'emu-saml',
-    identitySuffix = '_antigravity',
+    identitySuffix = '_gxp',
     includeOrgResources = true,
     orgModules,
     repoModules,
@@ -466,7 +466,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         'use-gei': { type: 'string', default: 'true' },
         'skip-releases': { type: 'boolean', default: false },
         'identity-strategy': { type: 'string', default: 'emu-saml' },
-        'identity-suffix': { type: 'string', default: '_antigravity' },
+        'identity-suffix': { type: 'string', default: '_gxp' },
         'include-org-resources': { type: 'string', default: 'true' },
         'org-modules': { type: 'string' },
         'repo-modules': { type: 'string' },

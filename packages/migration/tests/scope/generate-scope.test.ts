@@ -63,7 +63,7 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
     assert.equal(scope.repositories[1].useGei, true);
     assert.equal(scope.repositories[1].lfsStrategy, 'dual-remote-stream');
     assert.equal(scope.identityMapping?.strategy, 'emu-saml');
-    assert.equal(scope.identityMapping?.suffix, '_antigravity');
+    assert.equal(scope.identityMapping?.suffix, '_gxp');
 
     const validation = validateMigrationScope(scope);
     assert.equal(validation.success, true);

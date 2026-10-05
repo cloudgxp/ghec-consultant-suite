@@ -40,7 +40,7 @@ Before executing migration planning or data movement, the migration operator mus
 
 ### Step 1: Scope Artifact Definition
 
-Target the committed test organization scope defining source (`cloudgxp-source`) and target EMU (`cloudgxp-emu-target`) tenants:
+Target the committed test organization scope defining source (`demogxp`) and target EMU (`antigravity-migration-test`) tenants:
 
 ```bash
 # Verify scope artifact exists and satisfies schema

@@ -17,6 +17,6 @@
   "repositories": [],
   "identityMapping": {
     "strategy": "emu-saml",
-    "suffix": "_antigravity"
+    "suffix": "_gxp"
   }
 }
