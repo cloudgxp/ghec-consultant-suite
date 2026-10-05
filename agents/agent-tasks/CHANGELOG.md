@@ -31,6 +31,15 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — TEST-STAGE3-RULESETS-AND-BRANCH-PROTECTION — Complete
+
+- Summary: Validated Stage 3 rulesets and legacy branch protection translation and reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled rulesets and branch protections across target repos with zero credential leakage. Post-apply verification confirmed `rulesets` and `branch-protection` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-rulesets-and-branch-protection.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=rulesets,branch-protection`. Dry-run [37253518261](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253518261) completed in 58s with dryRun=true and 0 write calls; live apply [37253608458](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253608458) completed in 59s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/rulesets.test.ts` and `branch-protection.test.ts` passed (8/8).
+- Follow-up: Proceed to Stage 3 Task 4 (`security/test-stage3-environments-reconciliation.md`).
+
 ### 2026-10-04 — Antigravity — TEST-STAGE3-REPO-VARIABLES-AND-SECRETS — Complete
 
 - Summary: Validated Stage 3 repository Actions variables and encrypted secrets rehydration against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled variables `APP_ENV` and `LOG_LEVEL` to target repo `dummy-repo-public` via REST PUT/PATCH. Rehydration executed with zero local credentials and zero secret leakage. Post-apply verification confirmed `repo-variables` and `repo-secrets` match with 0 discrepancies.
