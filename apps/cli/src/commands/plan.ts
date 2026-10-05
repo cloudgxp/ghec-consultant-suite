@@ -182,6 +182,7 @@ export async function executePlanCommand(
     sourceClient,
     targetClient,
     cachedDiscoveryBundle: cachedBundle,
+    modules: options.modules,
     signal,
   });
 
