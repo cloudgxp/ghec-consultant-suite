@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+completed
 
 ## Priority
 
@@ -14,7 +14,7 @@ Security / Deployment & Environments
 
 ## Location
 
-`agents/agent-tasks/security/test-stage3-environments-reconciliation.md`
+`agents/agent-tasks/security/completed/test-stage3-environments-reconciliation.md`
 
 ## Scope Level
 
@@ -125,11 +125,20 @@ gh workflow run test-migration-dispatch.yml \
 
 ---
 
+## Verification Record
+
+- **Dry-Run Workflow Run:** [37253915998](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253915998) (Status: complete, dryRun: true, 0 live mutations)
+- **Live Apply Workflow Run:** [37253990065](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253990065) (Status: complete, exitCode: 0, production environment created)
+- **Target Verification:** `environments`: verified `true` (0 discrepancies)
+- **Unit Tests:** `packages/migration/tests/modules/environments.test.ts` passed (8/8)
+
+---
+
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Zero local migration credentials stored or leaked.
-- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
-- [ ] Dry-run execution generates 0 write calls against environment endpoints.
-- [ ] Step summary displays simulated environment, variable, and secret reconciliation.
-- [ ] Offline unit tests for `environments` pass cleanly.
-- [ ] Post-apply verification reports `verified: true` with 0 discrepancies.
+- [x] Zero local migration credentials stored or leaked.
+- [x] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [x] Dry-run execution generates 0 write calls against environment endpoints.
+- [x] Step summary displays simulated environment, variable, and secret reconciliation.
+- [x] Offline unit tests for `environments` pass cleanly.
+- [x] Post-apply verification reports `verified: true` with 0 discrepancies.
