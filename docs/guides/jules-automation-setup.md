@@ -80,9 +80,9 @@ To activate Jules automations, you must configure a Google Jules API key as a re
 
 ## 3. Operational Workflows & Triggers
 
-### Trigger A: Issue-to-Fix Agent
+### Trigger A: Issue & PR Comment Fix Agent
 
-Maintainers can delegate bug fixes, documentation corrections, or minor enhancements directly from GitHub Issues.
+Maintainers can delegate bug fixes, documentation corrections, or review remediations directly from GitHub Issues and Pull Requests.
 
 #### 1. Via Issue Label
 
@@ -91,14 +91,14 @@ Maintainers can delegate bug fixes, documentation corrections, or minor enhancem
 - **Acknowledgement:** The issue receives an `:eyes:` reaction.
 - **Authorization:** Only repository `OWNER`, `MEMBER`, or `COLLABORATOR` actors can invoke Jules. If an unauthorized user applies the label, the workflow posts an explanatory comment and terminates without consuming quota.
 
-#### 2. Via Issue Comment (Slash Command)
+#### 2. Via Issue or Pull Request Comment (Slash Command)
 
-- Post a comment on an open issue containing:
+- Post a comment on an open issue or pull request containing:
   ```text
   /jules fix
   ```
   _(or `/jules`, `/jules <custom instructions>`, `!jules fix`, or `jules: fix`)_
-- **Workflow:** `.github/workflows/jules-agent.yml` triggers on `issue_comment: created`.
+- **Pull Request Remediation**: When posted on a pull request, Jules automatically targets the PR's head branch, ingests the PR description and review comments, and pushes remediation commits directly to that branch.
 - **Acknowledgement:** The comment receives a `:rocket:` reaction.
 
 > [!TIP]
