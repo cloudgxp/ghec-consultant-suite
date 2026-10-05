@@ -78,6 +78,20 @@ jobs:
             console.log("Scope schema validation passed successfully.");
           ' "${{ inputs.scope }}"
 
+      - name: Execute Preflight Evaluation & Credential Audit
+        id: preflight
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          mkdir -p ./scans
+          echo "Evaluating source and target preflight readiness..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
+            --scope "${{ inputs.scope }}" \
+            --output ./scans/test-preflight-report.json \
+            --verbose
+
       - name: Execute Migration Planning
         id: plan
         shell: bash
@@ -253,6 +267,7 @@ jobs:
         with:
           name: test-migration-artifacts-${{ github.run_id }}
           path: |
+            ./scans/test-preflight-report.json
             ./scans/test-migration-plan.json
             ./scans/test-migration-execution.json
             ./scans/test-verification-report.json
