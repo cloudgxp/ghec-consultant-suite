@@ -80,12 +80,13 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     throw new Error('Either --plan <file> or --scope <file> is required.');
   }
 
-  const modules = values.modules
-    ? values.modules
-        .split(',')
-        .map((m) => m.trim())
-        .filter(Boolean)
-    : undefined;
+  const modules =
+    values.modules && values.modules.toLowerCase() !== 'all'
+      ? values.modules
+          .split(',')
+          .map((m) => m.trim())
+          .filter(Boolean)
+      : undefined;
 
   return {
     planPath: values.plan,
