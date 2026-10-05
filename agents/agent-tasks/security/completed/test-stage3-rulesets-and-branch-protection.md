@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+completed
 
 ## Priority
 
@@ -14,7 +14,7 @@ Security / Policy & Branch Protection
 
 ## Location
 
-`agents/agent-tasks/security/test-stage3-rulesets-and-branch-protection.md`
+`agents/agent-tasks/security/completed/test-stage3-rulesets-and-branch-protection.md`
 
 ## Scope Level
 
@@ -121,11 +121,20 @@ gh workflow run test-migration-dispatch.yml \
 
 ---
 
+## Verification Record
+
+- **Dry-Run Workflow Run:** [37253518261](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253518261) (Status: complete, dryRun: true, 0 live mutations)
+- **Live Apply Workflow Run:** [37253608458](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253608458) (Status: complete, exitCode: 0)
+- **Target Verification:** `rulesets`: verified `true` (0 discrepancies), `branch-protection`: verified `true` (0 discrepancies)
+- **Unit Tests:** `packages/migration/tests/modules/rulesets.test.ts` & `branch-protection.test.ts` passed (8/8)
+
+---
+
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Zero local migration credentials stored or leaked.
-- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
-- [ ] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}/rulesets` or `/branches/{branch}/protection`.
-- [ ] Step summary displays simulated ruleset diffs and legacy branch protection mappings.
-- [ ] Offline unit tests for `rulesets` and `branch-protection` pass cleanly.
-- [ ] Post-apply verification reports `verified: true` with 0 policy discrepancies.
+- [x] Zero local migration credentials stored or leaked.
+- [x] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [x] Dry-run execution generates 0 write calls against `/repos/{owner}/{repo}/rulesets` or `/branches/{branch}/protection`.
+- [x] Step summary displays simulated ruleset diffs and legacy branch protection mappings.
+- [x] Offline unit tests for `rulesets` and `branch-protection` pass cleanly.
+- [x] Post-apply verification reports `verified: true` with 0 policy discrepancies.
