@@ -46,14 +46,10 @@ function printUsage() {
   console.log(`
 Usage: node scripts/generate-scope.mjs [options]
 
-Required Options:
-  --source <org>               Source organization slug (e.g. demogxp)
-  --target <org>               Target organization slug (e.g. antigravity-migration-test)
-
 Repository Selection (choose at least one):
   --all                        Fetch all non-archived repositories from source organization
-  --repos <list>               Comma-separated list of repository names (e.g. repo-a,repo-b)
-  --repos-file <path>          Path to a file containing repository names (one per line)
+  --repos-file, -f <path>      Path to a file containing repository URLs or names (one per line)
+  --repos <list>               Comma-separated list of repository URLs or names
   --org-only                   Generate scope for organization-level resources only (no repositories)
 
 Configuration Options:
@@ -75,14 +71,14 @@ Configuration Options:
   --help, -h                   Show this help message
 
 Examples:
+  # Generate from a file containing repository URLs (supports hundreds of URLs):
+  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --file wave1-urls.txt
+
   # Generate a scope for all repositories in demogxp:
   node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --all
 
-  # Generate a wave scope for specific repositories:
-  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --repos repo-1,repo-2 --name wave-1
-
-  # Generate from a file containing repository names:
-  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --repos-file wave2.txt
+  # Generate a wave scope for specific repository URLs:
+  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --repos https://github.com/demogxp/repo-1,https://github.com/demogxp/repo-2
 `);
 }
 
@@ -167,6 +163,91 @@ async function fetchSourceRepositories(sourceOrg, includeArchived = false) {
   return repos;
 }
 
+/**
+ * Parses a repository input which can be a full URL (HTTPS/SSH), an org/repo slug,
+ * or a plain repository name.
+ */
+export function parseRepoEntry(rawInput, expectedSourceOrg) {
+  let cleaned = rawInput.trim();
+  if (!cleaned || cleaned.startsWith('#')) return null;
+
+  // Strip query params and hash fragments
+  cleaned = cleaned.replace(/[?#].*$/, '');
+
+  // Remove trailing .git
+  if (cleaned.endsWith('.git')) {
+    cleaned = cleaned.slice(0, -4);
+  }
+  // Remove trailing slashes
+  cleaned = cleaned.replace(/\/+$/, '');
+
+  // Format: git@host:org/repo or ssh://git@host/org/repo
+  const sshMatch = cleaned.match(
+    /^(?:ssh:\/\/)?git@[^:/]+[:/]([^/]+)\/([^/]+)$/,
+  );
+  if (sshMatch) {
+    const org = sshMatch[1];
+    const name = sshMatch[2];
+    if (
+      expectedSourceOrg &&
+      org.toLowerCase() !== expectedSourceOrg.toLowerCase()
+    ) {
+      throw new Error(
+        `Repository URL "${rawInput}" belongs to organization "${org}", but source organization is "${expectedSourceOrg}".`,
+      );
+    }
+    return { org, name };
+  }
+
+  // Format: https://host/org/repo or http://...
+  if (cleaned.includes('://')) {
+    try {
+      const url = new URL(cleaned);
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        const org = parts[parts.length - 2];
+        const name = parts[parts.length - 1];
+        if (
+          expectedSourceOrg &&
+          org.toLowerCase() !== expectedSourceOrg.toLowerCase()
+        ) {
+          throw new Error(
+            `Repository URL "${rawInput}" belongs to organization "${org}", but source organization is "${expectedSourceOrg}".`,
+          );
+        }
+        return { org, name };
+      } else if (parts.length === 1) {
+        return { org: null, name: parts[0] };
+      }
+    } catch (err) {
+      throw new Error(
+        `Failed to parse repository URL "${rawInput}": ${err.message}`,
+        { cause: err },
+      );
+    }
+  }
+
+  // Format: org/repo or repo
+  const slashParts = cleaned.split('/').filter(Boolean);
+  if (slashParts.length === 2) {
+    const org = slashParts[0];
+    const name = slashParts[1];
+    if (
+      expectedSourceOrg &&
+      org.toLowerCase() !== expectedSourceOrg.toLowerCase()
+    ) {
+      throw new Error(
+        `Repository identifier "${rawInput}" belongs to organization "${org}", but source organization is "${expectedSourceOrg}".`,
+      );
+    }
+    return { org, name };
+  } else if (slashParts.length === 1) {
+    return { org: null, name: slashParts[0] };
+  }
+
+  throw new Error(`Cannot parse repository identifier or URL: "${rawInput}"`);
+}
+
 export async function generateScope(options) {
   const {
     source,
@@ -176,6 +257,7 @@ export async function generateScope(options) {
     all = false,
     repos = '',
     reposFile = '',
+    file = '',
     orgOnly = false,
     includeArchived = false,
     targetRepoPrefix = '',
@@ -193,35 +275,73 @@ export async function generateScope(options) {
     silent = false,
   } = options;
 
-  if (!source || !target) {
+  const targetReposFilePath = reposFile || file;
+  let rawEntries = [];
+
+  if (repos) {
+    rawEntries = repos
+      .split(',')
+      .map((r) => r.trim())
+      .filter(Boolean);
+  } else if (targetReposFilePath) {
+    const content = readFileSync(resolve(targetReposFilePath), 'utf8');
+    rawEntries = content
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#'));
+  }
+
+  let resolvedSource = source?.trim() || '';
+
+  // If source was not passed explicitly, attempt to infer it from the URLs in the file/list
+  if (!resolvedSource && rawEntries.length > 0) {
+    const detectedOrgs = rawEntries
+      .map((entry) => {
+        try {
+          return parseRepoEntry(entry, null)?.org;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+    const uniqueOrgs = [...new Set(detectedOrgs)];
+    if (uniqueOrgs.length === 1) {
+      resolvedSource = uniqueOrgs[0];
+    } else if (uniqueOrgs.length > 1) {
+      throw new Error(
+        `Multiple source organizations detected in repository list (${uniqueOrgs.join(', ')}). ` +
+          `A single scope must target a single source organization. Please specify --source explicitly.`,
+      );
+    }
+  }
+
+  if (!resolvedSource || !target) {
     throw new Error(
-      'Both --source and --target organization slugs are required.',
+      'Both --source and --target organization slugs are required (or inferrable from repository URLs).',
     );
   }
 
   // Resolve repository list
   let repoNames = [];
 
-  if (repos) {
-    repoNames = repos
-      .split(',')
-      .map((r) => r.trim())
-      .filter(Boolean);
-  } else if (reposFile) {
-    const content = readFileSync(resolve(reposFile), 'utf8');
-    repoNames = content
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#'));
+  if (rawEntries.length > 0) {
+    repoNames = rawEntries
+      .map((entry) => parseRepoEntry(entry, resolvedSource))
+      .filter(Boolean)
+      .map((p) => p.name);
   } else if (all) {
-    console.log(
-      `Discovering repositories for source organization '${source}'...`,
-    );
-    repoNames = await fetchSourceRepositories(source, includeArchived);
-    console.log(`Discovered ${repoNames.length} repository/repositories.`);
+    if (!silent) {
+      console.log(
+        `Discovering repositories for source organization '${resolvedSource}'...`,
+      );
+    }
+    repoNames = await fetchSourceRepositories(resolvedSource, includeArchived);
+    if (!silent) {
+      console.log(`Discovered ${repoNames.length} repository/repositories.`);
+    }
   } else if (!orgOnly) {
     throw new Error(
-      'No repositories specified. Please specify --all, --repos <list>, --repos-file <file>, or --org-only.',
+      'No repositories specified. Please specify --file <urls-file>, --all, --repos <list>, or --org-only.',
     );
   }
 
@@ -231,10 +351,10 @@ export async function generateScope(options) {
   const resolvedName =
     name ||
     (orgOnly
-      ? `${source}-to-${target}-org`
+      ? `${resolvedSource}-to-${target}-org`
       : all
-        ? `${source}-to-${target}-all`
-        : `${source}-to-${target}-wave`);
+        ? `${resolvedSource}-to-${target}-all`
+        : `${resolvedSource}-to-${target}-wave`);
 
   // Build organization mapping
   const resolvedOrgModules = includeOrgResources
@@ -247,7 +367,7 @@ export async function generateScope(options) {
     : [];
 
   const orgMapping = {
-    source,
+    source: resolvedSource,
     target,
     modules: resolvedOrgModules,
   };
@@ -263,7 +383,7 @@ export async function generateScope(options) {
   const repositoryMappings = repoNames.map((repoName) => {
     const targetRepoName = `${targetRepoPrefix}${repoName}${targetRepoSuffix}`;
     const mapping = {
-      sourceOrg: source,
+      sourceOrg: resolvedSource,
       sourceRepo: repoName,
       targetOrg: target,
       targetRepo: targetRepoName,
@@ -336,6 +456,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         all: { type: 'boolean', default: false },
         repos: { type: 'string' },
         'repos-file': { type: 'string' },
+        file: { type: 'string', short: 'f' },
         'org-only': { type: 'boolean', default: false },
         'include-archived': { type: 'boolean', default: false },
         'target-repo-prefix': { type: 'string', default: '' },
@@ -361,8 +482,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(0);
     }
 
-    if (!values.source || !values.target) {
-      console.error('Error: --source and --target are required.');
+    const targetReposFile = values.file || values['repos-file'];
+
+    if (!values.target) {
+      console.error('Error: --target organization is required.');
+      printUsage();
+      process.exit(1);
+    }
+
+    if (!values.source && !targetReposFile) {
+      console.error(
+        'Error: --source organization is required unless inferred from a repository URLs file (--file).',
+      );
       printUsage();
       process.exit(1);
     }
@@ -377,7 +508,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       output: values.output,
       all: values.all,
       repos: values.repos,
-      reposFile: values['repos-file'],
+      file: targetReposFile,
       orgOnly: values['org-only'],
       includeArchived: values['include-archived'],
       targetRepoPrefix: values['target-repo-prefix'],

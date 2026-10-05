@@ -19,11 +19,16 @@ on:
         type: choice
         options:
           - 'all_repositories'
+          - 'urls_file'
           - 'custom_list'
           - 'org_resources_only'
         default: 'all_repositories'
+      repos_file_path:
+        description: 'Path to repository URLs file (if scope_type is urls_file, e.g. waves/wave1.txt)'
+        required: false
+        type: string
       repositories_list:
-        description: 'Comma- or newline-separated repository names (if scope_type is custom_list)'
+        description: 'Repository URLs or names (one per line or comma-separated, if scope_type is custom_list)'
         required: false
         type: string
       scope_name:
@@ -91,13 +96,16 @@ jobs:
             ARGS+=("--all")
           elif [ "${{ inputs.scope_type }}" = "org_resources_only" ]; then
             ARGS+=("--org-only")
-          elif [ "${{ inputs.scope_type }}" = "custom_list" ]; then
-            CLEANED_REPOS=$(echo "${{ inputs.repositories_list }}" | tr '\n' ',' | sed 's/,,*/,/g' | sed 's/^,//' | sed 's/,$//')
-            if [ -z "$CLEANED_REPOS" ]; then
-              echo "::error::Custom list selected but no repositories were provided in repositories_list."
+          elif [ "${{ inputs.scope_type }}" = "urls_file" ]; then
+            if [ -z "${{ inputs.repos_file_path }}" ] || [ ! -f "${{ inputs.repos_file_path }}" ]; then
+              echo "::error::repos_file_path is missing or file does not exist: '${{ inputs.repos_file_path }}'"
               exit 1
             fi
-            ARGS+=("--repos" "$CLEANED_REPOS")
+            ARGS+=("--file" "${{ inputs.repos_file_path }}")
+          elif [ "${{ inputs.scope_type }}" = "custom_list" ]; then
+            TMP_URLS_FILE=$(mktemp)
+            echo "${{ inputs.repositories_list }}" > "$TMP_URLS_FILE"
+            ARGS+=("--file" "$TMP_URLS_FILE")
           fi
 
           node scripts/generate-scope.mjs "${ARGS[@]}"
