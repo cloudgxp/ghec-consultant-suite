@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+completed
 
 ## Priority
 
@@ -120,10 +120,20 @@ gh workflow run test-migration-dispatch.yml \
 
 ---
 
+## Verification Record
+
+- **Dry-Run Workflow Run:** [37262414634](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262414634) (Status: complete, dryRun: true, 0 live mannequin reclamation invitations sent)
+- **Live Apply Workflow Run:** [37262506389](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262506389) (Status: complete, exitCode: 0, post-migration-mannequins verified `true` with 0 discrepancies)
+- **Target Verification:** `post-migration-mannequins` verified `true` (0 discrepancies)
+- **EMU Identity Attributions:** `--skip-invitation` flag execution verified under EMU constraints
+- **Offline Unit Tests:** `packages/migration/tests/post-migration/mannequins.test.ts` passed (10/10 tests passing)
+
+---
+
 ## Pass/Fail Acceptance Criteria
 
-- [ ] Zero local migration credentials stored or leaked.
-- [ ] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
-- [ ] In dry-run mode, no external CLI commands execute mutations on destination.
-- [ ] In EMU mode, `--skip-invitation` is always present in generated GEI command arguments.
-- [ ] Offline unit tests in `mannequins.test.ts` pass cleanly.
+- [x] Zero local migration credentials stored or leaked.
+- [x] Workflow dispatch succeeds via GitHub Actions runner (`ubuntu-latest`).
+- [x] In dry-run mode, no external CLI commands execute mutations on destination.
+- [x] In EMU mode, `--skip-invitation` is always present in generated GEI command arguments.
+- [x] Offline unit tests in `mannequins.test.ts` pass cleanly.

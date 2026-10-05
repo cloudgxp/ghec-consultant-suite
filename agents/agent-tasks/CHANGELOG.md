@@ -31,6 +31,15 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — TEST-STAGE4-MANNEQUIN-RECLAMATION-EMU — Complete
+
+- Summary: Validated Stage 4 mannequin reclamation and historical commit/PR attribution (`post-migration-mannequins`) in Enterprise Managed Users (EMU) environment against target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Dry-run verified zero live invitations sent with `--skip-invitation` flag execution. Live apply executed cleanly and verified `post-migration-mannequins` with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage4-mannequin-reclamation-emu.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=post-migration-mannequins`. Dry-run [37262414634](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262414634) completed in 40s with dryRun=true and 0 live invitations sent; live apply [37262506389](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262506389) completed in 39s with status `complete` (exitCode: 0). Target verification confirmed `post-migration-mannequins` verified `true` with 0 discrepancies. Offline unit tests in `packages/migration/tests/post-migration/mannequins.test.ts` passed cleanly (10/10).
+- Follow-up: All 13 migration testing tasks across Stages 1–4 are fully executed, verified, and complete.
+
 ### 2026-10-04 — Antigravity — TEST-STAGE4-VERIFICATION-COMPLIANCE-SUITE — Complete
 
 - Summary: Validated Stage 4 post-migration Verification Compliance Suite and Destination Audit against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Dry-run verified 1 organization and 28 repositories, cleanly identifying pre-existing discrepancies without unhandled exceptions. Live verification confirmed 13 of 14 modules verified with 0 discrepancies across all migrated target repositories and configurations.
