@@ -10,9 +10,9 @@
   "repositories": [
     {
       "sourceOrg": "demogxp",
-      "sourceRepo": "ghec-content-filler",
+      "sourceRepo": "dummy-repo-public",
       "targetOrg": "antigravity-migration-test",
-      "targetRepo": "ghec-content-filler",
+      "targetRepo": "dummy-repo-public",
       "useGei": true,
       "targetRepoVisibility": "public",
       "modules": [
@@ -28,9 +28,9 @@
     },
     {
       "sourceOrg": "demogxp",
-      "sourceRepo": "migration-demo-1361857985-companion",
+      "sourceRepo": "dummy-repo-private-lfs",
       "targetOrg": "antigravity-migration-test",
-      "targetRepo": "migration-demo-1361857985-companion",
+      "targetRepo": "dummy-repo-private-lfs",
       "useGei": true,
       "targetRepoVisibility": "private",
       "skipReleases": false,

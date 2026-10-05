@@ -31,6 +31,42 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — TEST-STAGE2-ORG-VARIABLES-AND-SECRETS — Complete
+
+- Summary: Validated Stage 2 organization Actions variables and sealed-box encrypted secrets migration against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Verified zero plaintext secret leakage, dry-run mutation simulation, and live encrypted reconciliation of org variables (`GLOBAL_REGION`, `ENABLE_MAINTENANCE_MODE`) and secrets.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage2-org-variables-and-secrets.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=org-variables,org-secrets`. Dry-run [37250912292](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250912292) passed in 39s; live apply [37250968003](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250968003) completed in 51s with status `complete`. Unit tests in `packages/migration/tests/modules/org-variables.test.ts` and `org-secrets.test.ts` passed (7/7).
+- Follow-up: Proceed to Stage 2 Task 3 (`test-stage2-teams-and-emu-identity-mapping.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE2-ORG-CUSTOM-PROPERTIES — Complete
+
+- Summary: Validated Stage 2 organization custom properties schema diffing, simulation (dry-run), and live execution against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Custom properties defined on `demogxp` (`environment`, `cost_center`) reconciled to target organization with values and schema constraints preserved.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage2-org-custom-properties.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=org-custom-properties`. Dry-run [37250748407](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250748407) succeeded in 45s; live run [37250810422](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250810422) completed in 46s with status `complete`. Unit test `packages/migration/tests/modules/custom-properties.test.ts` passed (11/11).
+- Follow-up: Proceed to Stage 2 Task 2 (`test-stage2-org-variables-and-secrets.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE1-PREFLIGHT-CREDENTIAL-VALIDATION — Complete
+
+- Summary: Verified Stage 1 preflight permission evaluation, classic scope analysis, fine-grained permission inspection, and blocker detection across source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Confirmed 0 preflight warnings and 0 credential leakage in generated plan and step summary.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage1-preflight-credential-validation.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=all` and `dry_run=true`. Run [37250661767](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250661767) succeeded in 39s. Downloaded artifact `test-migration-artifacts-37250661767` with 0 warnings. Offline tests in `evaluator.test.ts`, `sizer.test.ts`, and `permissions.test.ts` passed (31/31).
+- Follow-up: Stage 1 is fully complete. Proceed to Stage 2 (`test-stage2-org-custom-properties.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE1-DISCOVERY-VERIFICATION — Complete
+
+- Summary: Validated Stage 1 preflight discovery and plan generation for source organization `demogxp` and target organization `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Verified planning of modules `org-variables`, `org-secrets`, `teams`, and `org-custom-properties` with 0 plaintext secret leakage.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage1-discovery-verification.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `dry_run=true`. Run [37250556440](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250556440) completed successfully (status: success, duration: 43s). Downloaded and validated artifact `test-migration-artifacts-37250556440/test-migration-plan.json`.
+- Follow-up: Proceed to Stage 1 Task 2 (`test-stage1-preflight-credential-validation.md`).
+
 ### 2026-10-04 — Antigravity — MIGRATION-TEST-ACTIONS-REFACTOR — Complete
 
 - Summary: Audited and refactored all migration testing tasks across `features/` and `security/` to enforce the Zero-Local-Secrets Security Boundary. Removed all local CLI command recommendations requiring local Personal Access Tokens or `.env` files. Established dedicated, committed migration scope files in `scopes/` conforming to `MigrationScopeSchema`. Created lightweight testing workflow `.github/workflows/test-migration-dispatch.yml` and hardened `.github/workflows/migration-execute-wave.yml`, `.github/workflows/migration-plan-pr.yml`, and `.github/workflows/migration-resume.yml` (removing CLI token arguments in favor of process environment variables injected strictly from GitHub Secrets). Refactored all 13 migration test task specifications to follow the Actions execution lifecycle (`gh workflow run`, `gh run watch`, `gh run view --log-failed`, artifact downloading, step summary audit, mandatory dry-run gate). Updated setup guide and task registry.

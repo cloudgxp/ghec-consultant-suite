@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+complete
 
 ## Priority
 
@@ -117,3 +117,12 @@ node --import tsx --test apps/cli/tests/permissions.test.ts
 - [ ] Preflight detects and warns if target repo collisions or ruleset bypass issues exist without mutating target.
 - [ ] No tokens, credentials, or private keys are printed in workflow logs or Step Summaries.
 - [ ] Offline preflight evaluator and permissions unit tests pass cleanly.
+
+## Verification Proof
+
+- **GitHub Actions Run ID:** [37250661767](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250661767)
+- **Workflow:** `test-migration-dispatch.yml`
+- **Status:** Success (Job duration: 39s)
+- **Zero-Local-Secrets:** Verified - ran exclusively on remote GitHub Actions runner.
+- **Artifact:** `test-migration-artifacts-37250661767` verified with 0 preflight warnings, 0 credential leakage.
+- **Offline Tests:** 31 tests passed cleanly (`evaluator.test.ts`, `sizer.test.ts`, `permissions.test.ts`).
