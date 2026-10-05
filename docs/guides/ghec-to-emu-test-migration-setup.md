@@ -39,6 +39,37 @@ gh secret set GHEC_SOURCE_TOKEN
 gh secret set GHEC_TARGET_TOKEN
 ```
 
+### Specifying Source & Target Organizations (Migration Scopes)
+
+Unlike credentials (which belong in GitHub Secrets), organization slugs are non-sensitive declarative boundary metadata. In the GHEC Consultant Suite architecture, **source and target organizations are specified directly inside the Migration Scope JSON files** committed in `scopes/`:
+
+- `scopes/test-org-wave.json`: Contains the organization mapping:
+  ```json
+  "organizations": [
+    {
+      "source": "cloudgxp-source",
+      "target": "cloudgxp-emu-target",
+      "modules": ["org-variables", "org-secrets", "teams", "org-custom-properties", "webhooks"]
+    }
+  ]
+  ```
+- `scopes/test-repo-wave.json`: Contains repository mappings between source and target:
+  ```json
+  "repositories": [
+    {
+      "sourceOrg": "cloudgxp-source",
+      "sourceRepo": "dummy-repo-public",
+      "targetOrg": "cloudgxp-emu-target",
+      "targetRepo": "dummy-repo-public",
+      "useGei": true, ...
+    }
+  ]
+  ```
+
+> [!TIP]
+> **Using Custom Test Organizations:**
+> The repository's default test scopes target `cloudgxp-source` and `cloudgxp-emu-target`. If your test environment uses different organizations (e.g., `my-source-org` and `my-target-emu-org`), update the `source`, `target`, `sourceOrg`, and `targetOrg` fields in `scopes/test-*.json`, or create a custom scope file (e.g., `scopes/my-wave.json`).
+
 ---
 
 ## 2. Token Permissions & Scopes (Classic PAT vs. Fine-Grained PAT)
@@ -94,7 +125,7 @@ Create a **Classic Personal Access Token** under an **Enterprise Managed User (E
 
 ## 3. Dummy Source Resources Checklist
 
-To thoroughly exercise all 12 modules and 2 strategies during test migration without affecting production assets, create the following dummy resources in your source test organization (`$GHEC_SOURCE_ORG`):
+To thoroughly exercise all 12 modules and 2 strategies during test migration without affecting production assets, create the following dummy resources in your source test organization (e.g., `cloudgxp-source` or your configured source organization):
 
 ### Repositories (2 total)
 
@@ -184,6 +215,16 @@ node --input-type=module -e '
   console.log("Scope artifact valid.");
 '
 ```
+
+> [!NOTE]
+> **Customizing Source & Target Organizations:**
+> The committed scopes map `source: "cloudgxp-source"` to `target: "cloudgxp-emu-target"`. If your test environment uses different organizations, edit the slugs in `scopes/test-*.json` (or commit a custom scope `scopes/my-wave.json`) prior to triggering the workflow:
+>
+> ```bash
+> # Example: Adapt scope to your own test org slugs
+> sed -i 's/cloudgxp-source/my-source-org/g' scopes/test-org-wave.json
+> sed -i 's/cloudgxp-emu-target/my-target-emu-org/g' scopes/test-org-wave.json
+> ```
 
 ### Step 2: Trigger Workflow Dispatch via `gh workflow run`
 
