@@ -9,6 +9,7 @@ import type {
 } from '../../core/types.js';
 import { GeiProcessExecutor } from '../../gei/executor.js';
 import type { GeiCommandRunner } from '../../gei/types.js';
+import { SourceCredentialInspector } from '../../preflight/credential-inspector.js';
 
 export interface GeiRepoDiscoveredData {
   readonly sourceOrg: string;
@@ -172,6 +173,39 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         durationMs: Date.now() - startTime,
         results: [],
       };
+    }
+
+    // Live mode preflight capability probe
+    if (ctx.sourceClient) {
+      try {
+        const credentialInspector = new SourceCredentialInspector({
+          adapter: ctx.sourceClient,
+          sourceOrg,
+          signal: ctx.signal,
+        });
+        const credAssessment = await credentialInspector.inspect();
+        if (!credAssessment.valid) {
+          const errMsg = `Preflight credential check failed for source org "${sourceOrg}": ${credAssessment.blockers.join('; ')}`;
+          ctx.logger.error(`[gei-repo] ${errMsg}`);
+          results.push({
+            operationId: `gei-repo-preflight-${sourceRepo}`,
+            status: 'failed',
+            error: errMsg.slice(0, 2048),
+            completedAt: new Date().toISOString(),
+          });
+          return {
+            schemaVersion: MIGRATION_SCHEMA_VERSION,
+            moduleId: this.id,
+            status: 'failed',
+            durationMs: Date.now() - startTime,
+            results,
+          };
+        }
+      } catch (err) {
+        ctx.logger.warn(
+          `[gei-repo] Could not probe source credentials: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     ctx.logger.info(

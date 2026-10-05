@@ -22,6 +22,7 @@ import { parseDiscoveryOptions } from '../src/commands/discover.js';
 import { parsePlanOptions } from '../src/commands/plan.js';
 import { parseMigrateOptions } from '../src/commands/migrate.js';
 import { parseVerifyOptions } from '../src/commands/verify.js';
+import { parsePreflightOptions } from '../src/commands/preflight.js';
 import { collectors } from '../src/collectors/index.js';
 import { DiscoveryOrchestrator } from '../src/engine/orchestrator.js';
 import { runCli } from '../src/index.js';
@@ -728,6 +729,7 @@ test('ghec-consultant-cli --help displays all subcommands', async () => {
     const out = stdout.join('\n');
     assert.match(out, /Commands:/);
     assert.match(out, /discover/);
+    assert.match(out, /preflight/);
     assert.match(out, /plan/);
     assert.match(out, /migrate/);
     assert.match(out, /verify/);
@@ -742,6 +744,11 @@ test('subcommand --help displays dedicated usage instructions', async () => {
   try {
     console.log = (...values: unknown[]) => stdout.push(values.join(' '));
 
+    await runCli(['preflight', '--help']);
+    assert.match(stdout.join('\n'), /ghec-consultant-cli preflight/);
+    assert.match(stdout.join('\n'), /--scope <file>/);
+
+    stdout.length = 0;
     await runCli(['plan', '--help']);
     assert.match(stdout.join('\n'), /ghec-consultant-cli plan/);
     assert.match(stdout.join('\n'), /--scope <file>/);
@@ -797,6 +804,21 @@ test('CLI option parsers for plan, migrate, and verify', () => {
   ]);
   assert.equal(verifyOpts.planPath, 'my-plan.json');
   assert.equal(verifyOpts.outputPath, 'report.json');
+
+  assert.throws(
+    () => parsePreflightOptions([]),
+    /--scope <file> flag is required/,
+  );
+  const preflightOpts = parsePreflightOptions([
+    '--scope',
+    'my-scope.json',
+    '--output',
+    'preflight-out.json',
+    '--verbose',
+  ]);
+  assert.equal(preflightOpts.scopePath, 'my-scope.json');
+  assert.equal(preflightOpts.outputPath, 'preflight-out.json');
+  assert.equal(preflightOpts.verbose, true);
 });
 
 test('CLI plan, migrate, and verify workflow end-to-end with mock adapter', async () => {
