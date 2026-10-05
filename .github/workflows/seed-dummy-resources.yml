@@ -1,20 +1,28 @@
-name: Seed Dummy Source Resources
+name: Seed Dummy Resources
 
 on:
   workflow_dispatch:
     inputs:
-      organization:
-        description: 'Source test organization to provision (e.g. "demogxp")'
+      mode:
+        description: 'Provisioning mode: "source" (demogxp) or "target" (antigravity-migration-test)'
         required: true
+        type: choice
+        options:
+          - source
+          - target
+        default: 'source'
+      organization:
+        description: 'Organization to provision (leave empty to use default: demogxp for source, antigravity-migration-test for target)'
+        required: false
         type: string
-        default: 'demogxp'
+        default: ''
 
 permissions:
   contents: read
 
 jobs:
   seed-resources:
-    name: 'Seed Test Resources in ${{ inputs.organization }}'
+    name: 'Seed Test Resources (${{ inputs.mode }})'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -29,12 +37,27 @@ jobs:
         shell: bash
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_ORG: ${{ inputs.organization }}
         run: |
-          if [ -z "$GHEC_SOURCE_TOKEN" ]; then
-            echo "::error::GHEC_SOURCE_TOKEN secret is not set in this repository."
-            exit 1
+          if [ "$INPUT_MODE" = "target" ]; then
+            TARGET_ORG="${INPUT_ORG:-antigravity-migration-test}"
+            if [ -z "$GHEC_TARGET_TOKEN" ]; then
+              echo "::error::GHEC_TARGET_TOKEN secret is not set in this repository."
+              exit 1
+            fi
+            echo "Seeding target placeholder repositories in $TARGET_ORG..."
+            node ./scripts/seed-dummy-resources.mjs "$TARGET_ORG" --target-repos-only
+          else
+            SOURCE_ORG="${INPUT_ORG:-demogxp}"
+            if [ -z "$GHEC_SOURCE_TOKEN" ]; then
+              echo "::error::GHEC_SOURCE_TOKEN secret is not set in this repository."
+              exit 1
+            fi
+            echo "Seeding full dummy resources in $SOURCE_ORG..."
+            node ./scripts/seed-dummy-resources.mjs "$SOURCE_ORG"
           fi
-          node ./scripts/seed-dummy-resources.mjs "${{ inputs.organization }}"
 
       - name: Generate Actions Step Summary
         if: always()

@@ -6,15 +6,26 @@
 import { Buffer } from 'node:buffer';
 
 const token =
+  process.env.GHEC_TARGET_TOKEN?.trim() ||
   process.env.GHEC_SOURCE_TOKEN?.trim() ||
   process.env.GH_TOKEN?.trim() ||
   process.env.GITHUB_TOKEN?.trim();
 const org =
-  process.argv[2]?.trim() || process.env.GHEC_SOURCE_ORG?.trim() || 'demogxp';
+  process.argv
+    .find(
+      (arg) =>
+        !arg.startsWith('--') &&
+        arg !== process.argv[0] &&
+        arg !== process.argv[1],
+    )
+    ?.trim() ||
+  process.env.GHEC_SOURCE_ORG?.trim() ||
+  'demogxp';
+const isTargetReposOnly = process.argv.includes('--target-repos-only');
 
 if (!token) {
   console.error(
-    'Error: GHEC_SOURCE_TOKEN (or GITHUB_TOKEN) environment variable is required.',
+    'Error: GHEC_SOURCE_TOKEN or GHEC_TARGET_TOKEN environment variable is required.',
   );
   process.exit(1);
 }
@@ -263,6 +274,17 @@ async function main() {
   console.log(`=======================================================`);
   console.log(`🚀 Provisioning Dummy Migration Resources in: ${org}`);
   console.log(`=======================================================`);
+
+  if (isTargetReposOnly) {
+    console.log(`Provisioning target placeholder repositories in ${org}...`);
+    // Target repos start as private (mirroring GEI initial import state)
+    await ensureRepo('dummy-repo-public', true);
+    await ensureRepo('dummy-repo-private-lfs', true);
+    console.log(`\n=======================================================`);
+    console.log(`✅ Target placeholder repositories ready in: ${org}`);
+    console.log(`=======================================================`);
+    return;
+  }
 
   // 1. Organization Resources
   await ensureOrgVariable('GLOBAL_REGION', 'us-east-1');
