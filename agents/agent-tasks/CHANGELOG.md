@@ -31,6 +31,17 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — TEST-STAGE2-TEAMS-AND-EMU-IDENTITY-MAPPING — Complete
+
+- Summary: Validated Stage 2 team hierarchies, parentage DFS ordering, and EMU identity mapping reconciliation against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Resolved team-repo-permission handling for unmigrated target repositories to safely defer binding until repository migration. Reconciled 7 teams (including nested `engineering` -> `platform-infra`) and default base repository permissions with zero token leaks.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage2-teams-and-emu-identity-mapping.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `packages/migration/src/modules/teams/module.ts`
+  - `packages/migration/src/orchestrator/migration-orchestrator.ts`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=teams`. Dry-run [37251070016](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251070016) completed in 44s; live apply [37251756371](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251756371) succeeded in 47s with status `complete`. Unit test `packages/migration/tests/modules/teams.test.ts` passed (5/5).
+- Follow-up: Stage 2 is fully complete. Proceed to Stage 3 (`test-stage3-repo-custom-properties-and-settings.md`).
+
 ### 2026-10-04 — Antigravity — TEST-STAGE2-ORG-VARIABLES-AND-SECRETS — Complete
 
 - Summary: Validated Stage 2 organization Actions variables and sealed-box encrypted secrets migration against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Verified zero plaintext secret leakage, dry-run mutation simulation, and live encrypted reconciliation of org variables (`GLOBAL_REGION`, `ENABLE_MAINTENANCE_MODE`) and secrets.
