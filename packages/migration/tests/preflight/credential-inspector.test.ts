@@ -186,7 +186,7 @@ describe('SourceCredentialInspector', () => {
     );
     assert.match(
       assessment.blockers[0]!,
-      /https:\/\/github.com\/orgs\/demogxp\/sso/,
+      /^https:\/\/github\.com\/orgs\/demogxp\/sso$/,
     );
   });
 
