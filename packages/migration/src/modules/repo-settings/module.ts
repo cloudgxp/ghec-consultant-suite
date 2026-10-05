@@ -282,22 +282,23 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
       }
 
       const payload = (op.payload as Record<string, unknown>) ?? {};
-      let res: { status: number; data?: RawGitHubRepositoryResponse | undefined } | undefined;
+      let res:
+        | { status: number; data?: RawGitHubRepositoryResponse | undefined }
+        | undefined;
       let is422 = false;
       let failureError: string | undefined;
 
       try {
-        res =
-          await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
-            {
-              id: 'rest.repos.update',
-              method: 'PATCH',
-              path: '/repos/{owner}/{repo}',
-              pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
-              body: payload,
-            },
-            ctx.signal,
-          );
+        res = await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+          {
+            id: 'rest.repos.update',
+            method: 'PATCH',
+            path: '/repos/{owner}/{repo}',
+            pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+            body: payload,
+          },
+          ctx.signal,
+        );
 
         if (res.status === 422) {
           is422 = true;
