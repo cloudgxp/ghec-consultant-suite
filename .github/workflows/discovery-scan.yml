@@ -116,11 +116,11 @@ jobs:
             EXTRA_ARGS+=(--redaction-profile "$INPUT_REDACTION_PROFILE")
           fi
 
-          mkdir -p scans
+          mkdir -p "$GITHUB_WORKSPACE/scans"
           npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
             --organization "$INPUT_ORG" \
             --modules "$INPUT_MODULES" \
-            --output "./scans" \
+            --output "$GITHUB_WORKSPACE/scans" \
             "${EXTRA_ARGS[@]}"
 
       - name: Generate Summary Report
