@@ -11,7 +11,7 @@ Jules is an autonomous, cloud-hosted AI software engineering agent developed by 
 ```mermaid
 flowchart TD
     subgraph Triggers["Trigger Surface"]
-        T1["Issue Labeled 'jules'<br/>or Comment '/jules fix'"]
+        T1["Issue Labeled 'jules'"]
         T2["Monorepo Quality Failure<br/>(workflow_run)"]
         T3["Daily Hygiene Cron<br/>(04:00 UTC)"]
         T4["Manual Dispatch<br/>(workflow_dispatch)"]
@@ -80,9 +80,9 @@ To activate Jules automations, you must configure a Google Jules API key as a re
 
 ## 3. Operational Workflows & Triggers
 
-### Trigger A: Issue & PR Comment Fix Agent
+### Trigger A: Issue Fix Agent
 
-Maintainers can delegate bug fixes, documentation corrections, or review remediations directly from GitHub Issues and Pull Requests.
+Maintainers can delegate bug fixes and documentation corrections directly from GitHub Issues:
 
 #### 1. Via Issue Label
 
@@ -91,19 +91,8 @@ Maintainers can delegate bug fixes, documentation corrections, or review remedia
 - **Acknowledgement:** The issue receives an `:eyes:` reaction.
 - **Authorization:** Only repository `OWNER`, `MEMBER`, or `COLLABORATOR` actors can invoke Jules. If an unauthorized user applies the label, the workflow posts an explanatory comment and terminates without consuming quota.
 
-#### 2. Via Issue or Pull Request Comment (Slash Command)
-
-- Post a comment on an open issue or pull request containing:
-  ```text
-  /jules fix
-  ```
-  _(or `/jules`, `/jules <custom instructions>`, `!jules fix`, or `jules: fix`)_
-- **Workflow:** `.github/workflows/jules-agent.yml` triggers on `issue_comment: created`.
-- **Pull Request Remediation**: When posted on a pull request, Jules automatically targets the PR's head branch, ingests the PR description and review comments, and pushes remediation commits directly to that branch.
-- **Acknowledgement:** The comment receives a `:rocket:` reaction.
-
-> [!TIP]
-> Always use slash commands like `/jules fix` or `/jules` rather than `@jules`. This triggers the automation without pinging or notifying the external GitHub user named `jules`.
+> [!NOTE]
+> Pull request reviews, inline comments, and `@jules` mentions are handled directly by the native **Jules GitHub App** (`@google-labs-jules[bot]`). GitHub Action triggers on issue comments were intentionally removed to eliminate duplicate runs and avoid bot authorization conflicts.
 
 ---
 

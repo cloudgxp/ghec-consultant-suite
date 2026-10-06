@@ -9,14 +9,23 @@ import {
   MetricCard,
   PageHeader,
 } from '../components/ui/index.js';
-import { Button, Dialog, Flash, Label, Select, TextInput } from '@primer/react';
-import { DownloadIcon, SearchIcon } from '@primer/octicons-react';
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  Flash,
+  Label,
+  Select,
+  TextInput,
+} from '@primer/react';
+import { DownloadIcon, PackageIcon, SearchIcon } from '@primer/octicons-react';
 import { downloadCsv, generatePackagesCsv } from '../lib/export-csv.js';
 import {
   packageInventory,
   type PackageInventoryRecord,
 } from '../lib/supply-chain.js';
 import { resolveOrgName } from '../lib/formatters.js';
+import { ModuleTriggerModal } from '../components/ModuleTriggerModal.js';
 
 interface Props {
   bundle: DiscoveryBundle;
@@ -117,6 +126,15 @@ export function PackagesTab({ bundle, selectedOrgIds }: Props) {
     [],
   );
 
+  const [isTriggerOpen, setIsTriggerOpen] = useState(false);
+  const [includeGhcr, setIncludeGhcr] = useState(true);
+  const [includeLanguagePkgs, setIncludeLanguagePkgs] = useState(true);
+  const [dispatchedRun, setDispatchedRun] = useState<{
+    workflowId: string;
+    modules: string[];
+    isDryRun: boolean;
+  } | null>(null);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -137,7 +155,30 @@ export function PackagesTab({ bundle, selectedOrgIds }: Props) {
             Export filtered CSV
           </Button>
         }
+        secondaryActions={
+          <Button
+            size="small"
+            leadingVisual={PackageIcon}
+            onClick={() => setIsTriggerOpen(true)}
+          >
+            Replicate Packages & Images
+          </Button>
+        }
       />
+      {dispatchedRun && (
+        <Flash variant="success">
+          <div className="flex items-center justify-between text-xs">
+            <span>
+              Dispatched <strong>{dispatchedRun.modules.join(', ')}</strong> (
+              {dispatchedRun.isDryRun ? 'Dry-Run Simulation' : 'Live Apply'}) to
+              workflow <code>{dispatchedRun.workflowId}</code>.
+            </span>
+            <Button size="small" onClick={() => setDispatchedRun(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </Flash>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard label="Packages" value={records.length} />
         <MetricCard label="Registries" value={ecosystems.length} />
@@ -281,6 +322,54 @@ export function PackagesTab({ bundle, selectedOrgIds }: Props) {
           </div>
         </Dialog>
       )}
+      <ModuleTriggerModal
+        isOpen={isTriggerOpen}
+        onClose={() => setIsTriggerOpen(false)}
+        title="Replicate Packages & Container Images"
+        description="Migrate GHCR container images and package registry artifacts (npm, Maven, NuGet, RubyGems) to target enterprise packages infrastructure."
+        modules={['packages']}
+        sourceOrg={
+          selectedOrgIds[0]
+            ? resolveOrgName(bundle, selectedOrgIds[0])
+            : bundle.organizations[0]?.login || 'source-org'
+        }
+        affectedCount={records.length}
+        entityLabel="packages"
+        prerequisites={[
+          'Target enterprise container and package permissions granted',
+          'Target packages storage and token credentials configured',
+        ]}
+        customOptions={
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={includeGhcr}
+                onChange={(e) => setIncludeGhcr(e.target.checked)}
+              />
+              <span className="text-xs text-[var(--fgColor-default)] font-medium">
+                Include GHCR Container Images (Docker / OCI)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={includeLanguagePkgs}
+                onChange={(e) => setIncludeLanguagePkgs(e.target.checked)}
+              />
+              <span className="text-xs text-[var(--fgColor-default)] font-medium">
+                Include Language Packages (npm, Maven, NuGet, RubyGems)
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--fgColor-muted)]">
+              Registry sync will re-tag and push images/packages directly to
+              target registry endpoints without pulling full layers locally.
+            </p>
+          </div>
+        }
+        onDispatched={(res) => {
+          setDispatchedRun(res);
+          setIsTriggerOpen(false);
+        }}
+      />
     </div>
   );
 }

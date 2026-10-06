@@ -3,8 +3,8 @@
   "name": "test-org-wave",
   "organizations": [
     {
-      "source": "demogxp",
-      "target": "antigravity-migration-test",
+      "source": "example-source-org",
+      "target": "example-target-emu",
       "modules": [
         "org-variables",
         "org-secrets",

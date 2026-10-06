@@ -53,6 +53,11 @@ Tasks are organized by domain responsibility into four primary category director
 | **028** | CODEOWNERS & Team References Repair Module                |  Security   | `complete` |        005, 017         | [`security/completed/028-codeowners-and-team-references-repair.md`](security/completed/028-codeowners-and-team-references-repair.md)             |
 | **029** | GHAS & Security Remediation Reconciliation Strategy       |  Security   | `complete` |      005, 008, 022      | [`security/completed/029-ghas-and-security-remediation-sync.md`](security/completed/029-ghas-and-security-remediation-sync.md)                   |
 | **030** | External Integrations & Migration Advisory Planner        |  Features   | `complete` |        003, 005         | [`features/completed/030-external-integrations-and-advisory-planner.md`](features/completed/030-external-integrations-and-advisory-planner.md)   |
+| **031** | Automate Discovery Ingestion via Dashboard                |  Features   | `pending`  |         _None_          | [`features/031-discovery-automation-integration.md`](features/031-discovery-automation-integration.md)                                           |
+| **032** | Dashboard Migration Control Plane                         |  Features   | `pending`  |           031           | [`features/032-migration-control-plane.md`](features/032-migration-control-plane.md)                                                             |
+| **033** | Granular Per-Repository Migration Configuration           |  Features   | `pending`  |         _None_          | [`features/033-granular-migration-configuration.md`](features/033-granular-migration-configuration.md)                                           |
+| **034** | Runner-Aware Concurrency Orchestration                    | Performance | `pending`  |           032           | [`performance/034-runner-aware-orchestration.md`](performance/034-runner-aware-orchestration.md)                                                 |
+| **035** | Agentic Automation & Remediation Integration              |  Features   | `pending`  |         _None_          | [`features/035-agentic-remediation-integration.md`](features/035-agentic-remediation-integration.md)                                             |
 
 ---
 

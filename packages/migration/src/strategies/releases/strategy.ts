@@ -1,10 +1,11 @@
 import { ReleaseAssetStreamer } from './asset-streamer.js';
 import { ReleaseRecreator } from './release-recreator.js';
-import type {
-  ReleaseMigrationRequest,
-  ReleaseMigrationResult,
-  ReleaseTransport,
-  SourceRelease,
+import {
+  RELEASE_ASSET_REST_LIMIT_BYTES,
+  type ReleaseMigrationRequest,
+  type ReleaseMigrationResult,
+  type ReleaseTransport,
+  type SourceRelease,
 } from './types.js';
 
 function oldestFirst(left: SourceRelease, right: SourceRelease): number {
@@ -39,6 +40,61 @@ export class LargeReleasesMigrationStrategy {
       bytesStreamed: 0,
     };
     const warnings: string[] = [];
+
+    if (request.dryRun) {
+      try {
+        const [sourceReleases, targetReleases] = await Promise.all([
+          this.transport.listSourceReleases(request.signal),
+          this.transport.listTargetReleases(request.signal),
+        ]);
+        const targetByTag = new Map(
+          targetReleases.map((release) => [release.tagName, release]),
+        );
+        for (const sourceRelease of [...sourceReleases].sort(oldestFirst)) {
+          if (request.signal.aborted) {
+            throw (
+              request.signal.reason ??
+              new Error('Release fallback was aborted.')
+            );
+          }
+          const target = targetByTag.get(sourceRelease.tagName);
+          if (!target) {
+            metrics.releasesRecreated++;
+            for (const asset of sourceRelease.assets) {
+              if (asset.size > RELEASE_ASSET_REST_LIMIT_BYTES) {
+                warnings.push(
+                  `Asset ${asset.name} in release ${sourceRelease.tagName} exceeds the 2 GiB REST upload limit (${asset.size} bytes).`,
+                );
+              } else {
+                metrics.assetsTransferred++;
+                metrics.bytesStreamed += asset.size;
+              }
+            }
+          } else {
+            const existingNames = new Set(
+              target.assets.map((asset) => asset.name),
+            );
+            for (const asset of sourceRelease.assets) {
+              if (existingNames.has(asset.name)) continue;
+              if (asset.size > RELEASE_ASSET_REST_LIMIT_BYTES) {
+                warnings.push(
+                  `Asset ${asset.name} in release ${sourceRelease.tagName} exceeds the 2 GiB REST upload limit (${asset.size} bytes).`,
+                );
+              } else {
+                metrics.assetsTransferred++;
+                metrics.bytesStreamed += asset.size;
+              }
+            }
+          }
+        }
+        this.recordCheckpoint(request, 'completed');
+        return { status: 'completed', warnings, metrics };
+      } catch (error) {
+        this.recordCheckpoint(request, 'failed', error);
+        throw error;
+      }
+    }
+
     try {
       const sourceReleases = [
         ...(await this.transport.listSourceReleases(request.signal)),

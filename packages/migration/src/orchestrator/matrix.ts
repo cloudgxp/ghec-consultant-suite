@@ -10,8 +10,10 @@ import type {
  * Options for configuring matrix partitioning.
  */
 export interface ScopeMatrixOptions {
-  /** Maximum number of repositories in each parallel cohort. Minimum 1. */
-  readonly batchSize: number;
+  /** Maximum number of repositories in each parallel cohort. Minimum 1. Optional when runnerCapacity is specified. */
+  readonly batchSize?: number | undefined;
+  /** Number of parallel runners allocated (capacity). Determines dynamic cohort count and batch size. Minimum 1. */
+  readonly runnerCapacity?: number | undefined;
   /** Optional dependency graph from analysis or discovery bundle for coupling-aware grouping. */
   readonly dependencyGraph?: DependencyGraph | undefined;
   /** Custom prefix for cohort identifiers (defaults to 'cohort'). */

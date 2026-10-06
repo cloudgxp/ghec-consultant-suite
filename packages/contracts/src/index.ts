@@ -881,8 +881,11 @@ export {
 } from './migration-common.js';
 export {
   MigrationScopeSchema,
+  RepositoryMappingSchema,
+  RepositoryOptionsSchema,
   validateMigrationScope,
   type MigrationScope,
+  type RepositoryOptions,
 } from './scope/migration-scope.js';
 export {
   MigrationPlanSchema,

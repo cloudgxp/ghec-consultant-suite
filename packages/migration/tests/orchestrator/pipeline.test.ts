@@ -622,3 +622,75 @@ test('MigrationOrchestrator throttles repository pipelines to configured concurr
   );
   assert.ok(results.every((r) => r.status === 'complete'));
 });
+
+test('RepositoryMigrationPipeline Stage 6 resolves and executes repo-settings and decouples org-level mannequins', async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'pipe-settings-'));
+  try {
+    const scope: MigrationScope = {
+      version: MIGRATION_SCHEMA_VERSION,
+      name: 'test-repo-settings',
+      organizations: [{ source: 'src-org', target: 'dst-org' }],
+      repositories: [
+        {
+          sourceOrg: 'src-org',
+          sourceRepo: 'repo-1',
+          targetOrg: 'dst-org',
+          targetRepo: 'repo-1',
+          useGei: false,
+        },
+        {
+          sourceOrg: 'src-org',
+          sourceRepo: 'repo-2',
+          targetOrg: 'dst-org',
+          targetRepo: 'repo-2',
+          useGei: false,
+        },
+      ],
+    };
+
+    const checkpointManager = new MigrationCheckpointManager(
+      'run-settings',
+      scope,
+      {
+        rootDirectory: tmpDir,
+      },
+    );
+
+    const registry = createDefaultModuleRegistry();
+
+    const pipeline = new RepositoryMigrationPipeline({
+      registry,
+      sourceClient: new MockReadAdapter(),
+      targetClient: new MockReadAdapter(),
+      targetWriteClient: new MockWriteClient(),
+      checkpointManager,
+      dryRun: true,
+    });
+
+    // Execute first repository
+    const result1 = await pipeline.execute(scope.repositories[0]!);
+    assert.equal(result1.status, 'complete');
+
+    const cp1 = checkpointManager.getManifest();
+    const stage6Res1 = cp1.repositories['src-org/repo-1']?.postMigration;
+    assert.ok(stage6Res1, 'postMigration results should exist in checkpoint');
+    assert.equal(stage6Res1['repo-settings']?.status, 'completed');
+    assert.equal(stage6Res1['mannequins']?.status, 'completed');
+
+    // Execute second repository in the same target organization
+    const result2 = await pipeline.execute(scope.repositories[1]!);
+    assert.equal(result2.status, 'complete');
+
+    const cp2 = checkpointManager.getManifest();
+    const stage6Res2 = cp2.repositories['src-org/repo-2']?.postMigration;
+    assert.ok(
+      stage6Res2,
+      'postMigration results for repo-2 should exist in checkpoint',
+    );
+    assert.equal(stage6Res2['repo-settings']?.status, 'completed');
+    // Mannequins was already run for dst-org, so it must be skipped in the second repo!
+    assert.equal(stage6Res2['mannequins']?.status, 'skipped');
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

@@ -115,3 +115,22 @@ export function loadSampleBundle(
     insights: evaluateBundle(validation.data),
   };
 }
+
+/**
+ * Validates and evaluates a pre-parsed or fetched JSON discovery bundle directly.
+ */
+export function importBundleJson(data: unknown): ImportResult {
+  const validation = validateBundle(data);
+  if (!validation.success) {
+    return {
+      success: false,
+      code: validation.code,
+      message: validation.message,
+    };
+  }
+  return {
+    success: true,
+    bundle: validation.data,
+    insights: evaluateBundle(validation.data),
+  };
+}

@@ -80,9 +80,9 @@ describe('GeiRepoMigrationModule', () => {
     const ctx: MigrationContext = {
       scope: {
         level: 'repository',
-        sourceOrg: 'demogxp',
+        sourceOrg: 'example-source-org',
         sourceRepo: 'repo-1',
-        targetOrg: 'antigravity-migration-test',
+        targetOrg: 'example-target-emu',
         targetRepo: 'repo-1',
       },
       sourceClient: createMockAdapter({}),
@@ -102,9 +102,9 @@ describe('GeiRepoMigrationModule', () => {
     const ctx: MigrationContext = {
       scope: {
         level: 'repository',
-        sourceOrg: 'demogxp',
+        sourceOrg: 'example-source-org',
         sourceRepo: 'repo-1',
-        targetOrg: 'antigravity-migration-test',
+        targetOrg: 'example-target-emu',
         targetRepo: 'repo-1',
       },
       sourceClient: createMockAdapter({}),
@@ -115,16 +115,16 @@ describe('GeiRepoMigrationModule', () => {
     };
 
     const plan = await module.plan(ctx, {
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
       sourceRepo: 'repo-1',
-      targetOrg: 'antigravity-migration-test',
+      targetOrg: 'example-target-emu',
       targetRepo: 'repo-1',
       targetRepoVisibility: 'private',
       targetExists: false,
     });
 
     assert.equal(plan.moduleId, 'gei-repo');
-    assert.equal(plan.targetIdentifier, 'antigravity-migration-test/repo-1');
+    assert.equal(plan.targetIdentifier, 'example-target-emu/repo-1');
     assert.deepEqual(plan.operations, []);
     assert.deepEqual(plan.warnings, []);
   });
@@ -139,16 +139,16 @@ describe('GeiRepoMigrationModule', () => {
         status: 403,
         oauthScopes: ['repo', 'admin:org'],
         ssoRequired: true,
-        ssoUrl: 'https://github.com/orgs/demogxp/sso',
+        ssoUrl: 'https://github.com/orgs/example-source-org/sso',
       },
     });
 
     const ctx: MigrationContext = {
       scope: {
         level: 'repository',
-        sourceOrg: 'demogxp',
+        sourceOrg: 'example-source-org',
         sourceRepo: 'repo-1',
-        targetOrg: 'antigravity-migration-test',
+        targetOrg: 'example-target-emu',
         targetRepo: 'repo-1',
       },
       sourceClient: mockSource,
@@ -161,7 +161,7 @@ describe('GeiRepoMigrationModule', () => {
     const result = await module.apply(ctx, {
       moduleId: 'gei-repo',
       scopeLevel: 'repository',
-      targetIdentifier: 'antigravity-migration-test/repo-1',
+      targetIdentifier: 'example-target-emu/repo-1',
       operations: [],
       warnings: [],
     });
@@ -169,5 +169,72 @@ describe('GeiRepoMigrationModule', () => {
     assert.equal(result.status, 'failed');
     assert.equal(result.results.length, 1);
     assert.match(result.results[0]!.error ?? '', /SAML Single Sign-On/);
+  });
+
+  it('passes granular per-repository options to GEI command runner', async () => {
+    let capturedArgs: readonly string[] = [];
+    let capturedTimeout: number | undefined;
+
+    const mockRunner = async (
+      cmd: string,
+      args: readonly string[],
+      opts?: { timeoutMs?: number },
+    ) => {
+      capturedArgs = args;
+      capturedTimeout = opts?.timeoutMs;
+      return { command: cmd, args, exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    const module = new GeiRepoMigrationModule(mockRunner);
+    const ctx: MigrationContext = {
+      runId: 'test-run-granular',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'custom-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'custom-repo',
+        options: {
+          skipReleases: true,
+          timeoutSeconds: 600,
+          targetRepoVisibility: 'internal',
+        },
+      },
+      sourceClient: createMockAdapter({
+        probeResult: {
+          status: 200,
+          oauthScopes: ['repo', 'admin:org'],
+          ssoRequired: false,
+        },
+      }),
+      targetClient: createMockAdapter({ targetExists: false }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const result = await module.apply(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/custom-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(result.status, 'complete');
+    assert.ok(
+      capturedArgs.includes('--skip-releases'),
+      'args should include --skip-releases',
+    );
+    assert.ok(
+      capturedArgs.includes('--target-repo-visibility'),
+      'args should include --target-repo-visibility',
+    );
+    assert.equal(
+      capturedArgs[capturedArgs.indexOf('--target-repo-visibility') + 1],
+      'internal',
+    );
+    assert.equal(capturedTimeout, 600000, 'timeoutMs should be 600000ms');
   });
 });
