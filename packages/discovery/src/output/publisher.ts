@@ -9,6 +9,7 @@ import { once } from 'node:events';
 import { dirname, join, resolve } from 'node:path';
 import {
   validateBundle,
+  DiscoveryBundleSchema,
   type DiscoveryBundle,
   type PublishableBundle,
 } from '@ghec/contracts';
@@ -41,8 +42,13 @@ export async function publishBundle(
   if (Array.isArray(bundle.entities) && bundle.entities.length <= 25000) {
     const validation = validateBundle(bundle as DiscoveryBundle);
     if (!validation.success) {
+      const detailed = DiscoveryBundleSchema.safeParse(bundle);
+      let details = '';
+      if (!detailed.success) {
+        details = `: ${detailed.error.issues.map((i) => `[${i.path.join('.') || 'root'}] ${i.message}`).join('; ')}`;
+      }
       throw new Error(
-        `Bundle contract validation failed: ${validation.message}`,
+        `Bundle contract validation failed: ${validation.message}${details}`,
       );
     }
   }
