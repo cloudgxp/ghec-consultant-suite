@@ -72,13 +72,13 @@ Configuration Options:
 
 Examples:
   # Generate from a file containing repository URLs (supports hundreds of URLs):
-  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --file wave1-urls.txt
+  node scripts/generate-scope.mjs --source example-source-org --target example-target-emu --file wave1-urls.txt
 
-  # Generate a scope for all repositories in demogxp:
-  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --all
+  # Generate a scope for all repositories in source organization:
+  node scripts/generate-scope.mjs --source example-source-org --target example-target-emu --all
 
   # Generate a wave scope for specific repository URLs:
-  node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --repos https://github.com/demogxp/repo-1,https://github.com/demogxp/repo-2
+  node scripts/generate-scope.mjs --source example-source-org --target example-target-emu --repos https://github.com/example-source-org/repo-1,https://github.com/example-source-org/repo-2
 `);
 }
 

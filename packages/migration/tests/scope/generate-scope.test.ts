@@ -11,32 +11,44 @@ import {
 
 describe('Scope Generator (scripts/generate-scope.mjs)', () => {
   it('parses various repository URL formats correctly', () => {
-    assert.deepEqual(parseRepoEntry('https://github.com/demogxp/my-repo'), {
-      org: 'demogxp',
-      name: 'my-repo',
-    });
-    assert.deepEqual(parseRepoEntry('https://github.com/demogxp/my-repo.git'), {
-      org: 'demogxp',
-      name: 'my-repo',
-    });
-    assert.deepEqual(parseRepoEntry('https://github.com/demogxp/my-repo/'), {
-      org: 'demogxp',
-      name: 'my-repo',
-    });
-    assert.deepEqual(parseRepoEntry('git@github.com:demogxp/my-repo.git'), {
-      org: 'demogxp',
-      name: 'my-repo',
-    });
     assert.deepEqual(
-      parseRepoEntry('ssh://git@github.com/demogxp/my-repo.git'),
-      { org: 'demogxp', name: 'my-repo' },
+      parseRepoEntry('https://github.com/example-source-org/my-repo'),
+      {
+        org: 'example-source-org',
+        name: 'my-repo',
+      },
     );
     assert.deepEqual(
-      parseRepoEntry('https://ghe.mycompany.com/demogxp/my-repo'),
-      { org: 'demogxp', name: 'my-repo' },
+      parseRepoEntry('https://github.com/example-source-org/my-repo.git'),
+      {
+        org: 'example-source-org',
+        name: 'my-repo',
+      },
     );
-    assert.deepEqual(parseRepoEntry('demogxp/my-repo'), {
-      org: 'demogxp',
+    assert.deepEqual(
+      parseRepoEntry('https://github.com/example-source-org/my-repo/'),
+      {
+        org: 'example-source-org',
+        name: 'my-repo',
+      },
+    );
+    assert.deepEqual(
+      parseRepoEntry('git@github.com:example-source-org/my-repo.git'),
+      {
+        org: 'example-source-org',
+        name: 'my-repo',
+      },
+    );
+    assert.deepEqual(
+      parseRepoEntry('ssh://git@github.com/example-source-org/my-repo.git'),
+      { org: 'example-source-org', name: 'my-repo' },
+    );
+    assert.deepEqual(
+      parseRepoEntry('https://ghe.mycompany.com/example-source-org/my-repo'),
+      { org: 'example-source-org', name: 'my-repo' },
+    );
+    assert.deepEqual(parseRepoEntry('example-source-org/my-repo'), {
+      org: 'example-source-org',
       name: 'my-repo',
     });
     assert.deepEqual(parseRepoEntry('my-repo'), { org: null, name: 'my-repo' });
@@ -46,16 +58,16 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
 
   it('generates a valid migration scope from an explicit repository list', async () => {
     const { scope } = await generateScope({
-      source: 'demogxp',
-      target: 'antigravity-migration-test',
+      source: 'example-source-org',
+      target: 'example-target-emu',
       repos: 'repo-alpha, repo-beta',
       dryRun: true,
       silent: true,
     });
 
     assert.equal(scope.version, '1.0.0');
-    assert.equal(scope.organizations[0].source, 'demogxp');
-    assert.equal(scope.organizations[0].target, 'antigravity-migration-test');
+    assert.equal(scope.organizations[0].source, 'example-source-org');
+    assert.equal(scope.organizations[0].target, 'example-target-emu');
     assert.equal(scope.repositories.length, 2);
     assert.equal(scope.repositories[0].sourceRepo, 'repo-alpha');
     assert.equal(scope.repositories[0].targetRepo, 'repo-alpha');
@@ -73,12 +85,12 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
     const tempFile = join(tmpdir(), `test-repos-${Date.now()}.txt`);
     const urls = [
       '# Wave 1 Repositories',
-      'https://github.com/demogxp/auth-service.git',
-      'https://github.com/demogxp/billing-engine',
-      'git@github.com:demogxp/data-pipeline.git',
+      'https://github.com/example-source-org/auth-service.git',
+      'https://github.com/example-source-org/billing-engine',
+      'git@github.com:example-source-org/data-pipeline.git',
       '',
       '# Another service',
-      'demogxp/web-frontend',
+      'example-source-org/web-frontend',
     ].join('\n');
 
     writeFileSync(tempFile, urls, 'utf8');
@@ -86,13 +98,13 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
     try {
       const { scope } = await generateScope({
         file: tempFile,
-        target: 'antigravity-migration-test',
+        target: 'example-target-emu',
         dryRun: true,
         silent: true,
       });
 
-      assert.equal(scope.organizations[0].source, 'demogxp');
-      assert.equal(scope.organizations[0].target, 'antigravity-migration-test');
+      assert.equal(scope.organizations[0].source, 'example-source-org');
+      assert.equal(scope.organizations[0].target, 'example-target-emu');
       assert.equal(scope.repositories.length, 4);
       assert.deepEqual(
         scope.repositories.map((r) => r.sourceRepo),
@@ -110,14 +122,14 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
     const tempFile = join(tmpdir(), `test-large-wave-${Date.now()}.txt`);
     const repoLines = [];
     for (let i = 1; i <= 350; i++) {
-      repoLines.push(`https://github.com/demogxp/service-${i}.git`);
+      repoLines.push(`https://github.com/example-source-org/service-${i}.git`);
     }
     writeFileSync(tempFile, repoLines.join('\n'), 'utf8');
 
     try {
       const { scope } = await generateScope({
         file: tempFile,
-        target: 'antigravity-migration-test',
+        target: 'example-target-emu',
         dryRun: true,
         silent: true,
       });
@@ -141,8 +153,8 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
       await assert.rejects(
         async () => {
           await generateScope({
-            source: 'demogxp',
-            target: 'antigravity-migration-test',
+            source: 'example-source-org',
+            target: 'example-target-emu',
             file: tempFile,
             dryRun: true,
             silent: true,
@@ -150,7 +162,7 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
         },
         {
           message:
-            /belongs to organization "other-org", but source organization is "demogxp"/,
+            /belongs to organization "other-org", but source organization is "example-source-org"/,
         },
       );
     } finally {
@@ -178,8 +190,8 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
 
   it('generates org-only scope when orgOnly is true', async () => {
     const { scope } = await generateScope({
-      source: 'demogxp',
-      target: 'antigravity-migration-test',
+      source: 'example-source-org',
+      target: 'example-target-emu',
       orgOnly: true,
       dryRun: true,
       silent: true,

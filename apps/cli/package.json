@@ -12,9 +12,12 @@
     "dev": "node --import tsx src/index.ts"
   },
   "dependencies": {
+    "@fastify/static": "^10.1.5",
     "@ghec/contracts": "0.1.0",
     "@ghec/discovery": "0.1.0",
     "@ghec/github-client": "0.1.0",
-    "@ghec/migration": "0.1.0"
+    "@ghec/migration": "0.1.0",
+    "fastify": "^5.12.5",
+    "fflate": "^0.8.3"
   }
 }

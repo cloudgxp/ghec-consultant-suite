@@ -4,7 +4,7 @@
 **Evaluated Scope:** `scopes/demogxp-to-antigravity-all.json`  
 **Identity Mapping Strategy:** `emu-saml` (Suffix: `_gxp`)  
 **Runner:** Standard GitHub-hosted `ubuntu-latest` (Zero Kubernetes / Cluster Dependency)  
-**Date:** October 5, 2026  
+**Date:** October 5, 2026
 
 ---
 
@@ -13,6 +13,7 @@
 A complete, live end-to-end migration from the source organization **`demogxp`** to the target GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU) organization **`antigravity-migration-test`** has been executed using the **Single-Runner Method** on a standard GitHub-hosted `ubuntu-latest` runner ([Run 37317366983](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37317366983)).
 
 By transitioning to the dedicated single-runner sequential strategy, cross-runner network competition and parallel race conditions were completely eliminated. As a direct result:
+
 - **`gei-repo` Achievement:** **28 of 28 repositories (100%) successfully migrated and verified** at the destination with **0 discrepancies**.
 - **Large Repositories Resolved:** Both `kubernetes` (1.25 GB) and `node` (1.37 GB) transferred without SSL stream timeouts or network resets.
 - **Verification Score:** **10 of 14 modules achieved 100% verification** with zero discrepancies.
@@ -28,13 +29,13 @@ flowchart LR
 
 ## 2. Benchmark & Strategy Comparison
 
-| Metric / Parameter | Distributed Matrix Method (`migration-execute-wave.yml`) | Single-Runner Method (`test-migration-dispatch.yml`) |
-| :--- | :--- | :--- |
-| **Runner Infrastructure** | Multi-runner matrix (designed for Kubernetes / ARC) | Standard standalone runner (`ubuntu-latest`) |
-| **Infrastructure Overhead** | High (runner pool provisioning, pod scaling, artifact handoffs) | Zero (uses standard runner VM) |
-| **GEI Repo Success Rate** | 26 / 28 (92.9% — SSL timeouts on concurrent large clones) | **28 / 28 (100.0% — Clean streaming without egress contention)** |
-| **Singleton Race Conditions** | Duplicate write conflicts on org variables between cohorts | **Zero race conditions; strictly sequential application** |
-| **Verified Modules (0 Discrepancies)** | 9 of 14 | **10 of 14** (including `gei-repo`) |
+| Metric / Parameter                     | Distributed Matrix Method (`migration-execute-wave.yml`)        | Single-Runner Method (`test-migration-dispatch.yml`)             |
+| :------------------------------------- | :-------------------------------------------------------------- | :--------------------------------------------------------------- |
+| **Runner Infrastructure**              | Multi-runner matrix (designed for Kubernetes / ARC)             | Standard standalone runner (`ubuntu-latest`)                     |
+| **Infrastructure Overhead**            | High (runner pool provisioning, pod scaling, artifact handoffs) | Zero (uses standard runner VM)                                   |
+| **GEI Repo Success Rate**              | 26 / 28 (92.9% — SSL timeouts on concurrent large clones)       | **28 / 28 (100.0% — Clean streaming without egress contention)** |
+| **Singleton Race Conditions**          | Duplicate write conflicts on org variables between cohorts      | **Zero race conditions; strictly sequential application**        |
+| **Verified Modules (0 Discrepancies)** | 9 of 14                                                         | **10 of 14** (including `gei-repo`)                              |
 
 ---
 
@@ -46,6 +47,7 @@ flowchart LR
 - **Artifact:** `test-migration-artifacts-37317366983` (`test-migration-execution.json`, `test-verification-report.json`, `test-preflight-report.json`)
 
 ### 3.1 All 28 Repositories Migrated via GEI
+
 All 28 repositories in `demogxp` are verified and present in `antigravity-migration-test`:
 
 1. `dummy-repo-private-lfs` (✅ Complete)
@@ -83,22 +85,22 @@ All 28 repositories in `demogxp` are verified and present in `antigravity-migrat
 
 Automated verification evaluated target state against the migration plan:
 
-| Module ID | Scope Level | Verified | Discrepancies | Assessment Details |
-| :--- | :--- | :---: | :---: | :--- |
-| **`gei-repo`** | Repository | ✅ **TRUE** | **0** | **All 28 repositories confirmed present on target.** |
-| **`org-variables`** | Organization | ✅ **TRUE** | **0** | Organization variables created and matching plan. |
-| **`org-custom-properties`**| Organization | ✅ **TRUE** | **0** | Custom property schema and definitions verified. |
-| **`post-migration-mannequins`**| Organization | ✅ **TRUE** | **0** | EMU SAML user mappings cleanly reconciled (`_gxp`). |
-| **`repo-variables`** | Repository | ✅ **TRUE** | **0** | Repository variables match source state. |
-| **`repo-custom-properties`** | Repository | ✅ **TRUE** | **0** | Repository property assignments verified. |
-| **`rulesets`** | Repository | ✅ **TRUE** | **0** | Repository rulesets and bypass permissions verified. |
-| **`branch-protection`** | Repository | ✅ **TRUE** | **0** | Branch protections active on destination. |
-| **`environments`** | Repository | ✅ **TRUE** | **0** | Deployment environments provisioned without error. |
-| **`webhooks`** | Repository | ✅ **TRUE** | **0** | Webhook configurations intact. |
-| **`org-secrets`** | Organization | ⚠️ FALSE | 2 | Actions & Dependabot secrets migrated; 2 Codespaces secrets unconfigured (Codespaces disabled on target). |
-| **`repo-secrets`** | Repository | ⚠️ FALSE | 1 | 1 Codespaces repo secret unconfigured (service license boundary). |
-| **`teams`** | Organization | ⚠️ FALSE | 2 | All teams and base permissions created (100%); 2 repo team link attachments pending refresh. |
-| **`repo-settings`** | Repository | ⚠️ FALSE | 1 | `kubernetes` visibility set to private (intentional per scope policy). |
+| Module ID                       | Scope Level  |  Verified   | Discrepancies | Assessment Details                                                                                        |
+| :------------------------------ | :----------- | :---------: | :-----------: | :-------------------------------------------------------------------------------------------------------- |
+| **`gei-repo`**                  | Repository   | ✅ **TRUE** |     **0**     | **All 28 repositories confirmed present on target.**                                                      |
+| **`org-variables`**             | Organization | ✅ **TRUE** |     **0**     | Organization variables created and matching plan.                                                         |
+| **`org-custom-properties`**     | Organization | ✅ **TRUE** |     **0**     | Custom property schema and definitions verified.                                                          |
+| **`post-migration-mannequins`** | Organization | ✅ **TRUE** |     **0**     | EMU SAML user mappings cleanly reconciled (`_gxp`).                                                       |
+| **`repo-variables`**            | Repository   | ✅ **TRUE** |     **0**     | Repository variables match source state.                                                                  |
+| **`repo-custom-properties`**    | Repository   | ✅ **TRUE** |     **0**     | Repository property assignments verified.                                                                 |
+| **`rulesets`**                  | Repository   | ✅ **TRUE** |     **0**     | Repository rulesets and bypass permissions verified.                                                      |
+| **`branch-protection`**         | Repository   | ✅ **TRUE** |     **0**     | Branch protections active on destination.                                                                 |
+| **`environments`**              | Repository   | ✅ **TRUE** |     **0**     | Deployment environments provisioned without error.                                                        |
+| **`webhooks`**                  | Repository   | ✅ **TRUE** |     **0**     | Webhook configurations intact.                                                                            |
+| **`org-secrets`**               | Organization |  ⚠️ FALSE   |       2       | Actions & Dependabot secrets migrated; 2 Codespaces secrets unconfigured (Codespaces disabled on target). |
+| **`repo-secrets`**              | Repository   |  ⚠️ FALSE   |       1       | 1 Codespaces repo secret unconfigured (service license boundary).                                         |
+| **`teams`**                     | Organization |  ⚠️ FALSE   |       2       | All teams and base permissions created (100%); 2 repo team link attachments pending refresh.              |
+| **`repo-settings`**             | Repository   |  ⚠️ FALSE   |       1       | `kubernetes` visibility set to private (intentional per scope policy).                                    |
 
 ---
 

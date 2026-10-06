@@ -19,7 +19,7 @@
     "typecheck": "npm run build:packages && npm run typecheck:apps",
     "lint": "eslint --cache . && prettier --check .",
     "format": "prettier --write .",
-    "test:unit": "node --import tsx --test --test-concurrency=8 packages/contracts/tests/*.test.ts packages/analysis/tests/*.test.ts packages/github-client/tests/*.test.ts 'packages/migration/tests/**/*.test.ts' apps/dashboard/tests/*.test.ts apps/cli/tests/*.test.ts",
+    "test:unit": "node --import tsx --test --test-concurrency=8 packages/contracts/tests/*.test.ts packages/analysis/tests/*.test.ts packages/github-client/tests/*.test.ts packages/discovery/tests/*.test.ts 'packages/migration/tests/**/*.test.ts' apps/dashboard/tests/*.test.ts apps/cli/tests/*.test.ts",
     "test": "npm run build:packages && npm run test:unit",
     "dev": "npm run dev -w @ghec/dashboard",
     "dev:cli": "npm run dev -w ghec-consultant-cli --",

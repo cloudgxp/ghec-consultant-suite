@@ -24,6 +24,58 @@ This log documents formal handoffs, package interfaces, and dependency resolutio
 
 ## Handoff Records
 
+### [2026-10-05] Phase 1 Prerequisite Hardening & Phase 2 Content Migration Modules (Tasks 031-035) -> Production Release
+
+- **Agent:** Antigravity
+- **Completed Tasks:**
+  - `prereq-pipeline-module-identifiers-drift.md`
+  - `prereq-dryrun-git-lfs.md`
+  - `prereq-dryrun-releases.md`
+  - `audit-personal-org-references.md`
+  - Task 031: `031-releases-migration-module.md`
+  - Task 032: `032-deploy-keys-migration-module.md`
+  - Task 033: `033-collaborators-migration-module.md`
+  - Task 034: `034-git-lfs-migration-module.md`
+  - Task 035: `035-packages-container-migration-module.md`
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `ReleasesMigrationModule`, `streamReleaseAsset`
+    - `DeployKeysMigrationModule`, `normalizeSshKey`, `areSshKeysEqual`
+    - `CollaboratorsMigrationModule`
+    - `LfsMigrationModule`, `LfsStreamer`
+    - `PackagesMigrationModule`, `OciRegistryClient`
+    - Default registry pre-populated with all 17 modules
+  - `@ghec/discovery`:
+    - Updated `users` collector querying `/orgs/{org}/outside_collaborators` and tagging `outsideCollaborator: true`
+- **Files Modified / Created:**
+  - `packages/discovery/src/collectors/users.ts`
+  - `packages/discovery/tests/users-collector.test.ts`
+  - `packages/migration/src/modules/releases/`
+  - `packages/migration/src/modules/deploy-keys/`
+  - `packages/migration/src/modules/collaborators/`
+  - `packages/migration/src/modules/lfs/`
+  - `packages/migration/src/modules/packages/`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/src/orchestrator/pipeline.ts`
+  - `packages/migration/src/checkpoint/types.ts`
+  - `packages/migration/src/checkpoint/manager.ts`
+  - `packages/migration/src/strategies/git-lfs/strategy.ts`
+  - `packages/migration/src/strategies/releases/strategy.ts`
+  - `packages/migration/tests/modules/releases.test.ts`
+  - `packages/migration/tests/modules/deploy-keys.test.ts`
+  - `packages/migration/tests/modules/collaborators.test.ts`
+  - `packages/migration/tests/modules/lfs.test.ts`
+  - `packages/migration/tests/modules/packages.test.ts`
+  - `packages/migration/tests/orchestrator.test.ts`
+- **Behavior Notes:**
+  - Zero-Local-Secrets Security Boundary strictly enforced across all test fixtures and scopes.
+  - All 5 new migration modules implement the authoritative 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) with complete dry-run mode and discrepancy auditing.
+  - Streaming implementations (releases, LFS, container images) avoid buffering large blobs in RAM or unnecessary local disk retention.
+- **Test Evidence:**
+  - `npm run check` green across all workspaces.
+  - 400 passing tests across 54 suites, 0 failures.
+
 ### [2026-10-04] CodeQL Security Remediation Planning Pass -> Implementation Backlog
 
 - **From:** Antigravity (Planning & Security Audit Pass)

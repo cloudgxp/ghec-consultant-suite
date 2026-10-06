@@ -10,7 +10,7 @@ import {
   PageHeader,
 } from '../components/ui/index.js';
 import { Button, Dialog, Flash, Label, Select, TextInput } from '@primer/react';
-import { DownloadIcon, SearchIcon } from '@primer/octicons-react';
+import { DownloadIcon, KeyIcon, SearchIcon } from '@primer/octicons-react';
 import {
   configurationCoverage,
   configurationInventory,
@@ -22,6 +22,7 @@ import {
   generateConfigurationMetadataCsv,
 } from '../lib/export-csv.js';
 import { resolveOrgName } from '../lib/formatters.js';
+import { ModuleTriggerModal } from '../components/ModuleTriggerModal.js';
 
 interface Props {
   bundle: DiscoveryBundle;
@@ -200,6 +201,13 @@ export function SecretsAndVariablesTab({ bundle, selectedOrgIds }: Props) {
     return 'mixed';
   };
 
+  const [isTriggerOpen, setIsTriggerOpen] = useState(false);
+  const [dispatchedRun, setDispatchedRun] = useState<{
+    workflowId: string;
+    modules: string[];
+    isDryRun: boolean;
+  } | null>(null);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -220,7 +228,30 @@ export function SecretsAndVariablesTab({ bundle, selectedOrgIds }: Props) {
             Export filtered metadata CSV
           </Button>
         }
+        secondaryActions={
+          <Button
+            size="small"
+            leadingVisual={KeyIcon}
+            onClick={() => setIsTriggerOpen(true)}
+          >
+            Sync Secrets & Variables
+          </Button>
+        }
       />
+      {dispatchedRun && (
+        <Flash variant="success">
+          <div className="flex items-center justify-between text-xs">
+            <span>
+              Dispatched <strong>{dispatchedRun.modules.join(', ')}</strong> (
+              {dispatchedRun.isDryRun ? 'Dry-Run Simulation' : 'Live Apply'}) to
+              workflow <code>{dispatchedRun.workflowId}</code>.
+            </span>
+            <Button size="small" onClick={() => setDispatchedRun(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </Flash>
+      )}
       <Flash variant="warning">
         <div className="text-sm">
           <strong>Zero values:</strong> Presence does not prove workflow use.
@@ -391,6 +422,40 @@ export function SecretsAndVariablesTab({ bundle, selectedOrgIds }: Props) {
           </div>
         </Dialog>
       )}
+      <ModuleTriggerModal
+        isOpen={isTriggerOpen}
+        onClose={() => setIsTriggerOpen(false)}
+        title="Sync Secrets & Variables Metadata"
+        description="Rehydrate organization and repository secrets (using sealed-box public key encryption) and plaintext configuration variables across all domains."
+        modules={[
+          'org-variables',
+          'org-secrets',
+          'repo-variables',
+          'repo-secrets',
+        ]}
+        sourceOrg={
+          selectedOrgIds[0]
+            ? resolveOrgName(bundle, selectedOrgIds[0])
+            : bundle.organizations[0]?.login || 'source-org'
+        }
+        affectedCount={records.length}
+        entityLabel="secrets & variables"
+        prerequisites={[
+          'Target organization public encryption key retrieved',
+          'Target organization and repository admin permissions',
+        ]}
+        customOptions={
+          <p className="text-xs text-[var(--fgColor-muted)]">
+            Enforces the <strong>Zero-Secret-Leakage</strong> boundary. Secret
+            values are encrypted using target public keys without transmitting
+            plaintext secrets across the wire.
+          </p>
+        }
+        onDispatched={(res) => {
+          setDispatchedRun(res);
+          setIsTriggerOpen(false);
+        }}
+      />
     </div>
   );
 }

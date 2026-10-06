@@ -3,8 +3,6 @@ name: Jules Agent
 on:
   issues:
     types: [labeled]
-  issue_comment:
-    types: [created]
   schedule:
     # Daily codebase hygiene sweep at 04:00 UTC
     - cron: "0 4 * * *"
@@ -139,82 +137,6 @@ jobs:
             - Reference 'Fixes #${issue.number}' in the PR body.
             ${QUALITY_GUIDELINES}
             `;
-            } else if (eventName === 'issue_comment') {
-              const commentBody = context.payload.comment?.body || '';
-              const match = /(?:^\s*\/jules\b|\b\/jules\b|^\s*!jules\b|\bjules:\s*fix|\bjules\s+fix\b|@jules\b)/im.test(commentBody);
-              if (!match) {
-                core.info('Comment does not invoke /jules command. Skipping.');
-                setOutput('should_run', 'false');
-                return;
-              }
-
-              const commentAssoc = context.payload.comment?.author_association || '';
-              if (!allowedAssociations.includes(commentAssoc)) {
-                core.warning(`Unauthorized comment trigger by ${context.payload.comment?.user?.login} (assoc: ${commentAssoc}).`);
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.issue.number,
-                  body: `⚠️ **Jules Automation**: Jules task invocation is restricted to repository maintainers (\`OWNER\`, \`MEMBER\`, \`COLLABORATOR\`). Comment author \`@${context.payload.comment?.user?.login}\` is not authorized.`
-                });
-                setOutput('should_run', 'false');
-                return;
-              }
-
-              const isPR = Boolean(context.payload.issue?.pull_request);
-              shouldRun = true;
-
-              await github.rest.reactions.createForIssueComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: context.payload.comment.id,
-                content: 'rocket'
-              });
-
-              if (isPR) {
-                const prRes = await github.rest.pulls.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: context.payload.issue.number
-                });
-                const pr = prRes.data;
-                startingBranch = pr.head.ref;
-                includeLastCommit = 'true';
-                includeCommitLog = 'true';
-
-                prompt = `Address review feedback on Pull Request #${pr.number}: "${pr.title}".
-
-            Pull Request Context:
-            ${pr.body || 'No description provided.'}
-
-            Maintainer Instructions:
-            ${commentBody}
-
-            Target Starting Branch: ${pr.head.ref}
-
-            Instructions:
-            - Analyze the maintainer comment and implement the requested changes directly for branch '${pr.head.ref}'.
-            - Ensure modifications address the review comments without breaking existing functionality.
-            ${QUALITY_GUIDELINES}
-            `;
-              } else {
-                const issue = context.payload.issue;
-                startingBranch = 'main';
-
-                prompt = `Resolve GitHub Issue #${issue.number}: "${issue.title}".
-
-            Issue Description:
-            ${issue.body || 'No description provided.'}
-
-            Maintainer Comment:
-            ${commentBody}
-
-            Instructions:
-            - Implement a minimal, targeted fix directly addressing the issue and comment instructions.
-            - Reference 'Fixes #${issue.number}' in the PR body.
-            ${QUALITY_GUIDELINES}
-            `;
-              }
             } else if (eventName === 'workflow_dispatch') {
               const taskType = context.payload.inputs?.task_type || 'custom';
               startingBranch = context.payload.inputs?.target_branch || 'main';

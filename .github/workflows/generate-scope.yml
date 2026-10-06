@@ -4,15 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       source_org:
-        description: 'Source organization slug (e.g. demogxp)'
+        description: 'Source organization slug (e.g. source-org)'
         required: true
         type: string
-        default: 'demogxp'
       target_org:
-        description: 'Target organization slug (e.g. antigravity-migration-test)'
+        description: 'Target organization slug (e.g. target-emu)'
         required: true
         type: string
-        default: 'antigravity-migration-test'
       scope_type:
         description: 'Repository selection mode'
         required: true

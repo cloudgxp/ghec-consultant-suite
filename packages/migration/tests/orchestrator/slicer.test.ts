@@ -366,3 +366,40 @@ test('ScopeMatrixSlicer.aggregateCohortResults reports complete when all cohorts
   assert.equal(summary.failedCohorts, 0);
   assert.equal(summary.errors.length, 0);
 });
+
+test('ScopeMatrixSlicer generates exactly 1 sequential cohort when runnerCapacity is 1', () => {
+  const scope = createSampleScope(12);
+  const matrix = ScopeMatrixSlicer.slice(scope, { runnerCapacity: 1 });
+
+  assert.equal(matrix.include.length, 1);
+  assert.equal(matrix.include[0]?.cohortId, 'cohort-1');
+  assert.equal(matrix.include[0]?.repoCount, 12);
+  assert.equal(matrix.include[0]?.repositories.length, 12);
+  assert.match(matrix.include[0]?.rationale ?? '', /Single runner/);
+});
+
+test('ScopeMatrixSlicer dynamically fans out to up to N cohorts when runnerCapacity is N', () => {
+  const scope = createSampleScope(10);
+  // 10 repos with capacity 4 -> batchSize = ceil(10/4) = 3 -> cohorts: 3, 3, 3, 1 (4 cohorts)
+  const matrix = ScopeMatrixSlicer.slice(scope, { runnerCapacity: 4 });
+
+  assert.ok(
+    matrix.include.length <= 4,
+    `Cohorts ${matrix.include.length} should be <= 4`,
+  );
+  assert.equal(
+    matrix.include.reduce((sum, c) => sum + c.repoCount, 0),
+    10,
+  );
+});
+
+test('ScopeMatrixSlicer cleanly handles more runners than repositories', () => {
+  const scope = createSampleScope(3);
+  // 3 repos with capacity 10 -> at most 3 cohorts (1 repo each)
+  const matrix = ScopeMatrixSlicer.slice(scope, { runnerCapacity: 10 });
+
+  assert.equal(matrix.include.length, 3);
+  for (const cohort of matrix.include) {
+    assert.equal(cohort.repoCount, 1);
+  }
+});

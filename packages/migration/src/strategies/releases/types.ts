@@ -64,6 +64,7 @@ export interface ReleaseTransport {
 export interface ReleaseMigrationRequest {
   readonly geiSkippedReleases: boolean;
   readonly signal: AbortSignal;
+  readonly dryRun?: boolean | undefined;
   readonly checkpointManager?: MigrationCheckpointManager;
   readonly checkpointRepository?: string;
 }

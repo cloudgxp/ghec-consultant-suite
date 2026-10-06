@@ -54,3 +54,49 @@ test('migration scope rejects unknown fields, incorrect versions, and cross-tena
     false,
   );
 });
+
+test('migration scope accepts granular repositoryOptions mapping and per-repository options', () => {
+  const scopeWithGranularOptions = {
+    ...scope,
+    repositories: [
+      {
+        ...scope.repositories[0],
+        options: {
+          skipReleases: true,
+          skipLfs: true,
+          customTimeout: 3600,
+          timeoutSeconds: 3600,
+          targetRepoVisibility: 'private',
+          lfsStrategy: 'skip',
+        },
+      },
+    ],
+    repositoryOptions: {
+      'acme-engineering/api': {
+        skipReleases: true,
+        customTimeout: 1800,
+      },
+    },
+  };
+
+  const validation = validateMigrationScope(scopeWithGranularOptions);
+  assert.equal(validation.success, true);
+});
+
+test('migration scope rejects invalid repository options', () => {
+  const scopeWithInvalidOption = {
+    ...scope,
+    repositories: [
+      {
+        ...scope.repositories[0],
+        options: {
+          // @ts-expect-error invalid negative timeout
+          customTimeout: -10,
+        },
+      },
+    ],
+  };
+
+  const validation = validateMigrationScope(scopeWithInvalidOption);
+  assert.equal(validation.success, false);
+});

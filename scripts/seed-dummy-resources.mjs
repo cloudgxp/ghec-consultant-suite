@@ -18,10 +18,15 @@ const org =
         arg !== process.argv[0] &&
         arg !== process.argv[1],
     )
-    ?.trim() ||
-  process.env.GHEC_SOURCE_ORG?.trim() ||
-  'demogxp';
+    ?.trim() || process.env.GHEC_SOURCE_ORG?.trim();
 const isTargetReposOnly = process.argv.includes('--target-repos-only');
+
+if (!org) {
+  console.error(
+    'Error: Organization argument or GHEC_SOURCE_ORG environment variable is required.',
+  );
+  process.exit(1);
+}
 
 if (!token) {
   console.error(

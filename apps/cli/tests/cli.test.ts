@@ -1001,3 +1001,95 @@ test('CLI plan command partitions scope with --split-matrix and outputs matrix J
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('CLI plan command partitions scope with --runner-capacity', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-capacity-'));
+  const originalLog = console.log;
+  const originalError = console.error;
+  const stdout: string[] = [];
+
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+
+    const scopeFile = join(dir, 'scope.json');
+    const scopeData = {
+      version: MIGRATION_SCHEMA_VERSION,
+      name: 'capacity-scope',
+      organizations: [
+        { source: 'fictional-north', target: 'fictional-target', modules: [] },
+      ],
+      repositories: Array.from({ length: 6 }, (_, i) => ({
+        sourceOrg: 'fictional-north',
+        sourceRepo: `repo-${i + 1}`,
+        targetOrg: 'fictional-target',
+        targetRepo: `repo-${i + 1}`,
+        useGei: true,
+        modules: ['repo-variables'],
+      })),
+    };
+    writeFileSync(scopeFile, JSON.stringify(scopeData, null, 2));
+
+    const planFile = join(dir, 'migration-plan.json');
+    const matrixFile = join(dir, 'migration-matrix.json');
+    const mockAdapter = new MockGitHubReadAdapter();
+
+    // 1. Single runner (capacity 1) forces sequential execution (1 cohort)
+    const planExit1 = await runCli(
+      [
+        'plan',
+        '--scope',
+        scopeFile,
+        '--output',
+        planFile,
+        '--runner-capacity',
+        '1',
+        '--output-matrix',
+        matrixFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+
+    assert.equal(planExit1, 0);
+    const matrix1 = JSON.parse(readFileSync(matrixFile, 'utf8'));
+    assert.equal(matrix1.include.length, 1);
+    assert.equal(matrix1.include[0].repoCount, 6);
+
+    // 2. Capacity 2 partitions 6 repos into 2 cohorts
+    const planExit2 = await runCli(
+      [
+        'plan',
+        '--scope',
+        scopeFile,
+        '--output',
+        planFile,
+        '--runner-capacity',
+        '2',
+        '--output-matrix',
+        matrixFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+
+    assert.equal(planExit2, 0);
+    const matrix2 = JSON.parse(readFileSync(matrixFile, 'utf8'));
+    assert.equal(matrix2.include.length, 2);
+    assert.equal(matrix2.include[0].repoCount, 3);
+    assert.equal(matrix2.include[1].repoCount, 3);
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

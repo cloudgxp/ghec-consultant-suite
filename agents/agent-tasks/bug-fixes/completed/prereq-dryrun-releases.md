@@ -2,7 +2,7 @@
 
 ## Status
 
-open
+complete
 
 ## Priority
 

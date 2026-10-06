@@ -63,6 +63,14 @@ graph TD
         T021["021: CI/CD Workflow Templates<br>(Features)"]:::feature
     end
 
+    subgraph "Phase 8: Content & Asset Migration Modules"
+        T031["031: releases Migration Module<br>(Features)"]:::feature
+        T032["032: deploy-keys Migration Module<br>(Features)"]:::feature
+        T033["033: collaborators Migration Module<br>(Features)"]:::feature
+        T034["034: lfs Object Streaming Module<br>(Features)"]:::feature
+        T035["035: packages Container & Package Module<br>(Features)"]:::feature
+    end
+
     %% Dependencies
     T001 --> T002
     T001 --> T003
@@ -138,6 +146,28 @@ graph TD
     T015 --> T020
     T019 --> T021
     T020 --> T021
+
+    T005 --> T031
+    T014 --> T031
+    T015 --> T031
+
+    T005 --> T032
+    T014 --> T032
+    T015 --> T032
+
+    T003 --> T033
+    T005 --> T033
+    T017 --> T033
+    T015 --> T033
+
+    T005 --> T034
+    T014 --> T034
+    T023 --> T034
+    T015 --> T034
+
+    T003 --> T035
+    T005 --> T035
+    T016 --> T035
 ```
 
 ---
@@ -163,16 +193,17 @@ $$\text{Task 001} \longrightarrow \text{Task 003} \longrightarrow \text{Task 005
 
 ## 3. Implementation Phasing by Domain Category
 
-| Phase        | Tasks Included     | Primary Category | Deliverable Summary                                                              |
-| :----------- | :----------------- | :--------------- | :------------------------------------------------------------------------------- |
-| **Phase 1**  | 001, 002, 003, 004 | Features         | Headless `@ghec/github-client`, `@ghec/discovery`, and `@ghec/contracts` schemas |
-| **Phase 2**  | 005, 006, 007      | Features         | Core DAG framework, `ModuleRegistry`, Checkpoint manager, and diff planner       |
-| **Phase 3**  | 008, 009, 010      | Features         | First end-to-end module (`repo-variables`) and CLI `plan`, `migrate`, `verify`   |
-| **Phase 4**  | 011, 013, 016, 017 | Security         | Secrets rehydration, rulesets, org security, and EMU identity mapper             |
-| **Phase 4b** | 012, 018, 026      | Features         | Environments, webhooks, and custom properties modules                            |
-| **Phase 5**  | 022, 014, 015      | Features         | Source/destination preflight engine and 7-stage GEI orchestrator pipeline        |
-| **Phase 5b** | 023, 024           | Performance      | Git LFS mirroring strategy and release asset fallback streamer                   |
-| **Phase 6**  | 025, 027, 028, 029 | Security         | Visibility settings, mannequin reclamation, CODEOWNERS repair, and GHAS sync     |
-| **Phase 6b** | 030                | Features         | External integrations and advisory planner                                       |
-| **Phase 7**  | 019, 021           | Features         | Step summary reporting and CI/CD workflow templates                              |
-| **Phase 7b** | 020                | Performance      | Enterprise scope matrix slicer & parallel topology execution                     |
+| Phase        | Tasks Included          | Primary Category | Deliverable Summary                                                                     |
+| :----------- | :---------------------- | :--------------- | :-------------------------------------------------------------------------------------- |
+| **Phase 1**  | 001, 002, 003, 004      | Features         | Headless `@ghec/github-client`, `@ghec/discovery`, and `@ghec/contracts` schemas        |
+| **Phase 2**  | 005, 006, 007           | Features         | Core DAG framework, `ModuleRegistry`, Checkpoint manager, and diff planner              |
+| **Phase 3**  | 008, 009, 010           | Features         | First end-to-end module (`repo-variables`) and CLI `plan`, `migrate`, `verify`          |
+| **Phase 4**  | 011, 013, 016, 017      | Security         | Secrets rehydration, rulesets, org security, and EMU identity mapper                    |
+| **Phase 4b** | 012, 018, 026           | Features         | Environments, webhooks, and custom properties modules                                   |
+| **Phase 5**  | 022, 014, 015           | Features         | Source/destination preflight engine and 7-stage GEI orchestrator pipeline               |
+| **Phase 5b** | 023, 024                | Performance      | Git LFS mirroring strategy and release asset fallback streamer                          |
+| **Phase 6**  | 025, 027, 028, 029      | Security         | Visibility settings, mannequin reclamation, CODEOWNERS repair, and GHAS sync            |
+| **Phase 6b** | 030                     | Features         | External integrations and advisory planner                                              |
+| **Phase 7**  | 019, 021                | Features         | Step summary reporting and CI/CD workflow templates                                     |
+| **Phase 7b** | 020                     | Performance      | Enterprise scope matrix slicer & parallel topology execution                            |
+| **Phase 8**  | 031, 032, 033, 034, 035 | Features         | Content & asset migration modules (Releases, Deploy Keys, Collaborators, LFS, Packages) |

@@ -34,3 +34,5 @@ export {
   type TenantClientConfig,
   type TenantRole,
 } from './client.js';
+
+export * from './actions/index.js';
