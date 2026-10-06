@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, basename, join } from 'node:path';
 import {
   MIGRATION_SCHEMA_VERSION,
@@ -83,7 +84,7 @@ export class MigrationOrchestrator {
     this.continueOnError = options.continueOnError ?? false;
     this.runId =
       options.runId ??
-      `migrate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      `migrate-${Date.now()}-${randomBytes(4).toString('hex')}`;
     this.logger = options.logger ?? defaultLogger;
     this.signal = options.signal ?? new AbortController().signal;
 
@@ -371,7 +372,7 @@ export function writeMigrationExecutionReportFile(
 
   const tempPath = join(
     dir,
-    `.${basename(filePath)}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
+    `.${basename(filePath)}.tmp.${Date.now()}.${randomBytes(4).toString('hex')}`,
   );
   writeFileSync(tempPath, JSON.stringify(report, null, 2), {
     encoding: 'utf8',

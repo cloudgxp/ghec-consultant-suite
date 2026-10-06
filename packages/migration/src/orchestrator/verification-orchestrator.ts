@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, basename, join } from 'node:path';
 import {
   MIGRATION_SCHEMA_VERSION,
@@ -52,8 +53,7 @@ export class VerificationOrchestrator {
     this.sourceClient = options.sourceClient;
     this.scope = options.scope;
     this.runId =
-      options.runId ??
-      `verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      options.runId ?? `verify-${Date.now()}-${randomBytes(4).toString('hex')}`;
     this.logger = options.logger ?? defaultLogger;
     this.signal = options.signal ?? new AbortController().signal;
   }
@@ -212,7 +212,7 @@ export function writeVerificationReportFile(
 
   const tempPath = join(
     dir,
-    `.${basename(filePath)}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
+    `.${basename(filePath)}.tmp.${Date.now()}.${randomBytes(4).toString('hex')}`,
   );
   writeFileSync(tempPath, JSON.stringify(report, null, 2), {
     encoding: 'utf8',
