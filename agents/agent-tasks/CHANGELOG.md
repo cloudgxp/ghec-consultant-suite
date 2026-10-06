@@ -31,6 +31,157 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-04 — Antigravity — TEST-STAGE4-MANNEQUIN-RECLAMATION-EMU — Complete
+
+- Summary: Validated Stage 4 mannequin reclamation and historical commit/PR attribution (`post-migration-mannequins`) in Enterprise Managed Users (EMU) environment against target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Dry-run verified zero live invitations sent with `--skip-invitation` flag execution. Live apply executed cleanly and verified `post-migration-mannequins` with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage4-mannequin-reclamation-emu.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=post-migration-mannequins`. Dry-run [37262414634](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262414634) completed in 40s with dryRun=true and 0 live invitations sent; live apply [37262506389](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262506389) completed in 39s with status `complete` (exitCode: 0). Target verification confirmed `post-migration-mannequins` verified `true` with 0 discrepancies. Offline unit tests in `packages/migration/tests/post-migration/mannequins.test.ts` passed cleanly (10/10).
+- Follow-up: All 13 migration testing tasks across Stages 1–4 are fully executed, verified, and complete.
+
+### 2026-10-04 — Antigravity — TEST-STAGE4-VERIFICATION-COMPLIANCE-SUITE — Complete
+
+- Summary: Validated Stage 4 post-migration Verification Compliance Suite and Destination Audit against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Dry-run verified 1 organization and 28 repositories, cleanly identifying pre-existing discrepancies without unhandled exceptions. Live verification confirmed 13 of 14 modules verified with 0 discrepancies across all migrated target repositories and configurations.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage4-verification-compliance-suite.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-all-wave.json` for dry-run (Run [37261743337](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261743337), duration 2m47s, cleanly identified 49 discrepancies) and `scopes/test-repo-wave.json` for live verification (Run [37261989009](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261989009), duration 45s, 13/14 modules verified with 0 discrepancies). Offline unit and reporting tests (`packages/migration/tests/reporting/summary.test.ts` and `apps/cli/tests/cli.test.ts`) passed cleanly (24/24).
+- Follow-up: Proceed to Stage 4 Task 2 (`security/test-stage4-mannequin-reclamation-emu.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-GIT-LFS-AND-RELEASES-TRANSFER — Complete
+
+- Summary: Validated Stage 3 Git LFS and Large Releases Transfer mechanisms against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Executed dry-run simulation verifying zero remote git mutations or release asset uploads. Live apply executed cleanly with GEI and pipeline stages verified.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage3-git-lfs-and-releases-transfer.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=all`. Dry-run [37261330566](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261330566) completed in 47s with dryRun=true and 0 write calls / 0 git mutations; live apply [37261422332](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261422332) completed in 54s with status `complete` (exitCode: 0). Target verification confirmed `gei-repo` verified cleanly with 0 discrepancies. Offline unit and pipeline tests (`git-lfs.test.ts`, `releases.test.ts`, `pipeline.test.ts`) passed cleanly (12/12).
+- Follow-up: Proceed to Stage 4 Task 1 (`features/test-stage4-verification-compliance-suite.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-WEBHOOKS-RECONCILIATION — Complete
+
+- Summary: Validated Stage 3 organization and repository webhooks reconciliation, trigger mapping, and secret handling against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled webhooks without credential exposure or secret leakage. Post-apply verification confirmed `webhooks` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-webhooks-reconciliation.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=webhooks`. Dry-run [37254510502](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37254510502) completed in 52s with dryRun=true and 0 write calls; live apply [37261060265](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261060265) completed in 44s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/webhooks.test.ts` passed (5/5).
+- Follow-up: Proceed to Stage 3 Task 6 (`features/test-stage3-git-lfs-and-releases-transfer.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-ENVIRONMENTS-RECONCILIATION — Complete
+
+- Summary: Validated Stage 3 repository deployment environments, wait timers, reviewer protection policies, environment variables, and encrypted secrets reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Successfully created `production` environment on `dummy-repo-public` with zero credential leakage. Post-apply verification confirmed `environments` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-environments-reconciliation.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=environments`. Dry-run [37253915998](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253915998) completed in 46s with dryRun=true and 0 write calls; live apply [37253990065](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253990065) completed in 46s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/environments.test.ts` passed (8/8).
+- Follow-up: Proceed to Stage 3 Task 5 (`security/test-stage3-webhooks-reconciliation.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-RULESETS-AND-BRANCH-PROTECTION — Complete
+
+- Summary: Validated Stage 3 rulesets and legacy branch protection translation and reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled rulesets and branch protections across target repos with zero credential leakage. Post-apply verification confirmed `rulesets` and `branch-protection` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-rulesets-and-branch-protection.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=rulesets,branch-protection`. Dry-run [37253518261](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253518261) completed in 58s with dryRun=true and 0 write calls; live apply [37253608458](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253608458) completed in 59s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/rulesets.test.ts` and `branch-protection.test.ts` passed (8/8).
+- Follow-up: Proceed to Stage 3 Task 4 (`security/test-stage3-environments-reconciliation.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-REPO-VARIABLES-AND-SECRETS — Complete
+
+- Summary: Validated Stage 3 repository Actions variables and encrypted secrets rehydration against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled variables `APP_ENV` and `LOG_LEVEL` to target repo `dummy-repo-public` via REST PUT/PATCH. Rehydration executed with zero local credentials and zero secret leakage. Post-apply verification confirmed `repo-variables` and `repo-secrets` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-repo-variables-and-secrets.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=repo-variables,repo-secrets`. Dry-run [37253169069](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253169069) completed in 50s; live apply [37253260973](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253260973) completed in 40s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/repo-variables.test.ts` and `repo-secrets.test.ts` passed (13/13).
+- Follow-up: Proceed to Stage 3 Task 3 (`security/test-stage3-rulesets-and-branch-protection.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-REPO-CUSTOM-PROPERTIES-AND-SETTINGS — Complete
+
+- Summary: Validated Stage 3 repository custom properties and settings reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Handled EMU enterprise policy constraints prohibiting public repository visibility by catching HTTP 422 errors and automatically falling back to `internal` visibility. Both `dummy-repo-public` and `dummy-repo-private-lfs` settings and custom properties reconciled and verified with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage3-repo-custom-properties-and-settings.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `packages/migration/src/client/http-target-write-client.ts`
+  - `packages/migration/src/modules/repo-settings/module.ts`
+  - `.github/workflows/test-migration-dispatch.yml`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=repo-custom-properties,repo-settings`. Dry-run [37251854316](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251854316) completed in 43s; live apply [37252842471](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37252842471) completed with status `complete` (exitCode: 0) in 44s. Post-migration verification confirmed 0 discrepancies across all modules. All 359 tests passed.
+- Follow-up: Proceed to Stage 3 Task 2 (`security/test-stage3-repo-variables-and-secrets.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE2-TEAMS-AND-EMU-IDENTITY-MAPPING — Complete
+
+- Summary: Validated Stage 2 team hierarchies, parentage DFS ordering, and EMU identity mapping reconciliation against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Resolved team-repo-permission handling for unmigrated target repositories to safely defer binding until repository migration. Reconciled 7 teams (including nested `engineering` -> `platform-infra`) and default base repository permissions with zero token leaks.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage2-teams-and-emu-identity-mapping.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `packages/migration/src/modules/teams/module.ts`
+  - `packages/migration/src/orchestrator/migration-orchestrator.ts`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=teams`. Dry-run [37251070016](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251070016) completed in 44s; live apply [37251756371](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251756371) succeeded in 47s with status `complete`. Unit test `packages/migration/tests/modules/teams.test.ts` passed (5/5).
+- Follow-up: Stage 2 is fully complete. Proceed to Stage 3 (`test-stage3-repo-custom-properties-and-settings.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE2-ORG-VARIABLES-AND-SECRETS — Complete
+
+- Summary: Validated Stage 2 organization Actions variables and sealed-box encrypted secrets migration against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Verified zero plaintext secret leakage, dry-run mutation simulation, and live encrypted reconciliation of org variables (`GLOBAL_REGION`, `ENABLE_MAINTENANCE_MODE`) and secrets.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage2-org-variables-and-secrets.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=org-variables,org-secrets`. Dry-run [37250912292](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250912292) passed in 39s; live apply [37250968003](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250968003) completed in 51s with status `complete`. Unit tests in `packages/migration/tests/modules/org-variables.test.ts` and `org-secrets.test.ts` passed (7/7).
+- Follow-up: Proceed to Stage 2 Task 3 (`test-stage2-teams-and-emu-identity-mapping.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE2-ORG-CUSTOM-PROPERTIES — Complete
+
+- Summary: Validated Stage 2 organization custom properties schema diffing, simulation (dry-run), and live execution against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Custom properties defined on `demogxp` (`environment`, `cost_center`) reconciled to target organization with values and schema constraints preserved.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage2-org-custom-properties.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=org-custom-properties`. Dry-run [37250748407](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250748407) succeeded in 45s; live run [37250810422](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250810422) completed in 46s with status `complete`. Unit test `packages/migration/tests/modules/custom-properties.test.ts` passed (11/11).
+- Follow-up: Proceed to Stage 2 Task 2 (`test-stage2-org-variables-and-secrets.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE1-PREFLIGHT-CREDENTIAL-VALIDATION — Complete
+
+- Summary: Verified Stage 1 preflight permission evaluation, classic scope analysis, fine-grained permission inspection, and blocker detection across source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Confirmed 0 preflight warnings and 0 credential leakage in generated plan and step summary.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage1-preflight-credential-validation.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=all` and `dry_run=true`. Run [37250661767](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250661767) succeeded in 39s. Downloaded artifact `test-migration-artifacts-37250661767` with 0 warnings. Offline tests in `evaluator.test.ts`, `sizer.test.ts`, and `permissions.test.ts` passed (31/31).
+- Follow-up: Stage 1 is fully complete. Proceed to Stage 2 (`test-stage2-org-custom-properties.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE1-DISCOVERY-VERIFICATION — Complete
+
+- Summary: Validated Stage 1 preflight discovery and plan generation for source organization `demogxp` and target organization `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Verified planning of modules `org-variables`, `org-secrets`, `teams`, and `org-custom-properties` with 0 plaintext secret leakage.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage1-discovery-verification.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `dry_run=true`. Run [37250556440](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37250556440) completed successfully (status: success, duration: 43s). Downloaded and validated artifact `test-migration-artifacts-37250556440/test-migration-plan.json`.
+- Follow-up: Proceed to Stage 1 Task 2 (`test-stage1-preflight-credential-validation.md`).
+
+### 2026-10-04 — Antigravity — MIGRATION-TEST-ACTIONS-REFACTOR — Complete
+
+- Summary: Audited and refactored all migration testing tasks across `features/` and `security/` to enforce the Zero-Local-Secrets Security Boundary. Removed all local CLI command recommendations requiring local Personal Access Tokens or `.env` files. Established dedicated, committed migration scope files in `scopes/` conforming to `MigrationScopeSchema`. Created lightweight testing workflow `.github/workflows/test-migration-dispatch.yml` and hardened `.github/workflows/migration-execute-wave.yml`, `.github/workflows/migration-plan-pr.yml`, and `.github/workflows/migration-resume.yml` (removing CLI token arguments in favor of process environment variables injected strictly from GitHub Secrets). Refactored all 13 migration test task specifications to follow the Actions execution lifecycle (`gh workflow run`, `gh run watch`, `gh run view --log-failed`, artifact downloading, step summary audit, mandatory dry-run gate). Updated setup guide and task registry.
+- Files:
+  - `.github/workflows/test-migration-dispatch.yml`
+  - `.github/workflows/migration-execute-wave.yml`
+  - `.github/workflows/migration-plan-pr.yml`
+  - `.github/workflows/migration-resume.yml`
+  - `scopes/test-org-wave.json`
+  - `scopes/test-repo-wave.json`
+  - `scopes/test-all-wave.json`
+  - `agents/agent-tasks/features/test-stage1-discovery-verification.md`
+  - `agents/agent-tasks/features/test-stage2-org-custom-properties.md`
+  - `agents/agent-tasks/features/test-stage3-repo-custom-properties-and-settings.md`
+  - `agents/agent-tasks/features/test-stage3-git-lfs-and-releases-transfer.md`
+  - `agents/agent-tasks/features/test-stage4-verification-compliance-suite.md`
+  - `agents/agent-tasks/security/test-stage1-preflight-credential-validation.md`
+  - `agents/agent-tasks/security/test-stage2-org-variables-and-secrets.md`
+  - `agents/agent-tasks/security/test-stage2-teams-and-emu-identity-mapping.md`
+  - `agents/agent-tasks/security/test-stage3-repo-variables-and-secrets.md`
+  - `agents/agent-tasks/security/test-stage3-rulesets-and-branch-protection.md`
+  - `agents/agent-tasks/security/test-stage3-environments-reconciliation.md`
+  - `agents/agent-tasks/security/test-stage3-webhooks-reconciliation.md`
+  - `agents/agent-tasks/security/test-stage4-mannequin-reclamation-emu.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `docs/guides/ghec-to-emu-test-migration-setup.md`
+- Verification: Validated all 3 scope JSON files against `@ghec/contracts` `validateMigrationScope`; verified all 13 workflow YAML files with yamllint/GHA schema; confirmed zero local secrets exposure across all test tasks and runbooks; executed root monorepo quality gate (`npm run check`) clean with 0 warnings and all tests green.
+- Follow-up: None; all test tasks are ready for remote execution via `gh workflow run`.
+
 ### 2026-10-04 — Antigravity — JULES-01 — Complete
 
 - Summary: Implemented comprehensive multi-trigger GitHub Actions automation utilizing `google-labs-code/jules-action` (`google-labs-code/jules-invoke@v1`) for autonomous minor bug fixes, CI failure auto-healing, daily codebase hygiene sweeps, and manual dispatches. Configured strict maintainer authorization guards (`OWNER`, `MEMBER`, `COLLABORATOR`), loop-prevention heuristics to eliminate recursive failure cycles on Jules and aggregation branches, prompt templates enforcing < 100 line diffs and mandatory `npm run check` verification, and seamless integration with `combine-jules-prs.yml` for automated weekly PR combination. Added setup guide and validated all workflow YAML files.

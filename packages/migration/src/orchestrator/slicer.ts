@@ -27,6 +27,22 @@ export class ScopeMatrixSlicer {
     const repositories = scope.repositories ?? [];
 
     if (repositories.length === 0) {
+      if (scope.organizations && scope.organizations.length > 0) {
+        const cohortId = `${namingPrefix}-org`;
+        return {
+          include: [
+            {
+              cohortId,
+              wave: 1,
+              repoCount: 0,
+              repositories: [],
+              scopeJson: JSON.stringify(scope),
+              scope,
+              rationale: 'Organization-level resources migration cohort.',
+            },
+          ],
+        };
+      }
       return { include: [] };
     }
 

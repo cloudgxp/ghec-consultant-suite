@@ -140,16 +140,10 @@ jobs:
             ${QUALITY_GUIDELINES}
             `;
             } else if (eventName === 'issue_comment') {
-              if (context.payload.issue?.pull_request) {
-                core.info('Comment is on a pull request, not an issue. Skipping.');
-                setOutput('should_run', 'false');
-                return;
-              }
-
               const commentBody = context.payload.comment?.body || '';
-              const match = /@jules\s*(?:fix)?/i.test(commentBody);
+              const match = /(?:^\s*\/jules\b|\b\/jules\b|^\s*!jules\b|\bjules:\s*fix|\bjules\s+fix\b|@jules\b)/im.test(commentBody);
               if (!match) {
-                core.info('Comment does not invoke @jules. Skipping.');
+                core.info('Comment does not invoke /jules command. Skipping.');
                 setOutput('should_run', 'false');
                 return;
               }
@@ -167,9 +161,8 @@ jobs:
                 return;
               }
 
-              const issue = context.payload.issue;
+              const isPR = Boolean(context.payload.issue?.pull_request);
               shouldRun = true;
-              startingBranch = 'main';
 
               await github.rest.reactions.createForIssueComment({
                 owner: context.repo.owner,
@@ -178,7 +171,37 @@ jobs:
                 content: 'rocket'
               });
 
-              prompt = `Resolve GitHub Issue #${issue.number}: "${issue.title}".
+              if (isPR) {
+                const prRes = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.issue.number
+                });
+                const pr = prRes.data;
+                startingBranch = pr.head.ref;
+                includeLastCommit = 'true';
+                includeCommitLog = 'true';
+
+                prompt = `Address review feedback on Pull Request #${pr.number}: "${pr.title}".
+
+            Pull Request Context:
+            ${pr.body || 'No description provided.'}
+
+            Maintainer Instructions:
+            ${commentBody}
+
+            Target Starting Branch: ${pr.head.ref}
+
+            Instructions:
+            - Analyze the maintainer comment and implement the requested changes directly for branch '${pr.head.ref}'.
+            - Ensure modifications address the review comments without breaking existing functionality.
+            ${QUALITY_GUIDELINES}
+            `;
+              } else {
+                const issue = context.payload.issue;
+                startingBranch = 'main';
+
+                prompt = `Resolve GitHub Issue #${issue.number}: "${issue.title}".
 
             Issue Description:
             ${issue.body || 'No description provided.'}
@@ -191,6 +214,7 @@ jobs:
             - Reference 'Fixes #${issue.number}' in the PR body.
             ${QUALITY_GUIDELINES}
             `;
+              }
             } else if (eventName === 'workflow_dispatch') {
               const taskType = context.payload.inputs?.task_type || 'custom';
               startingBranch = context.payload.inputs?.target_branch || 'main';
@@ -246,7 +270,7 @@ jobs:
 
       - name: Invoke Jules Action
         if: steps.prep.outputs.should_run == 'true'
-        uses: google-labs-code/jules-invoke@v1
+        uses: google-labs-code/jules-action@v1.0.0
         with:
           prompt: ${{ steps.prep.outputs.prompt }}
           jules_api_key: ${{ secrets.JULES_API_KEY }}

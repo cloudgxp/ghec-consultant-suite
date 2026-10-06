@@ -1,6 +1,6 @@
 # Jules Autonomous Maintenance & CI Healing Setup Guide
 
-This guide describes how to configure, operate, and maintain the autonomous AI development workflows powered by Google Labs' **Jules** (`google-labs-code/jules-invoke@v1`) within the GHEC Consultant Suite monorepo.
+This guide describes how to configure, operate, and maintain the autonomous AI development workflows powered by Google Labs' **Jules** (`google-labs-code/jules-action@v1.0.0`) within the GHEC Consultant Suite monorepo.
 
 ---
 
@@ -11,7 +11,7 @@ Jules is an autonomous, cloud-hosted AI software engineering agent developed by 
 ```mermaid
 flowchart TD
     subgraph Triggers["Trigger Surface"]
-        T1["Issue Labeled 'jules'<br/>or Comment '@jules fix'"]
+        T1["Issue Labeled 'jules'<br/>or Comment '/jules fix'"]
         T2["Monorepo Quality Failure<br/>(workflow_run)"]
         T3["Daily Hygiene Cron<br/>(04:00 UTC)"]
         T4["Manual Dispatch<br/>(workflow_dispatch)"]
@@ -22,7 +22,7 @@ flowchart TD
         G2{"Loop & Branch Guard<br/>(Skip main, combined, & jules/*)"}
     end
 
-    subgraph Jules["Jules Autonomous Execution (google-labs-code/jules-invoke@v1)"]
+    subgraph Jules["Jules Autonomous Execution (google-labs-code/jules-action@v1.0.0)"]
         J1["Cloud VM Environment"]
         J2["Contextual Codebase Analysis"]
         J3["Scoped Code Modification (< 100 lines)"]
@@ -80,9 +80,9 @@ To activate Jules automations, you must configure a Google Jules API key as a re
 
 ## 3. Operational Workflows & Triggers
 
-### Trigger A: Issue-to-Fix Agent
+### Trigger A: Issue & PR Comment Fix Agent
 
-Maintainers can delegate bug fixes, documentation corrections, or minor enhancements directly from GitHub Issues.
+Maintainers can delegate bug fixes, documentation corrections, or review remediations directly from GitHub Issues and Pull Requests.
 
 #### 1. Via Issue Label
 
@@ -91,15 +91,19 @@ Maintainers can delegate bug fixes, documentation corrections, or minor enhancem
 - **Acknowledgement:** The issue receives an `:eyes:` reaction.
 - **Authorization:** Only repository `OWNER`, `MEMBER`, or `COLLABORATOR` actors can invoke Jules. If an unauthorized user applies the label, the workflow posts an explanatory comment and terminates without consuming quota.
 
-#### 2. Via Issue Comment
+#### 2. Via Issue or Pull Request Comment (Slash Command)
 
-- Post a comment on an open issue containing:
+- Post a comment on an open issue or pull request containing:
   ```text
-  @jules fix
+  /jules fix
   ```
-  _(or `@jules` followed by specific instructions, e.g. `@jules add unit test for sanitizeFormula`)_
+  _(or `/jules`, `/jules <custom instructions>`, `!jules fix`, or `jules: fix`)_
 - **Workflow:** `.github/workflows/jules-agent.yml` triggers on `issue_comment: created`.
+- **Pull Request Remediation**: When posted on a pull request, Jules automatically targets the PR's head branch, ingests the PR description and review comments, and pushes remediation commits directly to that branch.
 - **Acknowledgement:** The comment receives a `:rocket:` reaction.
+
+> [!TIP]
+> Always use slash commands like `/jules fix` or `/jules` rather than `@jules`. This triggers the automation without pinging or notifying the external GitHub user named `jules`.
 
 ---
 

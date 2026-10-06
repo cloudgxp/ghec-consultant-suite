@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { dirname, basename, join } from 'node:path';
 import {
   MIGRATION_SCHEMA_VERSION,
@@ -83,7 +84,7 @@ export class MigrationOrchestrator {
     this.continueOnError = options.continueOnError ?? false;
     this.runId =
       options.runId ??
-      `migrate-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      `migrate-${Date.now()}-${randomBytes(4).toString('hex')}`;
     this.logger = options.logger ?? defaultLogger;
     this.signal = options.signal ?? new AbortController().signal;
 
@@ -191,14 +192,17 @@ export class MigrationOrchestrator {
     }
 
     let modulePlans: readonly ModulePlan[] = activePlan.modules;
-    if (this.modulesFilter && this.modulesFilter.length > 0) {
+    if (
+      this.modulesFilter &&
+      this.modulesFilter.length > 0 &&
+      !this.modulesFilter.includes('all')
+    ) {
       const filterSet = new Set(this.modulesFilter);
       modulePlans = modulePlans.filter((mp) => filterSet.has(mp.moduleId));
     }
 
     const executionResults: ModuleExecutionResult[] = [];
     let hasFailure = false;
-    let allFailed = modulePlans.length > 0;
 
     for (const modulePlan of modulePlans) {
       if (this.signal.aborted) {
@@ -240,11 +244,8 @@ export class MigrationOrchestrator {
         if (isFailed) {
           hasFailure = true;
           if (!this.continueOnError) {
-            allFailed = executionResults.every((r) => r.status === 'failed');
             break;
           }
-        } else {
-          allFailed = false;
         }
       } catch (err) {
         hasFailure = true;
@@ -270,7 +271,6 @@ export class MigrationOrchestrator {
         executionResults.push(fallbackResult);
 
         if (!this.continueOnError) {
-          allFailed = executionResults.every((r) => r.status === 'failed');
           break;
         }
       }
@@ -278,6 +278,14 @@ export class MigrationOrchestrator {
 
     let status: 'complete' | 'partial' | 'failed';
     let exitCode: 0 | 1 | 4;
+
+    const hasSuccessfulOperation = executionResults.some(
+      (r) =>
+        r.status === 'complete' ||
+        r.status === 'partial' ||
+        r.results.some((op) => op.status === 'succeeded'),
+    );
+    const allFailed = !hasSuccessfulOperation && executionResults.length > 0;
 
     if (!hasFailure) {
       status = 'complete';
@@ -346,7 +354,7 @@ export function writeMigrationExecutionReportFile(
 
   const tempPath = join(
     dir,
-    `.${basename(filePath)}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
+    `.${basename(filePath)}.tmp.${Date.now()}.${randomBytes(4).toString('hex')}`,
   );
   writeFileSync(tempPath, JSON.stringify(report, null, 2), {
     encoding: 'utf8',
