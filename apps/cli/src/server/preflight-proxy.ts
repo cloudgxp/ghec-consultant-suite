@@ -10,9 +10,14 @@ export function registerPreflightProxy(
   fastify: FastifyInstance,
   options: PreflightProxyOptions,
 ): void {
-  fastify.post(
-    '/api/cli/preflight',
-    async (req: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/cli/preflight', {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: '1 minute',
+      },
+    },
+    handler: async (req: FastifyRequest, reply: FastifyReply) => {
       const ambientToken = await options.getToken();
       const body = (req.body ?? {}) as {
         scope?: unknown;
@@ -66,5 +71,5 @@ export function registerPreflightProxy(
           .send({ error: `Preflight execution failed: ${msg}` });
       }
     },
-  );
+  });
 }

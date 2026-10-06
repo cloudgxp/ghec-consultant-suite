@@ -101,7 +101,11 @@ export function registerActionsProxy(
       const ref = body.ref || 'main';
       const inputs = body.inputs || {};
 
-      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/workflows/${safeWorkflowId}/dispatches`;
+      const ghUrl = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/workflows/${safeWorkflowId}/dispatches`,
+        'https://api.github.com',
+      ).toString();
+
       const res = await fetchFn(ghUrl, {
         method: 'POST',
         headers: {
@@ -154,16 +158,20 @@ export function registerActionsProxy(
         });
       }
 
-      const params = new URLSearchParams();
-      if (event && GITHUB_NAME_REGEX.test(event)) params.set('event', event);
+      const url = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/workflows/${safeWorkflowId}/runs`,
+        'https://api.github.com',
+      );
+      if (event && GITHUB_NAME_REGEX.test(event))
+        url.searchParams.set('event', event);
       if (status && GITHUB_NAME_REGEX.test(status))
-        params.set('status', status);
+        url.searchParams.set('status', status);
       if (per_page && NUMERIC_ID_REGEX.test(per_page))
-        params.set('per_page', per_page);
-      if (page && NUMERIC_ID_REGEX.test(page)) params.set('page', page);
+        url.searchParams.set('per_page', per_page);
+      if (page && NUMERIC_ID_REGEX.test(page))
+        url.searchParams.set('page', page);
 
-      const qs = params.toString() ? `?${params.toString()}` : '';
-      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/workflows/${safeWorkflowId}/runs${qs}`;
+      const ghUrl = url.toString();
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -219,7 +227,10 @@ export function registerActionsProxy(
         headers['If-None-Match'] = ifNoneMatch;
       }
 
-      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}`;
+      const ghUrl = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}`,
+        'https://api.github.com',
+      ).toString();
       const res = await fetchFn(ghUrl, { headers });
 
       if (res.status === 304) {
@@ -265,7 +276,10 @@ export function registerActionsProxy(
         });
       }
 
-      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/jobs`;
+      const ghUrl = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/jobs`,
+        'https://api.github.com',
+      ).toString();
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -311,7 +325,10 @@ export function registerActionsProxy(
         });
       }
 
-      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/cancel`;
+      const ghUrl = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/cancel`,
+        'https://api.github.com',
+      ).toString();
       const res = await fetchFn(ghUrl, {
         method: 'POST',
         headers: {
@@ -355,7 +372,10 @@ export function registerActionsProxy(
         });
       }
 
-      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/artifacts`;
+      const ghUrl = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/artifacts`,
+        'https://api.github.com',
+      ).toString();
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -399,7 +419,10 @@ export function registerActionsProxy(
         });
       }
 
-      const zipUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/artifacts/${safeArtifactId}/zip`;
+      const zipUrl = new URL(
+        `/repos/${safeOwner}/${safeRepo}/actions/artifacts/${safeArtifactId}/zip`,
+        'https://api.github.com',
+      ).toString();
       const initialRes = await fetchFn(zipUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
