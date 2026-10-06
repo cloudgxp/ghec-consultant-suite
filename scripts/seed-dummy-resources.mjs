@@ -251,9 +251,14 @@ async function ensureOrgWebhook() {
   console.log(`  + Checking organization webhook in ${org}...`);
   const check = await ghRequest(`/orgs/${org}/hooks`);
   if (check.ok && Array.isArray(check.data)) {
-    const exists = check.data.some((h) =>
-      h.config?.url?.includes('httpbin.org'),
-    );
+    const exists = check.data.some((h) => {
+      try {
+        const u = new URL(h.config?.url || '');
+        return u.hostname === 'httpbin.org';
+      } catch {
+        return false;
+      }
+    });
     if (exists) {
       console.log('  ✓ Org webhook to httpbin.org already exists.');
       return;

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { validateMigrationScope } from '@ghec/contracts';
@@ -82,7 +82,8 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
   });
 
   it('generates a valid scope from a file containing repository URLs (and infers source org)', async () => {
-    const tempFile = join(tmpdir(), `test-repos-${Date.now()}.txt`);
+    const tempDir = mkdtempSync(join(tmpdir(), 'ghec-scope-test-'));
+    const tempFile = join(tempDir, 'test-repos.txt');
     const urls = [
       '# Wave 1 Repositories',
       'https://github.com/example-source-org/auth-service.git',
@@ -114,12 +115,13 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
       const validation = validateMigrationScope(scope);
       assert.equal(validation.success, true);
     } finally {
-      unlinkSync(tempFile);
+      rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
   it('supports scaling to several hundred repository URLs in a file', async () => {
-    const tempFile = join(tmpdir(), `test-large-wave-${Date.now()}.txt`);
+    const tempDir = mkdtempSync(join(tmpdir(), 'ghec-scope-test-'));
+    const tempFile = join(tempDir, 'test-large-wave.txt');
     const repoLines = [];
     for (let i = 1; i <= 350; i++) {
       repoLines.push(`https://github.com/example-source-org/service-${i}.git`);
@@ -141,12 +143,13 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
       const validation = validateMigrationScope(scope);
       assert.equal(validation.success, true);
     } finally {
-      unlinkSync(tempFile);
+      rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
   it('rejects repository URLs that do not match expected source organization', async () => {
-    const tempFile = join(tmpdir(), `test-mismatch-${Date.now()}.txt`);
+    const tempDir = mkdtempSync(join(tmpdir(), 'ghec-scope-test-'));
+    const tempFile = join(tempDir, 'test-mismatch.txt');
     writeFileSync(tempFile, 'https://github.com/other-org/some-repo\n', 'utf8');
 
     try {
@@ -166,7 +169,7 @@ describe('Scope Generator (scripts/generate-scope.mjs)', () => {
         },
       );
     } finally {
-      unlinkSync(tempFile);
+      rmSync(tempDir, { recursive: true, force: true });
     }
   });
 

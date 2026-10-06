@@ -184,10 +184,9 @@ describe('SourceCredentialInspector', () => {
       assessment.blockers[0]!,
       /requires SAML Single Sign-On \(SSO\) authorization/,
     );
-    assert.ok(
-      assessment.blockers[0]!.includes(
-        'https://github.com/orgs/example-source-org/sso',
-      ),
+    assert.match(
+      assessment.blockers[0]!,
+      /https:\/\/github\.com\/orgs\/example-source-org\/sso/,
     );
   });
 

@@ -30,12 +30,15 @@ for (const viewport of viewports) {
   }
 }
 
-test('upload empty and error states', async ({ page }) => {
+test('upload empty state', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto('/');
-  await expect(page).toHaveScreenshot('upload-empty.png', {
-    animations: 'disabled',
-  });
+  await expect(page).toHaveScreenshot('upload-empty.png');
+});
+
+test('upload error state', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/');
   await page.locator('input[type=file]').setInputFiles({
     name: 'invalid.json',
     mimeType: 'application/json',
@@ -44,36 +47,34 @@ test('upload empty and error states', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Import failed' }),
   ).toBeVisible();
-  await expect(page).toHaveScreenshot('upload-error.png', {
-    animations: 'disabled',
-  });
+  await expect(page).toHaveScreenshot('upload-error.png');
 });
 
-test('drawer and settings transient layers', async ({ page }) => {
+test('drawer transient layer', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await loadEnterprise(page);
   await page.getByRole('button', { name: 'Open navigation' }).click();
-  await expect(page).toHaveScreenshot('mobile-drawer-dark.png', {
-    animations: 'disabled',
-  });
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Migration Target Settings' }).click();
-  await expect(page).toHaveScreenshot('settings-modal.png', {
-    animations: 'disabled',
-  });
+  await expect(page).toHaveScreenshot('mobile-drawer-dark.png');
 });
 
-test('filtered inventory and remediation states', async ({ page }) => {
+test('settings transient layer', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await loadEnterprise(page);
+  await page.getByRole('button', { name: 'Migration Target Settings' }).click();
+  await expect(page).toHaveScreenshot('settings-modal.png');
+});
+
+test('filtered inventory state', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loadEnterprise(page);
   await openDestination(page, 'Repositories');
   await page.getByRole('searchbox', { name: 'Search' }).fill('no-match');
-  await expect(page).toHaveScreenshot('repositories-filtered.png', {
-    animations: 'disabled',
-  });
+  await expect(page).toHaveScreenshot('repositories-filtered.png');
+});
+
+test('remediation state', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await loadComparison(page);
   await setTheme(page, 'Dark');
-  await expect(page).toHaveScreenshot('remediation-dark.png', {
-    animations: 'disabled',
-  });
+  await expect(page).toHaveScreenshot('remediation-dark.png');
 });
