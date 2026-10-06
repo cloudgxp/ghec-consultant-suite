@@ -59,6 +59,14 @@ test('runnersInventory correctly filters runner and runner-group entities', () =
         entity.kind === 'action-runner-group',
     ),
   );
+  assert.equal(
+    runners.filter((item) => item.kind === 'action-runner').length,
+    2,
+  );
+  assert.equal(
+    runners.filter((item) => item.kind === 'action-runner-group').length,
+    1,
+  );
 
   // Assert that a bundle without runners returns an empty array
   const noRunners = runnersInventory(parsed.data);
@@ -73,6 +81,14 @@ test('operationsInventory correctly filters cache and artifact entities', () => 
       (entity) =>
         entity.kind === 'action-cache' || entity.kind === 'action-artifact',
     ),
+  );
+  assert.equal(
+    operations.filter((item) => item.kind === 'action-cache').length,
+    1,
+  );
+  assert.equal(
+    operations.filter((item) => item.kind === 'action-artifact').length,
+    1,
   );
 
   // Assert that a bundle without operations returns an empty array
