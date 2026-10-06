@@ -387,7 +387,20 @@ export function registerActionsProxy(
         });
       }
 
-      const zipUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${artifactId}/zip`;
+      const isValidArtifactId = /^[0-9]+$/.test(artifactId);
+      const isValidOwner = /^[A-Za-z0-9._-]+$/.test(owner);
+      const isValidRepo = /^[A-Za-z0-9._-]+$/.test(repo);
+
+      if (!isValidArtifactId || !isValidOwner || !isValidRepo) {
+        return reply.status(400).send({
+          error: 'Invalid artifactId, owner, or repo format.',
+        });
+      }
+
+      const zipUrl = new URL(
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/artifacts/${encodeURIComponent(artifactId)}/zip`,
+        'https://api.github.com',
+      ).toString();
       const initialRes = await fetchFn(zipUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
