@@ -27,24 +27,23 @@ longer a static scaffold.
   against synthetic GitHub resources remains open.
 
 This repository is not yet approved for customer production use. Consult
-[`agents/agent-tasks/CURRENT-TASKS.md`](agents/agent-tasks/CURRENT-TASKS.md) for the current
-release backlog and [`agents/agent-tasks/CHANGELOG.md`](agents/agent-tasks/CHANGELOG.md) for
-verification evidence.
+[`AGENTS.md`](AGENTS.md) for current repository architecture and invariants.
 
 ## Workspace
 
 ```text
-apps/cli/               read-only GHEC discovery CLI and bundle publisher
-apps/dashboard/         offline Vite/React/Primer assessment dashboard
-packages/contracts/     public JSON contract v1.0.0 and Zod validation
+apps/cli/               read-only GHEC discovery CLI, migration runner, and bundle publisher
+apps/dashboard/         offline Vite/React/Primer assessment dashboard and control plane
+packages/contracts/     public JSON contract v1.0.0 and Zod validation schemas
 packages/analysis/      deterministic migration-readiness analysis
-agents/                 agent specifications, task backlogs, and communications
-  ├── agent-specs/      system architecture and domain contracts
-  ├── agent-tasks/      category tasks (security, features, bug-fixes, performance)
-  └── agent-communications/ execution log, decisions, and blockers
+packages/github-client/ headless dual-tenant GitHub client with rate limiting
+packages/discovery/     discovery engine and collector orchestration
+packages/migration/     modular 4-stage migration framework and strategies
+.agents/                Antigravity 2.0 configuration (rules, skills, subagents)
+AGENTS.md               root agent context, architecture charter, and workflows
 references/github-docs/ curated local GitHub documentation snapshot
 docs/specs/             requirements, architecture, security, and roadmap
-docs/architecture/      deployment and system boundaries
+docs/architecture/      deployment, system boundaries, and architectural decisions
 docs/data-contracts/    public contract guidance
 docs/security/          security review material
 docs/adr/               architecture decisions

@@ -293,7 +293,7 @@ jobs:
             echo "Running Agentic Remediation Review against verification report..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
-              --spec agents/agent-specs/verification-remediation-agent.md \
+              --spec docs/specs/verification-remediation-agent.md \
               --output ./scans/remediation-plan.json \
               --output-markdown ./scans/remediation-plan.md \
               --append-step-summary || {
