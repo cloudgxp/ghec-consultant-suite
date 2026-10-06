@@ -58,43 +58,27 @@ export function parsePreflightOptions(args: string[]): PreflightCommandOptions {
   };
 }
 
-export interface PreflightCommandResult {
-  readonly report: MigrationPreflightReport;
-  readonly filePath: string;
-  readonly hasBlockers: boolean;
-  readonly blockedCount: number;
+export interface PreflightDirectOptions {
+  readonly scope: MigrationScope;
+  readonly sourceToken?: string | undefined;
+  readonly targetToken?: string | undefined;
+  readonly appId?: string | undefined;
+  readonly privateKeyPath?: string | undefined;
+  readonly installationId?: string | undefined;
 }
 
-export async function executePreflightCommand(
-  options: PreflightCommandOptions,
+export async function evaluatePreflightDirect(
+  options: PreflightDirectOptions,
   clientOverrides?: {
     sourceClient?: GitHubReadAdapter | undefined;
     targetClient?: GitHubReadAdapter | undefined;
   },
   signal?: AbortSignal,
-): Promise<PreflightCommandResult> {
-  if (!existsSync(options.scopePath)) {
-    throw new Error(`Scope file not found at "${options.scopePath}".`);
-  }
-
-  let scopeJson: unknown;
-  try {
-    scopeJson = JSON.parse(readFileSync(options.scopePath, 'utf8'));
-  } catch (err) {
-    throw new Error(
-      `Failed to parse scope JSON from "${options.scopePath}": ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
-  }
-
-  const scopeValidation = validateMigrationScope(scopeJson);
-  if (!scopeValidation.success) {
-    throw new Error(
-      `Invalid scope schema in "${options.scopePath}": ${scopeValidation.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
-    );
-  }
-  const scope: MigrationScope = scopeValidation.data;
-
+): Promise<{
+  report: MigrationPreflightReport;
+  hasBlockers: boolean;
+  blockedCount: number;
+}> {
   let sourceClient = clientOverrides?.sourceClient;
   let targetClient = clientOverrides?.targetClient;
 
@@ -113,17 +97,13 @@ export async function executePreflightCommand(
   }
 
   const evaluator = new PreflightEvaluator({
-    scope,
+    scope: options.scope,
     sourceAdapter: sourceClient,
     targetAdapter: targetClient,
     signal,
   });
 
   const report = await evaluator.evaluate();
-
-  const outPath = resolve(options.outputPath);
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, JSON.stringify(report, null, 2), 'utf8');
 
   const blockedAssessments = report.repositoryAssessments.filter(
     (a) => a.status === 'blocked',
@@ -132,8 +112,70 @@ export async function executePreflightCommand(
 
   return {
     report,
-    filePath: outPath,
     hasBlockers,
     blockedCount: blockedAssessments.length,
+  };
+}
+
+export interface PreflightCommandResult {
+  readonly report: MigrationPreflightReport;
+  readonly filePath: string;
+  readonly hasBlockers: boolean;
+  readonly blockedCount: number;
+}
+
+export async function executePreflightCommand(
+  options: PreflightCommandOptions,
+  clientOverrides?: {
+    sourceClient?: GitHubReadAdapter | undefined;
+    targetClient?: GitHubReadAdapter | undefined;
+  },
+  signal?: AbortSignal,
+): Promise<PreflightCommandResult> {
+  const safeScopePath = resolve(process.cwd(), options.scopePath);
+  if (!existsSync(safeScopePath)) {
+    throw new Error(`Scope file not found at "${options.scopePath}".`);
+  }
+
+  let scopeJson: unknown;
+  try {
+    scopeJson = JSON.parse(readFileSync(safeScopePath, 'utf8'));
+  } catch (err) {
+    throw new Error(
+      `Failed to parse scope JSON from "${options.scopePath}": ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
+
+  const scopeValidation = validateMigrationScope(scopeJson);
+  if (!scopeValidation.success) {
+    throw new Error(
+      `Invalid scope schema in "${options.scopePath}": ${scopeValidation.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
+    );
+  }
+  const scope: MigrationScope = scopeValidation.data;
+
+  const directResult = await evaluatePreflightDirect(
+    {
+      scope,
+      sourceToken: options.sourceToken,
+      targetToken: options.targetToken,
+      appId: options.appId,
+      privateKeyPath: options.privateKeyPath,
+      installationId: options.installationId,
+    },
+    clientOverrides,
+    signal,
+  );
+
+  const outPath = resolve(process.cwd(), options.outputPath);
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, JSON.stringify(directResult.report, null, 2), 'utf8');
+
+  return {
+    report: directResult.report,
+    filePath: outPath,
+    hasBlockers: directResult.hasBlockers,
+    blockedCount: directResult.blockedCount,
   };
 }
