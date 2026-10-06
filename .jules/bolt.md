@@ -1,0 +1,3 @@
+## 2023-10-06 - [Optimized formatters O(N) array search with WeakMap]
+**Learning:** In frontend list views, formatting components often perform `Array.prototype.find()` lookups on dictionary arrays (like organizations or metadata). This leads to O(N * M) performance scaling issues when rendering large tables.
+**Action:** Used `WeakMap` keyed by the source dictionary array to cache an O(1) `Map` lookup table. This ensures O(N + M) complexity and allows the cache to be safely garbage-collected once the bundle object reference is dropped.
