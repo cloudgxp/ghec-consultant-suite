@@ -30,10 +30,11 @@ export class GitHubActionsService {
     this.repo = options.repo;
     this.token = options.token;
     this.fetchFn = options.fetchFn ?? fetch;
-    this.baseUrl = (options.baseUrl ?? 'https://api.github.com').replace(
-      /\/+$/,
-      '',
-    );
+    let base = options.baseUrl ?? 'https://api.github.com';
+    while (base.endsWith('/')) {
+      base = base.slice(0, -1);
+    }
+    this.baseUrl = base;
   }
 
   private getHeaders(

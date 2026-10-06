@@ -319,6 +319,34 @@ describe('Task 036: Local Console Server & Ambient Auth Proxy', () => {
       }
     });
 
+    it('validates and handles /api/cli/preflight endpoint in-memory', async () => {
+      const { app, stop } = await createConsoleServer({
+        port: 0,
+        openBrowser: false,
+        explicitToken: 'test-token',
+      });
+
+      try {
+        // Missing scope
+        const missingRes = await app.inject({
+          method: 'POST',
+          url: '/api/cli/preflight',
+          payload: {},
+        });
+        assert.equal(missingRes.statusCode, 400);
+
+        // Invalid scope schema
+        const invalidRes = await app.inject({
+          method: 'POST',
+          url: '/api/cli/preflight',
+          payload: { scope: { invalid: true } },
+        });
+        assert.equal(invalidRes.statusCode, 400);
+      } finally {
+        await stop();
+      }
+    });
+
     it('manages SSE connections and broadcasts correctly', () => {
       const sseManager = new SseManager();
       assert.equal(sseManager.getClientCount(), 0);

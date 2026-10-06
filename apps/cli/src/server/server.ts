@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
+import rateLimit from '@fastify/rate-limit';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +64,11 @@ export async function createConsoleServer(
 }> {
   const app = Fastify({
     logger: false,
+  });
+
+  await app.register(rateLimit, {
+    max: 120,
+    timeWindow: '1 minute',
   });
 
   const sseManager = new SseManager();

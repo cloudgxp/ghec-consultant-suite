@@ -8,6 +8,49 @@ export interface ActionsProxyOptions {
   fetchFn?: typeof fetch;
 }
 
+const GITHUB_NAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
+const NUMERIC_ID_REGEX = /^[0-9]+$/;
+const WORKFLOW_ID_REGEX = /^[a-zA-Z0-9_.-]+$/;
+
+function sanitizeName(name: unknown): string | null {
+  if (typeof name !== 'string') return null;
+  const trimmed = name.trim();
+  if (
+    !trimmed ||
+    !GITHUB_NAME_REGEX.test(trimmed) ||
+    trimmed.includes('..') ||
+    trimmed.includes('/') ||
+    trimmed.includes('\\')
+  ) {
+    return null;
+  }
+  return encodeURIComponent(trimmed);
+}
+
+function sanitizeId(id: unknown): string | null {
+  if (typeof id !== 'string' && typeof id !== 'number') return null;
+  const str = String(id).trim();
+  if (!str || !NUMERIC_ID_REGEX.test(str)) {
+    return null;
+  }
+  return encodeURIComponent(str);
+}
+
+function sanitizeWorkflowId(id: unknown): string | null {
+  if (typeof id !== 'string') return null;
+  const trimmed = id.trim();
+  if (
+    !trimmed ||
+    !WORKFLOW_ID_REGEX.test(trimmed) ||
+    trimmed.includes('..') ||
+    trimmed.includes('/') ||
+    trimmed.includes('\\')
+  ) {
+    return null;
+  }
+  return encodeURIComponent(trimmed);
+}
+
 export function registerActionsProxy(
   fastify: FastifyInstance,
   options: ActionsProxyOptions,
@@ -44,18 +87,21 @@ export function registerActionsProxy(
       };
       const query = (req.query ?? {}) as { owner?: string; repo?: string };
 
-      const owner = body.owner || query.owner;
-      const repo = body.repo || query.repo;
+      const safeOwner = sanitizeName(body.owner || query.owner);
+      const safeRepo = sanitizeName(body.repo || query.repo);
+      const safeWorkflowId = sanitizeWorkflowId(workflowId);
+
+      if (!safeOwner || !safeRepo || !safeWorkflowId) {
+        return reply.status(400).send({
+          error:
+            'Missing or invalid required parameters: owner, repo, or workflowId.',
+        });
+      }
+
       const ref = body.ref || 'main';
       const inputs = body.inputs || {};
 
-      if (!owner || !repo) {
-        return reply
-          .status(400)
-          .send({ error: 'Missing required parameters: owner and repo.' });
-      }
-
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`;
+      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/workflows/${safeWorkflowId}/dispatches`;
       const res = await fetchFn(ghUrl, {
         method: 'POST',
         headers: {
@@ -97,20 +143,27 @@ export function registerActionsProxy(
       };
       const { owner, repo, event, status, per_page, page } = query;
 
-      if (!owner || !repo) {
+      const safeOwner = sanitizeName(owner);
+      const safeRepo = sanitizeName(repo);
+      const safeWorkflowId = sanitizeWorkflowId(workflowId);
+
+      if (!safeOwner || !safeRepo || !safeWorkflowId) {
         return reply.status(400).send({
-          error: 'Missing required query parameters: owner and repo.',
+          error:
+            'Missing or invalid required query parameters: owner, repo, or workflowId.',
         });
       }
 
       const params = new URLSearchParams();
-      if (event) params.set('event', event);
-      if (status) params.set('status', status);
-      if (per_page) params.set('per_page', per_page);
-      if (page) params.set('page', page);
+      if (event && GITHUB_NAME_REGEX.test(event)) params.set('event', event);
+      if (status && GITHUB_NAME_REGEX.test(status))
+        params.set('status', status);
+      if (per_page && NUMERIC_ID_REGEX.test(per_page))
+        params.set('per_page', per_page);
+      if (page && NUMERIC_ID_REGEX.test(page)) params.set('page', page);
 
       const qs = params.toString() ? `?${params.toString()}` : '';
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${encodeURIComponent(workflowId)}/runs${qs}`;
+      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/workflows/${safeWorkflowId}/runs${qs}`;
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -143,9 +196,14 @@ export function registerActionsProxy(
       const query = (req.query ?? {}) as { owner?: string; repo?: string };
       const { owner, repo } = query;
 
-      if (!owner || !repo) {
+      const safeOwner = sanitizeName(owner);
+      const safeRepo = sanitizeName(repo);
+      const safeRunId = sanitizeId(runId);
+
+      if (!safeOwner || !safeRepo || !safeRunId) {
         return reply.status(400).send({
-          error: 'Missing required query parameters: owner and repo.',
+          error:
+            'Missing or invalid required query parameters: owner, repo, or runId.',
         });
       }
 
@@ -161,7 +219,7 @@ export function registerActionsProxy(
         headers['If-None-Match'] = ifNoneMatch;
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}`;
+      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}`;
       const res = await fetchFn(ghUrl, { headers });
 
       if (res.status === 304) {
@@ -196,13 +254,18 @@ export function registerActionsProxy(
       const query = (req.query ?? {}) as { owner?: string; repo?: string };
       const { owner, repo } = query;
 
-      if (!owner || !repo) {
+      const safeOwner = sanitizeName(owner);
+      const safeRepo = sanitizeName(repo);
+      const safeRunId = sanitizeId(runId);
+
+      if (!safeOwner || !safeRepo || !safeRunId) {
         return reply.status(400).send({
-          error: 'Missing required query parameters: owner and repo.',
+          error:
+            'Missing or invalid required query parameters: owner, repo, or runId.',
         });
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`;
+      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/jobs`;
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -237,13 +300,18 @@ export function registerActionsProxy(
       const owner = body.owner || query.owner;
       const repo = body.repo || query.repo;
 
-      if (!owner || !repo) {
-        return reply
-          .status(400)
-          .send({ error: 'Missing required parameters: owner and repo.' });
+      const safeOwner = sanitizeName(owner);
+      const safeRepo = sanitizeName(repo);
+      const safeRunId = sanitizeId(runId);
+
+      if (!safeOwner || !safeRepo || !safeRunId) {
+        return reply.status(400).send({
+          error:
+            'Missing or invalid required parameters: owner, repo, or runId.',
+        });
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/cancel`;
+      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/cancel`;
       const res = await fetchFn(ghUrl, {
         method: 'POST',
         headers: {
@@ -276,13 +344,18 @@ export function registerActionsProxy(
       const query = (req.query ?? {}) as { owner?: string; repo?: string };
       const { owner, repo } = query;
 
-      if (!owner || !repo) {
+      const safeOwner = sanitizeName(owner);
+      const safeRepo = sanitizeName(repo);
+      const safeRunId = sanitizeId(runId);
+
+      if (!safeOwner || !safeRepo || !safeRunId) {
         return reply.status(400).send({
-          error: 'Missing required query parameters: owner and repo.',
+          error:
+            'Missing or invalid required query parameters: owner, repo, or runId.',
         });
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/artifacts`;
+      const ghUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/runs/${safeRunId}/artifacts`;
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -315,13 +388,18 @@ export function registerActionsProxy(
       const query = (req.query ?? {}) as { owner?: string; repo?: string };
       const { owner, repo } = query;
 
-      if (!owner || !repo) {
+      const safeOwner = sanitizeName(owner);
+      const safeRepo = sanitizeName(repo);
+      const safeArtifactId = sanitizeId(artifactId);
+
+      if (!safeOwner || !safeRepo || !safeArtifactId) {
         return reply.status(400).send({
-          error: 'Missing required query parameters: owner and repo.',
+          error:
+            'Missing or invalid required query parameters: owner, repo, or artifactId.',
         });
       }
 
-      const zipUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${artifactId}/zip`;
+      const zipUrl = `https://api.github.com/repos/${safeOwner}/${safeRepo}/actions/artifacts/${safeArtifactId}/zip`;
       const initialRes = await fetchFn(zipUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -340,8 +418,21 @@ export function registerActionsProxy(
             error: 'Redirect location missing from GitHub artifact response.',
           });
         }
+        let parsedRedirect: URL;
+        try {
+          parsedRedirect = new URL(location);
+        } catch {
+          return reply
+            .status(502)
+            .send({ error: 'Invalid redirect URL received.' });
+        }
+        if (parsedRedirect.protocol !== 'https:') {
+          return reply.status(502).send({
+            error: 'Insecure redirect protocol from artifact download.',
+          });
+        }
         // Follow redirect without Authorization header to avoid Azure Blob 400
-        downloadRes = await fetchFn(location);
+        downloadRes = await fetchFn(parsedRedirect.toString());
       } else if (initialRes.ok) {
         downloadRes = initialRes;
       } else {
