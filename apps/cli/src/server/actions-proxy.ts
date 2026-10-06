@@ -173,6 +173,18 @@ export function registerActionsProxy(
         });
       }
 
+      const ownerRepoPattern = /^[A-Za-z0-9._-]+$/;
+      const runIdPattern = /^[0-9]+$/;
+      if (
+        !ownerRepoPattern.test(owner) ||
+        !ownerRepoPattern.test(repo) ||
+        !runIdPattern.test(runId)
+      ) {
+        return reply.status(400).send({
+          error: 'Invalid owner, repo, or runId format.',
+        });
+      }
+
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
@@ -185,7 +197,7 @@ export function registerActionsProxy(
         headers['If-None-Match'] = ifNoneMatch;
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}`;
+      const ghUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs/${encodeURIComponent(runId)}`;
       const res = await fetchFn(ghUrl, { headers });
 
       if (res.status === 304) {
