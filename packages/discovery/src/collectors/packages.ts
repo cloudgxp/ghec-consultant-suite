@@ -46,10 +46,14 @@ export const collector: Collector = {
     }
     const completedAt = new Date().toISOString();
 
+    // ⚡ Bolt: Optimize repository lookup from O(n^2) to O(n)
+    // Pre-compute repository map for O(1) lookups during package processing
+    const repoMap = new Map(repos.map((repo) => [repo.name, repo]));
+
     const projectedEntities: Entity[] = responses.flatMap((response) =>
       response.items.map((p) => {
         const repository = p.repository?.name
-          ? repos.find((repo) => repo.name === p.repository?.name)
+          ? repoMap.get(p.repository.name)
           : undefined;
         const ecosystem = packageTypes.includes(
           p.package_type as (typeof packageTypes)[number],
