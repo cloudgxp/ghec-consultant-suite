@@ -155,6 +155,8 @@ export function hasClassicScope(
       return grantedScopes.has('admin:org');
     case 'public_repo':
       return grantedScopes.has('repo');
+    case 'security_events':
+      return grantedScopes.has('repo');
     case 'read:repo_hook':
       return (
         grantedScopes.has('admin:repo_hook') ||
