@@ -5,7 +5,7 @@ authentication, Octokit setup, rate limiting, and diagnostic scrubbing so that
 `apps/cli` (and later packages) never talk to GitHub directly.
 
 Authoritative boundary rules live in
-[`agents/agent-specs/github-client-boundaries.md`](../../agents/agent-specs/github-client-boundaries.md).
+[`docs/specs/github-client-boundaries.md`](../../docs/specs/github-client-boundaries.md).
 
 ## Dual-tenant model
 

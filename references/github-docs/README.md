@@ -64,7 +64,7 @@ To maintain a compact, high-signal reference corpus, all non-essential documenta
 When developing or modifying discovery, migration, API adapters, or CLI commands:
 
 1. **Consult Authoritative Documentation First:** Before making assumptions about endpoint payloads, parameter names, required scopes, rate limit response headers, or EMU behavior, search and read the corresponding document under `references/github-docs/`.
-2. **Do Not Hallucinate Endpoints:** If an endpoint or feature is not documented in `references/github-docs/` or verified in Octokit types, verify against the live API or open an explicit question in `agents/agent-communications/decisions.md`.
+2. **Do Not Hallucinate Endpoints:** If an endpoint or feature is not documented in `references/github-docs/` or verified in Octokit types, verify against the live API or open an explicit question in `docs/architecture/decisions.md`.
 3. **Record Consulted Documentation:** In task completion notes and PR summaries, cite the local documentation files consulted (e.g. `references/github-docs/content/rest/guides/encrypting-secrets-for-the-rest-api.md`).
 
 ---

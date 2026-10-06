@@ -4,28 +4,31 @@ This directory is the authoritative product design for the GitHub Enterprise
 Cloud (GHEC) consulting suite. “Must” describes a requirement, not by itself a
 claim that the feature exists. The CLI, dashboard, v1 contract, analysis, and
 offline verification are implemented; approved live-read and release-level
-browser verification remain open. Use
-[`agents/agent-tasks/CURRENT-TASKS.md`](../../agents/agent-tasks/CURRENT-TASKS.md) for current
-status rather than inferring implementation from a specification.
+browser verification remain open. Use [`AGENTS.md`](../../AGENTS.md) for current repository architecture and task context rather than inferring implementation from a specification.
 
 ---
 
 ## Authoritative Specification Documents
 
-| Document                                             | Requirement Prefix | Focus                                                                   |
-| ---------------------------------------------------- | ------------------ | ----------------------------------------------------------------------- |
-| [Product Requirements](product-requirements.md)      | PRD                | People, outcomes, quality, and consulting workflows                     |
-| [CLI Architecture](cli-architecture.md)              | CLI                | Command grammar, manifest-driven orchestration, error lifecycle         |
-| [Dashboard Architecture](dashboard-architecture.md)  | DASH               | Ingestion, offline analysis, and export interfaces                      |
-| [Data Contract](data-contract.md)                    | DATA               | Frozen v1.0.0 release contract; v2 references are deferred proposals    |
-| [Security and Privacy](security-and-privacy.md)      | SEC                | Data boundaries, threat model, and prohibited data enforcement          |
-| [Migration Readiness](migration-readiness.md)        | MIG                | Evidence categories and migration advisory rules                        |
-| [Collector Catalog & Taxonomy](collector-catalog.md) | COL                | 11 runtime modules and a broader catalog of 237 planned operations      |
-| [Permissions Matrix](permissions-matrix.md)          | PERM               | Authoritative permission verification ledger for all token types        |
-| [Coverage & Gap Report](coverage-and-gap-report.md)  | COV                | Complete 776-operation reconciliation and domain observability audit    |
-| [Phased Roadmap](phased-roadmap.md)                  | ROAD               | Phased implementation sequence (Phases C1 through C4) and release gates |
-| [Implementation Plan](implementation-plan.md)        | PLAN               | Release phases, verification gates, and immediate next steps            |
-| [Testing Strategy](testing-strategy.md)              | TEST               | Offline validation, synthetic test orgs, and regression prevention      |
+| Document                                                            | Requirement Prefix | Focus                                                                   |
+| ------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------- |
+| [Product Requirements](product-requirements.md)                     | PRD                | People, outcomes, quality, and consulting workflows                     |
+| [CLI Architecture](cli-architecture.md)                             | CLI                | Command grammar, manifest-driven orchestration, error lifecycle         |
+| [Dashboard Architecture](dashboard-architecture.md)                 | DASH               | Ingestion, offline analysis, and export interfaces                      |
+| [Data Contract](data-contract.md)                                   | DATA               | Frozen v1.0.0 release contract; v2 references are deferred proposals    |
+| [Security and Privacy](security-and-privacy.md)                     | SEC                | Data boundaries, threat model, and prohibited data enforcement          |
+| [Migration Readiness](migration-readiness.md)                       | MIG                | Evidence categories and migration advisory rules                        |
+| [Collector Catalog & Taxonomy](collector-catalog.md)                | COL                | 11 runtime modules and a broader catalog of 237 planned operations      |
+| [Permissions Matrix](permissions-matrix.md)                         | PERM               | Authoritative permission verification ledger for all token types        |
+| [Coverage & Gap Report](coverage-and-gap-report.md)                 | COV                | Complete 776-operation reconciliation and domain observability audit    |
+| [Phased Roadmap](phased-roadmap.md)                                 | ROAD               | Phased implementation sequence (Phases C1 through C4) and release gates |
+| [Implementation Plan](implementation-plan.md)                       | PLAN               | Release phases, verification gates, and immediate next steps            |
+| [Testing Strategy](testing-strategy.md)                             | TEST               | Offline validation, synthetic test orgs, and regression prevention      |
+| [Verification Remediation Agent](verification-remediation-agent.md) | REMED              | Remediation plan generation from verification audits                    |
+| [GitHub Client Boundaries](github-client-boundaries.md)             | CLIENT             | Dual-tenant transport isolation and rate-limiting contracts             |
+| [Migration Module Contract](migration-module-contract.md)           | MOD                | 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) contract      |
+| [Migration Execution Model](migration-execution-model.md)           | EXEC               | Resumption checkpoints, batching, and execution pipelines               |
+| [Architectural Decisions](../architecture/decisions.md)             | DEC                | Authoritative architectural decisions (DEC-001 through DEC-020+)        |
 
 ---
 

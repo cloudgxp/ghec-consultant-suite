@@ -141,5 +141,5 @@ baseline in this order:
 3. Record dashboard browser, accessibility, responsive, visual, and performance
    evidence.
 
-The authoritative item-level backlog is
-[`agents/agent-tasks/CURRENT-TASKS.md`](../../agents/agent-tasks/CURRENT-TASKS.md).
+The authoritative repository orientation and engineering invariants are documented in
+[`AGENTS.md`](../../AGENTS.md).
