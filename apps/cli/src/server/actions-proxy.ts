@@ -2,6 +2,24 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import * as fflate from 'fflate';
 import type { SseManager } from './sse.js';
 
+function isValidGitHubOwner(owner: string): boolean {
+  // GitHub user/org names: alphanumeric or single hyphens between alphanumerics.
+  // Max length: 39.
+  return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(owner);
+}
+
+function isValidGitHubRepo(repo: string): boolean {
+  // GitHub repository names cannot contain "/" and are generally up to 100 chars.
+  // Disallow "." and ".." explicitly to avoid path ambiguity.
+  return (
+    repo.length > 0 &&
+    repo.length <= 100 &&
+    repo !== '.' &&
+    repo !== '..' &&
+    /^[A-Za-z0-9._-]+$/.test(repo)
+  );
+}
+
 export interface ActionsProxyOptions {
   getToken: () => Promise<string | null>;
   sseManager: SseManager;
@@ -55,7 +73,13 @@ export function registerActionsProxy(
           .send({ error: 'Missing required parameters: owner and repo.' });
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`;
+      if (!isValidGitHubOwner(owner) || !isValidGitHubRepo(repo)) {
+        return reply.status(400).send({
+          error: 'Invalid owner or repo format.',
+        });
+      }
+
+      const ghUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`;
       const res = await fetchFn(ghUrl, {
         method: 'POST',
         headers: {
