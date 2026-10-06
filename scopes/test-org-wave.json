@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "name": "test-org-wave",
+  "organizations": [
+    {
+      "source": "example-source-org",
+      "target": "example-target-emu",
+      "modules": [
+        "org-variables",
+        "org-secrets",
+        "teams",
+        "org-custom-properties",
+        "webhooks",
+        "post-migration-mannequins"
+      ]
+    }
+  ],
+  "repositories": [],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_gxp"
+  }
+}

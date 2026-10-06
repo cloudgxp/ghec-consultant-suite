@@ -1,7 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import { Button, Flash, Label, UnderlineNav } from '@primer/react';
-import { DownloadIcon, InfoIcon } from '@primer/octicons-react';
+import {
+  DownloadIcon,
+  InfoIcon,
+  PeopleIcon,
+  PersonIcon,
+  SyncIcon,
+} from '@primer/octicons-react';
 import {
   VirtualizedTable,
   type VirtualizedColumn,
@@ -13,6 +19,7 @@ import {
   downloadCsv,
 } from '../lib/export-csv.js';
 import { PageHeader } from '../components/ui/index.js';
+import { ModuleTriggerModal } from '../components/ModuleTriggerModal.js';
 
 interface Props {
   bundle: DiscoveryBundle;
@@ -29,6 +36,20 @@ export const VirtualizedTeamsAndIdentitiesTab: React.FC<Props> = ({
   selectedOrgIds,
 }) => {
   const [tab, setTab] = useState<'teams' | 'identities'>('teams');
+  const [activeTrigger, setActiveTrigger] = useState<{
+    title: string;
+    description: string;
+    modules: string[];
+    affectedCount?: number;
+    entityLabel?: string;
+    prerequisites?: string[];
+    customOptions?: React.ReactNode;
+  } | null>(null);
+  const [dispatchedRun, setDispatchedRun] = useState<{
+    workflowId: string;
+    modules: string[];
+    isDryRun: boolean;
+  } | null>(null);
   const teams = useMemo(
     () =>
       bundle.entities.filter(
@@ -226,6 +247,103 @@ export const VirtualizedTeamsAndIdentitiesTab: React.FC<Props> = ({
           </Button>
         }
       />
+
+      {/* 1-Click Module Migration Triggers */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[var(--canvas-subtle)] border border-[var(--borderColor-default)] rounded-md">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-[var(--fgColor-default)] uppercase tracking-wide mr-1">
+            Module Actions:
+          </span>
+          <Button
+            size="small"
+            leadingVisual={PeopleIcon}
+            onClick={() =>
+              setActiveTrigger({
+                title: 'Sync Teams & Hierarchy',
+                description:
+                  'Migrate team hierarchy, parent-child relationships, and repository permissions using topological sort.',
+                modules: ['teams'],
+                affectedCount: teams.length,
+                entityLabel: 'teams',
+                prerequisites: [
+                  'Target organization created and accessible',
+                  'Admin permissions on target organization',
+                ],
+              })
+            }
+          >
+            Sync Teams & Hierarchy
+          </Button>
+          <Button
+            size="small"
+            leadingVisual={PersonIcon}
+            onClick={() =>
+              setActiveTrigger({
+                title: 'Reconcile Outside Collaborators',
+                description:
+                  'Identify and re-invite direct outside repository collaborators with mapped permission levels.',
+                modules: ['collaborators'],
+                affectedCount: identities.filter(
+                  (i) =>
+                    i.outsideCollaborator === true ||
+                    i.membership === 'outside',
+                ).length,
+                entityLabel: 'outside collaborators',
+                prerequisites: [
+                  'Target repositories created',
+                  'Target invitation policies allow outside collaborators',
+                ],
+              })
+            }
+          >
+            Reconcile Outside Collaborators
+          </Button>
+          <Button
+            size="small"
+            leadingVisual={SyncIcon}
+            onClick={() =>
+              setActiveTrigger({
+                title: 'Reclaim EMU Mannequins',
+                description:
+                  'Map unlinked GEI mannequins to target enterprise SAML EMU identities and reclaim commit attributions with --skip-invitation.',
+                modules: ['mannequins'],
+                affectedCount: identities.length,
+                entityLabel: 'identities',
+                prerequisites: [
+                  'GEI repository migration completed',
+                  'Target enterprise EMU SAML accounts provisioned',
+                ],
+                customOptions: (
+                  <p className="text-xs text-[var(--fgColor-muted)]">
+                    In Enterprise Managed Users (EMU) environments, contributor
+                    reclamation automatically applies{' '}
+                    <code>--skip-invitation</code> to reclaim attributions
+                    directly without sending emails.
+                  </p>
+                ),
+              })
+            }
+          >
+            Reclaim EMU Mannequins
+          </Button>
+        </div>
+      </div>
+
+      {dispatchedRun && (
+        <Flash variant="success">
+          <div className="flex items-center justify-between text-xs">
+            <span>
+              Dispatched <strong>{dispatchedRun.modules.join(', ')}</strong> (
+              {dispatchedRun.isDryRun ? 'Dry-Run Simulation' : 'Live Apply'}) to
+              workflow <code>{dispatchedRun.workflowId}</code>.
+            </span>
+            <Button size="small" onClick={() => setDispatchedRun(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </Flash>
+      )}
+
       <UnderlineNav aria-label="Teams and identities views">
         <UnderlineNav.Item
           as="button"
@@ -280,6 +398,28 @@ export const VirtualizedTeamsAndIdentitiesTab: React.FC<Props> = ({
             minWidth={800}
           />
         </div>
+      )}
+      {activeTrigger && (
+        <ModuleTriggerModal
+          isOpen={true}
+          onClose={() => setActiveTrigger(null)}
+          title={activeTrigger.title}
+          description={activeTrigger.description}
+          modules={activeTrigger.modules}
+          sourceOrg={
+            selectedOrgIds[0]
+              ? resolveOrgName(bundle, selectedOrgIds[0])
+              : bundle.organizations[0]?.login || 'source-org'
+          }
+          affectedCount={activeTrigger.affectedCount}
+          entityLabel={activeTrigger.entityLabel}
+          prerequisites={activeTrigger.prerequisites}
+          customOptions={activeTrigger.customOptions}
+          onDispatched={(res) => {
+            setDispatchedRun(res);
+            setActiveTrigger(null);
+          }}
+        />
       )}
     </div>
   );

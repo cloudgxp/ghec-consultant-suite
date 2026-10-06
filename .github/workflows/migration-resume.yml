@@ -1,0 +1,142 @@
+name: Resume Interrupted Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Migration Run ID to resume from checkpoint (or "latest")'
+        required: true
+        type: string
+        default: 'latest'
+      scope:
+        description: 'Optional path to original migration scope file (if re-specifying scope)'
+        required: false
+        type: string
+        default: ''
+      modules:
+        description: 'Optional subset of modules to resume (or empty for all remaining in checkpoint)'
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: 'Execute resume in dry-run simulation mode'
+        required: false
+        type: boolean
+        default: false
+      continue_on_error:
+        description: 'Continue executing remaining modules on non-fatal failures'
+        required: false
+        type: boolean
+        default: true
+      runner_labels:
+        description: 'Comma-separated labels for runner selection (e.g. "self-hosted,linux")'
+        required: false
+        type: string
+        default: 'self-hosted,linux'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  resume:
+    name: 'Resume Run: ${{ inputs.run_id }}'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Locate or Restore Checkpoint Directory
+        id: checkpoint-restore
+        shell: bash
+        run: |
+          mkdir -p ./migrations ./scans
+          RUN_ID="${{ inputs.run_id }}"
+          echo "Checking local checkpoint directory for run: $RUN_ID..."
+          if ls ./migrations/.checkpoint-* 1> /dev/null 2>&1; then
+            echo "Local checkpoint manifests found in ./migrations/:"
+            ls -la ./migrations/.checkpoint-*
+          else
+            echo "No local checkpoint directory present. Attempting artifact restoration if available..."
+          fi
+
+      - name: Execute Migration Resumption
+        id: run-resume
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          ARGS=(migrate --resume "${{ inputs.run_id }}")
+
+          if [ -n "${{ inputs.scope }}" ] && [ -f "${{ inputs.scope }}" ]; then
+            ARGS+=(--scope "${{ inputs.scope }}")
+          fi
+
+          if [ -n "${{ inputs.modules }}" ]; then
+            ARGS+=(--modules "${{ inputs.modules }}")
+          fi
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+
+          if [ "${{ inputs.continue_on_error }}" = "true" ]; then
+            ARGS+=(--continue-on-error)
+          fi
+
+          OUTPUT_FILE="./scans/resumed-migration-report-${{ inputs.run_id }}.json"
+          ARGS+=(--output "$OUTPUT_FILE")
+
+          echo "Resuming migration with arguments: ${ARGS[*]}"
+          node ./apps/cli/bin/ghec-consultant-cli.mjs "${ARGS[@]}"
+
+      - name: Generate Resumption Summary
+        if: always()
+        shell: bash
+        run: |
+          SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
+          echo "## 🔄 Migration Resumption Summary" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "- **Target Run ID:** \`${{ inputs.run_id }}\`" >> "$SUMMARY_FILE"
+          echo "- **Mode:** ${{ inputs.dry_run == true && '🧪 Dry-Run' || '⚡ Live Mutation' }}" >> "$SUMMARY_FILE"
+          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+
+          REPORT=$(find ./scans -name 'resumed-migration-report-*.json' | head -n 1)
+          if [ -f "$REPORT" ]; then
+            STATUS=$(jq -r '.status // "unknown"' "$REPORT")
+            TOTAL_OPS=$(jq '[.moduleResults[].results | length] | add // 0' "$REPORT")
+            SUCCEEDED=$(jq '[.moduleResults[].results[] | select(.status == "succeeded")] | length' "$REPORT")
+            FAILED=$(jq '[.moduleResults[].results[] | select(.status == "failed")] | length' "$REPORT")
+            SKIPPED=$(jq '[.moduleResults[].results[] | select(.status == "skipped")] | length' "$REPORT")
+
+            echo "### Outcome Overview" >> "$SUMMARY_FILE"
+            echo "| Status | Succeeded | Failed | Skipped | Total Operations |" >> "$SUMMARY_FILE"
+            echo "| :---: | :---: | :---: | :---: | :---: |" >> "$SUMMARY_FILE"
+            echo "| **$STATUS** | $SUCCEEDED | $FAILED | $SKIPPED | $TOTAL_OPS |" >> "$SUMMARY_FILE"
+            echo "" >> "$SUMMARY_FILE"
+          else
+            echo "::warning::Resumed migration report was not generated." >> "$SUMMARY_FILE"
+          fi
+
+      - name: Upload Resumed Artifacts & Updated Checkpoints
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-resumed-${{ inputs.run_id }}-${{ github.run_id }}
+          path: |
+            ./scans/resumed-migration-report-*.json
+            ./migrations/
+          retention-days: 14

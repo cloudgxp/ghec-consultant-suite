@@ -106,55 +106,28 @@ export class ModuleRegistry {
 }
 
 import { RepoVariablesMigrationModule } from '../modules/repo-variables/module.js';
+import { OrgVariablesMigrationModule } from '../modules/org-variables/module.js';
+import { OrgSecretsMigrationModule } from '../modules/org-secrets/module.js';
 import { RepoSecretsMigrationModule } from '../modules/repo-secrets/module.js';
 
-class GeiRepoMigrationModule implements MigrationModule {
-  readonly id = 'gei-repo';
-  readonly displayName = 'GEI Repository Migration';
-  readonly scopeLevel = 'repository' as const;
-  readonly dependencies: readonly string[] = [];
-
-  async discover() {
-    return {};
-  }
-
-  async plan(ctx: unknown) {
-    void ctx;
-    return {
-      moduleId: 'gei-repo' as const,
-      scopeLevel: 'repository' as const,
-      targetIdentifier: '',
-      operations: [],
-      warnings: [],
-    };
-  }
-
-  async apply(ctx: unknown) {
-    void ctx;
-    return {
-      schemaVersion: '1.0.0' as const,
-      moduleId: 'gei-repo' as const,
-      status: 'complete' as const,
-      results: [],
-      durationMs: 0,
-    };
-  }
-
-  async verify(ctx: unknown) {
-    void ctx;
-    return {
-      moduleId: 'gei-repo' as const,
-      verified: true,
-      discrepancies: [],
-    };
-  }
-}
+import { GeiRepoMigrationModule } from '../modules/gei-repo/module.js';
 
 import { RulesetsMigrationModule } from '../modules/rulesets/module.js';
 import { BranchProtectionReconciliationModule } from '../modules/branch-protection/module.js';
 import { TeamsMigrationModule } from '../modules/teams/module.js';
 import { MannequinReclamationEngine } from '../post-migration/mannequins/engine.js';
 import { EnvironmentsMigrationModule } from '../modules/environments/module.js';
+import { WebhooksMigrationModule } from '../modules/webhooks/module.js';
+import { RepoSettingsMigrationModule } from '../modules/repo-settings/module.js';
+import { OrgCustomPropertiesMigrationModule } from '../modules/org-custom-properties/module.js';
+import { RepoCustomPropertiesMigrationModule } from '../modules/repo-custom-properties/module.js';
+import { CodeownersRepairModule } from '../post-migration/codeowners/module.js';
+import { GhasSecurityMigrationModule } from '../post-migration/security/module.js';
+import { ReleasesMigrationModule } from '../modules/releases/module.js';
+import { DeployKeysMigrationModule } from '../modules/deploy-keys/module.js';
+import { CollaboratorsMigrationModule } from '../modules/collaborators/module.js';
+import { LfsMigrationModule } from '../modules/lfs/module.js';
+import { PackagesMigrationModule } from '../modules/packages/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -163,11 +136,24 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(new GeiRepoMigrationModule());
   registry.register(new RepoVariablesMigrationModule());
+  registry.register(new OrgVariablesMigrationModule());
+  registry.register(new OrgSecretsMigrationModule());
   registry.register(new RepoSecretsMigrationModule());
   registry.register(new EnvironmentsMigrationModule());
+  registry.register(new WebhooksMigrationModule());
+  registry.register(new RepoSettingsMigrationModule());
+  registry.register(new OrgCustomPropertiesMigrationModule());
+  registry.register(new RepoCustomPropertiesMigrationModule());
   registry.register(new RulesetsMigrationModule());
   registry.register(new BranchProtectionReconciliationModule());
   registry.register(new TeamsMigrationModule());
   registry.register(new MannequinReclamationEngine());
+  registry.register(new CodeownersRepairModule());
+  registry.register(new GhasSecurityMigrationModule());
+  registry.register(new ReleasesMigrationModule());
+  registry.register(new DeployKeysMigrationModule());
+  registry.register(new CollaboratorsMigrationModule());
+  registry.register(new LfsMigrationModule());
+  registry.register(new PackagesMigrationModule());
   return registry;
 }

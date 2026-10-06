@@ -11,6 +11,18 @@ import {
 } from './commands/migrate.js';
 import { parseVerifyOptions, executeVerifyCommand } from './commands/verify.js';
 import {
+  parsePreflightOptions,
+  executePreflightCommand,
+} from './commands/preflight.js';
+import {
+  parseConsoleOptions,
+  executeConsoleCommand,
+} from './commands/console.js';
+import {
+  parseAgentReviewOptions,
+  executeAgentReviewCommand,
+} from './commands/agent-review.js';
+import {
   loadConfig,
   sanitizeDiagnostics,
   type CliConfig,
@@ -39,9 +51,12 @@ Usage: ghec-consultant-cli <command> [options]
 
 Commands:
   discover    Enumerate source tenant metadata and emit DiscoveryBundle
+  preflight   Evaluate source & destination readiness, token scopes, and blockers
   plan        Generate immutable MigrationPlan from MigrationScope
   migrate     Execute pre-approved MigrationPlan or Scope against target tenant
   verify      Audit destination tenant state against plan and produce VerificationReport
+  console     Launch local loopback console server and dashboard proxy
+  agent-review Analyze verification report and generate automated remediation plan
 
 Global Options:
   --help      Show help for command
@@ -125,11 +140,77 @@ Modules: ${MODULE_IDS.join(', ')}`);
     }
   }
 
+  if (command === 'preflight') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli preflight — Evaluate migration readiness & credential capabilities
+Usage: ghec-consultant-cli preflight --scope <file> [options]
+Options: --output <file> --verbose
+         --app-id <id> --private-key-path <path> --installation-id <id>
+         --source-token <token> --target-token <token>`);
+      return 0;
+    }
+
+    let preflightOptions;
+    try {
+      preflightOptions = parsePreflightOptions(commandArgs);
+    } catch {
+      console.error('Invalid preflight options. Use preflight --help.');
+      return 2;
+    }
+
+    const controller = new AbortController();
+    const onSigint = () => controller.abort();
+    process.once('SIGINT', onSigint);
+
+    try {
+      const { report, filePath, hasBlockers, blockedCount } =
+        await executePreflightCommand(
+          preflightOptions,
+          {
+            sourceClient: configOverride?.sourceClient,
+            targetClient: configOverride?.targetClient,
+          },
+          controller.signal,
+        );
+      console.log(`Preflight report saved: ${filePath}`);
+      console.log(
+        `Evaluated repositories: ${report.repositoryAssessments.length}`,
+      );
+      console.log(`Blocked repositories: ${blockedCount}`);
+
+      if (hasBlockers) {
+        console.error('Preflight evaluation found blockers:');
+        const allBlockers = Array.from(
+          new Set(report.repositoryAssessments.flatMap((r) => r.blockers)),
+        );
+        for (const blocker of allBlockers) {
+          console.error(`  - ${blocker}`);
+        }
+        return 1;
+      }
+
+      console.log(
+        'Preflight evaluation completed successfully: 0 blockers found.',
+      );
+      return 0;
+    } catch (err) {
+      if (controller.signal.aborted) {
+        console.error('Preflight interrupted.');
+        return 130;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Preflight evaluation failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    } finally {
+      process.removeListener('SIGINT', onSigint);
+    }
+  }
+
   if (command === 'plan') {
     if (commandArgs.includes('--help')) {
       console.log(`ghec-consultant-cli plan — Generate migration plan
 Usage: ghec-consultant-cli plan --scope <file> [options]
-Options: --input <bundle.json> --modules <list> --output <file> --split-matrix <batch-size> --output-matrix <file> --verbose
+Options: --input <bundle.json> --modules <list> --output <file> --split-matrix <batch-size> --runner-capacity <capacity> --output-matrix <file> --verbose
          --app-id <id> --private-key-path <path> --installation-id <id>
          --source-token <token> --target-token <token>`);
       return 0;
@@ -280,6 +361,85 @@ Options: --scope <file> --output <file> --verbose
       return 1;
     } finally {
       process.removeListener('SIGINT', onSigint);
+    }
+  }
+
+  if (command === 'console') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli console — Launch local loopback console server and dashboard proxy
+Usage: ghec-consultant-cli console [options]
+Options: --port <number> --host <address> --no-open`);
+      return 0;
+    }
+
+    let consoleOptions;
+    try {
+      consoleOptions = parseConsoleOptions(commandArgs);
+    } catch {
+      console.error('Invalid console options. Use console --help.');
+      return 2;
+    }
+
+    const controller = new AbortController();
+    const onSigint = () => controller.abort();
+    process.once('SIGINT', onSigint);
+    process.once('SIGTERM', onSigint);
+
+    try {
+      await executeConsoleCommand(consoleOptions, undefined, controller.signal);
+
+      // Keep server alive until abort signal is received
+      await new Promise<void>((resolve) => {
+        controller.signal.addEventListener('abort', () => resolve(), {
+          once: true,
+        });
+      });
+
+      return 0;
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return 0;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Console server failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    } finally {
+      process.removeListener('SIGINT', onSigint);
+      process.removeListener('SIGTERM', onSigint);
+    }
+  }
+
+  if (command === 'agent-review') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli agent-review — Analyze verification report and generate automated remediation plan
+Usage: ghec-consultant-cli agent-review --report <file> [options]
+Options: --spec <spec.md> --output <file> --output-markdown <file> --append-step-summary --verbose`);
+      return 0;
+    }
+
+    let reviewOptions;
+    try {
+      reviewOptions = parseAgentReviewOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `Invalid agent-review options: ${sanitizeDiagnostics(msg)}`,
+      );
+      return 2;
+    }
+
+    try {
+      const result = await executeAgentReviewCommand(reviewOptions);
+      console.log(
+        `Agentic remediation plan generated: ${result.plan.actions.length} action(s) for ${result.plan.totalDiscrepancies} discrepancy(ies).`,
+      );
+      console.log(`  JSON Plan:     ${result.jsonPath}`);
+      console.log(`  Markdown Plan: ${result.markdownPath}`);
+      return 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Agent review failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
     }
   }
 

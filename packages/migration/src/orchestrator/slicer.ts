@@ -21,14 +21,60 @@ export class ScopeMatrixSlicer {
     scope: MigrationScope,
     options: ScopeMatrixOptions,
   ): GitHubActionsMatrix {
-    const rawBatchSize = Math.floor(options.batchSize ?? 10);
-    const batchSize = Math.max(1, isNaN(rawBatchSize) ? 10 : rawBatchSize);
     const namingPrefix = options.namingPrefix?.trim() || 'cohort';
     const repositories = scope.repositories ?? [];
 
     if (repositories.length === 0) {
+      if (scope.organizations && scope.organizations.length > 0) {
+        const cohortId = `${namingPrefix}-org`;
+        return {
+          include: [
+            {
+              cohortId,
+              wave: 1,
+              repoCount: 0,
+              repositories: [],
+              scopeJson: JSON.stringify(scope),
+              scope,
+              rationale: 'Organization-level resources migration cohort.',
+            },
+          ],
+        };
+      }
       return { include: [] };
     }
+
+    // Runner-aware capacity orchestration:
+    // If capacity is 1, a single cohort is generated, forcing sequential execution.
+    if (options.runnerCapacity === 1) {
+      const cohortId = `${namingPrefix}-1`;
+      return {
+        include: [
+          {
+            cohortId,
+            wave: 1,
+            repoCount: repositories.length,
+            repositories: repositories.map(
+              (r) => `${r.sourceOrg}/${r.sourceRepo}`,
+            ),
+            scopeJson: JSON.stringify(scope),
+            scope,
+            rationale:
+              'Single runner allocation forces sequential execution across all repositories.',
+          },
+        ],
+      };
+    }
+
+    const batchSize =
+      options.runnerCapacity !== undefined && options.runnerCapacity > 0
+        ? Math.max(1, Math.ceil(repositories.length / options.runnerCapacity))
+        : Math.max(
+            1,
+            isNaN(Math.floor(options.batchSize ?? 10))
+              ? 10
+              : Math.floor(options.batchSize ?? 10),
+          );
 
     // Map repositories by multiple identifiers (fullName "org/repo" and "repo")
     const repoByKey = new Map<string, MigrationScope['repositories'][number]>();
@@ -178,6 +224,35 @@ export class ScopeMatrixSlicer {
         repos: currentAccumulator,
         rationale: `Combined cohort of ${currentAccumulator.length} repositories.`,
       });
+    }
+
+    // If runnerCapacity was specified, ensure no more than runnerCapacity cohorts are produced
+    if (
+      options.runnerCapacity !== undefined &&
+      options.runnerCapacity > 0 &&
+      consolidatedCohorts.length > options.runnerCapacity
+    ) {
+      while (consolidatedCohorts.length > options.runnerCapacity) {
+        let minIndex = -1;
+        let minSize = Infinity;
+        for (let i = 0; i < consolidatedCohorts.length; i++) {
+          const c = consolidatedCohorts[i]!;
+          if (!c.rationale?.includes('Cycle') && c.repos.length < minSize) {
+            minSize = c.repos.length;
+            minIndex = i;
+          }
+        }
+        if (minIndex === -1) {
+          minIndex = consolidatedCohorts.length - 1;
+        }
+        const targetIndex = minIndex === 0 ? 1 : minIndex - 1;
+        const [removed] = consolidatedCohorts.splice(minIndex, 1);
+        if (removed && consolidatedCohorts[targetIndex]) {
+          consolidatedCohorts[targetIndex]!.repos.push(...removed.repos);
+          consolidatedCohorts[targetIndex]!.rationale =
+            `Merged cohort (${consolidatedCohorts[targetIndex]!.repos.length} repos) to respect runner capacity (${options.runnerCapacity}).`;
+        }
+      }
     }
 
     // Build MatrixCohort items

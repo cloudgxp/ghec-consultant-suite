@@ -33,10 +33,27 @@ research/**/sources/*.json
 research/**/sources/*.json.gz
 
 scans/
-reports/
+/reports/
+!docs/reports/
 customer-data/
 ghec-discovery-*.json
 !fixtures/synthetic/ghec-discovery-*.json
 *.log
 *.tmp
+
+# Profiler & diagnostic dumps
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+
+# Caches and OS artifacts
+.eslintcache
+__pycache__/
+*.pyc
 .DS_Store
+
+# Ad-hoc and locally generated migration scopes
+scopes/*-to-*.json
+scopes/local-*.json
+
+

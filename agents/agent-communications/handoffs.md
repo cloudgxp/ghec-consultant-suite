@@ -1,6 +1,6 @@
-# Inter-Agent Task Handoffs
+# Agent Task & Subsystem Handoffs
 
-This log documents formal handoffs between Antigravity and Codex when completed interfaces or packages unblock downstream tasks.
+This log documents formal handoffs, package interfaces, and dependency resolutions across Antigravity tasks, specialized subagents, and milestones.
 
 ---
 
@@ -9,8 +9,7 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 ```markdown
 ## [YYYY-MM-DD] Handoff: Task <ID> (<Task Name>) -> Task <Dependent ID>
 
-- **From:** [Antigravity | Codex]
-- **To:** [Codex | Antigravity]
+- **Agent:** Antigravity (or Subagent)
 - **Completed Task:** <ID>
 - **Unblocked Tasks:** <IDs>
 - **Exported Interfaces / Packages:**
@@ -24,6 +23,81 @@ This log documents formal handoffs between Antigravity and Codex when completed 
 ---
 
 ## Handoff Records
+
+### [2026-10-05] Phase 1 Prerequisite Hardening & Phase 2 Content Migration Modules (Tasks 031-035) -> Production Release
+
+- **Agent:** Antigravity
+- **Completed Tasks:**
+  - `prereq-pipeline-module-identifiers-drift.md`
+  - `prereq-dryrun-git-lfs.md`
+  - `prereq-dryrun-releases.md`
+  - `audit-personal-org-references.md`
+  - Task 031: `031-releases-migration-module.md`
+  - Task 032: `032-deploy-keys-migration-module.md`
+  - Task 033: `033-collaborators-migration-module.md`
+  - Task 034: `034-git-lfs-migration-module.md`
+  - Task 035: `035-packages-container-migration-module.md`
+- **Exported Interfaces / Packages:**
+  - `@ghec/migration`:
+    - `ReleasesMigrationModule`, `streamReleaseAsset`
+    - `DeployKeysMigrationModule`, `normalizeSshKey`, `areSshKeysEqual`
+    - `CollaboratorsMigrationModule`
+    - `LfsMigrationModule`, `LfsStreamer`
+    - `PackagesMigrationModule`, `OciRegistryClient`
+    - Default registry pre-populated with all 17 modules
+  - `@ghec/discovery`:
+    - Updated `users` collector querying `/orgs/{org}/outside_collaborators` and tagging `outsideCollaborator: true`
+- **Files Modified / Created:**
+  - `packages/discovery/src/collectors/users.ts`
+  - `packages/discovery/tests/users-collector.test.ts`
+  - `packages/migration/src/modules/releases/`
+  - `packages/migration/src/modules/deploy-keys/`
+  - `packages/migration/src/modules/collaborators/`
+  - `packages/migration/src/modules/lfs/`
+  - `packages/migration/src/modules/packages/`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/src/orchestrator/pipeline.ts`
+  - `packages/migration/src/checkpoint/types.ts`
+  - `packages/migration/src/checkpoint/manager.ts`
+  - `packages/migration/src/strategies/git-lfs/strategy.ts`
+  - `packages/migration/src/strategies/releases/strategy.ts`
+  - `packages/migration/tests/modules/releases.test.ts`
+  - `packages/migration/tests/modules/deploy-keys.test.ts`
+  - `packages/migration/tests/modules/collaborators.test.ts`
+  - `packages/migration/tests/modules/lfs.test.ts`
+  - `packages/migration/tests/modules/packages.test.ts`
+  - `packages/migration/tests/orchestrator.test.ts`
+- **Behavior Notes:**
+  - Zero-Local-Secrets Security Boundary strictly enforced across all test fixtures and scopes.
+  - All 5 new migration modules implement the authoritative 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`) with complete dry-run mode and discrepancy auditing.
+  - Streaming implementations (releases, LFS, container images) avoid buffering large blobs in RAM or unnecessary local disk retention.
+- **Test Evidence:**
+  - `npm run check` green across all workspaces.
+  - 400 passing tests across 54 suites, 0 failures.
+
+### [2026-10-04] CodeQL Security Remediation Planning Pass -> Implementation Backlog
+
+- **From:** Antigravity (Planning & Security Audit Pass)
+- **To:** Implementation Agents (Antigravity & Subagents)
+- **Completed Task:** CodeQL Security Remediation Planning Pass (50 open alerts audited, 10 remediation tasks formulated)
+- **Unblocked Tasks:**
+  - `codeql-01-fix-app-registration-command-injection-ssrf.md` (Critical)
+  - `codeql-02-fix-action-runner-code-injection.md` (High - 24 alerts)
+  - `codeql-03-fix-reusable-token-workflow-injection.md` (High - 5 alerts)
+  - `codeql-04-secure-temporary-file-creation.md` (High - 7 alerts)
+  - `codeql-05-prevent-git-lfs-command-injection.md` (High)
+  - `codeql-06-fix-secret-redaction-redos-and-diagnostic-backtracking.md` (Medium - 4 alerts)
+  - `codeql-07-pin-reusable-workflow-commit-sha.md` (Medium)
+  - `codeql-08-harden-web-worker-message-origins.md` (Low)
+  - `codeql-09-fix-timestamp-identity-replacement.md` (Low)
+  - `codeql-10-fix-permissions-test-regex-anchor.md` (Low)
+- **Exported Deliverables:**
+  - Authoritative remediation plan: `agents/agent-tasks/security/CODEQL-REMEDIATION-PLAN.md`
+  - 10 task specification files in `agents/agent-tasks/security/` (accessible via `agent-tasks/antigravity/`)
+  - Updated tracking index: `agents/agent-tasks/CURRENT-TASKS.md`
+  - Updated category index: `agents/agent-tasks/security/README.md`
+- **Behavior Notes:** No production code was modified during this planning pass. All tasks are implementation-ready with precise remediation blueprints, acceptance criteria, regression test designs, and validation commands.
 
 ### [2026-10-04] Foundation Scaffolding & Initial Backlog Handoff
 
@@ -39,8 +113,8 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - `agents/agent-communications/*.md`
   - `agents/agent-tasks/README.md`
   - `agents/agent-tasks/dependency-graph.md`
-  - `agents/agent-tasks/antigravity/*.md`
-  - `agents/agent-tasks/codex/*.md`
+  - `agents/agent-tasks/<category>/completed/*.md`
+
 - **Behavior Notes:** Baseline 116 tests are passing. Task 001 and Task 004 can start in parallel immediately.
 - **Test Evidence:** `npm run check` passes 116/116 tests.
 
@@ -387,8 +461,6 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - All 16 completed tasks (001, 002, 003, 004, 005, 006, 007, 008, 009, 013, 014, 017, 022, 023, 024, 030) are now fully available and verified together.
 - **Test Evidence:** `npm run check` passes 234/234 tests across 25 test suites green (100% pass).
 
-<<<<<<< HEAD
-
 ### [2026-10-04] Task 015 Complete: Orchestrate GEI with Post-GEI API Module Pipeline
 
 - **From:** Antigravity
@@ -535,3 +607,215 @@ This log documents formal handoffs between Antigravity and Codex when completed 
   - Secret rehydration uses `libsodium-wrappers` sealed box against target environment public key (`GET .../environments/{env}/secrets/public-key`).
   - Zero-exposure DEC-004 compliance: raw secret values are never printed, logged, or serialized into migration plans.
 - **Test Evidence:** `npm run check` passes 271/271 tests across 31 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 021 Complete: Production GitHub Actions Workflow Templates & CI/CD Integration
+
+- **From:** Antigravity
+- **To:** Codex & Engineering Operations
+- **Completed Task:**
+  - **Task 021**: Production GitHub Actions Workflow Templates, Composite Action, and Cutover Documentation.
+- **Exported Deliverables:**
+  - `action.yml`: Composite action for running GHEC Consultant Suite operations (`plan`, `migrate`, `verify`, `discover`) in CI.
+  - `.github/workflows/migration-plan-pr.yml`: Automated pre-migration diffing on PRs modifying scope JSON files, uploading plan artifacts and commenting summaries on PRs.
+  - `.github/workflows/migration-execute-wave.yml`: 3-stage parallel matrix migration pipeline with scope slicing, parallel matrix execution under environment gate approval (`production-migration`), and fan-in verification summary reporting.
+  - `.github/workflows/migration-resume.yml`: Checkpoint resumption workflow for interrupted migration runs.
+  - `docs/guides/github-actions-migration.md`: Enterprise operator runbook covering self-hosted runner sizing and volume mounts (DEC-007), credential separation (DEC-004), and the Friday-to-Sunday cutover schedule.
+- **Files Modified / Created:**
+  - `action.yml`
+  - `.github/workflows/migration-plan-pr.yml`
+  - `.github/workflows/migration-execute-wave.yml`
+  - `.github/workflows/migration-resume.yml`
+  - `docs/guides/github-actions-migration.md`
+  - `agents/agent-tasks/features/completed/021-github-actions-workflow-templates.md`
+- **Behavior Notes:**
+  - Workflows use `secrets.GHEC_SOURCE_TOKEN` and `secrets.GHEC_TARGET_TOKEN` strictly without echoing them to outputs or logs.
+  - Slicer outputs matrix dynamically via `jq` JSON encoding for direct consumption by `fromJSON(needs.slicer.outputs.matrix)`.
+  - Self-hosted runners with persistent mounts are recommended to avoid 6-hour runner timeout limits on large Git LFS repos.
+- **Test Evidence:**
+  - Workflow and action YAML files validated syntactically with standard YAML parsers.
+  - `npm run check` passes 271/271 tests green across 31 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 019 Complete: GitHub Actions Structured Output & Step Summary Generator
+
+- **From:** Antigravity & Codex
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 019** (`packages/migration/src/reporting/`): GitHub Actions Step Summary Reporter & JSON Machine Output.
+- **Exported Deliverables:**
+  - `packages/migration/src/reporting/`:
+    - `types.ts`: `MigrationRunSummary`, `StepSummaryOptions`, stage breakdown interfaces (`PreflightSummary`, `CoreTransferSummary`, `RehydrationSummary`, `PostMigrationSummary`, `VerificationSummary`).
+    - `step-summary.ts`: `sanitizeFormula`, `formatStepSummaryMarkdown`, `appendStepSummary`.
+    - `summary-reporter.ts`: `buildSummaryFromExecutionReport`, `buildSummaryFromVerification`, `writeJsonSummaryFile`, `readJsonSummaryFile`.
+    - `index.ts`: module exports.
+  - CLI integration:
+    - Added `--json-summary <path>` option to `apps/cli/src/commands/migrate.ts` and `apps/cli/src/commands/verify.ts`.
+    - Automated detection and writing to `$GITHUB_STEP_SUMMARY` environment variable or explicit file paths.
+- **Files Modified / Created:**
+  - `packages/migration/src/reporting/types.ts`
+  - `packages/migration/src/reporting/step-summary.ts`
+  - `packages/migration/src/reporting/summary-reporter.ts`
+  - `packages/migration/src/reporting/index.ts`
+  - `packages/migration/src/index.ts`
+  - `apps/cli/src/commands/migrate.ts`
+  - `apps/cli/src/commands/verify.ts`
+  - `packages/migration/tests/reporting/summary.test.ts`
+  - `agents/agent-tasks/features/completed/019-github-actions-step-summary-reporter.md`
+- **Behavior Notes:**
+  - All dynamic inputs formatted in Markdown or CSV undergo formula injection sanitization (`=`, `+`, `-`, `@`, `\t`, `\r`) with single-quote escaping.
+  - Adheres strictly to Zero-Exposure Secrets (DEC-004): only secret count metrics and names are logged; raw values are never read, printed, or recorded.
+- **Test Evidence:**
+  - Unit test suite `packages/migration/tests/reporting/summary.test.ts` (9 tests) verifying formula sanitization, markdown formatting, summary building, and file roundtrips.
+  - `npm run check` passes 280/280 tests green across 38 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 016 (Organization Variables & Secrets) -> Migration orchestration
+
+- **From:** Codex
+- **To:** Codex / Antigravity
+- **Completed Task:** 016
+- **Exported Interfaces / Packages:** `OrgVariablesMigrationModule`,
+  `OrgSecretsMigrationModule`, their discovery types, and constructor options
+  with `repositoryIdMap` for source-to-target selected-repository bindings.
+- **Behavior Notes:** Organization variables support create, update, noop, and
+  verification across `all`, `private`, and `selected` scopes. Organization
+  secrets support Actions, Dependabot, and Codespaces using domain public keys,
+  libsodium sealed boxes, and the existing client-vault hook. Source repository
+  IDs are never used as target IDs; missing bindings emit warnings for deferred
+  application.
+- **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
+  test suite).
+
+### [2026-10-04] Task 018 (Webhook Reconciliation)
+
+- **From:** Codex
+- **Behavior:** Matches migrated hooks by URL and event set and patches the
+  transferred hook in place; never creates a duplicate for that match. Optional
+  secret replacement is supplied only by a client-owned provider.
+- **Test Evidence:** `npm run check` passes (lint, type checks, build, and full
+  test suite).
+
+### [2026-10-04] Task 025 Complete: Repository Visibility & PR Settings Reconciliation Module
+
+- **From:** Antigravity & Codex
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 025** (`packages/migration/src/modules/repo-settings/`): Repository Visibility & PR Settings Reconciliation.
+- **Exported Deliverables:**
+  - `packages/migration/src/modules/repo-settings/`:
+    - `types.ts`: `RepositoryVisibility`, `RepositoryPullRequestSettings`, `RepoSettingsData`, `RepoSettingsModuleOptions`, `RawGitHubRepositoryResponse`.
+    - `visibility.ts`: `normalizeVisibility`, `determineTargetVisibility`, `resolvePolicyFallbackVisibility`.
+    - `pr-settings.ts`: `parsePullRequestSettings`, `diffRepoSettings`.
+    - `module.ts`: `RepoSettingsMigrationModule` implementing full 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - `index.ts`: module exports.
+    - `README.md`: module architecture and enterprise policy handling guide.
+  - Integration:
+    - Registered `RepoSettingsMigrationModule` in `createDefaultModuleRegistry()` with `gei-repo` dependency.
+    - Exported module and types in `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/repo-settings/types.ts`
+  - `packages/migration/src/modules/repo-settings/visibility.ts`
+  - `packages/migration/src/modules/repo-settings/pr-settings.ts`
+  - `packages/migration/src/modules/repo-settings/module.ts`
+  - `packages/migration/src/modules/repo-settings/index.ts`
+  - `packages/migration/src/modules/repo-settings/README.md`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/modules/repo-settings.test.ts`
+  - `agents/agent-tasks/security/completed/025-repo-visibility-and-settings-reconciliation.md`
+- **Behavior Notes:**
+  - Reconciles GEI's default `private` visibility back to original `internal` or `public` visibility.
+  - Restores custom squash merge and merge commit title/message templates and merge strategy toggles (`delete_branch_on_merge`, `allow_auto_merge`, etc.) per DEC-015.
+  - Automatically handles enterprise policy restrictions: if setting `public` visibility returns HTTP 422 in an EMU environment where enterprise policies disallow public repositories, it gracefully falls back to `internal` visibility with a structured warning without failing execution.
+- **Test Evidence:**
+  - Unit test suite `packages/migration/tests/modules/repo-settings.test.ts` (14 tests) covering visibility normalization, PR settings diffing, live and cached discovery, planning, mutation, dry-run, policy 422 fallback, verification, and registry registration.
+  - `npm run check` passes 294/294 tests green across 45 suites (100% pass), with ESLint, Prettier, and TypeScript clean.
+
+### [2026-10-04] Task 026 Complete: Custom Properties Migration Modules
+
+- **From:** Codex & Antigravity
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 026** (`packages/migration/src/modules/org-custom-properties/` and `repo-custom-properties/`): Custom Properties Migration Modules.
+- **Exported Deliverables:**
+  - `packages/migration/src/modules/org-custom-properties/`:
+    - `types.ts`, `module.ts`, `index.ts`, `README.md`
+    - `OrgCustomPropertiesMigrationModule` (`id = 'org-custom-properties'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+  - `packages/migration/src/modules/repo-custom-properties/`:
+    - `types.ts`, `module.ts`, `index.ts`, `README.md`
+    - `RepoCustomPropertiesMigrationModule` (`id = 'repo-custom-properties'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+  - Integration:
+    - Registered both modules in `createDefaultModuleRegistry()` with `repo-custom-properties` dependent on `gei-repo` and `org-custom-properties`.
+    - Exported both modules in `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/modules/org-custom-properties/**`
+  - `packages/migration/src/modules/repo-custom-properties/**`
+  - `packages/migration/tests/modules/custom-properties.test.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `agents/agent-tasks/features/completed/026-custom-properties-migration-modules.md`
+- **Behavior Notes:**
+  - `OrgCustomPropertiesMigrationModule` migrates custom property schemas (`string`, `single_select`, `multi_select`, `true_false`) via `GET /orgs/{org}/properties/schema` and `PUT /orgs/{targetOrg}/properties/schema`.
+  - `RepoCustomPropertiesMigrationModule` fetches custom property values via `GET /repos/{owner}/{repo}/properties/values` and batch-assigns them via `PATCH /orgs/{targetOrg}/properties/values`.
+  - Defensive `try/catch` boundaries wrap target client reads to safely handle missing target schemas and resources without unhandled exceptions.
+- **Test Evidence:**
+  - Dedicated unit test suite `packages/migration/tests/modules/custom-properties.test.ts` (9 tests) verifying full discover, plan, apply, verify lifecycle, schema updates, and dependency order.
+  - All migration tests passing (171/171), full monorepo check passes.
+
+### [2026-10-04] Task 028 Complete: CODEOWNERS & Team References Repair Module
+
+- **From:** Codex & Antigravity
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 028** (`packages/migration/src/post-migration/codeowners/`): CODEOWNERS & Team References Repair.
+- **Exported Deliverables:**
+  - `packages/migration/src/post-migration/codeowners/`:
+    - `types.ts`, `scanner.ts`, `rewriter.ts`, `git-committer.ts`, `module.ts`, `index.ts`, `README.md`
+    - `CodeownersRepairModule` (`id = 'post-migration-codeowners'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+  - Integration:
+    - Registered `CodeownersRepairModule` in `createDefaultModuleRegistry()`.
+    - Executed in Stage 6 post-migration reconciliations of `RepositoryMigrationPipeline`.
+    - Exported module and utilities from `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/post-migration/codeowners/**`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/post-migration/codeowners.test.ts`
+  - `agents/agent-tasks/security/completed/028-codeowners-and-team-references-repair.md`
+- **Behavior Notes:**
+  - Scans static files (`.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`) and dynamic candidate directories (`.github/ISSUE_TEMPLATE`, `.github/workflows`).
+  - Rewrites `@source-org/team` references to `@target-org/mapped-team` using `teamSlugMap` from Task 017 while leaving non-source references intact.
+  - Commits directly to default branch or automatically falls back to PR creation branch `migration/repair-team-references` when blocked by branch protection (HTTP 403/422).
+- **Test Evidence:**
+  - Unit test suite `packages/migration/tests/post-migration/codeowners.test.ts` (6 tests) passing.
+
+### [2026-10-04] Task 029 Complete: GHAS & Security Remediation Reconciliation Strategy
+
+- **From:** Codex & Antigravity
+- **To:** Codex & Antigravity
+- **Completed Task:**
+  - **Task 029** (`packages/migration/src/post-migration/security/`): GHAS & Security Remediation Reconciliation Strategy.
+- **Exported Deliverables:**
+  - `packages/migration/src/post-migration/security/`:
+    - `types.ts`, `ghas-config.ts`, `secret-scanning-sync.ts`, `sarif-sync.ts`, `module.ts`, `index.ts`, `README.md`
+    - `GhasSecurityMigrationModule` (`id = 'security'`) with 4-stage lifecycle (`discover`, `plan`, `apply`, `verify`).
+    - Audit fidelity report generator `generateFidelityReport()`.
+  - Integration:
+    - Registered `GhasSecurityMigrationModule` in `createDefaultModuleRegistry()`.
+    - Integrated into Stage 6 of `RepositoryMigrationPipeline` and `MigrationCheckpointManager`.
+    - Exported module, reconcilers, and types from `@ghec/migration`.
+- **Files Modified / Created:**
+  - `packages/migration/src/post-migration/security/**`
+  - `packages/migration/src/checkpoint/types.ts`
+  - `packages/migration/src/checkpoint/manager.ts`
+  - `packages/migration/src/orchestrator/pipeline.ts`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/post-migration/security.test.ts`
+  - `agents/agent-tasks/security/completed/029-ghas-and-security-remediation-sync.md`
+- **Behavior Notes:**
+  - Reconciles `security_and_analysis` settings on destination repositories via idempotent `PATCH /repos/{owner}/{repo}` payloads.
+  - Validates prerequisite dependencies (GHAS license availability and `advanced_security` activation before `secret_scanning`).
+  - Matches open target secret scanning alerts with source resolved alerts by secret type and patches resolution status and origin comment via `PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}`.
+  - Documents compliance limitations: resolving actor is the PAT owner, resolution timestamp reflects API execution time, and SARIF alert dismissals are omitted in raw uploads.
+- **Test Evidence:**
+  - Dedicated unit test suite `packages/migration/tests/post-migration/security.test.ts` (3 tests) passing.
+  - Monorepo quality check `npm run check` passing 326/326 tests across 51 test suites green (100% pass), with ESLint, Prettier, and TypeScript clean.

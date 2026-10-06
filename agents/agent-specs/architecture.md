@@ -2,7 +2,7 @@
 
 **Specification Status:** Authoritative Architectural Standard  
 **Target:** GHEC Consultant Suite Expansion (Discovery + Migration)  
-**Applicability:** All implementation agents (Antigravity & Codex)
+**Applicability:** All implementation agents (Antigravity)
 
 ---
 

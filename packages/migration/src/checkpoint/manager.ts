@@ -298,9 +298,11 @@ export class MigrationCheckpointManager {
       case 'postMigration':
         repository.postMigration = this.terminalRecord(result, [
           'repo-visibility',
+          'repo-settings',
           'webhooks',
           'mannequins',
           'codeowners',
+          'security',
         ]);
         break;
       case 'verification':

@@ -1,0 +1,584 @@
+{
+  "version": "1.0.0",
+  "name": "test-all-wave",
+  "organizations": [
+    {
+      "source": "example-source-org",
+      "target": "example-target-emu",
+      "modules": [
+        "org-variables",
+        "org-secrets",
+        "teams",
+        "org-custom-properties",
+        "webhooks",
+        "post-migration-mannequins"
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "dummy-repo-private-lfs",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "dummy-repo-private-lfs",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "dummy-repo-public",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "dummy-repo-public",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "react",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "react",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "nest",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "nest",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "prometheus",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "prometheus",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "TypeScript",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "TypeScript",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "express",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "express",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "rust",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "rust",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "node",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "node",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "terraform",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "terraform",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "ghe-actions-migration-framework",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "ghe-actions-migration-framework",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "next.js",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "next.js",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "kubernetes",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "kubernetes",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "core",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "core",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "svelte",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "svelte",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "ghec-content-filler",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "ghec-content-filler",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "migration-demo-1361857985-companion",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "migration-demo-1361857985-companion",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "migration-demo-1361857985-fork",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "migration-demo-1361857985-fork",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "grafana",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "grafana",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "demo",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "demo",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "juice-shop",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "juice-shop",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "ansible",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "ansible",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "cpython",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "cpython",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "flask",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "flask",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "go",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "go",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "django",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "django",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "fastify",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "fastify",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    },
+    {
+      "sourceOrg": "example-source-org",
+      "sourceRepo": "vite",
+      "targetOrg": "example-target-emu",
+      "targetRepo": "vite",
+      "useGei": true,
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks"
+      ],
+      "targetRepoVisibility": "private"
+    }
+  ],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_gxp"
+  }
+}

@@ -9,14 +9,15 @@ import {
   MetricCard,
   PageHeader,
 } from '../components/ui/index.js';
-import { Button, Label, Select, TextInput } from '@primer/react';
-import { DownloadIcon, SearchIcon } from '@primer/octicons-react';
+import { Button, Flash, Label, Select, TextInput } from '@primer/react';
+import { DownloadIcon, SearchIcon, TagIcon } from '@primer/octicons-react';
 import { downloadCsv, generateReleaseAssetsCsv } from '../lib/export-csv.js';
 import {
   releaseAssetInventory,
   type ReleaseAssetInventoryRecord,
 } from '../lib/supply-chain.js';
 import { resolveOrgName } from '../lib/formatters.js';
+import { ModuleTriggerModal } from '../components/ModuleTriggerModal.js';
 
 interface Props {
   bundle: DiscoveryBundle;
@@ -160,6 +161,36 @@ export function ReleasesAndAssetsTab({ bundle, selectedOrgIds }: Props) {
     [bundle, repositoryNames],
   );
 
+  const [isTriggerOpen, setIsTriggerOpen] = useState(false);
+  const [chunkSize, setChunkSize] = useState('100');
+  const [dispatchedRun, setDispatchedRun] = useState<{
+    workflowId: string;
+    modules: string[];
+    isDryRun: boolean;
+  } | null>(null);
+
+  const repositories = useMemo(
+    () =>
+      bundle.entities
+        .filter(
+          (
+            e,
+          ): e is Extract<
+            DiscoveryBundle['entities'][number],
+            { kind: 'repository' }
+          > =>
+            e.kind === 'repository' &&
+            (!selectedOrgIds.length ||
+              selectedOrgIds.includes(e.organizationId)),
+        )
+        .map((r) => ({
+          name: r.name,
+          visibility: r.visibility,
+          hasReleases: true,
+        })),
+    [bundle, selectedOrgIds],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -180,7 +211,30 @@ export function ReleasesAndAssetsTab({ bundle, selectedOrgIds }: Props) {
             Export filtered CSV
           </Button>
         }
+        secondaryActions={
+          <Button
+            size="small"
+            leadingVisual={TagIcon}
+            onClick={() => setIsTriggerOpen(true)}
+          >
+            Replicate Releases & Assets
+          </Button>
+        }
       />
+      {dispatchedRun && (
+        <Flash variant="success">
+          <div className="flex items-center justify-between text-xs">
+            <span>
+              Dispatched <strong>{dispatchedRun.modules.join(', ')}</strong> (
+              {dispatchedRun.isDryRun ? 'Dry-Run Simulation' : 'Live Apply'}) to
+              workflow <code>{dispatchedRun.workflowId}</code>.
+            </span>
+            <Button size="small" onClick={() => setDispatchedRun(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </Flash>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard
           label="Releases"
@@ -260,6 +314,60 @@ export function ReleasesAndAssetsTab({ bundle, selectedOrgIds }: Props) {
         getRowKey={(row) => row.id}
         emptyMessage="No releases or assets match the current filters."
         minWidth={1050}
+      />
+      <ModuleTriggerModal
+        isOpen={isTriggerOpen}
+        onClose={() => setIsTriggerOpen(false)}
+        title="Replicate Releases & Binary Assets"
+        description="Stream releases, tags, changelog bodies, and large binary release assets from source repositories using chunked buffer streaming."
+        modules={['releases']}
+        sourceOrg={
+          selectedOrgIds[0]
+            ? resolveOrgName(bundle, selectedOrgIds[0])
+            : bundle.organizations[0]?.login || 'source-org'
+        }
+        affectedCount={
+          records.filter(
+            (item) => item.kind === 'release' || item.kind === 'release-asset',
+          ).length
+        }
+        entityLabel="releases & assets"
+        prerequisites={[
+          'Repository code, branches, and tags migrated via GEI',
+          'Release permissions verified on target repositories',
+        ]}
+        repositories={repositories}
+        customOptions={
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-[var(--fgColor-default)] block">
+              Asset Streaming Chunk Size
+            </label>
+            <Select
+              size="small"
+              value={chunkSize}
+              onChange={(e) => setChunkSize(e.target.value)}
+              block
+            >
+              <Select.Option value="50">
+                50 MB (High reliability / constrained network)
+              </Select.Option>
+              <Select.Option value="100">
+                100 MB (Default recommended)
+              </Select.Option>
+              <Select.Option value="250">
+                250 MB (High throughput)
+              </Select.Option>
+            </Select>
+            <p className="text-[11px] text-[var(--fgColor-muted)]">
+              Configures in-flight buffer chunk sizing for large binary asset
+              replication over REST.
+            </p>
+          </div>
+        }
+        onDispatched={(res) => {
+          setDispatchedRun(res);
+          setIsTriggerOpen(false);
+        }}
       />
     </div>
   );

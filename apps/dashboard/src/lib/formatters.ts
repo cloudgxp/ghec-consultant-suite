@@ -139,14 +139,29 @@ export function getCollectorStatusBadgeClass(status: string): string {
   }
 }
 
+const _orgNameCache = new WeakMap<
+  DiscoveryBundle['organizations'],
+  Map<string, string>
+>();
+
 /**
  * Resolves an organization's login or displayName given an ID.
+ * Optimized with a WeakMap cache for O(1) lookups during heavy rendering.
  */
 export function resolveOrgName(
   bundle: DiscoveryBundle,
   organizationId: string,
 ): string {
-  const org = bundle.organizations.find((o) => o.id === organizationId);
-  if (!org) return organizationId;
-  return org.displayName ? `${org.displayName} (${org.login})` : org.login;
+  let orgMap = _orgNameCache.get(bundle.organizations);
+  if (!orgMap) {
+    orgMap = new Map<string, string>();
+    for (const org of bundle.organizations) {
+      orgMap.set(
+        org.id,
+        org.displayName ? `${org.displayName} (${org.login})` : org.login,
+      );
+    }
+    _orgNameCache.set(bundle.organizations, orgMap);
+  }
+  return orgMap.get(organizationId) ?? organizationId;
 }

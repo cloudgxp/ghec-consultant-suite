@@ -2,7 +2,7 @@
 
 **Specification Status:** Authoritative Decision Record & Living Register  
 **Target:** GHEC Migration Architecture  
-**Applicability:** All implementation agents (Antigravity & Codex)  
+**Applicability:** All implementation agents (Antigravity)  
 **Last Updated:** 2026-10-04 (Incorporated User Architectural Direction)
 
 ---

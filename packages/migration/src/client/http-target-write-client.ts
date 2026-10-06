@@ -25,10 +25,11 @@ export class HttpTargetWriteClient implements TargetWriteClient {
   constructor(options: HttpTargetWriteClientOptions = {}) {
     this.token = options.token;
     this.authProvider = options.authProvider;
-    this.baseUrl = (options.baseUrl ?? 'https://api.github.com').replace(
-      /\/+$/,
-      '',
-    );
+    let base = (options.baseUrl ?? 'https://api.github.com').trim();
+    while (base.endsWith('/')) {
+      base = base.slice(0, -1);
+    }
+    this.baseUrl = base;
     this.apiVersion = options.apiVersion ?? '2026-03-10';
     this.rateLimiter =
       options.rateLimiter ??
@@ -107,9 +108,12 @@ export class HttpTargetWriteClient implements TargetWriteClient {
       } catch {
         // ignore read error
       }
-      throw new Error(
+      const err = new Error(
         `Mutation "${operation.id}" failed with HTTP ${res.status}: ${sanitizeDiagnostics(bodyText)}`,
       );
+      (err as unknown as { status: number }).status = res.status;
+      (err as unknown as { bodyText: string }).bodyText = bodyText;
+      throw err;
     }
 
     if (res.status === 204) {

@@ -122,6 +122,19 @@ test('sanitizeDiagnostics redacts private keys, JWTs, and installation tokens', 
   assert.match(sanitized, /\[REDACTED_TOKEN\]/);
 });
 
+test('sanitizeDiagnostics is resilient against polynomial ReDoS on repeated PEM markers', () => {
+  const pathologicalPem = '-----BEGIN RSA PRIVATE KEY-----\n'.repeat(500);
+  const start = performance.now();
+  const sanitized = sanitizeDiagnostics(pathologicalPem);
+  const elapsed = performance.now() - start;
+
+  assert.ok(
+    elapsed < 100,
+    `Pathological PEM check took too long: ${elapsed.toFixed(2)}ms`,
+  );
+  assert.doesNotMatch(sanitized, /BEGIN (?:RSA )?PRIVATE KEY/);
+});
+
 test('GitHubAppAuthProvider exchanges JWT for installation token and caches it', async () => {
   let tokenCallCount = 0;
   const mockFetch: typeof globalThis.fetch = async (url, init) => {
