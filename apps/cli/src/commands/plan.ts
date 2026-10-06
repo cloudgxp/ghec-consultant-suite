@@ -27,6 +27,7 @@ export interface PlanCommandOptions {
   readonly modules?: readonly string[] | undefined;
   readonly outputPath: string;
   readonly splitMatrix?: number | undefined;
+  readonly runnerCapacity?: number | undefined;
   readonly outputMatrixPath?: string | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
@@ -47,6 +48,7 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
       modules: { type: 'string' },
       output: { type: 'string', default: './scans/migration-plan.json' },
       'split-matrix': { type: 'string' },
+      'runner-capacity': { type: 'string' },
       'output-matrix': {
         type: 'string',
         default: './scans/migration-matrix.json',
@@ -64,12 +66,13 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
     throw new Error('The --scope <file> flag is required.');
   }
 
-  const modules = values.modules
-    ? values.modules
-        .split(',')
-        .map((m) => m.trim())
-        .filter(Boolean)
-    : undefined;
+  const modules =
+    values.modules && values.modules.toLowerCase() !== 'all'
+      ? values.modules
+          .split(',')
+          .map((m) => m.trim())
+          .filter(Boolean)
+      : undefined;
 
   let splitMatrix: number | undefined;
   if (values['split-matrix']) {
@@ -79,12 +82,21 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
     }
   }
 
+  let runnerCapacity: number | undefined;
+  if (values['runner-capacity']) {
+    runnerCapacity = parseInt(values['runner-capacity'], 10);
+    if (isNaN(runnerCapacity) || runnerCapacity <= 0) {
+      throw new Error('--runner-capacity must be a positive integer.');
+    }
+  }
+
   return {
     scopePath: values.scope,
     inputPath: values.input,
     modules,
     outputPath: values.output || './scans/migration-plan.json',
     splitMatrix,
+    runnerCapacity,
     outputMatrixPath:
       values['output-matrix'] || './scans/migration-matrix.json',
     verbose: values.verbose,
@@ -182,6 +194,7 @@ export async function executePlanCommand(
     sourceClient,
     targetClient,
     cachedDiscoveryBundle: cachedBundle,
+    modules: options.modules,
     signal,
   });
 
@@ -193,9 +206,13 @@ export async function executePlanCommand(
   let matrix: GitHubActionsMatrix | undefined;
   let matrixFilePath: string | undefined;
 
-  if (options.splitMatrix !== undefined) {
+  if (
+    options.splitMatrix !== undefined ||
+    options.runnerCapacity !== undefined
+  ) {
     matrix = ScopeMatrixSlicer.slice(scope, {
       batchSize: options.splitMatrix,
+      runnerCapacity: options.runnerCapacity,
     });
     matrixFilePath = resolve(
       options.outputMatrixPath || './scans/migration-matrix.json',

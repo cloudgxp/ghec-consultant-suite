@@ -3,15 +3,15 @@
   "name": "test-repo-wave",
   "organizations": [
     {
-      "source": "demogxp",
-      "target": "antigravity-migration-test"
+      "source": "example-source-org",
+      "target": "example-target-emu"
     }
   ],
   "repositories": [
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "dummy-repo-public",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "dummy-repo-public",
       "useGei": true,
       "targetRepoVisibility": "public",
@@ -27,9 +27,9 @@
       ]
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "dummy-repo-private-lfs",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "dummy-repo-private-lfs",
       "useGei": true,
       "targetRepoVisibility": "private",

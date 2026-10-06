@@ -19,7 +19,7 @@
     "typecheck": "npm run build:packages && npm run typecheck:apps",
     "lint": "eslint --cache . && prettier --check .",
     "format": "prettier --write .",
-    "test:unit": "node --import tsx --test --test-concurrency=8 packages/contracts/tests/*.test.ts packages/analysis/tests/*.test.ts packages/github-client/tests/*.test.ts 'packages/migration/tests/**/*.test.ts' apps/dashboard/tests/*.test.ts apps/cli/tests/*.test.ts",
+    "test:unit": "node --import tsx --test --test-concurrency=8 packages/contracts/tests/*.test.ts packages/analysis/tests/*.test.ts packages/github-client/tests/*.test.ts packages/discovery/tests/*.test.ts 'packages/migration/tests/**/*.test.ts' apps/dashboard/tests/*.test.ts apps/cli/tests/*.test.ts",
     "test": "npm run build:packages && npm run test:unit",
     "dev": "npm run dev -w @ghec/dashboard",
     "dev:cli": "npm run dev -w ghec-consultant-cli --",
@@ -39,9 +39,9 @@
     "eslint-plugin-react-hooks": "^7.0.0",
     "globals": "^16.0.0",
     "graphql": "^17.0.2",
-    "prettier": "^3.6.0",
+    "prettier": "^3.9.9",
     "tsx": "^4.23.15",
-    "typescript": "~5.9.3",
+    "typescript": "npm:@typescript/typescript6@~6.0.2",
     "typescript-eslint": "^8.71.0"
   }
 }

@@ -8,20 +8,25 @@ import {
   type ImportProgress,
   type ImportResult,
 } from '../lib/importer.js';
+import { DiscoveryScanTrigger } from './DiscoveryScanTrigger.js';
 
 interface FileUploadProps {
   onLoadBundle: (result: ImportResult) => void;
   onLoadComparison?: (baseline: ImportResult, current: ImportResult) => void;
   errorMessage: string | null;
+  apiBaseUrl?: string | undefined;
+  fetchFn?: typeof fetch | undefined;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   onLoadBundle,
   onLoadComparison,
   errorMessage,
+  apiBaseUrl,
+  fetchFn,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [mode, setMode] = useState<'single' | 'compare'>('single');
+  const [mode, setMode] = useState<'single' | 'compare' | 'actions'>('single');
   const [baselineFile, setBaselineFile] = useState<File | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,7 +137,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       <div
         role="tablist"
         aria-label="Assessment mode"
-        className="mb-6 grid grid-cols-2 gap-1 rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-muted)] p-1"
+        className="mb-6 grid grid-cols-3 gap-1 rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-muted)] p-1"
       >
         <button
           type="button"
@@ -159,6 +164,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           onClick={() => setMode('compare')}
         >
           Compare Two Scans
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'actions'}
+          className={`cursor-pointer rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+            mode === 'actions'
+              ? 'bg-[var(--bgColor-default)] text-[var(--fgColor-default)] shadow-xs'
+              : 'text-[var(--fgColor-muted)] hover:text-[var(--fgColor-default)]'
+          }`}
+          onClick={() => setMode('actions')}
+        >
+          Automated Actions Scan
         </button>
       </div>
 
@@ -287,6 +305,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Automated Actions Discovery Scan */}
+      {mode === 'actions' && (
+        <DiscoveryScanTrigger
+          onLoadBundle={onLoadBundle}
+          apiBaseUrl={apiBaseUrl}
+          fetchFn={fetchFn}
+        />
       )}
 
       {/* Quick-Load Samples Section */}

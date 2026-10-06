@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Provisioning mode: "source" (demogxp) or "target" (antigravity-migration-test)'
+        description: 'Provisioning mode: "source" or "target"'
         required: true
         type: choice
         options:
@@ -12,10 +12,9 @@ on:
           - target
         default: 'source'
       organization:
-        description: 'Organization to provision (leave empty to use default: demogxp for source, antigravity-migration-test for target)'
-        required: false
+        description: 'Organization to provision'
+        required: true
         type: string
-        default: ''
 
 permissions:
   contents: read
@@ -41,8 +40,12 @@ jobs:
           INPUT_MODE: ${{ inputs.mode }}
           INPUT_ORG: ${{ inputs.organization }}
         run: |
+          if [ -z "$INPUT_ORG" ]; then
+            echo "::error::Organization input is required."
+            exit 1
+          fi
           if [ "$INPUT_MODE" = "target" ]; then
-            TARGET_ORG="${INPUT_ORG:-antigravity-migration-test}"
+            TARGET_ORG="$INPUT_ORG"
             if [ -z "$GHEC_TARGET_TOKEN" ]; then
               echo "::error::GHEC_TARGET_TOKEN secret is not set in this repository."
               exit 1
@@ -50,7 +53,7 @@ jobs:
             echo "Seeding target placeholder repositories in $TARGET_ORG..."
             node ./scripts/seed-dummy-resources.mjs "$TARGET_ORG" --target-repos-only
           else
-            SOURCE_ORG="${INPUT_ORG:-demogxp}"
+            SOURCE_ORG="$INPUT_ORG"
             if [ -z "$GHEC_SOURCE_TOKEN" ]; then
               echo "::error::GHEC_SOURCE_TOKEN secret is not set in this repository."
               exit 1

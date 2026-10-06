@@ -13,7 +13,20 @@ const OrganizationMappingSchema = z
   })
   .strict();
 
-const RepositoryMappingSchema = z
+export const RepositoryOptionsSchema = z
+  .object({
+    skipReleases: z.boolean().optional(),
+    skipLfs: z.boolean().optional(),
+    customTimeout: z.number().int().positive().optional(),
+    timeoutSeconds: z.number().int().positive().optional(),
+    lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
+    targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
+  })
+  .strict();
+
+export type RepositoryOptions = z.infer<typeof RepositoryOptionsSchema>;
+
+export const RepositoryMappingSchema = z
   .object({
     sourceOrg: NonEmptyStringSchema,
     sourceRepo: NonEmptyStringSchema,
@@ -24,6 +37,7 @@ const RepositoryMappingSchema = z
     skipReleases: z.boolean().optional(),
     lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
+    options: RepositoryOptionsSchema.optional(),
   })
   .strict();
 
@@ -52,6 +66,9 @@ export const MigrationScopeSchema = z
       .optional(),
     organizations: z.array(OrganizationMappingSchema),
     repositories: z.array(RepositoryMappingSchema),
+    repositoryOptions: z
+      .record(NonEmptyStringSchema, RepositoryOptionsSchema)
+      .optional(),
     identityMapping: IdentityMappingSchema.optional(),
   })
   .strict()

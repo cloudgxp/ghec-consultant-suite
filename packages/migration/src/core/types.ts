@@ -4,6 +4,7 @@ import type {
   ModuleVerificationResult,
   OperationExecutionResult,
   PlannedOperation,
+  RepositoryOptions,
   VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
@@ -24,6 +25,7 @@ export interface MigrationScopeTarget {
   readonly targetOrg: string;
   readonly sourceRepo?: string;
   readonly targetRepo?: string;
+  readonly options?: RepositoryOptions | undefined;
 }
 
 export interface TargetWriteOperation {

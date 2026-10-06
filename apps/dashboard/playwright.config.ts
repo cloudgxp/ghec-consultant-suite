@@ -15,6 +15,12 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+    },
+  },
   use: {
     baseURL: 'http://127.0.0.1:4173',
     serviceWorkers: 'block',

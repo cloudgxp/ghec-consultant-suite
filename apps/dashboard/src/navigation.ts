@@ -14,7 +14,10 @@ export type DashboardView =
   | 'security'
   | 'teams'
   | 'health'
-  | 'export';
+  | 'export'
+  | 'control-plane'
+  | 'console'
+  | 'verification';
 
 export type NavigationIcon =
   | 'overview'
@@ -150,6 +153,26 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   {
     label: 'Deliver',
     items: [
+      {
+        id: 'control-plane',
+        label: 'Migration Control Plane',
+        description:
+          'Orchestrate wave dispatches, runner capacity, and real-time cohorts',
+        icon: 'automation',
+      },
+      {
+        id: 'console',
+        label: 'Execution Console',
+        description: 'Live migration wave runner and resumption cockpit',
+        icon: 'automation',
+      },
+      {
+        id: 'verification',
+        label: 'Verification & Diff',
+        description:
+          'Post-migration compliance audit and discrepancy inspector',
+        icon: 'compare',
+      },
       {
         id: 'export',
         label: 'Export Center',

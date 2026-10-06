@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ''
+      runner_capacity:
+        description: 'Available runner capacity (determines dynamic cohort count and partitioning)'
+        required: false
+        type: number
+        default: 5
       batch_size:
         description: 'Cohort batch size for parallel runner partitioning'
         required: false
@@ -95,11 +100,12 @@ jobs:
             INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
           fi
 
-          echo "Generating plan and slicing into cohorts (batch size: ${{ inputs.batch_size }})..."
+          echo "Generating plan and slicing into cohorts (runner capacity: ${{ inputs.runner_capacity }})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs plan \
             --scope "${{ inputs.scope }}" \
             "${INPUT_ARG[@]}" \
             --modules "${{ inputs.modules }}" \
+            --runner-capacity "${{ inputs.runner_capacity }}" \
             --split-matrix "${{ inputs.batch_size }}" \
             --output-matrix ./scans/migration-matrix.json \
             --output ./scans/migration-plan.json
@@ -162,6 +168,17 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      - name: Ensure GitHub Enterprise Importer (GEI) CLI Extension
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh extension list | grep -q "gh gei"; then
+            echo "Installing gh-gei extension..."
+            gh extension install github/gh-gei
+          fi
+          gh gei --version || true
 
       - name: Execute Cohort Migration
         id: migrate
@@ -267,6 +284,23 @@ jobs:
             echo "::warning::Migration plan ./scans/migration-plan.json not found; skipping verify."
           fi
 
+      - name: Agentic Remediation Review
+        id: agent-review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f ./scans/verification-report.json ]; then
+            echo "Running Agentic Remediation Review against verification report..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
+              --report ./scans/verification-report.json \
+              --spec agents/agent-specs/verification-remediation-agent.md \
+              --output ./scans/remediation-plan.json \
+              --output-markdown ./scans/remediation-plan.md \
+              --append-step-summary || {
+                echo "::warning::Agent review completed with warnings or failed."
+              }
+          fi
+
       - name: Generate Summary Report
         id: report
         shell: bash
@@ -340,4 +374,5 @@ jobs:
             ./scans/migration-plan.json
             ./scans/verification-report.json
             ./scans/cohort-report-*.json
+            ./scans/remediation-plan.*
           retention-days: 30

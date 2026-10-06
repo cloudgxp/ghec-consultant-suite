@@ -22,6 +22,7 @@ import { parseDiscoveryOptions } from '../src/commands/discover.js';
 import { parsePlanOptions } from '../src/commands/plan.js';
 import { parseMigrateOptions } from '../src/commands/migrate.js';
 import { parseVerifyOptions } from '../src/commands/verify.js';
+import { parsePreflightOptions } from '../src/commands/preflight.js';
 import { collectors } from '../src/collectors/index.js';
 import { DiscoveryOrchestrator } from '../src/engine/orchestrator.js';
 import { runCli } from '../src/index.js';
@@ -728,6 +729,7 @@ test('ghec-consultant-cli --help displays all subcommands', async () => {
     const out = stdout.join('\n');
     assert.match(out, /Commands:/);
     assert.match(out, /discover/);
+    assert.match(out, /preflight/);
     assert.match(out, /plan/);
     assert.match(out, /migrate/);
     assert.match(out, /verify/);
@@ -742,6 +744,11 @@ test('subcommand --help displays dedicated usage instructions', async () => {
   try {
     console.log = (...values: unknown[]) => stdout.push(values.join(' '));
 
+    await runCli(['preflight', '--help']);
+    assert.match(stdout.join('\n'), /ghec-consultant-cli preflight/);
+    assert.match(stdout.join('\n'), /--scope <file>/);
+
+    stdout.length = 0;
     await runCli(['plan', '--help']);
     assert.match(stdout.join('\n'), /ghec-consultant-cli plan/);
     assert.match(stdout.join('\n'), /--scope <file>/);
@@ -797,6 +804,21 @@ test('CLI option parsers for plan, migrate, and verify', () => {
   ]);
   assert.equal(verifyOpts.planPath, 'my-plan.json');
   assert.equal(verifyOpts.outputPath, 'report.json');
+
+  assert.throws(
+    () => parsePreflightOptions([]),
+    /--scope <file> flag is required/,
+  );
+  const preflightOpts = parsePreflightOptions([
+    '--scope',
+    'my-scope.json',
+    '--output',
+    'preflight-out.json',
+    '--verbose',
+  ]);
+  assert.equal(preflightOpts.scopePath, 'my-scope.json');
+  assert.equal(preflightOpts.outputPath, 'preflight-out.json');
+  assert.equal(preflightOpts.verbose, true);
 });
 
 test('CLI plan, migrate, and verify workflow end-to-end with mock adapter', async () => {
@@ -973,6 +995,98 @@ test('CLI plan command partitions scope with --split-matrix and outputs matrix J
     assert.equal(matrixJson.include[0].repoCount, 2);
     assert.equal(matrixJson.include[1].repoCount, 2);
     assert.equal(matrixJson.include[2].repoCount, 1);
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('CLI plan command partitions scope with --runner-capacity', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ghec-cli-capacity-'));
+  const originalLog = console.log;
+  const originalError = console.error;
+  const stdout: string[] = [];
+
+  try {
+    console.log = (...values: unknown[]) => stdout.push(values.join(' '));
+
+    const scopeFile = join(dir, 'scope.json');
+    const scopeData = {
+      version: MIGRATION_SCHEMA_VERSION,
+      name: 'capacity-scope',
+      organizations: [
+        { source: 'fictional-north', target: 'fictional-target', modules: [] },
+      ],
+      repositories: Array.from({ length: 6 }, (_, i) => ({
+        sourceOrg: 'fictional-north',
+        sourceRepo: `repo-${i + 1}`,
+        targetOrg: 'fictional-target',
+        targetRepo: `repo-${i + 1}`,
+        useGei: true,
+        modules: ['repo-variables'],
+      })),
+    };
+    writeFileSync(scopeFile, JSON.stringify(scopeData, null, 2));
+
+    const planFile = join(dir, 'migration-plan.json');
+    const matrixFile = join(dir, 'migration-matrix.json');
+    const mockAdapter = new MockGitHubReadAdapter();
+
+    // 1. Single runner (capacity 1) forces sequential execution (1 cohort)
+    const planExit1 = await runCli(
+      [
+        'plan',
+        '--scope',
+        scopeFile,
+        '--output',
+        planFile,
+        '--runner-capacity',
+        '1',
+        '--output-matrix',
+        matrixFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+
+    assert.equal(planExit1, 0);
+    const matrix1 = JSON.parse(readFileSync(matrixFile, 'utf8'));
+    assert.equal(matrix1.include.length, 1);
+    assert.equal(matrix1.include[0].repoCount, 6);
+
+    // 2. Capacity 2 partitions 6 repos into 2 cohorts
+    const planExit2 = await runCli(
+      [
+        'plan',
+        '--scope',
+        scopeFile,
+        '--output',
+        planFile,
+        '--runner-capacity',
+        '2',
+        '--output-matrix',
+        matrixFile,
+      ],
+      {
+        token: 'mock-src-token',
+        baseUrl: 'https://api.github.com',
+        apiVersion: '2026-03-10',
+        sourceClient: mockAdapter,
+        targetClient: mockAdapter,
+      },
+    );
+
+    assert.equal(planExit2, 0);
+    const matrix2 = JSON.parse(readFileSync(matrixFile, 'utf8'));
+    assert.equal(matrix2.include.length, 2);
+    assert.equal(matrix2.include[0].repoCount, 3);
+    assert.equal(matrix2.include[1].repoCount, 3);
   } finally {
     console.log = originalLog;
     console.error = originalError;

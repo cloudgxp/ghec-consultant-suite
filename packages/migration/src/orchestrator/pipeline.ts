@@ -40,6 +40,7 @@ export class RepositoryMigrationPipeline {
   private readonly options: RepositoryPipelineOptions;
   private readonly logger: StructuredLogger;
   private readonly checkpointManager?: MigrationCheckpointManager | undefined;
+  private readonly processedOrgMannequins = new Set<string>();
 
   constructor(options: RepositoryPipelineOptions) {
     this.options = options;
@@ -66,8 +67,19 @@ export class RepositoryMigrationPipeline {
       `Starting 7-stage migration pipeline for ${repoKey} -> ${targetOrg}/${targetRepo}`,
     );
 
-    let shouldSkipReleases = repoMapping.skipReleases ?? false;
-    let usesLfs = repoMapping.lfsStrategy === 'dual-remote-stream';
+    const repoOptions =
+      repoMapping.options ??
+      this.options.scope?.repositoryOptions?.[repoKey] ??
+      this.options.scope?.repositoryOptions?.[sourceRepo];
+
+    let shouldSkipReleases =
+      repoOptions?.skipReleases ?? repoMapping.skipReleases ?? false;
+    let usesLfs =
+      repoOptions?.skipLfs !== undefined
+        ? !repoOptions.skipLfs
+        : repoOptions?.lfsStrategy !== undefined
+          ? repoOptions.lfsStrategy === 'dual-remote-stream'
+          : repoMapping.lfsStrategy === 'dual-remote-stream';
 
     try {
       // -------------------------------------------------------------
@@ -108,6 +120,16 @@ export class RepositoryMigrationPipeline {
         }
         if (assessment.lfsObjectCount > 0 || assessment.lfsTotalBytes > 0) {
           usesLfs = true;
+        }
+
+        // Explicit per-repository options take precedence over automated preflight heuristics
+        if (repoOptions?.skipReleases !== undefined) {
+          shouldSkipReleases = repoOptions.skipReleases;
+        }
+        if (repoOptions?.skipLfs !== undefined) {
+          usesLfs = !repoOptions.skipLfs;
+        } else if (repoOptions?.lfsStrategy !== undefined) {
+          usesLfs = repoOptions.lfsStrategy === 'dual-remote-stream';
         }
 
         this.checkpointManager?.recordStageResult(repoKey, 'preflight', {
@@ -195,6 +217,16 @@ export class RepositoryMigrationPipeline {
         } else {
           const geiExecutor = new GeiProcessExecutor(this.options.geiRunner);
 
+          const timeoutMs =
+            repoOptions?.customTimeout ??
+            (repoOptions?.timeoutSeconds
+              ? repoOptions.timeoutSeconds * 1000
+              : undefined);
+          const targetRepoVisibility =
+            repoOptions?.targetRepoVisibility ??
+            repoMapping.targetRepoVisibility ??
+            'private';
+
           try {
             geiResult = await geiExecutor.execute({
               sourceOrg,
@@ -207,9 +239,9 @@ export class RepositoryMigrationPipeline {
               ...(this.options.targetToken
                 ? { targetToken: this.options.targetToken }
                 : {}),
-              targetRepoVisibility:
-                repoMapping.targetRepoVisibility ?? 'private',
+              targetRepoVisibility,
               skipReleases: shouldSkipReleases,
+              ...(timeoutMs !== undefined ? { timeoutMs } : {}),
               signal,
             });
 
@@ -259,39 +291,36 @@ export class RepositoryMigrationPipeline {
           this.logger.info(
             `[Stage 4] Executing Git LFS strategy for ${repoKey}...`,
           );
-          if (this.options.dryRun) {
+          try {
+            const lfsStrategy = new GitLfsMigrationStrategy({
+              ...(this.options.lfsRunner
+                ? { runner: this.options.lfsRunner }
+                : {}),
+              quotaChecker: defaultQuotaChecker,
+            });
+            await lfsStrategy.execute({
+              sourceClient: this.options.sourceClient,
+              targetClient: this.options.targetClient,
+              sourceOrg,
+              sourceRepo,
+              targetOrg,
+              targetRepo,
+              sourceToken:
+                this.options.sourceToken ?? process.env.GH_SOURCE_PAT ?? '',
+              targetToken:
+                this.options.targetToken ??
+                process.env.GH_PAT ??
+                process.env.GH_TARGET_PAT ??
+                '',
+              geiCompleted: true,
+              dryRun: Boolean(this.options.dryRun),
+              signal,
+            });
             specializedResults['git-lfs'] = { status: 'completed' };
-          } else {
-            try {
-              const lfsStrategy = new GitLfsMigrationStrategy({
-                ...(this.options.lfsRunner
-                  ? { runner: this.options.lfsRunner }
-                  : {}),
-                quotaChecker: defaultQuotaChecker,
-              });
-              await lfsStrategy.execute({
-                sourceClient: this.options.sourceClient,
-                targetClient: this.options.targetClient,
-                sourceOrg,
-                sourceRepo,
-                targetOrg,
-                targetRepo,
-                sourceToken:
-                  this.options.sourceToken ?? process.env.GH_SOURCE_PAT ?? '',
-                targetToken:
-                  this.options.targetToken ??
-                  process.env.GH_PAT ??
-                  process.env.GH_TARGET_PAT ??
-                  '',
-                geiCompleted: true,
-                signal,
-              });
-              specializedResults['git-lfs'] = { status: 'completed' };
-            } catch (err) {
-              const msg = err instanceof Error ? err.message : String(err);
-              specializedResults['git-lfs'] = { status: 'failed', error: msg };
-              throw err;
-            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            specializedResults['git-lfs'] = { status: 'failed', error: msg };
+            throw err;
           }
         } else {
           specializedResults['git-lfs'] = { status: 'skipped' };
@@ -302,7 +331,7 @@ export class RepositoryMigrationPipeline {
           this.logger.info(
             `[Stage 4] Executing Large Releases fallback strategy for ${repoKey}...`,
           );
-          if (this.options.dryRun || !this.options.releaseTransport) {
+          if (!this.options.releaseTransport) {
             specializedResults['releases-fallback'] = { status: 'completed' };
           } else {
             try {
@@ -311,6 +340,7 @@ export class RepositoryMigrationPipeline {
               );
               await releaseStrategy.execute({
                 geiSkippedReleases: true,
+                dryRun: Boolean(this.options.dryRun),
                 signal,
               });
               specializedResults['releases-fallback'] = { status: 'completed' };
@@ -353,6 +383,7 @@ export class RepositoryMigrationPipeline {
           sourceRepo,
           targetOrg,
           targetRepo,
+          options: repoOptions,
         };
 
         const ctx: MigrationContext = {
@@ -494,12 +525,13 @@ export class RepositoryMigrationPipeline {
         );
         const postMigrationTasks: Array<
           | 'repo-visibility'
+          | 'repo-settings'
           | 'webhooks'
           | 'mannequins'
           | 'codeowners'
           | 'security'
         > = [
-          'repo-visibility',
+          'repo-settings',
           'webhooks',
           'mannequins',
           'codeowners',
@@ -512,18 +544,42 @@ export class RepositoryMigrationPipeline {
         > = {};
 
         for (const task of postMigrationTasks) {
+          if (
+            task === 'mannequins' &&
+            this.processedOrgMannequins.has(targetOrg)
+          ) {
+            this.logger.info(
+              `[Stage 6] Mannequin reclamation already completed for org ${targetOrg}, skipping in repository loop`,
+            );
+            postMigrationResults[task] = { status: 'skipped' };
+            continue;
+          }
+
           const mod =
             this.options.registry.get(task) ??
-            this.options.registry.get(`post-migration-${task}`);
+            this.options.registry.get(`post-migration-${task}`) ??
+            (task === 'repo-visibility'
+              ? this.options.registry.get('repo-settings')
+              : task === 'repo-settings'
+                ? this.options.registry.get('repo-visibility')
+                : undefined);
           if (mod) {
             try {
-              const scopeTarget: MigrationScopeTarget = {
-                level: 'repository',
-                sourceOrg,
-                sourceRepo,
-                targetOrg,
-                targetRepo,
-              };
+              const scopeTarget: MigrationScopeTarget =
+                mod.scopeLevel === 'organization'
+                  ? {
+                      level: 'organization',
+                      sourceOrg,
+                      targetOrg,
+                    }
+                  : {
+                      level: 'repository',
+                      sourceOrg,
+                      sourceRepo,
+                      targetOrg,
+                      targetRepo,
+                      options: repoOptions,
+                    };
               const ctx: MigrationContext = {
                 runId: this.options.runId ?? `repo-${Date.now()}`,
                 scope: scopeTarget,
@@ -540,6 +596,9 @@ export class RepositoryMigrationPipeline {
               const result = await mod.apply(ctx, taskPlan);
               moduleResults.push(result);
               postMigrationResults[task] = { status: 'completed' };
+              if (task === 'mannequins') {
+                this.processedOrgMannequins.add(targetOrg);
+              }
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
               postMigrationResults[task] = { status: 'failed', error: msg };
@@ -578,6 +637,7 @@ export class RepositoryMigrationPipeline {
           sourceRepo,
           targetOrg,
           targetRepo,
+          options: repoOptions,
         };
 
         const ctx: MigrationContext = {

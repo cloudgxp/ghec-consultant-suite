@@ -1,8 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
-import { Button, IconButton, Label, Select, TextInput } from '@primer/react';
+import {
+  Button,
+  Checkbox,
+  IconButton,
+  Label,
+  Select,
+  TextInput,
+} from '@primer/react';
 import {
   DownloadIcon,
+  RocketIcon,
   SearchIcon,
   SortAscIcon,
   SortDescIcon,
@@ -23,6 +31,7 @@ import {
   FilterToolbar,
   PageHeader,
 } from '../components/ui/index.js';
+import { ScopeBuilderModal } from '../components/ScopeBuilderModal.js';
 
 interface Props {
   bundle: DiscoveryBundle;
@@ -51,6 +60,10 @@ export const RepositoriesTab: React.FC<Props> = ({
   const [lfsFilter, setLfsFilter] = useState('all');
   const [sort, setSort] = useState<'name' | 'size'>('name');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const [selectedRepoIds, setSelectedRepoIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isScopeBuilderOpen, setIsScopeBuilderOpen] = useState(false);
   const indexes = useMemo(() => {
     const lfs = new Map<string, Lfs>();
     const actions = new Map<string, Actions>();
@@ -97,6 +110,39 @@ export const RepositoriesTab: React.FC<Props> = ({
   }, [repositories, query, visibility, lfsFilter, indexes, sort, order]);
   const columns = useMemo<readonly VirtualizedColumn<Repository>[]>(
     () => [
+      {
+        header: (
+          <Checkbox
+            aria-label="Select all repositories"
+            checked={
+              filtered.length > 0 && selectedRepoIds.size === filtered.length
+            }
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedRepoIds(new Set(filtered.map((r) => r.id)));
+              } else {
+                setSelectedRepoIds(new Set());
+              }
+            }}
+          />
+        ),
+        width: '48px',
+        cell: (repo) => (
+          <Checkbox
+            aria-label={`Select repository ${repo.name}`}
+            checked={selectedRepoIds.has(repo.id)}
+            onChange={(e) => {
+              const next = new Set(selectedRepoIds);
+              if (e.target.checked) {
+                next.add(repo.id);
+              } else {
+                next.delete(repo.id);
+              }
+              setSelectedRepoIds(next);
+            }}
+          />
+        ),
+      },
       {
         header: 'Repository',
         width: '1.4fr',
@@ -234,7 +280,7 @@ export const RepositoriesTab: React.FC<Props> = ({
         ),
       },
     ],
-    [bundle, indexes],
+    [bundle, indexes, filtered, selectedRepoIds],
   );
   return (
     <div className="space-y-6">
@@ -370,6 +416,26 @@ export const RepositoriesTab: React.FC<Props> = ({
           setLfsFilter('all');
         }}
       />
+      {selectedRepoIds.size > 0 && (
+        <div className="flex items-center justify-between p-2 mb-2 bg-[var(--canvas-subtle)] border border-[var(--borderColor-default)] rounded-md">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[var(--fgColor-default)]">
+              Selected ({selectedRepoIds.size}) repositories
+            </span>
+            <Button size="small" onClick={() => setSelectedRepoIds(new Set())}>
+              Clear Selection
+            </Button>
+          </div>
+          <Button
+            variant="primary"
+            size="small"
+            leadingVisual={RocketIcon}
+            onClick={() => setIsScopeBuilderOpen(true)}
+          >
+            Configure & Dispatch Migration Wave
+          </Button>
+        </div>
+      )}
       {filtered.length === 0 && repositories.length > 0 ? (
         <EmptyState
           title="No repositories match these filters"
@@ -399,6 +465,25 @@ export const RepositoriesTab: React.FC<Props> = ({
           minWidth={1050}
         />
       )}
+      <ScopeBuilderModal
+        isOpen={isScopeBuilderOpen}
+        onClose={() => setIsScopeBuilderOpen(false)}
+        sourceOrg={
+          selectedOrgIds[0]
+            ? resolveOrgName(bundle, selectedOrgIds[0])
+            : bundle.organizations[0]?.login || 'source-org'
+        }
+        selectedRepositories={repositories
+          .filter((r) => selectedRepoIds.has(r.id))
+          .map((r) => ({
+            name: r.name,
+            visibility: r.visibility,
+            hasLfs: indexes.lfs.get(r.id)?.indicator === 'detected',
+          }))}
+        onDispatchSuccess={() => {
+          setSelectedRepoIds(new Set());
+        }}
+      />
     </div>
   );
 };

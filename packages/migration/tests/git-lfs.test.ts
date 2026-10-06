@@ -278,3 +278,70 @@ test('GitLfsClient parameter validation rejects option injection and malicious c
   assert.ok(cloneArgs[3]?.includes('github.com/safe-org/safe-repo.git'));
   assert.equal(cloneArgs[4], '/tmp/test-staging');
 });
+
+test('GitLfsMigrationStrategy execute with dryRun: true simulates transfer without network writes', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'ghec-lfs-dry-'));
+  const checkpoint = new MigrationCheckpointManager('lfs-dry-run', scope, {
+    rootDirectory: join(root, 'migrations'),
+  });
+  const commands: string[][] = [];
+  const runner: GeiCommandRunner = async (_command, args) => {
+    commands.push([...args]);
+    return { command: 'git', args, exitCode: 0, stdout: '', stderr: '' };
+  };
+  let quotaChecked = false;
+  const strategy = new GitLfsMigrationStrategy({
+    runner,
+    quotaChecker: {
+      check: async () => {
+        quotaChecked = true;
+        return {
+          enabled: true,
+          storageRemainingBytes: 5_000,
+          bandwidthRemainingBytes: 5_000,
+        };
+      },
+    },
+  });
+
+  try {
+    const result = await strategy.execute({
+      sourceOrg: 'source-org',
+      sourceRepo: 'repository',
+      targetOrg: 'target-org',
+      targetRepo: 'repository',
+      sourceToken: 'ghp_src1234567890',
+      targetToken: 'ghp_tgt1234567890',
+      sourceClient: lfsClient(true),
+      targetClient: lfsClient(true),
+      signal: new AbortController().signal,
+      geiCompleted: true,
+      dryRun: true,
+      expectedObjectCount: 10,
+      expectedBytes: 4096,
+      checkpointManager: checkpoint,
+      checkpointRepository: 'source-org/repository',
+    });
+
+    assert.equal(result.status, 'completed');
+    assert.equal(result.metrics.objectCount, 10);
+    assert.equal(result.metrics.bytesPushed, 4096);
+    assert.equal(quotaChecked, true);
+    // Verified: runner is called only for git lfs version (preflight), never for clone, fetch, or push
+    assert.ok(
+      commands.every(
+        (c) =>
+          !c.includes('push') && !c.includes('clone') && !c.includes('fetch'),
+      ),
+    );
+
+    const cp = checkpoint.getManifest();
+    assert.equal(
+      cp.repositories['source-org/repository']?.specializedStrategies['git-lfs']
+        ?.status,
+      'completed',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

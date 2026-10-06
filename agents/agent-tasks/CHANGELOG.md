@@ -31,6 +31,315 @@ work log, not a release changelog.
 
 ## Entries
 
+### 2026-10-06 — Antigravity — TASK-031..035 (Wave 2) — Complete
+
+- Summary: Implemented unified runner-aware migration control plane, granular per-repo configuration, discovery automation, and agentic remediation backlog (Tasks 031, 032, 033, 034, 035).
+  - Task 031: Added workflow runs proxy endpoint `GET /api/actions/workflows/:workflowId/runs` to CLI console server; exported in-memory `importBundleJson` in dashboard; built `DiscoveryScanTrigger.tsx` component and integrated into `FileUpload.tsx` and `CollectorHealthTab.tsx` for 1-click discovery dispatch and automated ingestion.
+  - Task 032: Implemented `MigrationControlPlaneTab.tsx` with wave configuration parameters (`scopePath`, `runnerCapacity`, `dryRun`, `continueOnError`, `runnerLabels`, `environmentGate`), dispatch proxying, matrix visualization, real-time telemetry, and run cancellation (`POST /api/actions/runs/:runId/cancel`); integrated `StepSummaryViewer` into control plane; registered in navigation.
+  - Task 033: Extended `@ghec/contracts` with `RepositoryOptionsSchema` (`skipReleases`, `skipLfs`, `customTimeout`, `timeoutSeconds`, `lfsStrategy`, `targetRepoVisibility`) and `repositoryOptions` map; updated `@ghec/migration` pipeline, planner, and gei-repo module to resolve per-repo options; added granular overrides table to `ScopeBuilderModal.tsx`.
+  - Task 034: Extended `ScopeMatrixSlicer` with runner capacity-aware batch calculation; updated CLI `plan` command with `--runner-capacity` flag; updated `migration-execute-wave.yml` workflow with `runner_capacity` input; wired runner capacity controls into dashboard UI.
+  - Task 035: Authored architectural specification `agents/agent-specs/verification-remediation-agent.md`; implemented `agent-review` CLI command in `apps/cli/src/commands/agent-review.ts` generating `remediation-plan.json`, executable `remediation.sh`, and GitHub Markdown step summary; integrated `agent-review` into `migration-execute-wave.yml`.
+- Files:
+  - `agents/agent-specs/verification-remediation-agent.md`
+  - `apps/cli/src/server/actions-proxy.ts`
+  - `apps/cli/src/commands/plan.ts`
+  - `apps/cli/src/commands/agent-review.ts`
+  - `apps/cli/src/index.ts`
+  - `apps/dashboard/src/lib/importer.ts`
+  - `apps/dashboard/src/lib/scope-generator.ts`
+  - `apps/dashboard/src/components/DiscoveryScanTrigger.tsx`
+  - `apps/dashboard/src/components/ScopeBuilderModal.tsx`
+  - `apps/dashboard/src/features/CollectorHealthTab.tsx`
+  - `apps/dashboard/src/features/MigrationControlPlaneTab.tsx`
+  - `apps/dashboard/src/navigation.ts`
+  - `apps/dashboard/src/main.tsx`
+  - `packages/contracts/src/scope/migration-scope.ts`
+  - `packages/contracts/src/index.ts`
+  - `packages/migration/src/orchestrator/matrix.ts`
+  - `packages/migration/src/orchestrator/slicer.ts`
+  - `packages/migration/src/orchestrator/migration-orchestrator.ts`
+  - `packages/migration/src/orchestrator/pipeline.ts`
+  - `packages/migration/src/planner/planner.ts`
+  - `packages/migration/src/modules/gei-repo/module.ts`
+  - `.github/workflows/migration-execute-wave.yml`
+- Verification: All unit tests across `@ghec/contracts`, `@ghec/migration`, `apps/cli`, and `apps/dashboard` pass. Full monorepo quality gate `npm run check` green.
+- Follow-up: All tasks in `agents/agent-tasks/` backlog completed and moved to `completed/`.
+
+### 2026-10-06 — Antigravity — TASK-043 — Complete
+
+- Summary: Implemented Task 043 (DASH-28) Post-Migration Verification Diff & Discrepancy Inspector.
+  - Implemented `apps/dashboard/src/lib/verification-diff.ts` providing pure TypeScript logic for discrepancy classification, severity categorization (Critical, High, Medium, Low), line diff calculation, actionable 1-click CLI remediation command generation across all 17 modules, CSV audit reporting, and targeted remediation scope generation.
+  - Implemented `apps/dashboard/src/components/DiscrepancyCard.tsx` rendering individual discrepancy details, severity badges, planned vs. observed side-by-side diff comparison panels, copyable CLI remediation commands with clipboard feedback, and re-verification hooks.
+  - Implemented `apps/dashboard/src/components/VerificationDiffInspector.tsx` featuring an overall compliance header (Verified 0 Discrepancies vs. Discrepancies Detected), summary statistics grid, module and severity filters, text search, CSV compliance report downloads, remediation scope JSON export, file upload input for custom verification reports, and simulation toggles.
+  - Created `apps/dashboard/src/features/VerificationTab.tsx` and registered `verification` in `apps/dashboard/src/navigation.ts` under "Deliver" -> "Verification & Diff" as well as lazy rendering in `apps/dashboard/src/main.tsx`.
+  - Added unit test suite in `apps/dashboard/tests/verification-diff.test.ts` verifying severity categorization, line diff calculations, CLI remediation command generation across multiple modules, full report classification, summary statistics, CSV formatting, and remediation scope JSON generation (12/12 tests pass).
+- Files:
+  - `apps/dashboard/src/lib/verification-diff.ts`
+  - `apps/dashboard/src/components/DiscrepancyCard.tsx`
+  - `apps/dashboard/src/components/VerificationDiffInspector.tsx`
+  - `apps/dashboard/src/features/VerificationTab.tsx`
+  - `apps/dashboard/src/navigation.ts`
+  - `apps/dashboard/src/main.tsx`
+  - `apps/dashboard/tests/verification-diff.test.ts`
+- Verification: `npm run check` passed cleanly (467 tests green across 89 suites, 0 errors, lint and types green).
+- Follow-up: All open agent tasks (036 through 043) in the repository are complete.
+
+### 2026-10-06 — Antigravity — TASK-042 — Complete
+
+- Summary: Implemented Task 042 (DASH-27) Teams, Collaborators & EMU Visualizer.
+  - Implemented `apps/dashboard/src/lib/team-tree.ts` providing directed acyclic tree construction (`buildTeamTree`), deep search filtering with ancestor auto-expansion (`filterTeamTree`), predicted EMU login derivation (`predictEmuUsername`), outside collaborator grant categorization (`categorizeCollaboratorGrants`), and standalone SVG hierarchy generation (`generateTeamTreeSvg`).
+  - Implemented `apps/dashboard/src/components/TeamTreeCanvas.tsx` featuring an interactive hierarchical tree canvas with expand/collapse toggles, fuzzy search, member count aggregation, repo permissions inspection, and 1-click SVG download.
+  - Implemented `apps/dashboard/src/components/CollaboratorsReconciliationPanel.tsx` rendering repository-level collaborator permissions, predicted EMU username reconciliation, manual invite alert banners, and direct CSV audit exports.
+  - Implemented `apps/dashboard/src/components/EmuIdentityMappingCard.tsx` rendering side-by-side EMU mapping cards with source identity, canonical translation suffix, and target reconciliation status indicators.
+  - Integrated visualizer into `apps/dashboard/src/features/TeamsAndIdentitiesTab.tsx` with dedicated sub-navigation tabs (`tree`, `collaborators`, `emu`).
+  - Added unit test suite in `apps/dashboard/tests/team-tree-visualizer.test.ts` covering tree building, depth calculation, ancestor expansion, EMU login predictions, collaborator reconciliation, and SVG exports (9/9 tests pass).
+- Files:
+  - `apps/dashboard/src/lib/team-tree.ts`
+  - `apps/dashboard/src/components/TeamTreeCanvas.tsx`
+  - `apps/dashboard/src/components/CollaboratorsReconciliationPanel.tsx`
+  - `apps/dashboard/src/components/EmuIdentityMappingCard.tsx`
+  - `apps/dashboard/src/features/TeamsAndIdentitiesTab.tsx`
+  - `apps/dashboard/tests/team-tree-visualizer.test.ts`
+- Verification: `npm run check` passed cleanly (455 tests green across 83 suites, zero lint/formatting/style errors).
+- Follow-up: Proceed to Task 043 (DASH-28): Post-Migration Verification Diff Inspector.
+
+### 2026-10-06 — Antigravity — TASK-041 — Complete
+
+- Summary: Implemented Task 041 (DASH-26) Post-Run Step Summary & Artifact Report Viewer.
+  - Implemented `apps/dashboard/src/lib/step-summary.ts` containing the canonical 20-module catalog across organization, repository, and post-migration scopes, zero-secret diagnostic sanitization (`sanitizeDiagnostics`), markdown Step Summary parser (`parseStepSummaryMarkdown`), and multi-cohort operations aggregator (`aggregateOperationsBreakdown`).
+  - Implemented `apps/dashboard/src/components/OperationsBreakdownTable.tsx` featuring metric stat summary cards, category and status filters, text search, and expandable diagnostic error lists with zero-token leak protections.
+  - Implemented `apps/dashboard/src/components/StepSummaryViewer.tsx` rendering GitHub-style alert callouts, formatted markdown payload with copy action, operations breakdown table, and artifact explorer with direct JSON downloads and an interactive in-browser JSON inspector modal.
+  - Integrated `StepSummaryViewer` into `LiveConsoleTab.tsx` with a dual-section navigation tab switchable between "Live Pipeline & Matrix Topology" and "Step Summary & Artifact Explorer".
+- Files:
+  - `apps/dashboard/src/lib/step-summary.ts`
+  - `apps/dashboard/src/components/OperationsBreakdownTable.tsx`
+  - `apps/dashboard/src/components/StepSummaryViewer.tsx`
+  - `apps/dashboard/src/features/LiveConsoleTab.tsx`
+  - `apps/dashboard/tests/step-summary-viewer.test.ts`
+- Verification:
+  - `node --import tsx --test apps/dashboard/tests/step-summary-viewer.test.ts` passed (9 tests green).
+  - `npm run check:styles -w @ghec/dashboard` passed (0 violations).
+  - Monorepo `npm run check` passed: 446 unit tests pass across 77 suites, 0 lint/typecheck errors.
+- Follow-up: Proceed to Task 042 (DASH-27) Teams, Collaborators & EMU Visualizer.
+
+### 2026-10-06 — Antigravity — TASK-040 — Complete
+
+- Summary: Implemented Task 040 (DASH-25) Live Execution Console & Resumption Manager.
+  - Implemented `apps/dashboard/src/lib/execution-console.ts` with canonical 7-stage linear pipeline models (`mergePipelineStages`), matrix cohort aggregator (`aggregateCohortMetrics`), topology detector (`detectTopology`), and resumption & cancellation formatters (`formatResumeDispatchPayload`, `formatCancelRunUrl`).
+  - Implemented `apps/dashboard/src/components/LinearPipelineTimeline.tsx` with 7 sequential stages, stage progress badges, timing, and error indicators.
+  - Implemented `apps/dashboard/src/components/JobMatrixGrid.tsx` with fan-out/fan-in parallel cohort visualization, slicer status, dynamic cohort progress bars using Primer `ProgressBar`, and aggregate metrics.
+  - Implemented `apps/dashboard/src/features/LiveConsoleTab.tsx` with dual-topology runner monitors, live SSE listener (`/api/events`), adaptive polling with ETag 304 fallback, cancellation modal, `--resume latest` resumption trigger, and historical runs browser.
+  - Wired into navigation under "Deliver" (`console`) and integrated into `apps/dashboard/src/main.tsx`.
+- Files:
+  - `apps/dashboard/src/lib/execution-console.ts`
+  - `apps/dashboard/src/components/LinearPipelineTimeline.tsx`
+  - `apps/dashboard/src/components/JobMatrixGrid.tsx`
+  - `apps/dashboard/src/features/LiveConsoleTab.tsx`
+  - `apps/dashboard/src/navigation.ts`
+  - `apps/dashboard/src/main.tsx`
+  - `apps/dashboard/tests/live-console.test.ts`
+- Verification:
+  - `node --import tsx --test apps/dashboard/tests/live-console.test.ts` passed (6 tests green).
+  - `npm run check:styles -w @ghec/dashboard` passed (0 violations).
+  - Monorepo `npm run check` passed: 437 unit tests pass across 72 suites, 0 lint/typecheck errors.
+- Follow-up: Proceed to Task 041 (DASH-26) Step Summary & Artifact Report Viewer.
+
+### 2026-10-06 — Antigravity — TASK-039 — Complete
+
+- Summary: Implemented Task 039 (DASH-24) Interactive Module Triggers Across Domain Views.
+  - Implemented `apps/dashboard/src/components/ModuleTriggerModal.tsx` as a shared lightweight execution modal using Primer Dialog, dry-run simulation toggle, prerequisites checklist, and targeted module dispatching.
+  - Wired dedicated triggers into all 5 specialized domain tabs:
+    - `TeamsAndIdentitiesTab.tsx`: "Sync Teams & Hierarchy" (`teams`), "Reconcile Outside Collaborators" (`collaborators`), and "Reclaim EMU Mannequins" (`mannequins` with `--skip-invitation`).
+    - `ReleasesAndAssetsTab.tsx`: "Replicate Releases & Assets" (`releases`) with asset streaming chunk size selector (50MB, 100MB, 250MB).
+    - `PackagesTab.tsx`: "Replicate Packages & Images" (`packages`) with GHCR container and language package filtering.
+    - `SecurityAndPoliciesTab.tsx`: "Sync Rulesets & Protections" (`rulesets`, `branch-protection`) and "Reconcile Deploy Keys" (`deploy-keys`) with SHA-256 fingerprint deduplication.
+    - `SecretsAndVariablesTab.tsx`: "Sync Secrets & Variables" (`org-variables`, `org-secrets`, `repo-variables`, `repo-secrets`) enforcing zero-secret-leakage public key encryption.
+  - Added interaction feedback banners linking to Live Execution Console.
+  - Verified comprehensive test suite in `apps/dashboard/tests/module-triggers.test.ts` (10 tests pass).
+- Files:
+  - `apps/dashboard/src/components/ModuleTriggerModal.tsx`
+  - `apps/dashboard/src/features/TeamsAndIdentitiesTab.tsx`
+  - `apps/dashboard/src/features/ReleasesAndAssetsTab.tsx`
+  - `apps/dashboard/src/features/PackagesTab.tsx`
+  - `apps/dashboard/src/features/SecurityAndPoliciesTab.tsx`
+  - `apps/dashboard/src/features/SecretsAndVariablesTab.tsx`
+  - `apps/dashboard/tests/module-triggers.test.ts`
+  - `agents/agent-tasks/features/completed/039-interactive-module-triggers.md`
+- Verification: `npm run check` passed completely (lint, typecheck, build:apps, 431 unit tests pass across 68 suites).
+- Follow-up: Proceed to Task 040 (DASH-25: Live Execution Console & Resumption Manager).
+
+### 2026-10-06 — Antigravity — TASK-038 — Complete
+
+- Summary: Implemented Task 038 (DASH-23) Dynamic Scope Builder & Preflight Modal.
+  - Implemented `apps/dashboard/src/lib/scope-generator.ts` with `buildMigrationScope` strictly conforming to `MigrationScopeSchema`.
+  - Implemented `apps/dashboard/src/components/PreflightReadinessCard.tsx` with 4-tier preflight evaluation status cards (Ready, Ready with Follow-up, Requires Special Strategy, Blocked).
+  - Implemented `apps/dashboard/src/components/ScopeBuilderModal.tsx` integrating Primer Dialog, all 17 migration modules selection checklist, dry-run toggle, preflight execution gate, and Actions wave dispatching via ambient proxy (`/api/actions/dispatch-wave`).
+  - Enhanced `apps/dashboard/src/features/RepositoriesTab.tsx` with multi-select checkboxes, selection count indicator toolbar, clear selection, and direct modal trigger.
+  - Verified comprehensive test suite in `apps/dashboard/tests/scope-builder.test.ts`.
+- Files:
+  - `apps/dashboard/src/lib/scope-generator.ts`
+  - `apps/dashboard/src/components/PreflightReadinessCard.tsx`
+  - `apps/dashboard/src/components/ScopeBuilderModal.tsx`
+  - `apps/dashboard/src/features/RepositoriesTab.tsx`
+  - `apps/dashboard/tests/scope-builder.test.ts`
+  - `agents/agent-tasks/features/completed/038-scope-builder-and-preflight-modal.md`
+- Verification: `npm run check` passed completely (lint, typecheck, build:apps, 421 unit tests passed with 0 failures).
+- Follow-up: Proceed to Task 039 (DASH-24: Interactive Module Triggers Across Views).
+
+### 2026-10-06 — Antigravity — TASK-037 — Complete
+
+- Summary: Implemented Task 037 (DASH-22) GitHub Actions Client Service Adapter.
+  - Implemented typed `GitHubActionsService` in `packages/github-client/src/actions/service.ts`.
+  - Added dispatch wrappers for `migration-execute-wave.yml`, `test-migration-dispatch.yml`, and `migration-resume.yml` with automatic run ID resolution.
+  - Implemented telemetry polling with `If-None-Match` caching and matrix cohort job parsing.
+  - Added in-memory ZIP decompression utility (`unpackArtifactZipBuffer`) using `fflate` for all 17 modules and reports.
+- Files:
+  - `packages/github-client/package.json`
+  - `packages/github-client/src/actions/types.ts`
+  - `packages/github-client/src/actions/unpacker.ts`
+  - `packages/github-client/src/actions/service.ts`
+  - `packages/github-client/src/actions/index.ts`
+  - `packages/github-client/src/index.ts`
+  - `packages/github-client/tests/actions-service.test.ts`
+- Verification: `node --import tsx --test packages/github-client/tests/actions-service.test.ts` (8/8 pass); `npm run check` (417 pass, 0 fail).
+- Follow-up: Task 038 unblocked.
+
+### 2026-10-06 — Antigravity — TASK-036 — Complete
+
+- Summary: Implemented Task 036 (DASH-21) Local Console CLI Server & Ambient Auth Proxy.
+  - Added Fastify server in `apps/cli/src/server/` serving the dashboard static assets with SPA routing.
+  - Implemented ambient `gh auth token` and environment token resolution with `/api/auth/status`.
+  - Added CORS-free proxy endpoints for GitHub Actions workflow dispatches, run polling with ETag caching, job inspections, cancellation, and in-memory ZIP artifact decompression via `fflate`.
+  - Implemented direct preflight execution via `POST /api/cli/preflight` using local engine.
+  - Implemented SSE hub (`GET /api/events`) for run updates.
+  - Added `ghec-consultant-cli console` CLI subcommand.
+- Files:
+  - `apps/cli/package.json`
+  - `apps/cli/src/commands/console.ts`
+  - `apps/cli/src/server/auth-bridge.ts`
+  - `apps/cli/src/server/sse.ts`
+  - `apps/cli/src/server/actions-proxy.ts`
+  - `apps/cli/src/server/preflight-proxy.ts`
+  - `apps/cli/src/server/server.ts`
+  - `apps/cli/src/server/index.ts`
+  - `apps/cli/src/index.ts`
+  - `apps/cli/tests/console-server.test.ts`
+- Verification: `node --import tsx --test apps/cli/tests/console-server.test.ts` (9/9 pass); `npm run check` (409 pass, 0 fail).
+- Follow-up: Task 037 unblocked.
+
+### 2026-10-05 — Antigravity — TASKS-031-035 & PREREQ-HARDENING — Complete
+
+- Summary: Completed Phase 1 (prerequisites & boundary hardening) and Phase 2 (mona-actions feature parity modules 031 to 035) according to agent workflow protocol:
+  1. `prereq-pipeline-module-identifiers-drift`: Resolved `'repo-settings'` alias in Stage 6 of `pipeline.ts`; decoupled org-scoped mannequins from repo loop with target org tracking Set.
+  2. `prereq-dryrun-git-lfs`: Added `dryRun?: boolean` support to `GitLfsMigrationRequest` & `GitLfsMigrationStrategy`.
+  3. `prereq-dryrun-releases`: Added `dryRun?: boolean` support to `ReleaseMigrationRequest` & `LargeReleasesMigrationStrategy`.
+  4. `audit-personal-org-references`: Purged ephemeral scopes, sanitized test scopes to `example-source-org` and `example-target-emu`, parameterized workflows, hardened `.gitignore`.
+  5. Task 031 (`releases`): Implemented 4-stage `ReleasesMigrationModule` in `packages/migration/src/modules/releases/` with non-buffering asset streaming.
+  6. Task 032 (`deploy-keys`): Implemented 4-stage `DeployKeysMigrationModule` in `packages/migration/src/modules/deploy-keys/` with OpenSSH SHA-256 fingerprint normalization and read-only preservation.
+  7. Task 033 (`collaborators`): Updated `packages/discovery/src/collectors/users.ts` to inventory outside collaborators from `/orgs/{org}/outside_collaborators`; implemented 4-stage `CollaboratorsMigrationModule` in `packages/migration/src/modules/collaborators/` with EMU identity mapping.
+  8. Task 034 (`lfs`): Implemented 4-stage `LfsMigrationModule` in `packages/migration/src/modules/lfs/` with Git LFS Batch API negotiation, SHA-256 integrity checks, and worker pool concurrency.
+  9. Task 035 (`packages`): Implemented 4-stage `PackagesMigrationModule` in `packages/migration/src/modules/packages/` supporting GHCR container layer streaming and language package replication.
+     All modules registered in `ModuleRegistry` and exported in `@ghec/migration`.
+- Files:
+  - `packages/discovery/src/collectors/users.ts`
+  - `packages/discovery/tests/users-collector.test.ts`
+  - `packages/migration/src/modules/releases/`
+  - `packages/migration/src/modules/deploy-keys/`
+  - `packages/migration/src/modules/collaborators/`
+  - `packages/migration/src/modules/lfs/`
+  - `packages/migration/src/modules/packages/`
+  - `packages/migration/src/core/registry.ts`
+  - `packages/migration/src/index.ts`
+  - `packages/migration/tests/modules/releases.test.ts`
+  - `packages/migration/tests/modules/deploy-keys.test.ts`
+  - `packages/migration/tests/modules/collaborators.test.ts`
+  - `packages/migration/tests/modules/lfs.test.ts`
+  - `packages/migration/tests/modules/packages.test.ts`
+  - `packages/migration/tests/orchestrator.test.ts`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `agents/agent-tasks/features/completed/`
+  - `agents/agent-tasks/bug-fixes/completed/`
+  - `agents/agent-tasks/security/completed/`
+- Verification: Full quality gate `npm run check` passed cleanly:
+  - `eslint` + `prettier`: 0 errors, 0 warnings.
+  - `typecheck`: all packages (`@ghec/contracts`, `@ghec/analysis`, `@ghec/github-client`, `@ghec/discovery`, `@ghec/migration`) and apps (`ghec-consultant-cli`, `@ghec/dashboard`) built with zero TypeScript diagnostics.
+  - `build:apps`: dashboard bundle budget and Primer styles verified.
+  - `test:unit`: **400 passing tests across 54 suites, 0 failures**.
+- Follow-up: None. All pending prerequisite and Phase 2 feature tasks complete.
+
+- Summary: Validated Stage 4 mannequin reclamation and historical commit/PR attribution (`post-migration-mannequins`) in Enterprise Managed Users (EMU) environment against target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Dry-run verified zero live invitations sent with `--skip-invitation` flag execution. Live apply executed cleanly and verified `post-migration-mannequins` with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage4-mannequin-reclamation-emu.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-org-wave.json` with `modules=post-migration-mannequins`. Dry-run [37262414634](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262414634) completed in 40s with dryRun=true and 0 live invitations sent; live apply [37262506389](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37262506389) completed in 39s with status `complete` (exitCode: 0). Target verification confirmed `post-migration-mannequins` verified `true` with 0 discrepancies. Offline unit tests in `packages/migration/tests/post-migration/mannequins.test.ts` passed cleanly (10/10).
+- Follow-up: All 13 migration testing tasks across Stages 1–4 are fully executed, verified, and complete.
+
+### 2026-10-04 — Antigravity — TEST-STAGE4-VERIFICATION-COMPLIANCE-SUITE — Complete
+
+- Summary: Validated Stage 4 post-migration Verification Compliance Suite and Destination Audit against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Dry-run verified 1 organization and 28 repositories, cleanly identifying pre-existing discrepancies without unhandled exceptions. Live verification confirmed 13 of 14 modules verified with 0 discrepancies across all migrated target repositories and configurations.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage4-verification-compliance-suite.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-all-wave.json` for dry-run (Run [37261743337](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261743337), duration 2m47s, cleanly identified 49 discrepancies) and `scopes/test-repo-wave.json` for live verification (Run [37261989009](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261989009), duration 45s, 13/14 modules verified with 0 discrepancies). Offline unit and reporting tests (`packages/migration/tests/reporting/summary.test.ts` and `apps/cli/tests/cli.test.ts`) passed cleanly (24/24).
+- Follow-up: Proceed to Stage 4 Task 2 (`security/test-stage4-mannequin-reclamation-emu.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-GIT-LFS-AND-RELEASES-TRANSFER — Complete
+
+- Summary: Validated Stage 3 Git LFS and Large Releases Transfer mechanisms against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Executed dry-run simulation verifying zero remote git mutations or release asset uploads. Live apply executed cleanly with GEI and pipeline stages verified.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage3-git-lfs-and-releases-transfer.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=all`. Dry-run [37261330566](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261330566) completed in 47s with dryRun=true and 0 write calls / 0 git mutations; live apply [37261422332](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261422332) completed in 54s with status `complete` (exitCode: 0). Target verification confirmed `gei-repo` verified cleanly with 0 discrepancies. Offline unit and pipeline tests (`git-lfs.test.ts`, `releases.test.ts`, `pipeline.test.ts`) passed cleanly (12/12).
+- Follow-up: Proceed to Stage 4 Task 1 (`features/test-stage4-verification-compliance-suite.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-WEBHOOKS-RECONCILIATION — Complete
+
+- Summary: Validated Stage 3 organization and repository webhooks reconciliation, trigger mapping, and secret handling against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled webhooks without credential exposure or secret leakage. Post-apply verification confirmed `webhooks` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-webhooks-reconciliation.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=webhooks`. Dry-run [37254510502](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37254510502) completed in 52s with dryRun=true and 0 write calls; live apply [37261060265](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37261060265) completed in 44s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/webhooks.test.ts` passed (5/5).
+- Follow-up: Proceed to Stage 3 Task 6 (`features/test-stage3-git-lfs-and-releases-transfer.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-ENVIRONMENTS-RECONCILIATION — Complete
+
+- Summary: Validated Stage 3 repository deployment environments, wait timers, reviewer protection policies, environment variables, and encrypted secrets reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Successfully created `production` environment on `dummy-repo-public` with zero credential leakage. Post-apply verification confirmed `environments` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-environments-reconciliation.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=environments`. Dry-run [37253915998](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253915998) completed in 46s with dryRun=true and 0 write calls; live apply [37253990065](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253990065) completed in 46s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/environments.test.ts` passed (8/8).
+- Follow-up: Proceed to Stage 3 Task 5 (`security/test-stage3-webhooks-reconciliation.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-RULESETS-AND-BRANCH-PROTECTION — Complete
+
+- Summary: Validated Stage 3 rulesets and legacy branch protection translation and reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled rulesets and branch protections across target repos with zero credential leakage. Post-apply verification confirmed `rulesets` and `branch-protection` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-rulesets-and-branch-protection.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=rulesets,branch-protection`. Dry-run [37253518261](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253518261) completed in 58s with dryRun=true and 0 write calls; live apply [37253608458](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253608458) completed in 59s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/rulesets.test.ts` and `branch-protection.test.ts` passed (8/8).
+- Follow-up: Proceed to Stage 3 Task 4 (`security/test-stage3-environments-reconciliation.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-REPO-VARIABLES-AND-SECRETS — Complete
+
+- Summary: Validated Stage 3 repository Actions variables and encrypted secrets rehydration against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Reconciled variables `APP_ENV` and `LOG_LEVEL` to target repo `dummy-repo-public` via REST PUT/PATCH. Rehydration executed with zero local credentials and zero secret leakage. Post-apply verification confirmed `repo-variables` and `repo-secrets` match with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/security/completed/test-stage3-repo-variables-and-secrets.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=repo-variables,repo-secrets`. Dry-run [37253169069](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253169069) completed in 50s; live apply [37253260973](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37253260973) completed in 40s with status `complete` (exitCode: 0). Post-migration verification confirmed 0 discrepancies. Offline unit tests in `packages/migration/tests/modules/repo-variables.test.ts` and `repo-secrets.test.ts` passed (13/13).
+- Follow-up: Proceed to Stage 3 Task 3 (`security/test-stage3-rulesets-and-branch-protection.md`).
+
+### 2026-10-04 — Antigravity — TEST-STAGE3-REPO-CUSTOM-PROPERTIES-AND-SETTINGS — Complete
+
+- Summary: Validated Stage 3 repository custom properties and settings reconciliation against source org `demogxp` and target EMU org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Handled EMU enterprise policy constraints prohibiting public repository visibility by catching HTTP 422 errors and automatically falling back to `internal` visibility. Both `dummy-repo-public` and `dummy-repo-private-lfs` settings and custom properties reconciled and verified with 0 discrepancies.
+- Files:
+  - `agents/agent-tasks/features/completed/test-stage3-repo-custom-properties-and-settings.md`
+  - `agents/agent-tasks/CURRENT-TASKS.md`
+  - `packages/migration/src/client/http-target-write-client.ts`
+  - `packages/migration/src/modules/repo-settings/module.ts`
+  - `.github/workflows/test-migration-dispatch.yml`
+- Verification: Dispatched GitHub Actions workflow `test-migration-dispatch.yml` on `scopes/test-repo-wave.json` with `modules=repo-custom-properties,repo-settings`. Dry-run [37251854316](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37251854316) completed in 43s; live apply [37252842471](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37252842471) completed with status `complete` (exitCode: 0) in 44s. Post-migration verification confirmed 0 discrepancies across all modules. All 359 tests passed.
+- Follow-up: Proceed to Stage 3 Task 2 (`security/test-stage3-repo-variables-and-secrets.md`).
+
 ### 2026-10-04 — Antigravity — TEST-STAGE2-TEAMS-AND-EMU-IDENTITY-MAPPING — Complete
 
 - Summary: Validated Stage 2 team hierarchies, parentage DFS ordering, and EMU identity mapping reconciliation against source org `demogxp` and target org `antigravity-migration-test` using `test-migration-dispatch.yml` under the Zero-Local-Secrets Security Boundary. Resolved team-repo-permission handling for unmigrated target repositories to safely defer binding until repository migration. Reconciled 7 teams (including nested `engineering` -> `platform-infra`) and default base repository permissions with zero token leaks.

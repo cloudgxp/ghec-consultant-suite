@@ -43,6 +43,7 @@ export interface GitLfsMigrationRequest {
   readonly signal: AbortSignal;
   /** Must be true only after GEI has completed repository transfer. */
   readonly geiCompleted: boolean;
+  readonly dryRun?: boolean | undefined;
   readonly expectedObjectCount?: number;
   readonly expectedBytes?: number;
   readonly stagingRoot?: string;

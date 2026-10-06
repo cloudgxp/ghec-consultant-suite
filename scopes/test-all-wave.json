@@ -3,22 +3,23 @@
   "name": "test-all-wave",
   "organizations": [
     {
-      "source": "demogxp",
-      "target": "antigravity-migration-test",
+      "source": "example-source-org",
+      "target": "example-target-emu",
       "modules": [
         "org-variables",
         "org-secrets",
         "teams",
         "org-custom-properties",
-        "webhooks"
+        "webhooks",
+        "post-migration-mannequins"
       ]
     }
   ],
   "repositories": [
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "dummy-repo-private-lfs",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "dummy-repo-private-lfs",
       "useGei": true,
       "skipReleases": false,
@@ -32,12 +33,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "dummy-repo-public",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "dummy-repo-public",
       "useGei": true,
       "skipReleases": false,
@@ -51,12 +53,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "react",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "react",
       "useGei": true,
       "skipReleases": false,
@@ -70,12 +73,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "nest",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "nest",
       "useGei": true,
       "skipReleases": false,
@@ -89,12 +93,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "prometheus",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "prometheus",
       "useGei": true,
       "skipReleases": false,
@@ -108,12 +113,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "TypeScript",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "TypeScript",
       "useGei": true,
       "skipReleases": false,
@@ -127,12 +133,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "express",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "express",
       "useGei": true,
       "skipReleases": false,
@@ -146,12 +153,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "rust",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "rust",
       "useGei": true,
       "skipReleases": false,
@@ -165,12 +173,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "node",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "node",
       "useGei": true,
       "skipReleases": false,
@@ -184,12 +193,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "terraform",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "terraform",
       "useGei": true,
       "skipReleases": false,
@@ -203,12 +213,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "ghe-actions-migration-framework",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "ghe-actions-migration-framework",
       "useGei": true,
       "skipReleases": false,
@@ -222,12 +233,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "next.js",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "next.js",
       "useGei": true,
       "skipReleases": false,
@@ -241,12 +253,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "kubernetes",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "kubernetes",
       "useGei": true,
       "skipReleases": false,
@@ -260,12 +273,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "core",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "core",
       "useGei": true,
       "skipReleases": false,
@@ -279,12 +293,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "svelte",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "svelte",
       "useGei": true,
       "skipReleases": false,
@@ -298,12 +313,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "ghec-content-filler",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "ghec-content-filler",
       "useGei": true,
       "skipReleases": false,
@@ -317,12 +333,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "migration-demo-1361857985-companion",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "migration-demo-1361857985-companion",
       "useGei": true,
       "skipReleases": false,
@@ -336,12 +353,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "migration-demo-1361857985-fork",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "migration-demo-1361857985-fork",
       "useGei": true,
       "skipReleases": false,
@@ -355,12 +373,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "grafana",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "grafana",
       "useGei": true,
       "skipReleases": false,
@@ -374,12 +393,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "demo",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "demo",
       "useGei": true,
       "skipReleases": false,
@@ -393,12 +413,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "juice-shop",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "juice-shop",
       "useGei": true,
       "skipReleases": false,
@@ -412,12 +433,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "ansible",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "ansible",
       "useGei": true,
       "skipReleases": false,
@@ -431,12 +453,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "cpython",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "cpython",
       "useGei": true,
       "skipReleases": false,
@@ -450,12 +473,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "flask",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "flask",
       "useGei": true,
       "skipReleases": false,
@@ -469,12 +493,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "go",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "go",
       "useGei": true,
       "skipReleases": false,
@@ -488,12 +513,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "django",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "django",
       "useGei": true,
       "skipReleases": false,
@@ -507,12 +533,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "fastify",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "fastify",
       "useGei": true,
       "skipReleases": false,
@@ -526,12 +553,13 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     },
     {
-      "sourceOrg": "demogxp",
+      "sourceOrg": "example-source-org",
       "sourceRepo": "vite",
-      "targetOrg": "antigravity-migration-test",
+      "targetOrg": "example-target-emu",
       "targetRepo": "vite",
       "useGei": true,
       "skipReleases": false,
@@ -545,7 +573,8 @@
         "branch-protection",
         "environments",
         "webhooks"
-      ]
+      ],
+      "targetRepoVisibility": "private"
     }
   ],
   "identityMapping": {

@@ -18,10 +18,15 @@ const org =
         arg !== process.argv[0] &&
         arg !== process.argv[1],
     )
-    ?.trim() ||
-  process.env.GHEC_SOURCE_ORG?.trim() ||
-  'demogxp';
+    ?.trim() || process.env.GHEC_SOURCE_ORG?.trim();
 const isTargetReposOnly = process.argv.includes('--target-repos-only');
+
+if (!org) {
+  console.error(
+    'Error: Organization argument or GHEC_SOURCE_ORG environment variable is required.',
+  );
+  process.exit(1);
+}
 
 if (!token) {
   console.error(
@@ -246,9 +251,14 @@ async function ensureOrgWebhook() {
   console.log(`  + Checking organization webhook in ${org}...`);
   const check = await ghRequest(`/orgs/${org}/hooks`);
   if (check.ok && Array.isArray(check.data)) {
-    const exists = check.data.some((h) =>
-      h.config?.url?.includes('httpbin.org'),
-    );
+    const exists = check.data.some((h) => {
+      try {
+        const u = new URL(h.config?.url || '');
+        return u.hostname === 'httpbin.org';
+      } catch {
+        return false;
+      }
+    });
     if (exists) {
       console.log('  ✓ Org webhook to httpbin.org already exists.');
       return;

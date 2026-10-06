@@ -78,6 +78,31 @@ jobs:
             console.log("Scope schema validation passed successfully.");
           ' "${{ inputs.scope }}"
 
+      - name: Execute Preflight Evaluation & Credential Audit
+        id: preflight
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+        run: |
+          mkdir -p ./scans
+          echo "Evaluating source and target preflight readiness..."
+          EXIT_CODE=0
+          node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
+            --scope "${{ inputs.scope }}" \
+            --output ./scans/test-preflight-report.json \
+            --verbose || EXIT_CODE=$?
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+              echo "::warning::Preflight evaluation detected repository blockers or warnings (exit code $EXIT_CODE), but continue_on_error is enabled. Proceeding to migration planning."
+            else
+              echo "::error::Preflight evaluation detected blockers (exit code $EXIT_CODE)."
+              exit "$EXIT_CODE"
+            fi
+          fi
+
       - name: Execute Migration Planning
         id: plan
         shell: bash
@@ -105,6 +130,17 @@ jobs:
             exit 1
           fi
 
+      - name: Ensure GitHub Enterprise Importer (GEI) CLI Extension
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh extension list | grep -q "gh gei"; then
+            echo "Installing gh-gei extension..."
+            gh extension install github/gh-gei
+          fi
+          gh gei --version || true
+
       - name: Execute Migration
         id: migrate
         shell: bash
@@ -129,13 +165,21 @@ jobs:
           fi
 
           echo "Executing migration for scope '$INPUT_SCOPE' (dry_run: $INPUT_DRY_RUN)..."
+          EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --plan ./scans/test-migration-plan.json \
             --scope "$INPUT_SCOPE" \
             --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
             "${CONT_ARG[@]}" \
-            --output ./scans/test-migration-execution.json
+            --output ./scans/test-migration-execution.json || EXIT_CODE=$?
+
+          if [ "$EXIT_CODE" -eq 0 ] || ([ "$EXIT_CODE" -eq 4 ] && [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]); then
+            echo "Migration step completed with status code $EXIT_CODE."
+          else
+            echo "Migration step failed with status code $EXIT_CODE."
+            exit "$EXIT_CODE"
+          fi
 
       - name: Execute Target Verification
         if: always()
@@ -234,6 +278,7 @@ jobs:
         with:
           name: test-migration-artifacts-${{ github.run_id }}
           path: |
+            ./scans/test-preflight-report.json
             ./scans/test-migration-plan.json
             ./scans/test-migration-execution.json
             ./scans/test-verification-report.json
