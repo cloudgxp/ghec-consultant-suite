@@ -11,8 +11,9 @@ import {
   downloadCsv,
 } from '../lib/export-csv.js';
 import { PageHeader } from '../components/ui/index.js';
-import { Button, Label, UnderlineNav } from '@primer/react';
-import { DownloadIcon } from '@primer/octicons-react';
+import { Button, Flash, Label, UnderlineNav } from '@primer/react';
+import { DownloadIcon, KeyIcon, ShieldCheckIcon } from '@primer/octicons-react';
+import { ModuleTriggerModal } from '../components/ModuleTriggerModal.js';
 
 interface Props {
   bundle: DiscoveryBundle;
@@ -35,6 +36,20 @@ export const SecurityAndPoliciesTab: React.FC<Props> = ({
   const [section, setSection] = useState<
     'security' | 'policies' | 'integrations'
   >('security');
+  const [activeTrigger, setActiveTrigger] = useState<{
+    title: string;
+    description: string;
+    modules: string[];
+    affectedCount?: number;
+    entityLabel?: string;
+    prerequisites?: string[];
+    customOptions?: React.ReactNode;
+  } | null>(null);
+  const [dispatchedRun, setDispatchedRun] = useState<{
+    workflowId: string;
+    modules: string[];
+    isDryRun: boolean;
+  } | null>(null);
   useEffect(() => {
     const focus = (event: Event) => {
       const subview = (event as CustomEvent<{ subview?: string }>).detail
@@ -272,6 +287,78 @@ export const SecurityAndPoliciesTab: React.FC<Props> = ({
           </Button>
         }
       />
+
+      {/* 1-Click Module Migration Triggers */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[var(--canvas-subtle)] border border-[var(--borderColor-default)] rounded-md">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-[var(--fgColor-default)] uppercase tracking-wide mr-1">
+            Module Actions:
+          </span>
+          <Button
+            size="small"
+            leadingVisual={ShieldCheckIcon}
+            onClick={() =>
+              setActiveTrigger({
+                title: 'Sync Rulesets & Branch Protections',
+                description:
+                  'Reconcile repository rulesets, bypass actors, enforcement statuses, and classic branch protection rules.',
+                modules: ['rulesets', 'branch-protection'],
+                affectedCount: security.length + policies.length,
+                entityLabel: 'rulesets & protections',
+                prerequisites: [
+                  'Target repositories created',
+                  'Default and protected branch refs initialized',
+                ],
+              })
+            }
+          >
+            Sync Rulesets & Protections
+          </Button>
+          <Button
+            size="small"
+            leadingVisual={KeyIcon}
+            onClick={() =>
+              setActiveTrigger({
+                title: 'Reconcile Deploy Keys',
+                description:
+                  'Rehydrate repository deploy keys with SHA-256 fingerprint deduplication to avoid duplicate key conflicts.',
+                modules: ['deploy-keys'],
+                affectedCount: integrations.length,
+                entityLabel: 'integrations & deploy keys',
+                prerequisites: [
+                  'Target repositories initialized',
+                  'Deploy key administration scope available',
+                ],
+                customOptions: (
+                  <p className="text-xs text-[var(--fgColor-muted)]">
+                    Deploy keys will be deduplicated against existing target
+                    keys using SHA-256 cryptographic fingerprints to prevent
+                    key-in-use errors.
+                  </p>
+                ),
+              })
+            }
+          >
+            Reconcile Deploy Keys
+          </Button>
+        </div>
+      </div>
+
+      {dispatchedRun && (
+        <Flash variant="success">
+          <div className="flex items-center justify-between text-xs">
+            <span>
+              Dispatched <strong>{dispatchedRun.modules.join(', ')}</strong> (
+              {dispatchedRun.isDryRun ? 'Dry-Run Simulation' : 'Live Apply'}) to
+              workflow <code>{dispatchedRun.workflowId}</code>.
+            </span>
+            <Button size="small" onClick={() => setDispatchedRun(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </Flash>
+      )}
+
       <UnderlineNav aria-label="Security, governance and integrations views">
         <UnderlineNav.Item
           as="button"
@@ -335,6 +422,28 @@ export const SecurityAndPoliciesTab: React.FC<Props> = ({
           getRowKey={(row) => row.id}
           emptyMessage="No integration records found."
           minWidth={850}
+        />
+      )}
+      {activeTrigger && (
+        <ModuleTriggerModal
+          isOpen={true}
+          onClose={() => setActiveTrigger(null)}
+          title={activeTrigger.title}
+          description={activeTrigger.description}
+          modules={activeTrigger.modules}
+          sourceOrg={
+            selectedOrgIds[0]
+              ? resolveOrgName(bundle, selectedOrgIds[0])
+              : bundle.organizations[0]?.login || 'source-org'
+          }
+          affectedCount={activeTrigger.affectedCount}
+          entityLabel={activeTrigger.entityLabel}
+          prerequisites={activeTrigger.prerequisites}
+          customOptions={activeTrigger.customOptions}
+          onDispatched={(res) => {
+            setDispatchedRun(res);
+            setActiveTrigger(null);
+          }}
         />
       )}
     </div>

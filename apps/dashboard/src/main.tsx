@@ -92,6 +92,21 @@ const ExportCenterTab = lazy(() =>
     default: m.ExportCenterTab,
   })),
 );
+const MigrationControlPlaneTab = lazy(() =>
+  import('./features/MigrationControlPlaneTab.js').then((m) => ({
+    default: m.MigrationControlPlaneTab,
+  })),
+);
+const LiveConsoleTab = lazy(() =>
+  import('./features/LiveConsoleTab.js').then((m) => ({
+    default: m.LiveConsoleTab,
+  })),
+);
+const VerificationTab = lazy(() =>
+  import('./features/VerificationTab.js').then((m) => ({
+    default: m.VerificationTab,
+  })),
+);
 const RemediationTrackerTab = lazy(() =>
   import('./features/RemediationTrackerTab.js').then((m) => ({
     default: m.RemediationTrackerTab,
@@ -305,6 +320,7 @@ export function App() {
             <CollectorHealthTab
               bundle={bundle}
               selectedOrgIds={selectedOrgIds}
+              onLoadBundle={handleLoadBundle}
             />
           )}
           {activeTab === 'export' && (
@@ -313,6 +329,18 @@ export function App() {
               insights={insights}
               selectedOrgIds={selectedOrgIds}
             />
+          )}
+          {activeTab === 'control-plane' && (
+            <MigrationControlPlaneTab
+              bundle={bundle}
+              selectedOrgIds={selectedOrgIds}
+            />
+          )}
+          {activeTab === 'console' && (
+            <LiveConsoleTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
+          )}
+          {activeTab === 'verification' && (
+            <VerificationTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
           )}
           {activeTab === 'remediation' && remediationDiff && (
             <RemediationTrackerTab diff={remediationDiff} />

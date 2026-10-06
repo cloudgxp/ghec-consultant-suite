@@ -30,6 +30,7 @@ export interface RepositoryPipelineOptions {
   readonly geiRunner?: GeiCommandRunner | undefined;
   readonly lfsRunner?: GeiCommandRunner | undefined;
   readonly releaseTransport?: ReleaseTransport | undefined;
+  readonly scope?: MigrationScope | undefined;
 }
 
 export interface RepositoryPipelineResult {

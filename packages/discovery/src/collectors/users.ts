@@ -13,7 +13,15 @@ export const collector: Collector = {
   implementation: 'implemented',
   async collect(context: CollectorContext): Promise<CollectorResult> {
     const startedAt = new Date().toISOString();
-    const operation = {
+    const warnings: string[] = [];
+    const provenanceList: Array<{
+      source: 'rest';
+      operation: string;
+      observedAt: string;
+      apiVersion: string;
+    }> = [];
+
+    const memberOperation = {
       id: 'rest.orgs.list-members',
       transport: 'rest' as const,
       verifiedReadOnly: true as const,
@@ -22,16 +30,24 @@ export const collector: Collector = {
     };
 
     const res = await context.adapter.fetchAll<GitHubMemberItem>(
-      operation,
+      memberOperation,
       context.signal,
     );
-    const completedAt = new Date().toISOString();
+    provenanceList.push({
+      source: 'rest',
+      operation: 'rest.orgs.list-members',
+      observedAt: res.observedAt,
+      apiVersion: '2026-03-10',
+    });
+
     const salt = context.salt ?? 'default-salt';
+    const entities: Entity[] = [];
+    const seenPseudonyms = new Set<string>();
 
-    const entities: Entity[] = res.items.map((m) => {
+    for (const m of res.items) {
       const pseudonym = pseudonymizeUsername(salt, m.login);
-
-      return {
+      seenPseudonyms.add(pseudonym);
+      entities.push({
         id: `org:${context.organizationId}:identity:${pseudonym}`,
         organizationId: context.organizationId,
         collectorExecutionId: context.executionId,
@@ -46,8 +62,59 @@ export const collector: Collector = {
         outsideCollaborator: false,
         ssoStatus: 'unknown',
         membership: m.role === 'admin' ? 'owner' : 'member',
+      });
+    }
+
+    // Query outside collaborators
+    try {
+      const outsideOperation = {
+        id: 'rest.orgs.list-outside-collaborators',
+        transport: 'rest' as const,
+        verifiedReadOnly: true as const,
+        path: '/orgs/{org}/outside_collaborators',
+        pathParams: { org: context.organizationId },
       };
-    });
+
+      const outsideRes = await context.adapter.fetchAll<GitHubMemberItem>(
+        outsideOperation,
+        context.signal,
+      );
+      provenanceList.push({
+        source: 'rest',
+        operation: 'rest.orgs.list-outside-collaborators',
+        observedAt: outsideRes.observedAt,
+        apiVersion: '2026-03-10',
+      });
+
+      for (const m of outsideRes.items) {
+        const pseudonym = pseudonymizeUsername(salt, m.login);
+        if (!seenPseudonyms.has(pseudonym)) {
+          seenPseudonyms.add(pseudonym);
+          entities.push({
+            id: `org:${context.organizationId}:identity:${pseudonym}`,
+            organizationId: context.organizationId,
+            collectorExecutionId: context.executionId,
+            provenance: {
+              source: 'rest',
+              operation: 'rest.orgs.list-outside-collaborators',
+              observedAt: outsideRes.observedAt,
+              apiVersion: '2026-03-10',
+            },
+            kind: 'identity',
+            pseudonym,
+            outsideCollaborator: true,
+            ssoStatus: 'unknown',
+            membership: 'outside',
+          });
+        }
+      }
+    } catch (err) {
+      warnings.push(
+        `Failed to fetch outside collaborators for org ${context.organizationId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    const completedAt = new Date().toISOString();
 
     return {
       execution: {
@@ -57,15 +124,8 @@ export const collector: Collector = {
         status: 'complete',
         startedAt,
         completedAt,
-        provenance: [
-          {
-            source: 'rest',
-            operation: 'rest.orgs.list-members',
-            observedAt: res.observedAt,
-            apiVersion: '2026-03-10',
-          },
-        ],
-        warnings: [],
+        provenance: provenanceList,
+        warnings,
         errors: [],
         coverage: {
           state: 'complete',

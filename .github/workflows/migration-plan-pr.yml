@@ -6,6 +6,7 @@ on:
       - 'scopes/**.json'
       - 'scopes/**.yml'
       - 'scopes/**.yaml'
+      - '!scopes/test-**'
 
 permissions:
   contents: read
@@ -41,8 +42,8 @@ jobs:
         id: find-scopes
         shell: bash
         run: |
-          # Find added or modified files in scopes/
-          CHANGED=$(git diff --name-only -r HEAD~1 HEAD -- 'scopes/*.json' 'scopes/**/*.json' || true)
+          # Find added or modified files in scopes/, excluding test fixtures
+          CHANGED=$(git diff --name-only --diff-filter=d -r HEAD~1 HEAD -- 'scopes/*.json' 'scopes/**/*.json' ':!scopes/test-*' || true)
           if [ -z "$CHANGED" ]; then
             echo "No JSON scope files changed."
             echo "has_scopes=false" >> "$GITHUB_OUTPUT"
@@ -71,6 +72,11 @@ jobs:
 
           echo "$SCOPES_JSON" | jq -r '.[]' | while read -r SCOPE_FILE; do
             if [ ! -f "$SCOPE_FILE" ]; then
+              continue
+            fi
+
+            if [[ "$SCOPE_FILE" =~ ^scopes/test- ]] || grep -q '"example-source-org"' "$SCOPE_FILE"; then
+              echo "Skipping test/example scope: $SCOPE_FILE"
               continue
             fi
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
-import { Button, Label, UnderlineNav } from '@primer/react';
-import { DownloadIcon } from '@primer/octicons-react';
+import { Button, Dialog, Label, UnderlineNav } from '@primer/react';
+import { DownloadIcon, SearchIcon } from '@primer/octicons-react';
 import { formatDuration, resolveOrgName } from '../lib/formatters.js';
 import { generateCollectorHealthCsv, downloadCsv } from '../lib/export-csv.js';
 import {
@@ -10,10 +10,13 @@ import {
   FilterToolbar,
   PageHeader,
 } from '../components/ui/index.js';
+import { DiscoveryScanTrigger } from '../components/DiscoveryScanTrigger.js';
+import type { ImportResult } from '../lib/importer.js';
 
 interface CollectorHealthTabProps {
   bundle: DiscoveryBundle;
   selectedOrgIds: readonly string[];
+  onLoadBundle?: ((result: ImportResult) => void) | undefined;
 }
 
 const statusVariant: Record<string, 'success' | 'attention' | 'danger'> = {
@@ -25,8 +28,10 @@ const statusVariant: Record<string, 'success' | 'attention' | 'danger'> = {
 export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
   bundle,
   selectedOrgIds,
+  onLoadBundle,
 }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
 
   const collectors = bundle.collectors.filter(
     (c) =>
@@ -57,14 +62,25 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
           </>
         }
         primaryAction={
-          <Button
-            variant="primary"
-            size="small"
-            leadingVisual={DownloadIcon}
-            onClick={handleExportCsv}
-          >
-            Export Collector Audit (CSV)
-          </Button>
+          <div className="flex items-center gap-2">
+            {onLoadBundle && (
+              <Button
+                size="small"
+                leadingVisual={SearchIcon}
+                onClick={() => setIsScanModalOpen(true)}
+              >
+                Run Discovery Scan
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              size="small"
+              leadingVisual={DownloadIcon}
+              onClick={handleExportCsv}
+            >
+              Export Collector Audit (CSV)
+            </Button>
+          </div>
         }
       />
 
@@ -223,6 +239,23 @@ export const CollectorHealthTab: React.FC<CollectorHealthTabProps> = ({
           </tbody>
         </table>
       </DataTableFrame>
+
+      {isScanModalOpen && (
+        <Dialog
+          title="Run Automated Discovery Scan"
+          onClose={() => setIsScanModalOpen(false)}
+          className="w-full max-w-3xl"
+        >
+          <div className="p-4">
+            <DiscoveryScanTrigger
+              onLoadBundle={(res) => {
+                setIsScanModalOpen(false);
+                onLoadBundle?.(res);
+              }}
+            />
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 };

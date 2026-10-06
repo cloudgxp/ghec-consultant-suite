@@ -145,12 +145,19 @@ export class MigrationPlanner {
 
     // 2. Process Repository-level Scopes
     for (const repoMapping of this.scope.repositories) {
+      const repoKey = `${repoMapping.sourceOrg}/${repoMapping.sourceRepo}`;
+      const repoOptions =
+        repoMapping.options ??
+        this.scope.repositoryOptions?.[repoKey] ??
+        this.scope.repositoryOptions?.[repoMapping.sourceRepo];
+
       const repoScope: MigrationScopeTarget = {
         level: 'repository',
         sourceOrg: repoMapping.sourceOrg,
         targetOrg: repoMapping.targetOrg,
         sourceRepo: repoMapping.sourceRepo,
         targetRepo: repoMapping.targetRepo,
+        options: repoOptions,
       };
 
       let selectedModules: readonly string[] =

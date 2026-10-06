@@ -40,8 +40,8 @@ By integrating `google-labs-code/jules-invoke@v1`, Google's asynchronous Gemini-
 
 ### 1. Multi-Trigger Architecture
 
-1. **Trigger A: Issue-to-Fix Agent (`workflow_dispatch`, `issues: labeled`, `issue_comment: created`)**:
-   - Triggers when an authorized maintainer labels an issue with `jules`, or posts a comment containing `/jules fix` (or `/jules`, `!jules fix`, `jules: fix`). Avoids pinging external GitHub users.
+1. **Trigger A: Issue-to-Fix Agent (`workflow_dispatch`, `issues: labeled`)**:
+   - Triggers when an authorized maintainer labels an issue with `jules`. (Issue and PR review comments are handled directly by the native Jules GitHub App, avoiding duplicate action runs and bot auth conflicts).
    - Strictly enforces maintainer association (`OWNER`, `MEMBER`, `COLLABORATOR`).
    - Generates an issue acknowledgement reaction/comment.
    - Dispatches Jules to resolve the issue with an explicit prompt containing the issue title, body, and reproduction notes.

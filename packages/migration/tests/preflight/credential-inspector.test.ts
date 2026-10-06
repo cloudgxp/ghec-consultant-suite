@@ -90,7 +90,7 @@ describe('SourceCredentialInspector', () => {
 
     const inspector = new SourceCredentialInspector({
       adapter,
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
     });
 
     const assessment = await inspector.inspect();
@@ -111,7 +111,7 @@ describe('SourceCredentialInspector', () => {
 
     const inspector = new SourceCredentialInspector({
       adapter,
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
     });
 
     const assessment = await inspector.inspect();
@@ -132,7 +132,7 @@ describe('SourceCredentialInspector', () => {
 
     const inspector = new SourceCredentialInspector({
       adapter,
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
     });
 
     const assessment = await inspector.inspect();
@@ -153,7 +153,7 @@ describe('SourceCredentialInspector', () => {
 
     const inspector = new SourceCredentialInspector({
       adapter,
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
     });
 
     const assessment = await inspector.inspect();
@@ -168,13 +168,13 @@ describe('SourceCredentialInspector', () => {
         status: 403,
         oauthScopes: ['repo', 'admin:org'],
         ssoRequired: true,
-        ssoUrl: 'https://github.com/orgs/demogxp/sso',
+        ssoUrl: 'https://github.com/orgs/example-source-org/sso',
       },
     });
 
     const inspector = new SourceCredentialInspector({
       adapter,
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
     });
 
     const assessment = await inspector.inspect();
@@ -184,8 +184,9 @@ describe('SourceCredentialInspector', () => {
       assessment.blockers[0]!,
       /requires SAML Single Sign-On \(SSO\) authorization/,
     );
-    assert.ok(
-      assessment.blockers[0]!.includes('https://github.com/orgs/demogxp/sso'),
+    assert.match(
+      assessment.blockers[0]!,
+      /https:\/\/github\.com\/orgs\/example-source-org\/sso/,
     );
   });
 
@@ -204,7 +205,7 @@ describe('SourceCredentialInspector', () => {
 
     const inspector = new SourceCredentialInspector({
       adapter,
-      sourceOrg: 'demogxp',
+      sourceOrg: 'example-source-org',
     });
 
     const assessment = await inspector.inspect();
@@ -212,7 +213,7 @@ describe('SourceCredentialInspector', () => {
     assert.equal(assessment.warnings.length, 1);
     assert.match(
       assessment.warnings[0]!,
-      /gh gei grant-migrator-role --github-org demogxp --actor regular-member/,
+      /gh gei grant-migrator-role --github-org example-source-org --actor regular-member/,
     );
   });
 
@@ -232,19 +233,19 @@ describe('SourceCredentialInspector', () => {
     });
 
     const scope: MigrationScope = {
-      name: 'demogxp-to-target',
+      name: 'example-source-org-to-target',
       organizations: [
         {
-          source: 'demogxp',
-          target: 'antigravity-migration-test',
+          source: 'example-source-org',
+          target: 'example-target-emu',
           modules: ['all'],
         },
       ],
       repositories: [
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'example-source-org',
           sourceRepo: 'repo-alpha',
-          targetOrg: 'antigravity-migration-test',
+          targetOrg: 'example-target-emu',
           targetRepo: 'repo-alpha',
           modules: ['all'],
         },

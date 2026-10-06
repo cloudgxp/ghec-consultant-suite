@@ -117,6 +117,18 @@ export class GitLfsMigrationStrategy {
         },
       };
     }
+    if (request.dryRun) {
+      this.recordCheckpoint(request, 'completed');
+      return {
+        status: 'completed',
+        stagingDirectory,
+        metrics: {
+          objectCount: request.expectedObjectCount ?? 0,
+          bytesPushed: request.expectedBytes ?? 0,
+          durationMs: this.now() - startedAt,
+        },
+      };
+    }
     if (existsSync(stagingDirectory)) {
       throw new Error(
         `LFS staging directory already exists: ${stagingDirectory}`,

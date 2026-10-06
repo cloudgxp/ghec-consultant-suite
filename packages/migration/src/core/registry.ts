@@ -123,6 +123,11 @@ import { OrgCustomPropertiesMigrationModule } from '../modules/org-custom-proper
 import { RepoCustomPropertiesMigrationModule } from '../modules/repo-custom-properties/module.js';
 import { CodeownersRepairModule } from '../post-migration/codeowners/module.js';
 import { GhasSecurityMigrationModule } from '../post-migration/security/module.js';
+import { ReleasesMigrationModule } from '../modules/releases/module.js';
+import { DeployKeysMigrationModule } from '../modules/deploy-keys/module.js';
+import { CollaboratorsMigrationModule } from '../modules/collaborators/module.js';
+import { LfsMigrationModule } from '../modules/lfs/module.js';
+import { PackagesMigrationModule } from '../modules/packages/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -145,5 +150,10 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new MannequinReclamationEngine());
   registry.register(new CodeownersRepairModule());
   registry.register(new GhasSecurityMigrationModule());
+  registry.register(new ReleasesMigrationModule());
+  registry.register(new DeployKeysMigrationModule());
+  registry.register(new CollaboratorsMigrationModule());
+  registry.register(new LfsMigrationModule());
+  registry.register(new PackagesMigrationModule());
   return registry;
 }

@@ -213,13 +213,24 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
     );
     const geiExecutor = new GeiProcessExecutor(this.geiRunner);
 
+    const repoOptions = ctx.scope.options;
+    const targetRepoVisibility = repoOptions?.targetRepoVisibility ?? 'private';
+    const skipReleases = repoOptions?.skipReleases;
+    const timeoutMs =
+      repoOptions?.customTimeout ??
+      (repoOptions?.timeoutSeconds
+        ? repoOptions.timeoutSeconds * 1000
+        : undefined);
+
     try {
       await geiExecutor.execute({
         sourceOrg,
         sourceRepo,
         targetOrg,
         targetRepo,
-        targetRepoVisibility: 'private',
+        targetRepoVisibility,
+        ...(skipReleases !== undefined ? { skipReleases } : {}),
+        ...(timeoutMs !== undefined ? { timeoutMs } : {}),
         ...(sourceToken ? { sourceToken } : {}),
         ...(targetToken ? { targetToken } : {}),
         ...(ctx.signal ? { signal: ctx.signal } : {}),
