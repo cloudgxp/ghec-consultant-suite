@@ -137,6 +137,12 @@ export function registerActionsProxy(
         });
       }
 
+      if (!isValidGitHubOwner(owner) || !isValidGitHubRepo(repo)) {
+        return reply.status(400).send({
+          error: 'Invalid owner or repo format.',
+        });
+      }
+
       const params = new URLSearchParams();
       if (event) params.set('event', event);
       if (status) params.set('status', status);
