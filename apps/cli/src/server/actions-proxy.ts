@@ -30,6 +30,16 @@ export function registerActionsProxy(
   fastify: FastifyInstance,
   options: ActionsProxyOptions,
 ): void {
+  const GITHUB_NAME_RE = /^[A-Za-z0-9._-]+$/;
+  const RUN_ID_RE = /^[0-9]+$/;
+
+  function isValidGitHubName(value: string): boolean {
+    return GITHUB_NAME_RE.test(value);
+  }
+
+  function isValidRunId(value: string): boolean {
+    return RUN_ID_RE.test(value);
+  }
   const fetchFn = options.fetchFn ?? fetch;
 
   const getRequiredToken = async (
@@ -238,7 +248,17 @@ export function registerActionsProxy(
         });
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`;
+      if (
+        !isValidGitHubName(owner) ||
+        !isValidGitHubName(repo) ||
+        !isValidRunId(runId)
+      ) {
+        return reply.status(400).send({
+          error: 'Invalid owner, repo, or runId format.',
+        });
+      }
+
+      const ghUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs/${encodeURIComponent(runId)}/jobs`;
       const res = await fetchFn(ghUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -279,7 +299,17 @@ export function registerActionsProxy(
           .send({ error: 'Missing required parameters: owner and repo.' });
       }
 
-      const ghUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/cancel`;
+      if (
+        !isValidGitHubName(owner) ||
+        !isValidGitHubName(repo) ||
+        !isValidRunId(runId)
+      ) {
+        return reply
+          .status(400)
+          .send({ error: 'Invalid owner, repo, or runId format.' });
+      }
+
+      const ghUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs/${encodeURIComponent(runId)}/cancel`;
       const res = await fetchFn(ghUrl, {
         method: 'POST',
         headers: {
