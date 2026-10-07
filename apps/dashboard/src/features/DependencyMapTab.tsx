@@ -192,7 +192,14 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
   const rows = filteredGraph.nodes.filter(
     (n) => !query || n.label.toLowerCase().includes(query.toLowerCase()),
   );
-  const selected = filteredGraph.nodes.find((n) => n.id === selectedId) ?? null;
+
+  // ⚡ Bolt: Optimize node lookups from O(N) to O(1) during selection and rendering
+  const nodeMap = useMemo(
+    () => new Map(filteredGraph.nodes.map((n) => [n.id, n])),
+    [filteredGraph.nodes],
+  );
+
+  const selected = selectedId ? (nodeMap.get(selectedId) ?? null) : null;
   const outgoing = selected
     ? filteredGraph.edges.filter((e) => e.fromNodeId === selected.id)
     : [];
@@ -456,9 +463,7 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
               </p>
               <ul className="max-h-52 overflow-auto">
                 {transitive.map((id) => (
-                  <li key={id}>
-                    {filteredGraph.nodes.find((n) => n.id === id)?.label ?? id}
-                  </li>
+                  <li key={id}>{nodeMap.get(id)?.label ?? id}</li>
                 ))}
               </ul>
             </div>
