@@ -244,7 +244,9 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
       };
 
       operations.push({
-        id: targetRepo ? `pull-request:${targetRepo}:${pr.number}` : `pull-request:${pr.number}`,
+        id: targetRepo
+          ? `pull-request:${targetRepo}:${pr.number}`
+          : `pull-request:${pr.number}`,
         resourceType: 'pull-request',
         resourceName: `#${pr.number} ${pr.title}`,
         operation: exists ? 'noop' : 'create',
@@ -263,7 +265,9 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
       };
 
       operations.push({
-        id: targetRepo ? `pull-requests-archive:${targetRepo}` : 'pull-requests-archive',
+        id: targetRepo
+          ? `pull-requests-archive:${targetRepo}`
+          : 'pull-requests-archive',
         resourceType: 'pull-requests-archive',
         resourceName: 'Historical Pull Requests Archive',
         operation: archiveExists ? 'noop' : 'create',

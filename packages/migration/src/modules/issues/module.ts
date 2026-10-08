@@ -307,7 +307,9 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
     for (const label of sourceData.labels) {
       const exists = targetLabelNames.has(label.name.toLowerCase());
       operations.push({
-        id: targetRepo ? `label:${targetRepo}:${label.name}` : `label:${label.name}`,
+        id: targetRepo
+          ? `label:${targetRepo}:${label.name}`
+          : `label:${label.name}`,
         resourceType: 'issue-label',
         resourceName: label.name,
         operation: exists ? 'noop' : 'create',
@@ -371,7 +373,9 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
       };
 
       operations.push({
-        id: targetRepo ? `issue:${targetRepo}:${issue.number}` : `issue:${issue.number}`,
+        id: targetRepo
+          ? `issue:${targetRepo}:${issue.number}`
+          : `issue:${issue.number}`,
         resourceType: 'issue',
         resourceName: `#${issue.number} ${issue.title}`,
         operation: exists ? 'noop' : 'create',
