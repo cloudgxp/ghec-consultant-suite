@@ -83,12 +83,14 @@ gh run list --workflow=test-migration-dispatch.yml --limit 5
 ## 6. Current Status & Evidence
 
 ### Workflow Runs
+
 - **Discovery Scan (`demogxp`):** [Run 37794405333](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37794405333) (2m46s, 11 collectors, 33 repos, 474 entities)
 - **Preflight & Planning Dry-Run:** [Run 37795563491](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37795563491) (1m20s, 47 planned operations across 31 module targets)
 - **Live Apply Attempt 1:** [Run 37795889035](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37795889035) (1m38s, Partial status 4)
 - **Live Apply Attempt 2:** [Run 37796903497](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37796903497) (1m38s, Partial status 4)
 
 ### Artifacts Downloaded & On Disk
+
 - `scans/discovery-demogxp/discovery-demogxp-bundle/ghec-discovery-organization-demogxp-20261008T144119-45cd37c65082.json`
 - `scans/dryrun-artifacts/test-migration-artifacts-37795563491/`
 - `scans/live-artifacts/test-migration-artifacts-37795889035/`
@@ -96,10 +98,12 @@ gh run list --workflow=test-migration-dispatch.yml --limit 5
 - `scans/remediation-plan.md` & `scans/remediation-plan.json`
 
 ### Code Fixes Applied & Pushed to PR #76 (`task/031-demogxp-migration`)
+
 1. **Target Repo Scoped Operation IDs:** Fixed cross-repo duplicate operation ID collision bug in `issues`, `pull-requests`, `rulesets`, and `branch-protection`.
 2. **Code Formatting:** Auto-formatted files via Prettier to maintain 100% clean `npm run check`.
 3. **Workflow Scope Passing:** Added `--scope "$INPUT_SCOPE"` to `verify` step in `test-migration-dispatch.yml` and `migration-execute-wave.yml`.
 
 ### Root Cause Diagnosis & Resume Action Items
+
 1. **Target SAML SSO Enforcement:** Target org `mig-framework-test` requires Personal Access Tokens to be authorized for SAML SSO. The token in secret `GHEC_TARGET_TOKEN` needs SAML authorization enabled under GitHub Settings > Personal access tokens (classic) > Configure SSO > Authorize for `mig-framework-test` (or be updated with an active token from `homer-simpson_gxp`).
 2. **Rate Limit Quota:** Target client REST quota hit wait threshold (resetting in ~1 hour). Next run should proceed once quota resets.
