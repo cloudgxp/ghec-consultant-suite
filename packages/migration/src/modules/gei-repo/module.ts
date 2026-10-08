@@ -1,3 +1,6 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MIGRATION_SCHEMA_VERSION, type ModulePlan } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
 import type {
@@ -8,8 +11,13 @@ import type {
   OperationExecutionResult,
 } from '../../core/types.js';
 import { GeiProcessExecutor } from '../../gei/executor.js';
+import {
+  downloadMigrationLogs,
+  parseGeiMetadataDiagnostics,
+} from '../../gei/logs.js';
 import type { GeiCommandRunner } from '../../gei/types.js';
 import { SourceCredentialInspector } from '../../preflight/credential-inspector.js';
+import { RepositoryParityInspector } from './parity-inspector.js';
 
 export interface GeiRepoDiscoveredData {
   readonly sourceOrg: string;
@@ -223,7 +231,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         : undefined);
 
     try {
-      await geiExecutor.execute({
+      const geiResult = await geiExecutor.execute({
         sourceOrg,
         sourceRepo,
         targetOrg,
@@ -236,14 +244,127 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         ...(ctx.signal ? { signal: ctx.signal } : {}),
       });
 
+      let logContents = `${geiResult.stdout}\n${geiResult.stderr}`;
+
+      if (geiResult.migrationId) {
+        try {
+          const tempAuditDir = mkdtempSync(join(tmpdir(), 'ghec-gei-audit-'));
+          try {
+            const downloadedLog = await downloadMigrationLogs(
+              geiResult.migrationId,
+              targetOrg,
+              targetRepo,
+              tempAuditDir,
+              {
+                ...(this.geiRunner ? { runner: this.geiRunner } : {}),
+                ...(sourceToken ? { sourceToken } : {}),
+                ...(targetToken ? { targetToken } : {}),
+                signal: ctx.signal,
+              },
+            );
+            if (existsSync(downloadedLog.filePath)) {
+              const fileText = readFileSync(downloadedLog.filePath, 'utf8');
+              logContents += `\n${fileText}`;
+            }
+          } finally {
+            rmSync(tempAuditDir, { recursive: true, force: true });
+          }
+        } catch (logErr) {
+          ctx.logger.debug?.(
+            `[gei-repo] Could not download GEI logs via CLI: ${logErr instanceof Error ? logErr.message : String(logErr)}`,
+          );
+        }
+      }
+
+      try {
+        const issuesRes = await ctx.targetClient.readPage(
+          {
+            id: 'rest.issues.listForRepo',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/issues',
+            pathParams: { owner: targetOrg, repo: targetRepo },
+            queryParams: { state: 'all', per_page: 50 },
+          },
+          null,
+          ctx.signal,
+        );
+        const items = (issuesRes.items ?? []) as ReadonlyArray<{
+          title?: string;
+          body?: string;
+        }>;
+        const migrationLogIssue = items.find(
+          (issue) => issue.title?.trim().toLowerCase() === 'migration log',
+        );
+        if (migrationLogIssue?.body) {
+          logContents += `\n${migrationLogIssue.body}`;
+        }
+      } catch {
+        // Fallback inspection is non-fatal
+      }
+
+      const diagnostics = parseGeiMetadataDiagnostics(logContents, {
+        skippedReleases: geiResult.skippedReleases,
+        exitCode: 0,
+      });
+
+      for (const warn of diagnostics.warnings) {
+        ctx.logger.warn(`[gei-repo] ${warn}`);
+      }
+
+      if (diagnostics.failedMetadataCategories.length > 0) {
+        ctx.logger.warn(
+          `[gei-repo] Detected metadata omissions or failures in categories: ${diagnostics.failedMetadataCategories.join(', ')}. Git data was preserved: ${diagnostics.gitDataPreserved}`,
+        );
+      }
+
+      const hasActualFailure =
+        diagnostics.metadataState === 'failed' ||
+        (diagnostics.metadataState === 'partial' &&
+          (diagnostics.errors.length > 0 ||
+            diagnostics.failedMetadataCategories.some(
+              (cat) => cat !== 'releases',
+            )));
+
+      if (hasActualFailure) {
+        const failureReason =
+          diagnostics.errors[0] ||
+          diagnostics.warnings[0] ||
+          `GEI metadata migration ${diagnostics.metadataState} (${diagnostics.failedMetadataCategories.join(', ')})`;
+        results.push({
+          operationId: `gei-repo-metadata-${targetRepo}`,
+          status: 'failed',
+          error: failureReason.slice(0, 2048),
+          completedAt: new Date().toISOString(),
+        });
+      } else {
+        results.push({
+          operationId: `gei-repo-migration-${targetRepo}`,
+          status: 'succeeded',
+          completedAt: new Date().toISOString(),
+        });
+      }
+
       ctx.logger.info(
         `[gei-repo] Successfully migrated ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo} via GEI.`,
       );
+
+      const hasFailedOp = results.some((r) => r.status === 'failed');
+      return {
+        schemaVersion: MIGRATION_SCHEMA_VERSION,
+        moduleId: this.id,
+        status: hasFailedOp ? 'partial' : 'complete',
+        durationMs: Date.now() - startTime,
+        results,
+        metadataState: diagnostics.metadataState,
+        failedMetadataCategories: [...diagnostics.failedMetadataCategories],
+      };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       ctx.logger.error(
         `[gei-repo] GEI migration failed for ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo}: ${msg}`,
       );
+      const diagnostics = parseGeiMetadataDiagnostics(msg, { exitCode: 1 });
       results.push({
         operationId: `gei-repo-error-${targetRepo}`,
         status: 'failed',
@@ -253,16 +374,19 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       if (!ctx.continueOnError) {
         throw err;
       }
+      return {
+        schemaVersion: MIGRATION_SCHEMA_VERSION,
+        moduleId: this.id,
+        status: 'failed',
+        durationMs: Date.now() - startTime,
+        results,
+        metadataState:
+          diagnostics.metadataState === 'complete'
+            ? 'failed'
+            : diagnostics.metadataState,
+        failedMetadataCategories: [...diagnostics.failedMetadataCategories],
+      };
     }
-
-    const hasFailure = results.some((r) => r.status === 'failed');
-    return {
-      schemaVersion: MIGRATION_SCHEMA_VERSION,
-      moduleId: this.id,
-      status: hasFailure ? 'failed' : 'complete',
-      durationMs: Date.now() - startTime,
-      results,
-    };
   }
 
   async verify(
@@ -281,33 +405,11 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       };
     }
 
-    try {
-      const res = await ctx.targetClient.readSingle(
-        {
-          id: 'rest.repos.get',
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path: '/repos/{owner}/{repo}',
-          pathParams: { owner: targetOrg, repo: targetRepo },
-        },
-        ctx.signal,
-      );
-
-      if (res.status === 200) {
-        return {
-          moduleId: this.id,
-          verified: true,
-          discrepancies: [],
-        };
-      }
-    } catch {
-      // not found
-    }
-
+    const report = await RepositoryParityInspector.inspect(ctx);
     const hasTokens = Boolean(
       process.env.GHEC_TARGET_TOKEN || process.env.GH_PAT || this.geiRunner,
     );
-    if (!hasTokens) {
+    if (!hasTokens && !report.target.exists) {
       return {
         moduleId: this.id,
         verified: true,
@@ -315,17 +417,15 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       };
     }
 
+    const discrepancies = RepositoryParityInspector.synthesizeDiscrepancies(
+      report,
+      targetRepo,
+    );
+
     return {
       moduleId: this.id,
-      verified: false,
-      discrepancies: [
-        {
-          resourceName: targetRepo,
-          expected: 'present',
-          actual: 'absent',
-          message: `Target repository ${targetOrg}/${targetRepo} does not exist at destination.`,
-        },
-      ],
+      verified: discrepancies.length === 0,
+      discrepancies: [...discrepancies],
     };
   }
 }

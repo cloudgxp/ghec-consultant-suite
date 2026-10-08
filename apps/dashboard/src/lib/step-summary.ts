@@ -71,6 +71,12 @@ export const CANONICAL_MODULES: readonly {
     category: 'organization',
   },
 
+  {
+    id: 'packages',
+    displayName: 'Packages & GHCR Container Image Migration',
+    category: 'organization',
+  },
+
   // Repository Scope
   {
     id: 'gei-repo',
@@ -132,20 +138,30 @@ export const CANONICAL_MODULES: readonly {
     displayName: 'Outside Collaborators & Roles',
     category: 'repository',
   },
+  {
+    id: 'issues',
+    displayName: 'Issues & Milestones Migration',
+    category: 'repository',
+  },
+  {
+    id: 'pull-requests',
+    displayName: 'Pull Requests & Historical Archival',
+    category: 'repository',
+  },
 
   // Post-Migration Scope
   {
-    id: 'mannequins',
+    id: 'post-migration-mannequins',
     displayName: 'EMU Mannequin Reclamation',
     category: 'post-migration',
   },
   {
-    id: 'codeowners-repair',
+    id: 'post-migration-codeowners',
     displayName: 'CODEOWNERS & Team References',
     category: 'post-migration',
   },
   {
-    id: 'ghas-security',
+    id: 'security',
     displayName: 'GHAS Security & Alert Matching',
     category: 'post-migration',
   },

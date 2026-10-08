@@ -9,8 +9,8 @@ import {
 
 describe('Task 041 (DASH-26): Step Summary & Artifact Report Viewer', () => {
   describe('Canonical Modules Registry', () => {
-    it('defines exactly the 20 total modules across all three scopes', () => {
-      assert.equal(CANONICAL_MODULES.length, 20);
+    it('defines the expected total modules across all three scopes', () => {
+      assert.equal(CANONICAL_MODULES.length, 23);
 
       const orgModules = CANONICAL_MODULES.filter(
         (m) => m.category === 'organization',
@@ -22,8 +22,8 @@ describe('Task 041 (DASH-26): Step Summary & Artifact Report Viewer', () => {
         (m) => m.category === 'post-migration',
       );
 
-      assert.equal(orgModules.length, 5);
-      assert.equal(repoModules.length, 12);
+      assert.equal(orgModules.length, 6);
+      assert.equal(repoModules.length, 14);
       assert.equal(postModules.length, 3);
 
       const moduleIds = CANONICAL_MODULES.map((m) => m.id);
@@ -32,7 +32,9 @@ describe('Task 041 (DASH-26): Step Summary & Artifact Report Viewer', () => {
       assert.ok(moduleIds.includes('teams'));
       assert.ok(moduleIds.includes('gei-repo'));
       assert.ok(moduleIds.includes('rulesets'));
-      assert.ok(moduleIds.includes('mannequins'));
+      assert.ok(moduleIds.includes('issues'));
+      assert.ok(moduleIds.includes('pull-requests'));
+      assert.ok(moduleIds.includes('post-migration-mannequins'));
     });
   });
 
@@ -80,9 +82,9 @@ describe('Task 041 (DASH-26): Step Summary & Artifact Report Viewer', () => {
 | **Mode** | 🧪 Dry-Run (Simulation) |
 | **Source Organization** | \`source-enterprise\` |
 | **Target Organization** | \`target-enterprise\` |
-| **Duration** | 120.50s |
-| **Started At** | \`2026-10-06T10:00:00.000Z\` |
-| **Completed At** | \`2026-10-06T10:02:00.500Z\` |
+| **Duration** | 121.50s |
+| **Started At** | \`2126-10-06T10:00:00.000Z\` |
+| **Completed At** | \`2126-10-06T10:02:00.500Z\` |
 
 > [!WARNING]
 > **Operational Warnings (1):**
@@ -101,7 +103,7 @@ describe('Task 041 (DASH-26): Step Summary & Artifact Report Viewer', () => {
       assert.equal(parsed.mode, '🧪 Dry-Run (Simulation)');
       assert.equal(parsed.sourceOrg, 'source-enterprise');
       assert.equal(parsed.targetOrg, 'target-enterprise');
-      assert.equal(parsed.duration, '120.50s');
+      assert.equal(parsed.duration, '121.50s');
     });
 
     it('parses GitHub-style alert callouts with categories and bullet items', () => {

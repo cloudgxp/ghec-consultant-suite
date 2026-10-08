@@ -246,8 +246,106 @@ export const collector: Collector = {
       }
     }
 
+    interface GitHubCustomProperty {
+      property_name: string;
+      value_type: string;
+      required?: boolean;
+      default_value?: string | string[];
+      allowed_values?: string[];
+      description?: string;
+    }
+    let orgCustomProperties: GitHubCustomProperty[] = [];
+    try {
+      const propsRes = await context.adapter.readSingle<GitHubCustomProperty[]>(
+        {
+          id: 'rest.orgs.getCustomProperties',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: `/orgs/{org}/properties/schema`,
+          pathParams: { org: context.organizationId },
+        },
+        context.signal,
+      );
+      if (Array.isArray(propsRes.data)) {
+        orgCustomProperties = propsRes.data;
+      }
+    } catch {
+      // Ignore if org properties API fails
+    }
+
+    interface GitHubRepoCustomPropertyValue {
+      repository_name: string;
+      properties: Array<{
+        property_name: string;
+        value: string | string[];
+      }>;
+    }
+    const repoProperties = new Map<
+      string,
+      Array<{ name: string; value: string | null }>
+    >();
+    try {
+      const propsValuesRes =
+        await context.adapter.fetchAll<GitHubRepoCustomPropertyValue>(
+          {
+            id: 'rest.orgs.getCustomPropertyValues',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: `/orgs/{org}/properties/values`,
+            pathParams: { org: context.organizationId },
+          },
+          context.signal,
+        );
+      for (const repo of propsValuesRes.items) {
+        repoProperties.set(
+          repo.repository_name,
+          repo.properties.map((p) => ({
+            name: p.property_name,
+            value: Array.isArray(p.value)
+              ? p.value.join(', ')
+              : p.value == null
+                ? null
+                : String(p.value),
+          })),
+        );
+      }
+    } catch {
+      // Ignore
+    }
+
     const completedAt = new Date().toISOString();
 
+    const customPropertyEntities: Entity[] = orgCustomProperties.map((prop) => {
+      const rawType = prop.value_type?.toLowerCase() ?? 'string';
+      const valueType = [
+        'string',
+        'single_select',
+        'multi_select',
+        'true_false',
+      ].includes(rawType)
+        ? (rawType as
+            'string' | 'single_select' | 'multi_select' | 'true_false')
+        : 'string';
+
+      return {
+        id: `org:${context.organizationId}:custom-property:${prop.property_name}`,
+        organizationId: context.organizationId,
+        collectorExecutionId: context.executionId,
+        provenance: {
+          source: 'rest',
+          operation: 'rest.orgs.getCustomProperties',
+          observedAt: lastObservedAt,
+          apiVersion: '2026-03-10',
+        },
+        kind: 'custom-property-definition',
+        propertyName: prop.property_name,
+        valueType,
+        required: prop.required ?? null,
+        defaultValue: prop.default_value ?? null,
+        allowedValues: prop.allowed_values ?? null,
+        description: prop.description ?? null,
+      };
+    });
     const repositories: Entity[] = allRepoNodes.map((node) => {
       const repoId = `org:${context.organizationId}:repo:${node.name}`;
       const sizeValue =
@@ -324,7 +422,7 @@ export const collector: Collector = {
           pushedAt: node.pushedAt ?? null,
           businessClassification: null,
           migrationWave: null,
-          customProperties: [],
+          customProperties: repoProperties.get(node.name) ?? [],
           metadataCoverage: 'partial' as const,
         },
         {
@@ -438,6 +536,7 @@ export const collector: Collector = {
       ...repositories,
       ...portfolioEntities,
       ...projectEntities,
+      ...customPropertyEntities,
     ];
 
     const repositoryPolicies: DiscoveredPolicyItem[] = allRepoNodes.map(

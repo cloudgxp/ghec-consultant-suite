@@ -237,4 +237,394 @@ describe('GeiRepoMigrationModule', () => {
     );
     assert.equal(capturedTimeout, 600000, 'timeoutMs should be 600000ms');
   });
+
+  it('detects metadata overflow in GEI stdout and records partial status and failed categories', async () => {
+    const mockRunner = async (cmd: string, args: readonly string[]) => {
+      return {
+        command: cmd,
+        args,
+        exitCode: 0,
+        stdout:
+          'Starting migration RM_999\nWARNING: Repository metadata too big to migrate (Archive: 42GB)\nFinished.',
+        stderr: '',
+      };
+    };
+
+    const loggedWarnings: string[] = [];
+    const module = new GeiRepoMigrationModule(mockRunner);
+    const ctx: MigrationContext = {
+      runId: 'test-run-metadata-overflow',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'large-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'large-repo',
+      },
+      sourceClient: createMockAdapter({
+        probeResult: {
+          status: 200,
+          oauthScopes: ['repo', 'admin:org'],
+        },
+      }),
+      targetClient: createMockAdapter({ targetExists: false }),
+      logger: {
+        info: () => {},
+        warn: (msg: string) => loggedWarnings.push(msg),
+        error: () => {},
+      },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const result = await module.apply(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/large-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(result.status, 'partial');
+    assert.equal(result.metadataState, 'failed');
+    assert.ok(result.failedMetadataCategories?.includes('issues'));
+    assert.ok(result.failedMetadataCategories?.includes('pull-requests'));
+    assert.ok(result.failedMetadataCategories?.includes('releases'));
+    assert.ok(result.failedMetadataCategories?.includes('settings'));
+    assert.equal(result.results.length, 1);
+    assert.equal(result.results[0]?.status, 'failed');
+    assert.ok(
+      loggedWarnings.some((w) => w.includes('Repository metadata too big')),
+    );
+  });
+
+  it('detects PR review thread errors via target Migration Log issue fallback', async () => {
+    const mockRunner = async (cmd: string, args: readonly string[]) => {
+      return {
+        command: cmd,
+        args,
+        exitCode: 0,
+        stdout: 'Migration complete RM_101',
+        stderr: '',
+      };
+    };
+
+    const mockTarget: GitHubReadAdapter = {
+      ...createMockAdapter({ targetExists: false }),
+      async readPage(op: ReadOperation) {
+        if (op.path?.includes('/issues')) {
+          return {
+            items: [
+              {
+                title: 'Migration Log',
+                body: 'GEI finished with errors:\nERROR: REVIEW_THREAD_MISSING_END_COMMIT_OID on PR #15',
+              },
+            ],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        return {
+          items: [],
+          nextCursor: null,
+          observedAt: new Date().toISOString(),
+          remainingRequests: 5000,
+          resetAt: null,
+          status: 200,
+        };
+      },
+    };
+
+    const module = new GeiRepoMigrationModule(mockRunner);
+    const ctx: MigrationContext = {
+      runId: 'test-run-migration-log-issue',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'pr-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'pr-repo',
+      },
+      sourceClient: createMockAdapter({
+        probeResult: {
+          status: 200,
+          oauthScopes: ['repo', 'admin:org'],
+        },
+      }),
+      targetClient: mockTarget,
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const result = await module.apply(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/pr-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(result.status, 'partial');
+    assert.equal(result.metadataState, 'partial');
+    assert.ok(result.failedMetadataCategories?.includes('pull-requests'));
+    assert.equal(result.results.length, 1);
+    assert.equal(result.results[0]?.status, 'failed');
+  });
+
+  it('verify() passes when source and target metadata are in parity', async () => {
+    const module = new GeiRepoMigrationModule();
+    const mockRepoData = {
+      id: 1,
+      default_branch: 'main',
+      has_issues: true,
+      has_wiki: false,
+      has_projects: false,
+      allow_squash_merge: true,
+      allow_merge_commit: true,
+      allow_rebase_merge: true,
+    };
+
+    const createParityAdapter = (): GitHubReadAdapter => ({
+      ...createMockAdapter({}),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/repos/')) {
+          return {
+            data: mockRepoData,
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+      async readPage(op: ReadOperation) {
+        if (op.path?.includes('/issues')) {
+          return {
+            items: [{ title: 'Issue 1', body: 'Body 1', state: 'open' }],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        if (op.path?.includes('/pulls')) {
+          return {
+            items: [{ state: 'open', merged_at: null }],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        if (op.path?.includes('/releases')) {
+          return {
+            items: [{ assets: [{ id: 10 }] }],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        return {
+          items: [],
+          nextCursor: null,
+          observedAt: new Date().toISOString(),
+          remainingRequests: 5000,
+          resetAt: null,
+          status: 200,
+        };
+      },
+    });
+
+    const ctx: MigrationContext = {
+      runId: 'test-parity-pass',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'parity-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'parity-repo',
+      },
+      sourceClient: createParityAdapter(),
+      targetClient: createParityAdapter(),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const verifyResult = await module.verify(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/parity-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(verifyResult.verified, true);
+    assert.deepEqual(verifyResult.discrepancies, []);
+  });
+
+  it('verify() detects deep metadata omissions and settings drift', async () => {
+    const module = new GeiRepoMigrationModule();
+    const sourceAdapter: GitHubReadAdapter = {
+      ...createMockAdapter({}),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/repos/')) {
+          return {
+            data: {
+              id: 1,
+              default_branch: 'main',
+              has_issues: true,
+              has_wiki: true,
+              has_projects: false,
+              allow_squash_merge: true,
+            },
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+      async readPage(op: ReadOperation) {
+        if (op.path?.includes('/issues')) {
+          return {
+            items: [
+              { title: 'Issue 1', state: 'open' },
+              { title: 'Issue 2', state: 'closed' },
+            ],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        if (op.path?.includes('/pulls')) {
+          return {
+            items: [{ state: 'open' }],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        if (op.path?.includes('/releases')) {
+          return {
+            items: [{ assets: [{ id: 1 }, { id: 2 }] }],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        return {
+          items: [],
+          nextCursor: null,
+          observedAt: new Date().toISOString(),
+          remainingRequests: 5000,
+          resetAt: null,
+          status: 200,
+        };
+      },
+    };
+
+    const targetAdapter: GitHubReadAdapter = {
+      ...createMockAdapter({ targetExists: true }),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/repos/')) {
+          return {
+            data: {
+              id: 2,
+              default_branch: 'main',
+              has_issues: false, // drifted
+              has_wiki: false, // drifted
+              has_projects: false,
+              allow_squash_merge: false, // drifted
+            },
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+      async readPage(op: ReadOperation) {
+        if (op.path?.includes('/issues')) {
+          return {
+            items: [
+              {
+                title: 'Migration Log',
+                body: 'WARNING: Repository metadata too big to migrate\nArchive generation failed',
+              },
+            ],
+            nextCursor: null,
+            observedAt: new Date().toISOString(),
+            remainingRequests: 5000,
+            resetAt: null,
+            status: 200,
+          };
+        }
+        return {
+          items: [],
+          nextCursor: null,
+          observedAt: new Date().toISOString(),
+          remainingRequests: 5000,
+          resetAt: null,
+          status: 200,
+        };
+      },
+    };
+
+    const ctx: MigrationContext = {
+      runId: 'test-parity-fail',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'drift-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'drift-repo',
+      },
+      sourceClient: sourceAdapter,
+      targetClient: targetAdapter,
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const verifyResult = await module.verify(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/drift-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(verifyResult.verified, false);
+    const resources = verifyResult.discrepancies.map((d) => d.resourceName);
+    assert.ok(resources.includes('issues'), 'should flag missing issues');
+    assert.ok(
+      resources.includes('pull-requests'),
+      'should flag missing pull requests',
+    );
+    assert.ok(resources.includes('releases'), 'should flag missing releases');
+    assert.ok(
+      resources.includes('repo-settings'),
+      'should flag drifted repo settings',
+    );
+    assert.ok(
+      resources.includes('migration-log'),
+      'should flag migration log warnings',
+    );
+  });
 });

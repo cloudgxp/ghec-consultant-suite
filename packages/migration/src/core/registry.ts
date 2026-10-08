@@ -128,6 +128,8 @@ import { DeployKeysMigrationModule } from '../modules/deploy-keys/module.js';
 import { CollaboratorsMigrationModule } from '../modules/collaborators/module.js';
 import { LfsMigrationModule } from '../modules/lfs/module.js';
 import { PackagesMigrationModule } from '../modules/packages/module.js';
+import { IssuesMigrationModule } from '../modules/issues/module.js';
+import { PullRequestsMigrationModule } from '../modules/pull-requests/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -155,5 +157,7 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new CollaboratorsMigrationModule());
   registry.register(new LfsMigrationModule());
   registry.register(new PackagesMigrationModule());
+  registry.register(new IssuesMigrationModule());
+  registry.register(new PullRequestsMigrationModule());
   return registry;
 }

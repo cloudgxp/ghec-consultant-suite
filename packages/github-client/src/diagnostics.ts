@@ -18,5 +18,6 @@ export function sanitizeDiagnostics(message: string): string {
       '[REDACTED_TOKEN]',
     )
     .replace(/\b(Bearer\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]')
-    .replace(/\b(token\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]');
+    .replace(/\b(token\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]')
+    .replace(/(https?:\/\/)[^\s/@]+@/g, '$1***@');
 }

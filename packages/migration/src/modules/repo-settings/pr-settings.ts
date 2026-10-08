@@ -1,10 +1,12 @@
 import type {
+  MergeCommitMessage,
+  MergeCommitTitle,
   RawGitHubRepositoryResponse,
+  RepositoryCoreMetadata,
+  RepositoryFeatureSettings,
   RepositoryPullRequestSettings,
   SquashMergeCommitMessage,
   SquashMergeCommitTitle,
-  MergeCommitMessage,
-  MergeCommitTitle,
 } from './types.js';
 
 export function parsePullRequestSettings(
@@ -27,10 +29,118 @@ export function parsePullRequestSettings(
   };
 }
 
+export function parseFeatureSettings(
+  raw: RawGitHubRepositoryResponse,
+): RepositoryFeatureSettings {
+  return {
+    hasIssues: raw.has_issues,
+    hasProjects: raw.has_projects,
+    hasWiki: raw.has_wiki,
+    hasDiscussions: raw.has_discussions,
+  };
+}
+
+export function parseCoreMetadata(
+  raw: RawGitHubRepositoryResponse,
+): RepositoryCoreMetadata {
+  return {
+    description: raw.description ?? undefined,
+    homepage: raw.homepage ?? undefined,
+    defaultBranch: raw.default_branch ?? undefined,
+  };
+}
+
 export interface SettingsDiffResult {
   hasChanges: boolean;
   patchPayload: Record<string, unknown>;
   changeDescriptions: string[];
+}
+
+export function diffRepositoryFeatures(
+  desiredFeatures?: RepositoryFeatureSettings | undefined,
+  targetFeatures?: RepositoryFeatureSettings | undefined,
+  desiredMetadata?: RepositoryCoreMetadata | undefined,
+  targetMetadata?: RepositoryCoreMetadata | undefined,
+): SettingsDiffResult {
+  const patchPayload: Record<string, unknown> = {};
+  const changeDescriptions: string[] = [];
+
+  if (
+    desiredFeatures?.hasIssues !== undefined &&
+    desiredFeatures.hasIssues !== targetFeatures?.hasIssues
+  ) {
+    patchPayload.has_issues = desiredFeatures.hasIssues;
+    changeDescriptions.push(
+      `has_issues: ${targetFeatures?.hasIssues} -> ${desiredFeatures.hasIssues}`,
+    );
+  }
+
+  if (
+    desiredFeatures?.hasProjects !== undefined &&
+    desiredFeatures.hasProjects !== targetFeatures?.hasProjects
+  ) {
+    patchPayload.has_projects = desiredFeatures.hasProjects;
+    changeDescriptions.push(
+      `has_projects: ${targetFeatures?.hasProjects} -> ${desiredFeatures.hasProjects}`,
+    );
+  }
+
+  if (
+    desiredFeatures?.hasWiki !== undefined &&
+    desiredFeatures.hasWiki !== targetFeatures?.hasWiki
+  ) {
+    patchPayload.has_wiki = desiredFeatures.hasWiki;
+    changeDescriptions.push(
+      `has_wiki: ${targetFeatures?.hasWiki} -> ${desiredFeatures.hasWiki}`,
+    );
+  }
+
+  if (
+    desiredFeatures?.hasDiscussions !== undefined &&
+    desiredFeatures.hasDiscussions !== targetFeatures?.hasDiscussions
+  ) {
+    patchPayload.has_discussions = desiredFeatures.hasDiscussions;
+    changeDescriptions.push(
+      `has_discussions: ${targetFeatures?.hasDiscussions} -> ${desiredFeatures.hasDiscussions}`,
+    );
+  }
+
+  if (
+    desiredMetadata?.description !== undefined &&
+    desiredMetadata.description !== (targetMetadata?.description ?? '')
+  ) {
+    patchPayload.description = desiredMetadata.description;
+    changeDescriptions.push(
+      `description: "${targetMetadata?.description ?? ''}" -> "${desiredMetadata.description}"`,
+    );
+  }
+
+  if (
+    desiredMetadata?.homepage !== undefined &&
+    desiredMetadata.homepage !== (targetMetadata?.homepage ?? '')
+  ) {
+    patchPayload.homepage = desiredMetadata.homepage;
+    changeDescriptions.push(
+      `homepage: "${targetMetadata?.homepage ?? ''}" -> "${desiredMetadata.homepage}"`,
+    );
+  }
+
+  if (
+    desiredMetadata?.defaultBranch !== undefined &&
+    targetMetadata?.defaultBranch !== undefined &&
+    desiredMetadata.defaultBranch !== targetMetadata.defaultBranch
+  ) {
+    patchPayload.default_branch = desiredMetadata.defaultBranch;
+    changeDescriptions.push(
+      `default_branch: "${targetMetadata.defaultBranch}" -> "${desiredMetadata.defaultBranch}"`,
+    );
+  }
+
+  return {
+    hasChanges: Object.keys(patchPayload).length > 0,
+    patchPayload,
+    changeDescriptions,
+  };
 }
 
 export function diffRepoSettings(
@@ -38,6 +148,10 @@ export function diffRepoSettings(
   targetVisibility: string,
   desiredPr: RepositoryPullRequestSettings,
   targetPr: RepositoryPullRequestSettings,
+  desiredFeatures?: RepositoryFeatureSettings | undefined,
+  targetFeatures?: RepositoryFeatureSettings | undefined,
+  desiredMetadata?: RepositoryCoreMetadata | undefined,
+  targetMetadata?: RepositoryCoreMetadata | undefined,
 ): SettingsDiffResult {
   const patchPayload: Record<string, unknown> = {};
   const changeDescriptions: string[] = [];
@@ -151,6 +265,16 @@ export function diffRepoSettings(
       `merge_commit_message: "${targetPr.mergeCommitMessage ?? 'default'}" -> "${desiredPr.mergeCommitMessage}"`,
     );
   }
+
+  const featuresDiff = diffRepositoryFeatures(
+    desiredFeatures,
+    targetFeatures,
+    desiredMetadata,
+    targetMetadata,
+  );
+
+  Object.assign(patchPayload, featuresDiff.patchPayload);
+  changeDescriptions.push(...featuresDiff.changeDescriptions);
 
   return {
     hasChanges: Object.keys(patchPayload).length > 0,

@@ -205,6 +205,30 @@ export function formatStepSummaryMarkdown(
     lines.push('');
   }
 
+  // 6b. GEI Metadata Failures Alert & Recovery Commands
+  if (summary.metadataFailures && summary.metadataFailures.length > 0) {
+    lines.push('### ⚠️ GEI Metadata Drop & Fallback Remediation');
+    lines.push('> [!CAUTION]');
+    lines.push(
+      '> **GEI Metadata Migration Errors & Dropped Content Detected:**',
+    );
+    for (const mf of summary.metadataFailures) {
+      const repoPrefix = mf.repository
+        ? `\`${sanitize(mf.repository)}\`: `
+        : '';
+      lines.push(
+        `> - ${repoPrefix}Omitted categories: ${mf.categories.map((c) => `\`${sanitize(c)}\``).join(', ')}`,
+      );
+      if (mf.fallbackCommands.length > 0) {
+        lines.push('>   *Recommended Remediation:*');
+        for (const cmd of mf.fallbackCommands) {
+          lines.push(`>   \`${sanitize(cmd)}\``);
+        }
+      }
+    }
+    lines.push('');
+  }
+
   // 7. Errors
   if (summary.errors && summary.errors.length > 0) {
     lines.push('> [!CAUTION]');

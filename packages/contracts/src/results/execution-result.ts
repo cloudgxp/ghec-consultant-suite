@@ -40,6 +40,10 @@ export const ModuleExecutionResultSchema = z
     status: z.enum(['complete', 'partial', 'failed', 'skipped']),
     results: z.array(OperationExecutionResultSchema),
     durationMs: NonNegativeIntegerSchema,
+    metadataState: z
+      .enum(['complete', 'partial', 'failed', 'skipped'])
+      .optional(),
+    failedMetadataCategories: z.array(z.string()).optional(),
   })
   .strict()
   .superRefine((result, ctx) => {

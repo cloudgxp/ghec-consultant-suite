@@ -378,3 +378,23 @@ test('HttpTargetWriteClient normalizes trailing slashes on baseUrl', async () =>
 
   assert.equal(capturedUrl, 'https://mock.api.github.com/orgs/my-org');
 });
+
+test('MigrationOrchestrator passes modulesFilter to MigrationPlanner', async () => {
+  const registry = createDefaultModuleRegistry();
+  const sourceClient = new MockReadAdapter();
+  const targetClient = new MockReadAdapter();
+
+  const orchestrator = new MigrationOrchestrator({
+    registry,
+    sourceClient,
+    targetClient,
+    scope: mockScope,
+    dryRun: true,
+    modulesFilter: ['repo-variables'], // specific module
+  });
+
+  const report = await orchestrator.run();
+  assert.equal(report.status, 'complete');
+  assert.equal(report.exitCode, 0);
+  assert.equal(report.results.length > 0, true);
+});

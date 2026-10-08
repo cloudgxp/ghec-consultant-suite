@@ -94,7 +94,7 @@ export function categorizeDiscrepancySeverity(
     return 'medium';
   }
 
-  if (moduleId === 'mannequins') {
+  if (moduleId === 'post-migration-mannequins') {
     if (msg.includes('unreclaimed') || msg.includes('unmapped')) {
       return 'high';
     }
@@ -288,12 +288,12 @@ export function generateCliRemediationCommand(
           '\x27 on target repository.',
       };
 
-    case 'mannequins':
+    case 'post-migration-mannequins':
       return {
         command:
           'npx ghec-consultant-cli migrate --scope ' +
           scope +
-          ' --modules mannequins --skip-invitation',
+          ' --modules post-migration-mannequins --skip-invitation',
         rationale:
           'Attributes unmapped mannequin contributor \x27' +
           resource +
@@ -391,6 +391,112 @@ export function generateCliRemediationCommand(
           resource +
           '\x27.',
       };
+
+    case 'issues':
+      return {
+        command:
+          'npx ghec-consultant-cli migrate --scope ' +
+          scope +
+          ' --modules issues',
+        rationale:
+          'Re-imports issues and milestone metadata for \x27' +
+          resource +
+          '\x27 via Issue Import API or REST fallback.',
+      };
+
+    case 'pull-requests':
+      return {
+        command:
+          'npx ghec-consultant-cli migrate --scope ' +
+          scope +
+          ' --modules pull-requests',
+        rationale:
+          'Recreates active open pull requests or archives closed PR history for \x27' +
+          resource +
+          '\x27.',
+      };
+
+    case 'repo-settings':
+      return {
+        command:
+          'npx ghec-consultant-cli migrate --scope ' +
+          scope +
+          ' --modules repo-settings',
+        rationale:
+          'Re-applies repository features and general metadata settings for \x27' +
+          resource +
+          '\x27.',
+      };
+
+    case 'gei-repo': {
+      const resLower = resource.toLowerCase();
+      if (resLower === 'issues' || resLower.includes('issue')) {
+        return {
+          command:
+            'npx ghec-consultant-cli migrate --scope ' +
+            scope +
+            ' --modules issues',
+          rationale:
+            'Re-imports issues dropped during GEI migration for \x27' +
+            resource +
+            '\x27.',
+        };
+      }
+      if (
+        resLower === 'pull-requests' ||
+        resLower.includes('pull') ||
+        resLower.includes('pr')
+      ) {
+        return {
+          command:
+            'npx ghec-consultant-cli migrate --scope ' +
+            scope +
+            ' --modules pull-requests',
+          rationale:
+            'Recreates active open PRs or archives closed PRs dropped during GEI migration for \x27' +
+            resource +
+            '\x27.',
+        };
+      }
+      if (resLower === 'releases' || resLower.includes('release')) {
+        return {
+          command:
+            'npx ghec-consultant-cli migrate --scope ' +
+            scope +
+            ' --modules releases',
+          rationale:
+            'Re-migrates releases skipped during GEI migration for \x27' +
+            resource +
+            '\x27.',
+        };
+      }
+      if (
+        resLower === 'repo-settings' ||
+        resLower === 'default-branch' ||
+        resLower.includes('setting')
+      ) {
+        return {
+          command:
+            'npx ghec-consultant-cli migrate --scope ' +
+            scope +
+            ' --modules repo-settings',
+          rationale:
+            'Re-applies repository settings dropped during GEI migration for \x27' +
+            resource +
+            '\x27.',
+        };
+      }
+      return {
+        command:
+          'npx ghec-consultant-cli migrate --scope ' +
+          scope +
+          ' --modules gei-repo',
+        rationale:
+          'Re-runs repository GEI migration or verification for \x27' +
+          resource +
+          '\x27.',
+      };
+    }
 
     default:
       return {
@@ -592,7 +698,11 @@ export const sampleCleanVerificationReport: VerificationReport = {
     { moduleId: 'releases', verified: true, discrepancies: [] },
     { moduleId: 'lfs', verified: true, discrepancies: [] },
     { moduleId: 'packages', verified: true, discrepancies: [] },
-    { moduleId: 'mannequins', verified: true, discrepancies: [] },
+    {
+      moduleId: 'post-migration-mannequins',
+      verified: true,
+      discrepancies: [],
+    },
     { moduleId: 'codeowners', verified: true, discrepancies: [] },
   ],
   summary: {
@@ -694,7 +804,7 @@ export const sampleDiscrepantVerificationReport: VerificationReport = {
       ],
     },
     {
-      moduleId: 'mannequins',
+      moduleId: 'post-migration-mannequins',
       verified: false,
       discrepancies: [
         {

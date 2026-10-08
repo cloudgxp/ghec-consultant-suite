@@ -60,12 +60,15 @@ describe('Verification Diff & Remediation Engine (Task 043 / DASH-28)', () => {
       });
       assert.strictEqual(colSev, 'high');
 
-      const manSev = categorizeDiscrepancySeverity('mannequins', {
-        resourceName: 'contributor-1',
-        expected: 'reclaimed',
-        actual: 'unmapped',
-        message: 'Unreclaimed mannequin user',
-      });
+      const manSev = categorizeDiscrepancySeverity(
+        'post-migration-mannequins',
+        {
+          resourceName: 'contributor-1',
+          expected: 'reclaimed',
+          actual: 'unmapped',
+          message: 'Unreclaimed mannequin user',
+        },
+      );
       assert.strictEqual(manSev, 'high');
     });
 
@@ -152,13 +155,16 @@ describe('Verification Diff & Remediation Engine (Task 043 / DASH-28)', () => {
       });
       assert.match(rules.command, /--modules rulesets --overwrite-drift/);
 
-      const man = generateCliRemediationCommand('mannequins', {
+      const man = generateCliRemediationCommand('post-migration-mannequins', {
         resourceName: 'ghost-dev',
         expected: {},
         actual: {},
         message: 'Unmapped',
       });
-      assert.match(man.command, /--modules mannequins --skip-invitation/);
+      assert.match(
+        man.command,
+        /--modules post-migration-mannequins --skip-invitation/,
+      );
     });
   });
 
@@ -191,7 +197,7 @@ describe('Verification Diff & Remediation Engine (Task 043 / DASH-28)', () => {
       assert.ok(modulesWithDiscrepancies.includes('releases'));
       assert.ok(modulesWithDiscrepancies.includes('lfs'));
       assert.ok(modulesWithDiscrepancies.includes('rulesets'));
-      assert.ok(modulesWithDiscrepancies.includes('mannequins'));
+      assert.ok(modulesWithDiscrepancies.includes('post-migration-mannequins'));
 
       const stats = computeVerificationStats(
         sampleDiscrepantVerificationReport,

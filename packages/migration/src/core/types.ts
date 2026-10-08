@@ -34,6 +34,7 @@ export interface TargetWriteOperation {
   readonly path: string;
   readonly pathParams?: Readonly<Record<string, string>> | undefined;
   readonly body?: unknown | undefined;
+  readonly headers?: Readonly<Record<string, string>> | undefined;
 }
 
 export interface TargetWriteClient {

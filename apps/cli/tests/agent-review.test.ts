@@ -200,4 +200,139 @@ describe('Task 035: Agentic Automation & Remediation Integration', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('generates fallback remediation commands for issues, pull-requests, repo-settings, and gei-repo metadata omissions', () => {
+    const metadataReport: VerificationReport = {
+      schemaVersion: MIGRATION_SCHEMA_VERSION,
+      reportId: 'verify-meta-001',
+      verifiedAt: new Date().toISOString(),
+      scopeName: 'cohort-alpha',
+      sourceOrg: 'corp-src',
+      targetOrg: 'corp-emu',
+      summary: {
+        verifiedModuleCount: 0,
+        unverifiedModuleCount: 4,
+        discrepancyCount: 6,
+      },
+      modules: [
+        {
+          moduleId: 'issues',
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: 'web-frontend/issues',
+              expected: '42 issues',
+              actual: '0 issues',
+              message: 'Target repository has no issues.',
+            },
+          ],
+        },
+        {
+          moduleId: 'pull-requests',
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: 'web-frontend/pull-requests',
+              expected: '15 PRs',
+              actual: '0 PRs',
+              message: 'Target repository has no pull requests.',
+            },
+          ],
+        },
+        {
+          moduleId: 'repo-settings',
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: 'web-frontend/settings',
+              expected: 'hasIssues: true',
+              actual: 'hasIssues: false',
+              message: 'Repository feature flag hasIssues drifted.',
+            },
+          ],
+        },
+        {
+          moduleId: 'gei-repo',
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: 'issues',
+              expected: 10,
+              actual: 0,
+              message: 'GEI metadata migration omitted issues.',
+            },
+            {
+              resourceName: 'pull-requests',
+              expected: 5,
+              actual: 0,
+              message: 'GEI metadata migration omitted pull requests.',
+            },
+            {
+              resourceName: 'releases',
+              expected: '2 releases',
+              actual: '0 releases',
+              message: 'Release assets missing on target.',
+            },
+          ],
+        },
+      ],
+    };
+
+    const plan = generateRemediationPlan(metadataReport);
+    assert.equal(plan.actionableCount, 6);
+
+    const issuesActions = plan.actions.filter((a) => a.moduleId === 'issues');
+    assert.equal(issuesActions.length, 2);
+    for (const a of issuesActions) {
+      assert.equal(a.category, 'metadata-and-content');
+      assert.equal(a.severity, 'high');
+      assert.match(
+        a.command,
+        /ghec-consultant-cli migrate --modules issues --scope "\.\/scopes\/cohort-alpha\.json"/,
+      );
+    }
+
+    const prActions = plan.actions.filter(
+      (a) => a.moduleId === 'pull-requests',
+    );
+    assert.equal(prActions.length, 2);
+    for (const a of prActions) {
+      assert.equal(a.category, 'metadata-and-content');
+      assert.equal(a.severity, 'high');
+      assert.match(
+        a.command,
+        /ghec-consultant-cli migrate --modules pull-requests --scope "\.\/scopes\/cohort-alpha\.json"/,
+      );
+    }
+
+    const settingsAction = plan.actions.find(
+      (a) => a.moduleId === 'repo-settings',
+    );
+    assert.ok(settingsAction);
+    assert.equal(settingsAction.category, 'metadata-and-content');
+    assert.match(
+      settingsAction.command,
+      /ghec-consultant-cli migrate --modules repo-settings --scope "\.\/scopes\/cohort-alpha\.json"/,
+    );
+
+    const releasesAction = plan.actions.find((a) => a.moduleId === 'releases');
+    assert.ok(releasesAction);
+    assert.equal(releasesAction.category, 'assets-and-storage');
+    assert.match(
+      releasesAction.command,
+      /ghec-consultant-cli migrate --modules releases --scope "\.\/scopes\/cohort-alpha\.json"/,
+    );
+
+    // Verify script contains sequential fallback commands
+    assert.match(plan.script, /ghec-consultant-cli migrate --modules issues/);
+    assert.match(
+      plan.script,
+      /ghec-consultant-cli migrate --modules pull-requests/,
+    );
+    assert.match(
+      plan.script,
+      /ghec-consultant-cli migrate --modules repo-settings/,
+    );
+    assert.match(plan.script, /ghec-consultant-cli migrate --modules releases/);
+  });
 });
