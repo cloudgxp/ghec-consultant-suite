@@ -46,11 +46,11 @@ Zero-exposure security invariant (DEC-004) is strictly preserved: tokens remain 
 
 ## 4. Implementation Checklist
 
-- [ ] **Step 1: Execute Organization Discovery Scan Workflow**
+- [x] **Step 1: Execute Organization Discovery Scan Workflow**
   - Trigger `Organization Discovery Scan` on `demogxp` via `gh workflow run discovery-scan.yml`.
-  - Monitor workflow run, verify bundle artifact generation, and inspect step summaries.
-- [ ] **Step 2: Formulate & Validate Migration Scope**
-  - Create or generate `scopes/demogxp-to-mig-framework-test.json` mapping `demogxp` to `mig-framework-test`.
+  - Monitor workflow run (Run ID: 37794405333, duration 2m46s, completeCollectorCount: 11, repositoryCount: 33, 474 entities), verify bundle artifact generation (`discovery-demogxp-bundle`).
+- [x] **Step 2: Formulate & Validate Migration Scope**
+  - Create `scopes/demogxp-wave.json` mapping `demogxp` to `mig-framework-test`.
   - Validate against `@ghec/contracts` `MigrationScopeSchema`.
   - Commit and push scope to origin.
 - [ ] **Step 3: Execute Preflight and Planning via Workflow Dispatch (Dry-Run)**
