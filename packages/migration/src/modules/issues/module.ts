@@ -447,23 +447,37 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
 
       try {
         if (op.resourceType === 'issue-label' && op.operation === 'create') {
-          const res = await ctx.targetWriteClient!.mutate(
-            {
-              id: 'rest.issues.createLabel',
-              method: 'POST',
-              path: '/repos/{owner}/{repo}/labels',
-              pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
-              body: op.payload,
-            },
-            ctx.signal,
-          );
+          try {
+            const res = await ctx.targetWriteClient!.mutate(
+              {
+                id: 'rest.issues.createLabel',
+                method: 'POST',
+                path: '/repos/{owner}/{repo}/labels',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body: op.payload,
+              },
+              ctx.signal,
+            );
 
-          results.push({
-            operationId: op.id,
-            status: 'succeeded',
-            httpStatus: res.status,
-            completedAt: new Date().toISOString(),
-          });
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          } catch (err: unknown) {
+            const errStr = String(err);
+            if (errStr.includes('already_exists')) {
+              results.push({
+                operationId: op.id,
+                status: 'succeeded',
+                httpStatus: 200,
+                completedAt: new Date().toISOString(),
+              });
+            } else {
+              throw err;
+            }
+          }
         } else if (
           op.resourceType === 'issue-milestone' &&
           op.operation === 'create'
@@ -473,35 +487,79 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
             title: string;
             state?: string;
             description?: string;
-            due_on?: string;
+            due_on?: string | null;
           };
 
-          const res = await ctx.targetWriteClient!.mutate<{ number: number }>(
-            {
-              id: 'rest.issues.createMilestone',
-              method: 'POST',
-              path: '/repos/{owner}/{repo}/milestones',
-              pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
-              body: {
-                title: rawPayload.title,
-                state: rawPayload.state,
-                description: rawPayload.description,
-                due_on: rawPayload.due_on,
+          const milestoneBody: Record<string, unknown> = {
+            title: rawPayload.title,
+          };
+          if (rawPayload.state) milestoneBody.state = rawPayload.state;
+          if (rawPayload.description)
+            milestoneBody.description = rawPayload.description;
+          if (rawPayload.due_on) milestoneBody.due_on = rawPayload.due_on;
+
+          try {
+            const res = await ctx.targetWriteClient!.mutate<{ number: number }>(
+              {
+                id: 'rest.issues.createMilestone',
+                method: 'POST',
+                path: '/repos/{owner}/{repo}/milestones',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body: milestoneBody,
               },
-            },
-            ctx.signal,
-          );
+              ctx.signal,
+            );
 
-          if (res.data?.number) {
-            milestoneNumberMap.set(rawPayload.sourceNumber, res.data.number);
+            if (res.data?.number) {
+              milestoneNumberMap.set(rawPayload.sourceNumber, res.data.number);
+            }
+
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          } catch (err: unknown) {
+            const errStr = String(err);
+            if (errStr.includes('already_exists')) {
+              try {
+                const existing = await ctx.targetClient.fetchAll<{
+                  title: string;
+                  number: number;
+                }>(
+                  {
+                    id: 'rest.issues.listMilestones',
+                    transport: 'rest',
+                    verifiedReadOnly: true,
+                    path: '/repos/{owner}/{repo}/milestones',
+                    pathParams: {
+                      owner: ctx.scope.targetOrg,
+                      repo: targetRepo,
+                    },
+                    queryParams: { state: 'all' },
+                  },
+                  ctx.signal,
+                );
+                const match = existing.items.find(
+                  (m) => m.title === rawPayload.title,
+                );
+                if (match) {
+                  milestoneNumberMap.set(rawPayload.sourceNumber, match.number);
+                }
+              } catch {
+                // Ignore query error, proceed
+              }
+              results.push({
+                operationId: op.id,
+                status: 'succeeded',
+                httpStatus: 200,
+                completedAt: new Date().toISOString(),
+              });
+            } else {
+              throw err;
+            }
           }
-
-          results.push({
-            operationId: op.id,
-            status: 'succeeded',
-            httpStatus: res.status,
-            completedAt: new Date().toISOString(),
-          });
         } else if (op.resourceType === 'issue' && op.operation === 'create') {
           const importPayload = op.payload as IssueImportPayload;
           const remappedPayload: IssueImportPayload = {
