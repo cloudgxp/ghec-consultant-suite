@@ -7,7 +7,7 @@ on:
         description: 'Path to migration scope JSON file'
         required: true
         type: string
-        default: 'scopes/test-org-wave.json'
+        default: 'scopes/demogxp-wave.json'
       cached_bundle:
         description: 'Optional path to pre-collected discovery bundle JSON file'
         required: false
@@ -88,9 +88,15 @@ jobs:
         run: |
           mkdir -p ./scans
           echo "Evaluating source and target preflight readiness..."
+          INPUT_ARG=()
+          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
+            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          fi
+
           EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
             --scope "${{ inputs.scope }}" \
+            "${INPUT_ARG[@]}" \
             --output ./scans/test-preflight-report.json \
             --verbose || EXIT_CODE=$?
 
@@ -274,6 +280,23 @@ jobs:
             echo "" >> "$SUMMARY_FILE"
           fi
 
+      - name: Agentic Remediation Review
+        id: agent-review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f ./scans/test-verification-report.json ]; then
+            echo "Running Agentic Remediation Review against verification report..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
+              --report ./scans/test-verification-report.json \
+              --spec docs/specs/verification-remediation-agent.md \
+              --output ./scans/remediation-plan.json \
+              --output-markdown ./scans/remediation-plan.md \
+              --append-step-summary || {
+                echo "::warning::Agent review completed with warnings or failed."
+              }
+          fi
+
       - name: Publish Migration Results Repository to Target Organization
         id: publish-results
         if: always()
@@ -300,10 +323,16 @@ jobs:
             VERIFY_FLAG="--verification-report ./scans/test-verification-report.json"
           fi
 
+          REMEDIATION_FLAG=""
+          if [ -f ./scans/remediation-plan.json ]; then
+            REMEDIATION_FLAG="--remediation-plan ./scans/remediation-plan.json"
+          fi
+
           node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
             $EXEC_FLAG \
             --scope "${{ inputs.scope }}" \
             $VERIFY_FLAG \
+            $REMEDIATION_FLAG \
             --output-dir ./scans/results-repo \
             --append-step-summary \
             $DRY_RUN_FLAG || {
@@ -320,5 +349,6 @@ jobs:
             ./scans/test-migration-plan.json
             ./scans/test-migration-execution.json
             ./scans/test-verification-report.json
+            ./scans/remediation-plan.*
             ./scans/results-repo
           retention-days: 14

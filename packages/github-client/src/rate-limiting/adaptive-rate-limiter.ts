@@ -46,6 +46,7 @@ export class AdaptiveRateLimiter {
     remaining: 5000,
     resetAt: 0,
   };
+  private restLimitCapacity = 5000;
   private lastRequestTime = 0;
   private queue: Promise<void> = Promise.resolve();
 
@@ -89,9 +90,13 @@ export class AdaptiveRateLimiter {
   updateREST(
     remaining?: number | undefined,
     resetAtEpochOrIso?: string | number | undefined,
+    limit?: number | undefined,
   ): void {
     if (typeof remaining === 'number') {
       this.restLimit.remaining = remaining;
+    }
+    if (typeof limit === 'number') {
+      this.restLimitCapacity = limit;
     }
     if (resetAtEpochOrIso !== undefined) {
       this.restLimit.resetAt =
@@ -117,8 +122,13 @@ export class AdaptiveRateLimiter {
 
     const status = type === 'graphql' ? this.graphqlLimit : this.restLimit;
 
-    // Critical pause threshold: remaining < 100
-    if (status.remaining < 100 && status.resetAt > Date.now()) {
+    // Critical pause threshold: remaining < 100 for normal capacity (>100).
+    // For small/unauthenticated capacity (<=100), critically pause only when truly depleted (<= 5).
+    const criticalThreshold =
+      type === 'rest' && this.restLimitCapacity <= 100 ? 5 : 100;
+    const isCritical = status.remaining < criticalThreshold;
+
+    if (isCritical && status.resetAt > Date.now()) {
       const waitTimeMs = Math.max(0, status.resetAt - Date.now()) + 1000;
       if (waitTimeMs > 0) {
         const resetIso = new Date(status.resetAt).toISOString();
@@ -129,7 +139,7 @@ export class AdaptiveRateLimiter {
         );
         await sleep(waitTimeMs, signal);
         // Reset remaining estimate after reset window has passed
-        status.remaining = 5000;
+        status.remaining = type === 'graphql' ? 5000 : this.restLimitCapacity;
       }
     }
 

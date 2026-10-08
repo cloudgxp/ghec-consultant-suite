@@ -153,26 +153,59 @@ export class DestinationBlockerInspector {
     // 3. Name collision check against scoped repositories
     const nameConflicts: string[] = [];
 
-    for (const repo of this.scopedRepos) {
-      try {
-        const repoRes = await this.adapter.readSingle<{
-          id?: number | undefined;
-        }>(
-          {
-            id: 'rest.repos.get',
-            transport: 'rest',
-            verifiedReadOnly: true,
-            path: '/repos/{owner}/{repo}',
-            pathParams: { owner: this.targetOrg, repo },
-          },
-          signal,
-        );
+    let checkedViaOrgListing = false;
+    try {
+      const reposRes = await this.adapter.fetchAll<{ name?: string }>(
+        {
+          id: 'rest.repos.listForOrg',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/orgs/{org}/repos',
+          pathParams: { org: this.targetOrg },
+          queryParams: { per_page: 100 },
+        },
+        signal,
+      );
 
-        if (repoRes.status === 200) {
-          nameConflicts.push(repo);
+      if (reposRes.complete && reposRes.items.length > 0) {
+        checkedViaOrgListing = true;
+        const existingNames = new Set(
+          reposRes.items
+            .map((r) => (r.name ?? '').toLowerCase())
+            .filter(Boolean),
+        );
+        for (const repo of this.scopedRepos) {
+          if (existingNames.has(repo.toLowerCase())) {
+            nameConflicts.push(repo);
+          }
         }
-      } catch {
-        // Not found is expected for target repos
+      }
+    } catch {
+      // Org repo listing might not be supported or allowed; fall back to individual checks
+    }
+
+    if (!checkedViaOrgListing) {
+      for (const repo of this.scopedRepos) {
+        try {
+          const repoRes = await this.adapter.readSingle<{
+            id?: number | undefined;
+          }>(
+            {
+              id: 'rest.repos.get',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}',
+              pathParams: { owner: this.targetOrg, repo },
+            },
+            signal,
+          );
+
+          if (repoRes.status === 200) {
+            nameConflicts.push(repo);
+          }
+        } catch {
+          // Not found is expected for target repos
+        }
       }
     }
 
