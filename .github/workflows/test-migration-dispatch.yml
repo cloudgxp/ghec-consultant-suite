@@ -12,7 +12,7 @@ on:
         description: 'Optional path to pre-collected discovery bundle JSON file'
         required: false
         type: string
-        default: ''
+        default: 'scopes/demogxp-discovery-bundle.json'
       modules:
         description: 'Comma-separated migration modules to execute (or "all")'
         required: false
@@ -170,11 +170,17 @@ jobs:
             CONT_ARG=(--continue-on-error)
           fi
 
+          INPUT_ARG=()
+          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
+            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          fi
+
           echo "Executing migration for scope '$INPUT_SCOPE' (dry_run: $INPUT_DRY_RUN)..."
           EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --plan ./scans/test-migration-plan.json \
             --scope "$INPUT_SCOPE" \
+            "${INPUT_ARG[@]}" \
             --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
             "${CONT_ARG[@]}" \
