@@ -270,6 +270,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
         run: |
           mkdir -p ./scans
 
@@ -277,6 +278,7 @@ jobs:
             echo "Running post-migration verification against target enterprise..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --plan ./scans/migration-plan.json \
+              --scope "$INPUT_SCOPE" \
               --output ./scans/verification-report.json || {
                 echo "Verification reported discrepancies or failed."
               }
