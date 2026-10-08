@@ -368,6 +368,52 @@ jobs:
           echo "2. Reclaim mannequins for GHEC-EMU contributors: \`gh gei reclaim-mannequin --skip-invitation\`." >> "$SUMMARY_FILE"
           echo "3. Re-enable organization and repository webhooks after cutover confirmation." >> "$SUMMARY_FILE"
 
+      - name: Publish Migration Results Repository to Target Organization
+        id: publish-results
+        if: always()
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          mkdir -p ./scans/results-repo
+          EXEC_REPORT=$(find ./scans ./downloaded-cohorts -name 'cohort-report-*.json' -o -name 'migration-execution.json' 2>/dev/null | head -n 1)
+          DRY_RUN_FLAG=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          VERIFY_FLAG=""
+          if [ -f ./scans/verification-report.json ]; then
+            VERIFY_FLAG="--verification-report ./scans/verification-report.json"
+          fi
+
+          REMEDIATION_FLAG=""
+          if [ -f ./scans/remediation-plan.json ]; then
+            REMEDIATION_FLAG="--remediation-plan ./scans/remediation-plan.json"
+          fi
+
+          node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+            ${EXEC_REPORT:+--execution-report "$EXEC_REPORT"} \
+            ${INPUT_SCOPE:+--scope "$INPUT_SCOPE"} \
+            $VERIFY_FLAG \
+            $REMEDIATION_FLAG \
+            --output-dir ./scans/results-repo \
+            --append-step-summary \
+            $DRY_RUN_FLAG || {
+              echo "::warning::Publishing migration results repository encountered non-fatal issues."
+            }
+
+      - name: Upload Migration Results Repository Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: migration-results-repo-${{ github.run_id }}
+          path: ./scans/results-repo
+          retention-days: 30
+
       - name: Upload Final Consolidated Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -377,4 +423,5 @@ jobs:
             ./scans/verification-report.json
             ./scans/cohort-report-*.json
             ./scans/remediation-plan.*
+            ./scans/results-repo
           retention-days: 30

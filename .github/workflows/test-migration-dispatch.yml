@@ -274,6 +274,42 @@ jobs:
             echo "" >> "$SUMMARY_FILE"
           fi
 
+      - name: Publish Migration Results Repository to Target Organization
+        id: publish-results
+        if: always()
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          mkdir -p ./scans/results-repo
+          DRY_RUN_FLAG=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          EXEC_FLAG=""
+          if [ -f ./scans/test-migration-execution.json ]; then
+            EXEC_FLAG="--execution-report ./scans/test-migration-execution.json"
+          fi
+
+          VERIFY_FLAG=""
+          if [ -f ./scans/test-verification-report.json ]; then
+            VERIFY_FLAG="--verification-report ./scans/test-verification-report.json"
+          fi
+
+          node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+            $EXEC_FLAG \
+            --scope "${{ inputs.scope }}" \
+            $VERIFY_FLAG \
+            --output-dir ./scans/results-repo \
+            --append-step-summary \
+            $DRY_RUN_FLAG || {
+              echo "::warning::Publishing migration results repository encountered non-fatal issues."
+            }
+
       - name: Upload Test Migration Artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -284,4 +320,5 @@ jobs:
             ./scans/test-migration-plan.json
             ./scans/test-migration-execution.json
             ./scans/test-verification-report.json
+            ./scans/results-repo
           retention-days: 14

@@ -23,6 +23,10 @@ import {
   executeAgentReviewCommand,
 } from './commands/agent-review.js';
 import {
+  parsePublishResultsOptions,
+  executePublishResultsCommand,
+} from './commands/publish-results.js';
+import {
   loadConfig,
   sanitizeDiagnostics,
   type CliConfig,
@@ -50,13 +54,14 @@ export async function runCli(
 Usage: ghec-consultant-cli <command> [options]
 
 Commands:
-  discover    Enumerate source tenant metadata and emit DiscoveryBundle
-  preflight   Evaluate source & destination readiness, token scopes, and blockers
-  plan        Generate immutable MigrationPlan from MigrationScope
-  migrate     Execute pre-approved MigrationPlan or Scope against target tenant
-  verify      Audit destination tenant state against plan and produce VerificationReport
-  console     Launch local loopback console server and dashboard proxy
-  agent-review Analyze verification report and generate automated remediation plan
+  discover         Enumerate source tenant metadata and emit DiscoveryBundle
+  preflight        Evaluate source & destination readiness, token scopes, and blockers
+  plan             Generate immutable MigrationPlan from MigrationScope
+  migrate          Execute pre-approved MigrationPlan or Scope against target tenant
+  verify           Audit destination tenant state against plan and produce VerificationReport
+  console          Launch local loopback console server and dashboard proxy
+  agent-review     Analyze verification report and generate automated remediation plan
+  publish-results  Generate and publish migration audit repository to target organization
 
 Global Options:
   --help      Show help for command
@@ -439,6 +444,39 @@ Options: --spec <spec.md> --output <file> --output-markdown <file> --append-step
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`Agent review failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    }
+  }
+
+  if (command === 'publish-results') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli publish-results — Generate and publish migration audit repository to target organization
+Usage: ghec-consultant-cli publish-results [options]
+Options: --execution-report <file> --verification-report <file> --remediation-plan <file>
+         --scope <file> --target-org <org> --source-org <org> --repo-name <name>
+         --output-dir <path> --dry-run --skip-push --append-step-summary --branch <name>
+         --app-id <id> --private-key-path <path> --installation-id <id>
+         --source-token <token> --target-token <token>`);
+      return 0;
+    }
+
+    let publishOptions;
+    try {
+      publishOptions = parsePublishResultsOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `Invalid publish-results options: ${sanitizeDiagnostics(msg)}`,
+      );
+      return 2;
+    }
+
+    try {
+      await executePublishResultsCommand(publishOptions, configOverride);
+      return 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Publish results failed: ${sanitizeDiagnostics(msg)}`);
       return 1;
     }
   }

@@ -18,6 +18,9 @@ import {
   writeJsonSummaryFile,
   formatStepSummaryMarkdown,
   appendStepSummary,
+  generateMigrationResults,
+  writeResultsToDirectory,
+  MigrationResultsRepoPublisher,
 } from '@ghec/migration';
 import {
   createMigrationClientsFromConfig,
@@ -41,6 +44,7 @@ export interface MigrateCommandOptions {
   readonly installationId?: string | undefined;
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;
+  readonly publishResults?: boolean | undefined;
 }
 
 export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
@@ -73,6 +77,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       'installation-id': { type: 'string' },
       'source-token': { type: 'string' },
       'target-token': { type: 'string' },
+      'publish-results': { type: 'boolean', default: false },
     },
   });
 
@@ -104,6 +109,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     installationId: values['installation-id'],
     sourceToken: values['source-token'],
     targetToken: values['target-token'],
+    publishResults: values['publish-results'] ?? false,
   };
 }
 
@@ -258,6 +264,29 @@ export async function executeMigrateCommand(
   }
 
   appendStepSummary(formatStepSummaryMarkdown(summary));
+
+  if (options.publishResults) {
+    const resultsRepoDir = './scans/results-repo';
+    const generated = generateMigrationResults({
+      sourceOrg: sourceOrg ?? 'source-org',
+      targetOrg: targetOrg ?? 'target-org',
+      executionMode: options.dryRun ? 'dry-run' : 'live',
+      executionReport: report,
+      scope,
+    });
+    writeResultsToDirectory(generated, resultsRepoDir);
+
+    if (targetClient && targetWriteClient && !options.dryRun) {
+      const publisher = new MigrationResultsRepoPublisher({
+        targetOrg: targetOrg ?? 'target-org',
+        targetClient,
+        targetWriteClient,
+        dryRun: false,
+        signal,
+      });
+      await publisher.publish(generated.files);
+    }
+  }
 
   return { report, filePath };
 }

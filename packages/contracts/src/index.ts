@@ -987,3 +987,14 @@ export {
   type VerificationDiscrepancy,
   type VerificationReport,
 } from './verification/verification-report.js';
+export {
+  MigrationResultsManifestSchema,
+  MigrationResultsSummarySchema,
+  OrgModuleResultSummarySchema,
+  RepositoryMigrationRecordSchema,
+  validateMigrationResultsManifest,
+  type MigrationResultsManifest,
+  type MigrationResultsSummary,
+  type OrgModuleResultSummary,
+  type RepositoryMigrationRecord,
+} from './results/results-repo-manifest.js';

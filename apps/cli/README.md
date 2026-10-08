@@ -25,6 +25,7 @@ The CLI provides four primary subcommands representing the full migration lifecy
 - `plan`: Compute an immutable, auditable `MigrationPlan` comparing source and target tenant states.
 - `migrate`: Execute a pre-approved plan (or scope) with dry-run safety and error recovery.
 - `verify`: Perform post-migration compliance audit of the target tenant state against the plan.
+- `publish-results`: Synthesize reports and publish the `gei-migration-results` audit repository directly to the target organization.
 
 ```bash
 # Global help & version
@@ -36,6 +37,7 @@ ghec-consultant-cli discover --help
 ghec-consultant-cli plan --help
 ghec-consultant-cli migrate --help
 ghec-consultant-cli verify --help
+ghec-consultant-cli publish-results --help
 ```
 
 ---
@@ -122,6 +124,7 @@ ghec-consultant-cli migrate --scope ./scopes/org-scope.json --dry-run
 | `--continue-on-error`   | Continues executing remaining modules on error; returns exit code 4 on partial success   |
 | `--output <file>`       | Output path for `MigrationExecutionReport` (default: `./scans/migration-execution.json`) |
 | `--resume [id\|latest]` | Checkpoint resumption token                                                              |
+| `--publish-results`     | Synthesize and commit results repo to target org upon completion                         |
 
 ---
 
@@ -143,6 +146,48 @@ ghec-consultant-cli verify --plan ./scans/migration-plan.json --scope ./scopes/o
 | `--scope <file>`  | Optional path to `MigrationScope` JSON for tenant metadata                         |
 | `--output <file>` | Output path for `VerificationReport` (default: `./scans/verification-report.json`) |
 | `--target-token`  | Destination tenant token override                                                  |
+
+---
+
+## 5. Migration Results Publishing (`publish-results`)
+
+Synthesizes execution reports, verification reports, and remediation plans into a standardized results repository (`gei-migration-results` by default) in the target organization. Commits are published atomically via the GitHub Git Data API (blobs, trees, commit, ref update).
+
+```bash
+# Publish results repository to destination organization
+ghec-consultant-cli publish-results \
+  --execution-report ./scans/migration-execution.json \
+  --verification-report ./scans/verification-report.json \
+  --remediation-plan ./scans/remediation-plan.json \
+  --target-org "$TARGET_ORG"
+
+# Dry-run: generate local audit tree without pushing to remote
+ghec-consultant-cli publish-results \
+  --scope ./scopes/org-scope.json \
+  --output-dir ./scans/results-repo \
+  --dry-run
+
+# Local generation only (skip remote push entirely)
+ghec-consultant-cli publish-results \
+  --scope ./scopes/org-scope.json \
+  --skip-push \
+  --output-dir ./scans/results-repo
+```
+
+| Option                         | Default / behavior                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `--execution-report <file>`    | Path to `MigrationExecutionReport` JSON file                                           |
+| `--verification-report <file>` | Path to `VerificationReport` JSON file                                                 |
+| `--remediation-plan <file>`    | Path to `RemediationPlan` JSON file                                                    |
+| `--scope <file>`               | Path to `MigrationScope` JSON definition (used to infer organizations and repos)       |
+| `--target-org <name>`          | Target GitHub organization                                                             |
+| `--source-org <name>`          | Source GitHub organization                                                             |
+| `--repo-name <name>`           | Target audit repository name (default: `gei-migration-results`)                        |
+| `--output-dir <path>`          | Local directory to write markdown files and manifest (default: `./scans/results-repo`) |
+| `--dry-run`                    | Simulate creation and commit without mutating remote repository                        |
+| `--skip-push`                  | Write local files only; skip remote repository creation and git push                   |
+| `--append-step-summary`        | Append summary markdown to `$GITHUB_STEP_SUMMARY`                                      |
+| `--branch <name>`              | Destination branch to commit results to (default: `main`)                              |
 
 ---
 
