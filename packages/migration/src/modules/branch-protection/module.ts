@@ -187,7 +187,9 @@ export class BranchProtectionReconciliationModule implements MigrationModule<Bra
             : 'Reconciling branch protection differences on target.';
 
         operations.push({
-          id: `branch-protection-reconcile-${srcProt.branch}`,
+          id: targetRepo
+            ? `branch-protection-reconcile-${targetRepo}-${srcProt.branch}`
+            : `branch-protection-reconcile-${srcProt.branch}`,
           operation: 'update',
           resourceType: 'branch-protection',
           resourceName: srcProt.branch,
@@ -201,7 +203,9 @@ export class BranchProtectionReconciliationModule implements MigrationModule<Bra
         });
       } else {
         operations.push({
-          id: `branch-protection-noop-${srcProt.branch}`,
+          id: targetRepo
+            ? `branch-protection-noop-${targetRepo}-${srcProt.branch}`
+            : `branch-protection-noop-${srcProt.branch}`,
           operation: 'noop',
           resourceType: 'branch-protection',
           resourceName: srcProt.branch,

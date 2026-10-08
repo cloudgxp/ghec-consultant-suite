@@ -284,12 +284,12 @@ test('PullRequestsMigrationModule plan schedules open PR recreation and closed P
   assert.equal(plan.moduleId, 'pull-requests');
   assert.equal(plan.operations.length, 2);
 
-  const openPrOp = plan.operations.find((o) => o.id === 'pull-request:1');
+  const openPrOp = plan.operations.find((o) => o.id === 'pull-request:test-repo:1');
   assert.equal(openPrOp?.operation, 'create');
   assert.equal((openPrOp?.payload as CreatePullRequestPayload).head, 'feat/a');
 
   const archiveOp = plan.operations.find(
-    (o) => o.id === 'pull-requests-archive',
+    (o) => o.id === 'pull-requests-archive:test-repo',
   );
   assert.equal(archiveOp?.operation, 'create');
   assert.equal(

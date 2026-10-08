@@ -307,7 +307,7 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
     for (const label of sourceData.labels) {
       const exists = targetLabelNames.has(label.name.toLowerCase());
       operations.push({
-        id: `label:${label.name}`,
+        id: targetRepo ? `label:${targetRepo}:${label.name}` : `label:${label.name}`,
         resourceType: 'issue-label',
         resourceName: label.name,
         operation: exists ? 'noop' : 'create',
@@ -329,7 +329,9 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
     for (const milestone of sourceData.milestones) {
       const exists = targetMilestoneTitles.has(milestone.title.toLowerCase());
       operations.push({
-        id: `milestone:${milestone.title}`,
+        id: targetRepo
+          ? `milestone:${targetRepo}:${milestone.title}`
+          : `milestone:${milestone.title}`,
         resourceType: 'issue-milestone',
         resourceName: milestone.title,
         operation: exists ? 'noop' : 'create',
@@ -369,7 +371,7 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
       };
 
       operations.push({
-        id: `issue:${issue.number}`,
+        id: targetRepo ? `issue:${targetRepo}:${issue.number}` : `issue:${issue.number}`,
         resourceType: 'issue',
         resourceName: `#${issue.number} ${issue.title}`,
         operation: exists ? 'noop' : 'create',

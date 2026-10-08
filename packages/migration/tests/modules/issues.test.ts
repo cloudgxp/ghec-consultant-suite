@@ -278,16 +278,16 @@ test('IssuesMigrationModule plan diffs target state and plans creations vs noops
   assert.equal(plan.moduleId, 'issues');
   assert.equal(plan.operations.length, 4);
 
-  const bugLabelOp = plan.operations.find((a) => a.id === 'label:bug');
+  const bugLabelOp = plan.operations.find((a) => a.id === 'label:test-repo:bug');
   assert.equal(bugLabelOp?.operation, 'noop');
 
-  const featureLabelOp = plan.operations.find((a) => a.id === 'label:feature');
+  const featureLabelOp = plan.operations.find((a) => a.id === 'label:test-repo:feature');
   assert.equal(featureLabelOp?.operation, 'create');
 
-  const milestoneOp = plan.operations.find((a) => a.id === 'milestone:v1.0');
+  const milestoneOp = plan.operations.find((a) => a.id === 'milestone:test-repo:v1.0');
   assert.equal(milestoneOp?.operation, 'create');
 
-  const issueOp = plan.operations.find((a) => a.id === 'issue:10');
+  const issueOp = plan.operations.find((a) => a.id === 'issue:test-repo:10');
   assert.equal(issueOp?.operation, 'create');
   assert.equal(
     (issueOp?.payload as IssueImportPayload).issue.title,
