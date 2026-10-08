@@ -53,10 +53,11 @@ Zero-exposure security invariant (DEC-004) is strictly preserved: tokens remain 
   - Create `scopes/demogxp-wave.json` mapping `demogxp` to `mig-framework-test`.
   - Validate against `@ghec/contracts` `MigrationScopeSchema`.
   - Commit and push scope to origin.
-- [ ] **Step 3: Execute Preflight and Planning via Workflow Dispatch (Dry-Run)**
-  - Run `test-migration-dispatch.yml` with `dry_run=true` on the scope.
-  - Review preflight checks (ruleset bypass, sizing, credentials).
-  - Inspect generated migration plan and identify any module blockers or warnings.
+- [x] **Step 3: Execute Preflight and Planning via Workflow Dispatch (Dry-Run)**
+  - Run `test-migration-dispatch.yml` with `dry_run=true` on the scope (Run ID: 37795563491).
+  - Review preflight checks (ruleset bypass: active/exempt, IP allowlist: reachable, sizing: within limits, credentials: valid).
+  - Inspect generated migration plan (47 operations: 40 creates, 5 updates, 2 noops across 31 module targets; 0 blockers).
+  - Resolved cross-repository operation ID collision bug in `issues`, `pull-requests`, `rulesets`, and `branch-protection` modules.
 - [ ] **Step 4: Execute Migration (Live Apply)**
   - Run `test-migration-dispatch.yml` with `dry_run=false` (or `migration-execute-wave.yml`).
   - Monitor execution logs and handle any discrepancies or errors that arise.
