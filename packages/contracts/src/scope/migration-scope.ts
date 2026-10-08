@@ -45,7 +45,7 @@ const IdentityMappingSchema = z
   .object({
     strategy: z.enum(['emu-saml', 'manual', 'pass-through']),
     suffix: z.string().max(256).optional(),
-    mappings: z.record(NonEmptyStringSchema).optional(),
+    mappings: z.record(z.string(), NonEmptyStringSchema).optional(),
   })
   .strict();
 

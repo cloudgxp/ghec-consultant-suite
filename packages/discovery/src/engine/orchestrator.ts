@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import type {
@@ -557,7 +558,7 @@ Verification Note:
     entities: Entity[];
     repositories: Extract<Entity, { kind: 'repository' }>[];
     inaccessible: boolean;
-    errors: (typeof ErrorSchema)['_type'][];
+    errors: z.infer<typeof ErrorSchema>[];
   }> {
     const collectorMap = new Map<string, Collector>(
       collectors.map((c) => [c.id, c]),
@@ -566,7 +567,7 @@ Verification Note:
     const executions: CollectorExecution[] = [];
     const entities: Entity[] = [];
     let orgRecord: DiscoveryBundle['organizations'][number] | null = null;
-    const errors: (typeof ErrorSchema)['_type'][] = [];
+    const errors: z.infer<typeof ErrorSchema>[] = [];
 
     const sharedState: {
       repositories: Extract<Entity, { kind: 'repository' }>[];
@@ -701,7 +702,7 @@ Verification Note:
         completedModules.add(moduleId);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
-        const errorRecord: (typeof ErrorSchema)['_type'] = {
+        const errorRecord: z.infer<typeof ErrorSchema> = {
           code: 'unknown',
           message: `Collector ${moduleId} failed: ${errorMsg}`,
           retryable: false,
@@ -1000,7 +1001,7 @@ Verification Note:
     const allEntities: Entity[] = [];
     const organizations: DiscoveryBundle['organizations'] = [];
     const limitations: string[] = [];
-    const errors: (typeof ErrorSchema)['_type'][] = [];
+    const errors: z.infer<typeof ErrorSchema>[] = [];
     let inaccessibleOrganizationCount: number | null = null;
     let enumeration: 'complete' | 'partial' = 'complete';
 

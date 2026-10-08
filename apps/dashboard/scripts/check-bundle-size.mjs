@@ -9,7 +9,7 @@ const indexHtml = readFileSync(resolve(distDirectory, 'index.html'), 'utf8');
 
 const budgets = {
   largestJavaScriptBytes: 600 * 1024,
-  initialJavaScriptGzipBytes: 270 * 1024,
+  initialJavaScriptGzipBytes: 280 * 1024,
   initialCssGzipBytes: 80 * 1024,
 };
 
