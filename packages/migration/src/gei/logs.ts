@@ -68,9 +68,9 @@ export function parseGeiMetadataDiagnostics(
       contents,
     );
   const hasPrError =
-    /REVIEW_THREAD_MISSING_END_COMMIT_OID|LINE_NOT_FOUND_IN_DIFF|pull request.*failed/i.test(
+    /REVIEW_THREAD_MISSING_END_COMMIT_OID|LINE_NOT_FOUND_IN_DIFF/i.test(
       contents,
-    );
+    ) || /pull request[^\r\n]{0,100}failed/i.test(contents);
   const hasReleaseSkipped =
     options.skippedReleases ||
     /--skip-releases|Skipping releases|releases too big/i.test(contents);

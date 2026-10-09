@@ -55,9 +55,9 @@ describe('GitMirrorPushExecutor', () => {
       '--bare',
       '--',
     ]);
-    assert.match(
-      cloneCmd.args[4]!,
-      /https:\/\/github\.com\/test-src-org\/large-repo\.git/,
+    assert.equal(
+      cloneCmd.args[4],
+      'https://github.com/test-src-org/large-repo.git',
     );
     assert.equal(
       cloneCmd.environment?.['GHEC_SOURCE_AUTH'],
@@ -77,9 +77,9 @@ describe('GitMirrorPushExecutor', () => {
       'push',
       '--mirror',
     ]);
-    assert.match(
-      pushCmd.args[4]!,
-      /https:\/\/github\.com\/test-tgt-org\/large-repo\.git/,
+    assert.equal(
+      pushCmd.args[4],
+      'https://github.com/test-tgt-org/large-repo.git',
     );
     assert.equal(
       pushCmd.environment?.['GHEC_TARGET_AUTH'],

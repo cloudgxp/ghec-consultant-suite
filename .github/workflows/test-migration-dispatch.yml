@@ -12,7 +12,7 @@ on:
         description: 'Optional path to pre-collected discovery bundle JSON file'
         required: false
         type: string
-        default: 'scopes/demogxp-discovery-bundle.json'
+        default: 'bundles/demogxp-discovery-bundle.json'
       modules:
         description: 'Comma-separated migration modules to execute (or "all")'
         required: false

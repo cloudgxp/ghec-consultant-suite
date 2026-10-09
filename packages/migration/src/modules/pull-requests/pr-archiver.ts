@@ -26,8 +26,8 @@ export function generateHistoricalPrMarkdown(
     const status = pr.merged ? 'Merged' : 'Closed';
     const date = pr.mergedAt ?? pr.closedAt ?? pr.createdAt;
     const author = pr.author ? `@${pr.author}` : 'unknown';
-    // Escape pipes in title
-    const safeTitle = pr.title.replace(/\|/g, '\\|');
+    // Escape backslashes and pipes in title for markdown table
+    const safeTitle = pr.title.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
     lines.push(
       `| #${pr.number} | ${safeTitle} | ${status} | ${author} | \`${pr.baseRef}\` <- \`${pr.headRef}\` | ${date} |`,
     );
