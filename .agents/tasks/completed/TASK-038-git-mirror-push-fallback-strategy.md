@@ -18,6 +18,7 @@ packages_affected:
 Large repositories exceeding 40 GiB (such as Chromium at 54.3 GiB) hit GitHub Enterprise Importer's (GEI) hard server-side archive generation limits, producing the error: `Git source migration failed. Error message: Git repository data failed to be generated`.
 
 To ensure migrations of large monorepos do not halt, this task introduces an automated `git-mirror-push` strategy and fallback mechanism into `@ghec/migration`:
+
 - Add `gitTransferStrategy: 'auto' | 'gei' | 'mirror-push'` to `@ghec/contracts` repository options.
 - Create an offline-testable `GitMirrorPushExecutor` that provisions the target repository via REST API, performs an ephemeral authenticated `git clone --bare`, and executes `git push --mirror` with credential scrubbing.
 - Implement runner disk capacity preflight inspection using `statfsSync` to verify the runner has sufficient headroom ($1.5\times$ scratch space) before attempting a clone.
@@ -85,4 +86,3 @@ node --import tsx --test packages/migration/tests/orchestrator/pipeline.test.ts
   - Integrated into `RepositoryMigrationPipeline`: routes $>40$ GiB repos in Stage 1 and Stage 3 without blocking.
 - **Verification Evidence:**
   - `npm run check`: 547/547 tests passed offline (0 failures), 0 lint errors, 0 typecheck errors, apps built.
-
