@@ -76,10 +76,46 @@ export function ReleasesAndAssetsTab({ bundle, selectedOrgIds }: Props) {
       })
       .sort((a, b) => (b.sizeBytes ?? -1) - (a.sizeBytes ?? -1));
   }, [records, repositoryNames, query, kind, size]);
-  const knownBytes = records.reduce(
-    (total, item) => total + (item.sizeBytes ?? 0),
-    0,
-  );
+
+  // Performance Optimization: Calculate all metrics in a single O(N) pass
+  // instead of 6 separate filter/reduce passes to prevent unnecessary iteration.
+  const metrics = useMemo(() => {
+    let releases = 0;
+    let releaseAssets = 0;
+    let largeAssets = 0;
+    let lfs = 0;
+    let knownBytes = 0;
+    let unknownSize = 0;
+    let affectedCount = 0;
+
+    for (const item of records) {
+      if (item.kind === 'release') releases++;
+      if (item.kind === 'release-asset') releaseAssets++;
+      if (item.kind === 'large-asset') largeAssets++;
+      if (item.kind === 'lfs') lfs++;
+
+      if (item.sizeBytes === null) {
+        unknownSize++;
+      } else {
+        knownBytes += item.sizeBytes;
+      }
+
+      if (item.kind === 'release' || item.kind === 'release-asset') {
+        affectedCount++;
+      }
+    }
+
+    return {
+      releases,
+      releaseAssets,
+      largeAssets,
+      lfs,
+      knownBytes,
+      unknownSize,
+      affectedCount,
+    };
+  }, [records]);
+
   const columns = useMemo<
     readonly VirtualizedColumn<ReleaseAssetInventoryRecord>[]
   >(
@@ -236,27 +272,18 @@ export function ReleasesAndAssetsTab({ bundle, selectedOrgIds }: Props) {
         </Flash>
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <MetricCard
-          label="Releases"
-          value={records.filter((item) => item.kind === 'release').length}
-        />
-        <MetricCard
-          label="Release assets"
-          value={records.filter((item) => item.kind === 'release-asset').length}
-        />
-        <MetricCard
-          label="Large assets"
-          value={records.filter((item) => item.kind === 'large-asset').length}
-        />
+        <MetricCard label="Releases" value={metrics.releases} />
+        <MetricCard label="Release assets" value={metrics.releaseAssets} />
+        <MetricCard label="Large assets" value={metrics.largeAssets} />
         <MetricCard
           label="LFS dependencies"
-          value={records.filter((item) => item.kind === 'lfs').length}
+          value={metrics.lfs}
           tone="warning"
         />
         <MetricCard
           label="Known bytes"
-          value={bytes(knownBytes)}
-          detail={`${records.filter((item) => item.sizeBytes === null).length} records unknown`}
+          value={bytes(metrics.knownBytes)}
+          detail={`${metrics.unknownSize} records unknown`}
         />
       </div>
       <FilterToolbar
@@ -326,11 +353,7 @@ export function ReleasesAndAssetsTab({ bundle, selectedOrgIds }: Props) {
             ? resolveOrgName(bundle, selectedOrgIds[0])
             : bundle.organizations[0]?.login || 'source-org'
         }
-        affectedCount={
-          records.filter(
-            (item) => item.kind === 'release' || item.kind === 'release-asset',
-          ).length
-        }
+        affectedCount={metrics.affectedCount}
         entityLabel="releases & assets"
         prerequisites={[
           'Repository code, branches, and tags migrated via GEI',

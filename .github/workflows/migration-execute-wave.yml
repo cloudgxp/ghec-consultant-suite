@@ -24,7 +24,7 @@ on:
         type: number
         default: 5
       modules:
-        description: 'Comma-separated migration modules to execute (or "all")'
+        description: 'Comma-separated migration modules to execute (or "all"). Valid IDs: org-variables, org-secrets, teams, org-custom-properties, post-migration-mannequins, packages, gei-repo, repo-variables, repo-secrets, environments, webhooks, repo-settings, repo-custom-properties, rulesets, branch-protection, post-migration-codeowners, security, releases, deploy-keys, collaborators, lfs'
         required: false
         type: string
         default: 'all'
@@ -32,17 +32,17 @@ on:
         description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
         required: false
         type: boolean
-        default: false
+        default: true
       continue_on_error:
         description: 'Continue executing remaining modules/cohorts on non-fatal failures'
         required: false
         type: boolean
         default: true
       runner_labels:
-        description: 'Comma-separated labels for runner selection (e.g. "ubuntu-latest" for test runs or "self-hosted,linux" for production)'
+        description: 'Comma-separated labels for runner selection (e.g. "ubuntu-latest" for GitHub-hosted or "self-hosted,linux" for production)'
         required: false
         type: string
-        default: 'self-hosted,linux'
+        default: 'ubuntu-latest'
       environment_gate:
         description: 'Target GitHub Environment with review protection gates (e.g. "production-migration" or "test")'
         required: false
@@ -76,6 +76,57 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      - name: Validate Migration Scope
+        shell: bash
+        run: |
+          if [ ! -f "${{ inputs.scope }}" ]; then
+            echo "::error::Scope file '${{ inputs.scope }}' does not exist."
+            exit 1
+          fi
+          echo "Validating migration scope: ${{ inputs.scope }}"
+          node --input-type=module -e '
+            import { validateMigrationScope } from "./packages/contracts/dist/index.js";
+            import fs from "fs";
+            const parsed = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const res = validateMigrationScope(parsed);
+            if (!res.success) {
+              console.error("Scope validation failed:", JSON.stringify(res.error, null, 2));
+              process.exit(1);
+            }
+            console.log("Scope schema validation passed successfully.");
+          ' "${{ inputs.scope }}"
+
+      - name: Execute Preflight Evaluation & Credential Audit
+        id: preflight
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+        run: |
+          mkdir -p ./scans
+          echo "Evaluating source and target preflight readiness..."
+          INPUT_ARG=()
+          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
+            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          fi
+
+          EXIT_CODE=0
+          node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
+            --scope "${{ inputs.scope }}" \
+            "${INPUT_ARG[@]}" \
+            --output ./scans/preflight-report.json \
+            --verbose || EXIT_CODE=$?
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+              echo "::warning::Preflight evaluation detected repository blockers or warnings (exit code $EXIT_CODE), but continue_on_error is enabled. Proceeding to migration planning."
+            else
+              echo "::error::Preflight evaluation detected blockers (exit code $EXIT_CODE)."
+              exit "$EXIT_CODE"
+            fi
+          fi
 
       - name: Resolve Runner Labels JSON
         id: resolve-runners
@@ -135,6 +186,7 @@ jobs:
         with:
           name: migration-wave-plan-${{ github.run_id }}
           path: |
+            ./scans/preflight-report.json
             ./scans/migration-plan.json
             ./scans/migration-matrix.json
             ./cohorts/*-scope.json
@@ -419,6 +471,7 @@ jobs:
         with:
           name: migration-wave-final-${{ github.run_id }}
           path: |
+            ./scans/preflight-report.json
             ./scans/migration-plan.json
             ./scans/verification-report.json
             ./scans/cohort-report-*.json
