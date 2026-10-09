@@ -17,6 +17,10 @@ import {
 } from '../../gei/logs.js';
 import type { GeiCommandRunner } from '../../gei/types.js';
 import { SourceCredentialInspector } from '../../preflight/credential-inspector.js';
+import {
+  GitMirrorPushExecutor,
+  type GitCommandRunner,
+} from '../../strategies/mirror-push/index.js';
 import { RepositoryParityInspector } from './parity-inspector.js';
 
 export interface GeiRepoDiscoveredData {
@@ -35,9 +39,11 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
   readonly dependencies: readonly string[] = [];
 
   private readonly geiRunner?: GeiCommandRunner | undefined;
+  private readonly gitRunner?: GitCommandRunner | undefined;
 
-  constructor(geiRunner?: GeiCommandRunner) {
+  constructor(geiRunner?: GeiCommandRunner, gitRunner?: GitCommandRunner) {
     this.geiRunner = geiRunner;
+    this.gitRunner = gitRunner;
   }
 
   async discover(
@@ -170,9 +176,9 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
     const targetToken =
       process.env.GHEC_TARGET_TOKEN?.trim() ?? process.env.GH_PAT?.trim();
 
-    if (!this.geiRunner && (!sourceToken || !targetToken)) {
+    if (!this.geiRunner && !this.gitRunner && (!sourceToken || !targetToken)) {
       ctx.logger.info(
-        `[gei-repo] No migration tokens or custom GEI runner provided; skipping GEI import for ${sourceOrg}/${sourceRepo}.`,
+        `[gei-repo] No migration tokens or custom runners provided; skipping repository migration for ${sourceOrg}/${sourceRepo}.`,
       );
       return {
         schemaVersion: MIGRATION_SCHEMA_VERSION,
@@ -216,15 +222,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       }
     }
 
-    ctx.logger.info(
-      `[gei-repo] Spawning GEI repository migration: ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo}...`,
-    );
-    const geiExecutor = new GeiProcessExecutor(this.geiRunner);
-
     const repoOptions = ctx.scope.options;
     const targetRepoVisibility = repoOptions?.targetRepoVisibility ?? 'private';
+    let gitTransferStrategy = repoOptions?.gitTransferStrategy ?? 'auto';
     let skipReleases = repoOptions?.skipReleases;
-    if (skipReleases === undefined && ctx.sourceClient) {
+    let repoSizeBytes = 0;
+
+    if (ctx.sourceClient) {
       try {
         const repoRes = await ctx.sourceClient.readSingle<{ size?: number }>(
           {
@@ -236,22 +240,106 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           },
           ctx.signal,
         );
-        const repoSizeBytes = (repoRes.data?.size ?? 0) * 1024;
-        if (repoSizeBytes > 10 * 1024 * 1024 * 1024) {
-          ctx.logger.warn(
-            `[gei-repo] Repository ${sourceOrg}/${sourceRepo} is large (${(repoSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GiB); automatically activating --skip-releases strategy for GEI.`,
-          );
-          skipReleases = true;
-        }
+        repoSizeBytes = (repoRes.data?.size ?? 0) * 1024;
       } catch {
         // Fall back gracefully
       }
     }
+
+    if (skipReleases === undefined && repoSizeBytes > 10 * 1024 * 1024 * 1024) {
+      ctx.logger.warn(
+        `[gei-repo] Repository ${sourceOrg}/${sourceRepo} is large (${(repoSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GiB); automatically activating --skip-releases strategy for GEI.`,
+      );
+      skipReleases = true;
+    }
+
+    if (
+      gitTransferStrategy === 'auto' &&
+      repoSizeBytes > 40 * 1024 * 1024 * 1024
+    ) {
+      ctx.logger.warn(
+        `[gei-repo] Repository ${sourceOrg}/${sourceRepo} is ${(repoSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GiB, exceeding GitHub's 40 GiB GEI platform limit; automatically switching to mirror-push strategy.`,
+      );
+      gitTransferStrategy = 'mirror-push';
+    }
+
     const timeoutMs =
       repoOptions?.customTimeout ??
       (repoOptions?.timeoutSeconds
         ? repoOptions.timeoutSeconds * 1000
         : undefined);
+
+    if (gitTransferStrategy === 'mirror-push') {
+      ctx.logger.info(
+        `[gei-repo] Spawning direct Git mirror-push migration: ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo}...`,
+      );
+      const mirrorExecutor = new GitMirrorPushExecutor(this.gitRunner);
+      try {
+        const mirrorResult = await mirrorExecutor.execute({
+          sourceOrg,
+          sourceRepo,
+          targetOrg,
+          targetRepo,
+          targetRepoVisibility,
+          ...(sourceToken ? { sourceToken } : {}),
+          ...(targetToken ? { targetToken } : {}),
+          estimatedSizeBytes: repoSizeBytes > 0 ? repoSizeBytes : undefined,
+          skipDiskCheck: repoOptions?.skipDiskCheck,
+          targetClient: ctx.targetClient,
+          targetWriteClient: ctx.targetWriteClient,
+          signal: ctx.signal,
+          ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+        });
+
+        ctx.logger.info(
+          `[gei-repo] Successfully completed mirror-push for ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo} in ${mirrorResult.durationMs}ms.`,
+        );
+        results.push({
+          operationId: `gei-repo-mirror-push-${targetRepo}`,
+          status: 'succeeded',
+          completedAt: new Date().toISOString(),
+        });
+
+        return {
+          schemaVersion: MIGRATION_SCHEMA_VERSION,
+          moduleId: this.id,
+          status: 'complete',
+          durationMs: Date.now() - startTime,
+          results,
+          metadataState: 'partial',
+          failedMetadataCategories: ['issues', 'pull-requests', 'releases'],
+        };
+      } catch (mirrorErr) {
+        const msg =
+          mirrorErr instanceof Error ? mirrorErr.message : String(mirrorErr);
+        ctx.logger.error(
+          `[gei-repo] Mirror-push failed for ${sourceOrg}/${sourceRepo}: ${msg}`,
+        );
+        results.push({
+          operationId: `gei-repo-mirror-push-error-${targetRepo}`,
+          status: 'failed',
+          error: msg.slice(0, 2048),
+          completedAt: new Date().toISOString(),
+        });
+        if (!ctx.continueOnError) {
+          throw mirrorErr;
+        }
+        return {
+          schemaVersion: MIGRATION_SCHEMA_VERSION,
+          moduleId: this.id,
+          status: 'failed',
+          durationMs: Date.now() - startTime,
+          results,
+          metadataState: 'failed',
+          failedMetadataCategories: ['git-source'],
+        };
+      }
+    }
+
+    ctx.logger.info(
+      `[gei-repo] Spawning GEI repository migration: ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo}...`,
+    );
+    const geiExecutor = new GeiProcessExecutor(this.geiRunner);
 
     try {
       const geiResult = await geiExecutor.execute({
@@ -384,6 +472,61 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      const isGeiArchiveFailure =
+        msg.includes('Git repository data failed to be generated') ||
+        msg.includes('exceeds GitHub platform limit of 40 GiB');
+
+      if (gitTransferStrategy === 'auto' && isGeiArchiveFailure) {
+        ctx.logger.warn(
+          `[gei-repo] GEI archive generation failed (${msg}); automatically falling back to mirror-push strategy...`,
+        );
+        const mirrorExecutor = new GitMirrorPushExecutor(this.gitRunner);
+        try {
+          const mirrorResult = await mirrorExecutor.execute({
+            sourceOrg,
+            sourceRepo,
+            targetOrg,
+            targetRepo,
+            targetRepoVisibility,
+            ...(sourceToken ? { sourceToken } : {}),
+            ...(targetToken ? { targetToken } : {}),
+            estimatedSizeBytes: repoSizeBytes > 0 ? repoSizeBytes : undefined,
+            skipDiskCheck: repoOptions?.skipDiskCheck,
+            targetClient: ctx.targetClient,
+            targetWriteClient: ctx.targetWriteClient,
+            signal: ctx.signal,
+            ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          });
+
+          ctx.logger.info(
+            `[gei-repo] Fallback mirror-push succeeded for ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo} in ${mirrorResult.durationMs}ms.`,
+          );
+          results.push({
+            operationId: `gei-repo-mirror-fallback-${targetRepo}`,
+            status: 'succeeded',
+            completedAt: new Date().toISOString(),
+          });
+
+          return {
+            schemaVersion: MIGRATION_SCHEMA_VERSION,
+            moduleId: this.id,
+            status: 'partial',
+            durationMs: Date.now() - startTime,
+            results,
+            metadataState: 'partial',
+            failedMetadataCategories: ['issues', 'pull-requests', 'releases'],
+          };
+        } catch (fallbackErr) {
+          const fallbackMsg =
+            fallbackErr instanceof Error
+              ? fallbackErr.message
+              : String(fallbackErr);
+          ctx.logger.error(
+            `[gei-repo] Fallback mirror-push also failed: ${fallbackMsg}`,
+          );
+        }
+      }
+
       ctx.logger.error(
         `[gei-repo] GEI migration failed for ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo}: ${msg}`,
       );

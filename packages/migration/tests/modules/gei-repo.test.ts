@@ -627,4 +627,178 @@ describe('GeiRepoMigrationModule', () => {
       'should flag migration log warnings',
     );
   });
+
+  it('automatically activates mirror-push strategy when repository size > 40 GiB', async () => {
+    const gitCommands: string[] = [];
+    const mockGitRunner = async (cmd: string, args: readonly string[]) => {
+      gitCommands.push(`${cmd} ${args[0] ?? ''}`);
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    let geiCalled = false;
+    const mockGeiRunner = async () => {
+      geiCalled = true;
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    const module = new GeiRepoMigrationModule(mockGeiRunner, mockGitRunner);
+
+    // Mock 50 GiB source repo (size is reported in KB by GitHub REST API)
+    const mockSourceClient = createMockAdapter({});
+    const origReadSingle = mockSourceClient.readSingle.bind(mockSourceClient);
+    mockSourceClient.readSingle = async (op, signal) => {
+      if (op.path?.includes('/repos/')) {
+        return {
+          data: { size: 50 * 1024 * 1024 }, // 50 GiB in KB
+          observedAt: new Date().toISOString(),
+          status: 200,
+        };
+      }
+      return origReadSingle(op, signal);
+    };
+
+    const ctx: MigrationContext = {
+      runId: 'test-mirror-push-large',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'demogxp',
+        sourceRepo: 'chromium',
+        targetOrg: 'mig-framework-test',
+        targetRepo: 'chromium',
+        options: { gitTransferStrategy: 'auto', skipDiskCheck: true },
+      },
+      sourceClient: mockSourceClient,
+      targetClient: createMockAdapter({ targetExists: false }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: true,
+    };
+
+    const result = await module.apply(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'mig-framework-test/chromium',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(
+      geiCalled,
+      false,
+      'GEI should not be called for >40 GiB repository',
+    );
+    assert.equal(
+      gitCommands.length,
+      2,
+      'Should execute git clone and git push',
+    );
+    assert.equal(result.status, 'complete');
+    assert.equal(
+      result.results[0]?.operationId,
+      'gei-repo-mirror-push-chromium',
+    );
+  });
+
+  it('automatically falls back to mirror-push when GEI fails with backend archive generation limit', async () => {
+    const gitCommands: string[] = [];
+    const mockGitRunner = async (cmd: string, args: readonly string[]) => {
+      gitCommands.push(`${cmd} ${args[0] ?? ''}`);
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    const mockGeiRunner = async () => {
+      return {
+        exitCode: 1,
+        stdout: '',
+        stderr:
+          'Git source migration failed. Error message: Git repository data failed to be generated',
+      };
+    };
+
+    const module = new GeiRepoMigrationModule(mockGeiRunner, mockGitRunner);
+
+    const ctx: MigrationContext = {
+      runId: 'test-gei-fallback',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'demogxp',
+        sourceRepo: 'large-repo',
+        targetOrg: 'mig-framework-test',
+        targetRepo: 'large-repo',
+        options: { gitTransferStrategy: 'auto' },
+      },
+      sourceClient: createMockAdapter({}),
+      targetClient: createMockAdapter({ targetExists: false }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: true,
+    };
+
+    const result = await module.apply(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'mig-framework-test/large-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(
+      gitCommands.length,
+      2,
+      'Should execute fallback mirror-push clone and push',
+    );
+    assert.equal(result.status, 'partial');
+    assert.equal(
+      result.results[0]?.operationId,
+      'gei-repo-mirror-fallback-large-repo',
+    );
+  });
+
+  it('executes mirror-push directly when explicitly specified in repository options', async () => {
+    const gitCommands: string[] = [];
+    const mockGitRunner = async (cmd: string, args: readonly string[]) => {
+      gitCommands.push(`${cmd} ${args[0] ?? ''}`);
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    let geiCalled = false;
+    const mockGeiRunner = async () => {
+      geiCalled = true;
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    const module = new GeiRepoMigrationModule(mockGeiRunner, mockGitRunner);
+
+    const ctx: MigrationContext = {
+      runId: 'test-explicit-mirror-push',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'org',
+        sourceRepo: 'repo',
+        targetOrg: 'target-org',
+        targetRepo: 'repo',
+        options: { gitTransferStrategy: 'mirror-push' },
+      },
+      sourceClient: createMockAdapter({}),
+      targetClient: createMockAdapter({ targetExists: false }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: true,
+    };
+
+    const result = await module.apply(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(geiCalled, false);
+    assert.equal(gitCommands.length, 2);
+    assert.equal(result.results[0]?.operationId, 'gei-repo-mirror-push-repo');
+  });
 });

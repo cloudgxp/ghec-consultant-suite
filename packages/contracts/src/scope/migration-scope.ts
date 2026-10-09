@@ -13,13 +13,19 @@ const OrganizationMappingSchema = z
   })
   .strict();
 
+export const GitTransferStrategySchema = z.enum(['auto', 'gei', 'mirror-push']);
+
+export type GitTransferStrategy = z.infer<typeof GitTransferStrategySchema>;
+
 export const RepositoryOptionsSchema = z
   .object({
     skipReleases: z.boolean().optional(),
     skipLfs: z.boolean().optional(),
+    skipDiskCheck: z.boolean().optional(),
     customTimeout: z.number().int().positive().optional(),
     timeoutSeconds: z.number().int().positive().optional(),
     lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
+    gitTransferStrategy: GitTransferStrategySchema.optional(),
     targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
   })
   .strict();
@@ -35,7 +41,9 @@ export const RepositoryMappingSchema = z
     useGei: z.boolean(),
     targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
     skipReleases: z.boolean().optional(),
+    skipDiskCheck: z.boolean().optional(),
     lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
+    gitTransferStrategy: GitTransferStrategySchema.optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
     options: RepositoryOptionsSchema.optional(),
   })

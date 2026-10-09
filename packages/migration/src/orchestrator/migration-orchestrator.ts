@@ -49,6 +49,8 @@ export class MigrationOrchestrator {
     MigrationOrchestratorOptions['geiRunner'] | undefined;
   private readonly lfsRunner?:
     MigrationOrchestratorOptions['lfsRunner'] | undefined;
+  private readonly gitRunner?:
+    MigrationOrchestratorOptions['gitRunner'] | undefined;
   private readonly releaseTransport?:
     MigrationOrchestratorOptions['releaseTransport'] | undefined;
   private readonly plan?: MigrationPlan | undefined;
@@ -77,6 +79,7 @@ export class MigrationOrchestrator {
     this.targetToken = options.targetToken;
     this.geiRunner = options.geiRunner;
     this.lfsRunner = options.lfsRunner;
+    this.gitRunner = options.gitRunner;
     this.releaseTransport = options.releaseTransport;
     this.cachedDiscoveryBundle = options.cachedDiscoveryBundle;
     this.modulesFilter = options.modules;
@@ -134,6 +137,7 @@ export class MigrationOrchestrator {
       signal: this.signal,
       geiRunner: this.geiRunner,
       lfsRunner: this.lfsRunner,
+      gitRunner: this.gitRunner,
       releaseTransport: this.releaseTransport,
     });
 

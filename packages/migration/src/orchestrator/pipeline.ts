@@ -5,6 +5,7 @@ import {
   type MigrationScope,
   type ModuleExecutionResult,
   type ModulePlan,
+  type RepositoryAssessment,
   validateModuleExecutionResult,
 } from '@ghec/contracts';
 import type { MigrationCheckpointManager } from '../checkpoint/manager.js';
@@ -20,6 +21,7 @@ import { SourceRepositoryInspector } from '../preflight/source-inspector.js';
 import { GitLfsMigrationStrategy } from '../strategies/git-lfs/strategy.js';
 import type { GitLfsQuotaChecker } from '../strategies/git-lfs/types.js';
 import { LargeReleasesMigrationStrategy } from '../strategies/releases/strategy.js';
+import { GitMirrorPushExecutor } from '../strategies/mirror-push/index.js';
 import type {
   RepositoryPipelineOptions,
   RepositoryPipelineResult,
@@ -81,6 +83,13 @@ export class RepositoryMigrationPipeline {
           ? repoOptions.lfsStrategy === 'dual-remote-stream'
           : repoMapping.lfsStrategy === 'dual-remote-stream';
 
+    const transferStrategy =
+      repoOptions?.gitTransferStrategy ??
+      repoMapping.gitTransferStrategy ??
+      'auto';
+    let assessment: RepositoryAssessment | undefined;
+    let willUseMirrorPush = transferStrategy === 'mirror-push';
+
     try {
       // -------------------------------------------------------------
       // STAGE 1: Preflight Checks
@@ -90,6 +99,16 @@ export class RepositoryMigrationPipeline {
           `[Stage 1] Preflight already completed in checkpoint for ${repoKey}`,
         );
         completedStages.push('preflight');
+        const repoCheckpoint =
+          this.checkpointManager.getManifest().repositories[repoKey];
+        assessment = repoCheckpoint?.preflight?.assessment as
+          RepositoryAssessment | undefined;
+        if (
+          transferStrategy === 'auto' &&
+          (assessment?.gitSizeBytes ?? 0) > 40 * GIB
+        ) {
+          willUseMirrorPush = true;
+        }
       } else {
         this.logger.info(
           `[Stage 1] Executing source preflight checks for ${repoKey}...`,
@@ -102,7 +121,7 @@ export class RepositoryMigrationPipeline {
           signal,
         });
 
-        const assessment = await sourceInspector.inspect(sourceRepo);
+        assessment = await sourceInspector.inspect(sourceRepo);
 
         if (
           assessment.releaseTotalAssetBytes > 10 * GIB ||
@@ -114,11 +133,41 @@ export class RepositoryMigrationPipeline {
           );
         }
 
+        const isOver40Gib = assessment.gitSizeBytes > 40 * GIB;
+        if (
+          transferStrategy === 'mirror-push' ||
+          (transferStrategy === 'auto' && isOver40Gib)
+        ) {
+          willUseMirrorPush = true;
+        }
+
+        if (willUseMirrorPush && isOver40Gib) {
+          this.logger.warn(
+            `[Stage 1] Repository ${repoKey} (${(assessment.gitSizeBytes / GIB).toFixed(2)} GiB) exceeds GEI 40 GiB boundary; automatically routing to mirror-push strategy.`,
+          );
+        }
+
         if (assessment.status === 'blocked') {
           const nonSizingBlockers = assessment.blockers.filter(
             (b) => !b.includes('exceeds GitHub platform limit of 40 GiB'),
           );
-          if (nonSizingBlockers.length > 0 || !this.options.continueOnError) {
+          const hasSizingBlocker = assessment.blockers.some((b) =>
+            b.includes('exceeds GitHub platform limit of 40 GiB'),
+          );
+
+          if (hasSizingBlocker && willUseMirrorPush) {
+            if (nonSizingBlockers.length > 0) {
+              const blockerMsg = `Repository ${repoKey} blocked in preflight: ${nonSizingBlockers.join('; ')}`;
+              this.checkpointManager?.recordStageResult(repoKey, 'preflight', {
+                status: 'failed',
+                assessment,
+              });
+              throw new Error(blockerMsg);
+            }
+          } else if (
+            nonSizingBlockers.length > 0 ||
+            !this.options.continueOnError
+          ) {
             const blockerMsg = `Repository ${repoKey} blocked in preflight: ${assessment.blockers.join('; ')}`;
             this.checkpointManager?.recordStageResult(repoKey, 'preflight', {
               status: 'failed',
@@ -127,7 +176,7 @@ export class RepositoryMigrationPipeline {
             throw new Error(blockerMsg);
           } else {
             this.logger.warn(
-              `[Stage 1] Repository ${repoKey} exceeds 40 GiB platform boundary, but continueOnError is enabled; attempting GEI with --skip-releases.`,
+              `[Stage 1] Repository ${repoKey} exceeds 40 GiB platform boundary, but continueOnError is enabled; proceeding.`,
             );
           }
         }
@@ -214,12 +263,9 @@ export class RepositoryMigrationPipeline {
         );
         completedStages.push('gei');
       } else {
-        this.logger.info(
-          `[Stage 3] Spawning GEI process for ${repoKey} -> ${targetOrg}/${targetRepo}...`,
-        );
         if (this.options.dryRun) {
           this.logger.info(
-            `[Stage 3] [DRY RUN] GEI process simulated successfully.`,
+            `[Stage 3] [DRY RUN] ${willUseMirrorPush ? 'Git mirror-push' : 'GEI'} process simulated successfully.`,
           );
           this.checkpointManager?.recordStageResult(repoKey, 'gei', {
             status: 'completed',
@@ -228,8 +274,6 @@ export class RepositoryMigrationPipeline {
           });
           completedStages.push('gei');
         } else {
-          const geiExecutor = new GeiProcessExecutor(this.options.geiRunner);
-
           const timeoutMs =
             repoOptions?.customTimeout ??
             (repoOptions?.timeoutSeconds
@@ -240,39 +284,145 @@ export class RepositoryMigrationPipeline {
             repoMapping.targetRepoVisibility ??
             'private';
 
-          try {
-            geiResult = await geiExecutor.execute({
-              sourceOrg,
-              sourceRepo,
-              targetOrg,
-              targetRepo,
-              ...(this.options.sourceToken
-                ? { sourceToken: this.options.sourceToken }
-                : {}),
-              ...(this.options.targetToken
-                ? { targetToken: this.options.targetToken }
-                : {}),
-              targetRepoVisibility,
-              skipReleases: shouldSkipReleases,
-              ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-              signal,
-            });
+          if (willUseMirrorPush) {
+            this.logger.info(
+              `[Stage 3] Spawning Git mirror-push process for ${repoKey} -> ${targetOrg}/${targetRepo}...`,
+            );
+            const mirrorExecutor = new GitMirrorPushExecutor(
+              this.options.gitRunner,
+            );
+            try {
+              await mirrorExecutor.execute({
+                sourceOrg,
+                sourceRepo,
+                targetOrg,
+                targetRepo,
+                targetRepoVisibility,
+                ...(this.options.sourceToken
+                  ? { sourceToken: this.options.sourceToken }
+                  : {}),
+                ...(this.options.targetToken
+                  ? { targetToken: this.options.targetToken }
+                  : {}),
+                estimatedSizeBytes: assessment?.gitSizeBytes,
+                skipDiskCheck: repoOptions?.skipDiskCheck,
+                targetClient: this.options.targetClient,
+                targetWriteClient: this.options.targetWriteClient,
+                ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+                signal,
+              });
 
-            this.checkpointManager?.recordStageResult(repoKey, 'gei', {
-              status: 'completed',
-              ...(geiResult.migrationId
-                ? { migrationId: geiResult.migrationId }
-                : {}),
-              skippedReleases: shouldSkipReleases,
-            });
-            completedStages.push('gei');
-          } catch (err) {
-            const geiError = err instanceof Error ? err.message : String(err);
-            this.checkpointManager?.recordStageResult(repoKey, 'gei', {
-              status: 'failed',
-              error: geiError,
-            });
-            throw err;
+              this.checkpointManager?.recordStageResult(repoKey, 'gei', {
+                status: 'completed',
+                migrationId: 'git-mirror-push',
+                skippedReleases: true,
+              });
+              completedStages.push('gei');
+            } catch (err) {
+              const mirrorError =
+                err instanceof Error ? err.message : String(err);
+              this.checkpointManager?.recordStageResult(repoKey, 'gei', {
+                status: 'failed',
+                error: mirrorError,
+              });
+              throw err;
+            }
+          } else {
+            this.logger.info(
+              `[Stage 3] Spawning GEI process for ${repoKey} -> ${targetOrg}/${targetRepo}...`,
+            );
+            const geiExecutor = new GeiProcessExecutor(this.options.geiRunner);
+
+            try {
+              geiResult = await geiExecutor.execute({
+                sourceOrg,
+                sourceRepo,
+                targetOrg,
+                targetRepo,
+                ...(this.options.sourceToken
+                  ? { sourceToken: this.options.sourceToken }
+                  : {}),
+                ...(this.options.targetToken
+                  ? { targetToken: this.options.targetToken }
+                  : {}),
+                targetRepoVisibility,
+                skipReleases: shouldSkipReleases,
+                ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+                signal,
+              });
+
+              this.checkpointManager?.recordStageResult(repoKey, 'gei', {
+                status: 'completed',
+                ...(geiResult.migrationId
+                  ? { migrationId: geiResult.migrationId }
+                  : {}),
+                skippedReleases: shouldSkipReleases,
+              });
+              completedStages.push('gei');
+            } catch (err) {
+              const geiError = err instanceof Error ? err.message : String(err);
+              const isArchiveFailure =
+                geiError.includes(
+                  'Git repository data failed to be generated',
+                ) ||
+                geiError.includes('exceeds GitHub platform limit of 40 GiB');
+
+              if (transferStrategy === 'auto' && isArchiveFailure) {
+                this.logger.warn(
+                  `[Stage 3] GEI archive generation failed (${geiError}); automatically falling back to mirror-push strategy...`,
+                );
+                const mirrorExecutor = new GitMirrorPushExecutor(
+                  this.options.gitRunner,
+                );
+                try {
+                  await mirrorExecutor.execute({
+                    sourceOrg,
+                    sourceRepo,
+                    targetOrg,
+                    targetRepo,
+                    targetRepoVisibility,
+                    ...(this.options.sourceToken
+                      ? { sourceToken: this.options.sourceToken }
+                      : {}),
+                    ...(this.options.targetToken
+                      ? { targetToken: this.options.targetToken }
+                      : {}),
+                    estimatedSizeBytes: assessment?.gitSizeBytes,
+                    skipDiskCheck: repoOptions?.skipDiskCheck,
+                    targetClient: this.options.targetClient,
+                    targetWriteClient: this.options.targetWriteClient,
+                    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+                    signal,
+                  });
+
+                  this.checkpointManager?.recordStageResult(repoKey, 'gei', {
+                    status: 'completed',
+                    migrationId: 'git-mirror-push-fallback',
+                    skippedReleases: true,
+                  });
+                  completedStages.push('gei');
+                } catch (fallbackErr) {
+                  const fallbackMsg =
+                    fallbackErr instanceof Error
+                      ? fallbackErr.message
+                      : String(fallbackErr);
+                  this.logger.error(
+                    `[Stage 3] Fallback mirror-push also failed: ${fallbackMsg}`,
+                  );
+                  this.checkpointManager?.recordStageResult(repoKey, 'gei', {
+                    status: 'failed',
+                    error: geiError,
+                  });
+                  throw err;
+                }
+              } else {
+                this.checkpointManager?.recordStageResult(repoKey, 'gei', {
+                  status: 'failed',
+                  error: geiError,
+                });
+                throw err;
+              }
+            }
           }
         }
       }

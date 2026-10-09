@@ -941,9 +941,11 @@ export {
   MigrationScopeSchema,
   RepositoryMappingSchema,
   RepositoryOptionsSchema,
+  GitTransferStrategySchema,
   validateMigrationScope,
   type MigrationScope,
   type RepositoryOptions,
+  type GitTransferStrategy,
 } from './scope/migration-scope.js';
 export {
   MigrationPlanSchema,
