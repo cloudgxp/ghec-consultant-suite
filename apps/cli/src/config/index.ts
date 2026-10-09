@@ -21,8 +21,29 @@ export interface CliConfigOptions {
   readonly installationId?: string | undefined;
 }
 
+function resolveAmbientGhToken(user?: string): string | undefined {
+  try {
+    const args = ['auth', 'token'];
+    if (user) {
+      args.push('--user', user);
+    }
+    const token = execFileSync('gh', args, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+    return token || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function loadConfig(options?: CliConfigOptions): CliConfig {
-  const token = process.env.GHEC_TOKEN?.trim() || undefined;
+  const token =
+    process.env.GHEC_TOKEN?.trim() ||
+    process.env.GHEC_DISCOVERY_TOKEN?.trim() ||
+    process.env.GHEC_SOURCE_TOKEN?.trim() ||
+    resolveAmbientGhToken() ||
+    undefined;
   const baseUrl = process.env.GHEC_BASE_URL?.trim() || 'https://api.github.com';
   const apiVersion = process.env.GHEC_API_VERSION?.trim() || '2026-03-10';
 
@@ -93,22 +114,6 @@ export interface CliDualConfigOptions {
 export interface CliDualConfig {
   readonly source: TenantClientConfig;
   readonly target: TenantClientConfig;
-}
-
-function resolveAmbientGhToken(user?: string): string | undefined {
-  try {
-    const args = ['auth', 'token'];
-    if (user) {
-      args.push('--user', user);
-    }
-    const token = execFileSync('gh', args, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    }).trim();
-    return token || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export function loadDualConfig(options?: CliDualConfigOptions): CliDualConfig {
