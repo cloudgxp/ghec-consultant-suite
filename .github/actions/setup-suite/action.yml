@@ -1,0 +1,68 @@
+name: 'Set Up GHEC Consultant Suite'
+description: 'Sets up Node.js, caches and installs npm dependencies, builds monorepo packages, and optionally installs the gh-gei CLI extension.'
+author: 'GitHub Enterprise Cloud Migration Team'
+
+inputs:
+  node-version:
+    description: 'Node.js version to set up'
+    required: false
+    default: '22'
+  cache:
+    description: 'Package manager cache type for actions/setup-node (e.g. "npm", or "" to disable)'
+    required: false
+    default: 'npm'
+  install-dependencies:
+    description: 'Whether to install monorepo dependencies via npm ci'
+    required: false
+    default: 'true'
+  clean-install:
+    description: 'Force clean npm ci execution even if node_modules already exists'
+    required: false
+    default: 'false'
+  build:
+    description: 'Whether to compile all monorepo packages via npm run build'
+    required: false
+    default: 'true'
+  install-gei:
+    description: 'Whether to verify and install the gh-gei GitHub CLI extension'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: ${{ inputs.cache }}
+
+    - name: Install Monorepo Dependencies
+      if: ${{ inputs.install-dependencies == 'true' }}
+      shell: bash
+      run: |
+        if [ ! -d "node_modules" ] || [ "${{ inputs.clean-install }}" = "true" ]; then
+          npm ci
+        fi
+
+    - name: Build Monorepo Packages
+      if: ${{ inputs.build == 'true' }}
+      shell: bash
+      run: |
+        npm run build
+
+    - name: Ensure GitHub Enterprise Importer (GEI) CLI Extension
+      if: ${{ inputs.install-gei == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if ! command -v gh >/dev/null 2>&1; then
+          echo "::warning::GitHub CLI (gh) not found in runner PATH. GEI commands require gh."
+        else
+          if ! gh extension list | grep -q "gh gei"; then
+            echo "Installing gh-gei extension..."
+            gh extension install github/gh-gei || echo "::warning::Failed to install gh-gei extension via gh CLI."
+          fi
+          gh gei --version || true
+        fi

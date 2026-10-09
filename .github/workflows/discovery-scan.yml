@@ -225,17 +225,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Packages
-        run: npm run build
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
 
       - name: Mint Organization Installation Token (App Auth)
         if: ${{ needs.resolve-targets.outputs.has_app_auth == 'true' }}
@@ -299,17 +290,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Packages
-        run: npm run build
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
 
       - name: Mint Enterprise Installation Token (App Auth)
         if: ${{ needs.resolve-targets.outputs.has_app_auth == 'true' }}

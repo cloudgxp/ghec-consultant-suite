@@ -66,16 +66,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Monorepo Dependencies & Build
-        run: |
-          npm ci
-          npm run build
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
 
       - name: Validate Migration Scope
         shell: bash
@@ -210,27 +202,10 @@ jobs:
           name: migration-wave-plan-${{ github.run_id }}
           path: .
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
         with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Suite Dependencies & Build
-        run: |
-          npm ci
-          npm run build
-
-      - name: Ensure GitHub Enterprise Importer (GEI) CLI Extension
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          if ! gh extension list | grep -q "gh gei"; then
-            echo "Installing gh-gei extension..."
-            gh extension install github/gh-gei
-          fi
-          gh gei --version || true
+          install-gei: 'true'
 
       - name: Execute Cohort Migration
         id: migrate
@@ -292,16 +267,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Suite Dependencies & Build
-        run: |
-          npm ci
-          npm run build
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
 
       - name: Download Wave Plan
         uses: actions/download-artifact@v4
