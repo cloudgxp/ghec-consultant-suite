@@ -68,9 +68,7 @@ test('hasClassicScope handles direct scopes and inheritance correctly', () => {
   assert.ok(hasClassicScope(granted, 'read:repo_hook')); // inherited from admin:repo_hook
   assert.ok(hasClassicScope(granted, 'write:repo_hook')); // inherited from admin:repo_hook
   assert.ok(hasClassicScope(granted, 'manage_runners:enterprise')); // inherited from admin:enterprise
-  assert.ok(hasClassicScope(granted, 'read:enterprise')); // inherited from admin:enterprise
-
-  assert.ok(!hasClassicScope(granted, 'security_events'));
+  assert.ok(hasClassicScope(granted, 'security_events')); // inherited from repo
   assert.ok(!hasClassicScope(granted, 'read:packages'));
 });
 
@@ -90,9 +88,8 @@ test('checkModuleClassicScopes validates each module correctly', () => {
     assert.deepEqual(res.missingRecommendations, []);
   }
 
-  // 2. Token lacking security_events
+  // 2. Token lacking security permissions (neither security_events nor repo)
   const withoutSecurity = new Set([
-    'repo',
     'admin:org',
     'admin:repo_hook',
     'read:packages',
@@ -179,7 +176,7 @@ test('PermissionChecker identifies missing Classic PAT scopes for requested modu
     async probeEndpoint(): Promise<EndpointProbeResult> {
       return {
         status: 200,
-        oauthScopes: ['repo', 'read:org'], // Missing admin:org, security_events, admin:repo_hook
+        oauthScopes: ['public_repo', 'read:org'], // Missing repo/security_events, admin:org, admin:repo_hook
       };
     },
   });

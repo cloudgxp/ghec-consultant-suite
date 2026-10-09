@@ -4,8 +4,8 @@ Core framework and modular API migration execution engine for GHEC $\rightarrow$
 
 Authoritative boundary and lifecycle specifications:
 
-- [`agents/agent-specs/migration-module-contract.md`](../../agents/agent-specs/migration-module-contract.md)
-- [`agents/agent-specs/migration-execution-model.md`](../../agents/agent-specs/migration-execution-model.md)
+- [`docs/specs/migration-module-contract.md`](../../docs/specs/migration-module-contract.md)
+- [`docs/specs/migration-execution-model.md`](../../docs/specs/migration-execution-model.md)
 
 ## Architectural Role
 

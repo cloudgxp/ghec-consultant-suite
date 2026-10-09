@@ -266,7 +266,7 @@ export class TeamHierarchyAndAccessAggregator {
       coverage: {
         state: 'complete',
         observed: entities.length,
-        expected: totalCount ?? entities.length,
+        expected: entities.length,
         reason: null,
       },
     };

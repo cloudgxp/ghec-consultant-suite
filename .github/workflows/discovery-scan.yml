@@ -1,0 +1,184 @@
+name: Organization Discovery Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      organization:
+        description: 'Target GitHub organization to scan'
+        required: true
+        type: string
+      modules:
+        description: 'Discovery modules to run (use "all" or comma-separated list: orgs,repos,lfs,teams,actions,actions-secrets,policies,security,integrations,users,packages)'
+        required: false
+        type: string
+        default: 'all'
+      dry_run:
+        description: 'Run preflight planning dry-run (no live data collected or bundles saved)'
+        required: false
+        type: boolean
+        default: false
+      continue_on_error:
+        description: 'Continue running remaining modules on individual collector failures'
+        required: false
+        type: boolean
+        default: true
+      redaction_profile:
+        description: 'Redaction profile'
+        required: false
+        type: choice
+        options:
+          - standard
+          - minimal
+        default: 'standard'
+      include_sensitive_metadata:
+        description: 'Include sensitive metadata (obfuscated/redacted according to profile)'
+        required: false
+        type: boolean
+        default: false
+      verbose:
+        description: 'Enable verbose logging output'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: 'Discovery Scan: ${{ inputs.organization }}'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Monorepo
+        run: npm run build
+
+      - name: Validate Token & Target Scope
+        shell: bash
+        env:
+          GHEC_TOKEN: ${{ secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
+          INPUT_ORG: ${{ inputs.organization }}
+        run: |
+          if [ -z "$INPUT_ORG" ]; then
+            echo "::error::Target organization must not be empty."
+            exit 1
+          fi
+
+          if ! [[ "$INPUT_ORG" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{0,99}$ ]]; then
+            echo "::error::Invalid organization slug format: $INPUT_ORG"
+            exit 1
+          fi
+
+          if [ -z "$GHEC_TOKEN" ]; then
+            echo "::error::GHEC_DISCOVERY_TOKEN (or GHEC_TOKEN) repository secret is not set or empty."
+            echo "::notice::Please configure the GHEC_DISCOVERY_TOKEN secret in repository settings."
+            exit 1
+          fi
+          echo "Token and target organization validated successfully."
+
+      - name: Execute Discovery Scan
+        shell: bash
+        env:
+          GHEC_TOKEN: ${{ secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
+          INPUT_ORG: ${{ inputs.organization }}
+          INPUT_MODULES: ${{ inputs.modules }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+          INPUT_REDACTION_PROFILE: ${{ inputs.redaction_profile }}
+          INPUT_INCLUDE_SENSITIVE: ${{ inputs.include_sensitive_metadata }}
+          INPUT_VERBOSE: ${{ inputs.verbose }}
+        run: |
+          EXTRA_ARGS=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            EXTRA_ARGS+=(--dry-run)
+          fi
+          if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+            EXTRA_ARGS+=(--continue-on-error)
+          fi
+          if [ "$INPUT_INCLUDE_SENSITIVE" = "true" ]; then
+            EXTRA_ARGS+=(--include-sensitive-metadata)
+          fi
+          if [ "$INPUT_VERBOSE" = "true" ]; then
+            EXTRA_ARGS+=(--verbose)
+          fi
+          if [ -n "$INPUT_REDACTION_PROFILE" ]; then
+            EXTRA_ARGS+=(--redaction-profile "$INPUT_REDACTION_PROFILE")
+          fi
+
+          mkdir -p "$GITHUB_WORKSPACE/scans"
+          npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
+            --organization "$INPUT_ORG" \
+            --modules "$INPUT_MODULES" \
+            --output "$GITHUB_WORKSPACE/scans" \
+            "${EXTRA_ARGS[@]}"
+
+      - name: Generate Summary Report
+        if: always()
+        shell: bash
+        run: |
+          node - << 'EOF'
+          import { readdirSync, readFileSync, appendFileSync, statSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+          if (!summaryFile) process.exit(0);
+
+          let bundleFiles = [];
+          try {
+            bundleFiles = readdirSync('scans').filter((f) => f.startsWith('ghec-discovery-') && f.endsWith('.json'));
+          } catch {}
+
+          if (bundleFiles.length === 0) {
+            appendFileSync(summaryFile, `### Discovery Scan Summary\n\nNo discovery bundle file was produced.\n`);
+            process.exit(0);
+          }
+
+          appendFileSync(summaryFile, `### Discovery Scan Summary\n\n`);
+          for (const file of bundleFiles) {
+            const filePath = join('scans', file);
+            const sizeBytes = statSync(filePath).size;
+            try {
+              const content = JSON.parse(readFileSync(filePath, 'utf-8'));
+              appendFileSync(summaryFile, `| Property | Value |\n| :--- | :--- |\n`);
+              appendFileSync(summaryFile, `| **File** | \`${file}\` |\n`);
+              appendFileSync(summaryFile, `| **File Size** | ${(sizeBytes / 1024).toFixed(1)} KB |\n`);
+              appendFileSync(summaryFile, `| **Status** | \`${content.scan?.status ?? 'unknown'}\` |\n`);
+              appendFileSync(summaryFile, `| **Schema Version** | \`${content.schemaVersion ?? 'unknown'}\` |\n`);
+              appendFileSync(summaryFile, `| **Started At** | \`${content.scan?.startedAt ?? '-'}\` |\n`);
+              appendFileSync(summaryFile, `| **Completed At** | \`${content.scan?.completedAt ?? '-'}\` |\n`);
+              appendFileSync(summaryFile, `| **Modules Selected** | ${(content.configuration?.modules ?? []).join(', ')} |\n\n`);
+
+              const counts = [];
+              if (Array.isArray(content.organizations)) counts.push(`Organizations: ${content.organizations.length}`);
+              if (Array.isArray(content.repositories)) counts.push(`Repositories: ${content.repositories.length}`);
+              if (Array.isArray(content.teams)) counts.push(`Teams: ${content.teams.length}`);
+              if (Array.isArray(content.users)) counts.push(`Users: ${content.users.length}`);
+
+              if (counts.length > 0) {
+                appendFileSync(summaryFile, `**Entity Counts:** ${counts.join(' • ')}\n\n`);
+              }
+            } catch (err) {
+              appendFileSync(summaryFile, `Found bundle \`${file}\` (${sizeBytes} bytes) - failed to parse details: ${err.message}\n\n`);
+            }
+          }
+          EOF
+
+      - name: Upload Discovery Bundle Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovery-${{ inputs.organization }}-bundle
+          path: scans/ghec-discovery-*.json
+          if-no-files-found: warn
+          retention-days: 30

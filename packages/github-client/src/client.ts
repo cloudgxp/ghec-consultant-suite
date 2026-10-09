@@ -37,7 +37,7 @@ export interface GitHubDualClientConfig {
  * For now the target tenant is reachable through the same read-only contract,
  * which is sufficient for destination preflight and plan diffing. Mutation
  * methods (`create` / `update` / `upsert` / `delete` with audit logging, per
- * `agents/agent-specs/github-client-boundaries.md` §2.2) will widen this type
+ * `docs/specs/github-client-boundaries.md` §2.2) will widen this type
  * in a later task; they are intentionally not implemented here.
  */
 export type GitHubTargetClient = GitHubReadAdapter;
