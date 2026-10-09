@@ -7,12 +7,12 @@ on:
         description: 'Path to migration scope JSON file'
         required: true
         type: string
-        default: 'scopes/test-org-wave.json'
+        default: 'scopes/demogxp-wave.json'
       cached_bundle:
         description: 'Optional path to pre-collected discovery bundle JSON file'
         required: false
         type: string
-        default: ''
+        default: 'bundles/demogxp-discovery-bundle.json'
       modules:
         description: 'Comma-separated migration modules to execute (or "all")'
         required: false
@@ -88,9 +88,15 @@ jobs:
         run: |
           mkdir -p ./scans
           echo "Evaluating source and target preflight readiness..."
+          INPUT_ARG=()
+          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
+            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          fi
+
           EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
             --scope "${{ inputs.scope }}" \
+            "${INPUT_ARG[@]}" \
             --output ./scans/test-preflight-report.json \
             --verbose || EXIT_CODE=$?
 
@@ -164,11 +170,17 @@ jobs:
             CONT_ARG=(--continue-on-error)
           fi
 
+          INPUT_ARG=()
+          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
+            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          fi
+
           echo "Executing migration for scope '$INPUT_SCOPE' (dry_run: $INPUT_DRY_RUN)..."
           EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --plan ./scans/test-migration-plan.json \
             --scope "$INPUT_SCOPE" \
+            "${INPUT_ARG[@]}" \
             --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
             "${CONT_ARG[@]}" \
@@ -188,6 +200,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
         run: |
           mkdir -p ./scans
 
@@ -195,6 +208,7 @@ jobs:
             echo "Running post-migration verification against target enterprise..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --plan ./scans/test-migration-plan.json \
+              --scope "$INPUT_SCOPE" \
               --output ./scans/test-verification-report.json || {
                 echo "Verification detected discrepancies or differences."
               }
@@ -272,6 +286,65 @@ jobs:
             echo "" >> "$SUMMARY_FILE"
           fi
 
+      - name: Agentic Remediation Review
+        id: agent-review
+        if: always()
+        shell: bash
+        run: |
+          if [ -f ./scans/test-verification-report.json ]; then
+            echo "Running Agentic Remediation Review against verification report..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
+              --report ./scans/test-verification-report.json \
+              --spec docs/specs/verification-remediation-agent.md \
+              --output ./scans/remediation-plan.json \
+              --output-markdown ./scans/remediation-plan.md \
+              --append-step-summary || {
+                echo "::warning::Agent review completed with warnings or failed."
+              }
+          fi
+
+      - name: Publish Migration Results Repository to Target Organization
+        id: publish-results
+        if: always()
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          mkdir -p ./scans/results-repo
+          DRY_RUN_FLAG=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          EXEC_FLAG=""
+          if [ -f ./scans/test-migration-execution.json ]; then
+            EXEC_FLAG="--execution-report ./scans/test-migration-execution.json"
+          fi
+
+          VERIFY_FLAG=""
+          if [ -f ./scans/test-verification-report.json ]; then
+            VERIFY_FLAG="--verification-report ./scans/test-verification-report.json"
+          fi
+
+          REMEDIATION_FLAG=""
+          if [ -f ./scans/remediation-plan.json ]; then
+            REMEDIATION_FLAG="--remediation-plan ./scans/remediation-plan.json"
+          fi
+
+          node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+            $EXEC_FLAG \
+            --scope "${{ inputs.scope }}" \
+            $VERIFY_FLAG \
+            $REMEDIATION_FLAG \
+            --output-dir ./scans/results-repo \
+            --append-step-summary \
+            $DRY_RUN_FLAG || {
+              echo "::warning::Publishing migration results repository encountered non-fatal issues."
+            }
+
       - name: Upload Test Migration Artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -282,4 +355,6 @@ jobs:
             ./scans/test-migration-plan.json
             ./scans/test-migration-execution.json
             ./scans/test-verification-report.json
+            ./scans/remediation-plan.*
+            ./scans/results-repo
           retention-days: 14

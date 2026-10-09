@@ -462,6 +462,7 @@
       "repositoryId": "org:fictional-north:repo:demo",
       "codeScanning": "unknown",
       "dependabot": "enabled",
+      "secretScanning": "unknown",
       "openAlertCount": {
         "value": null,
         "unit": "count",

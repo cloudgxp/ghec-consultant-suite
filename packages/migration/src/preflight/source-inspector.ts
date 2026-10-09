@@ -53,35 +53,43 @@ export class SourceRepositoryInspector {
   ): Promise<RepositoryAssessment> {
     const blockers: string[] = [];
 
-    // 1. Fetch repository metadata from GitHub REST API
+    // 1. Fetch repository metadata from discovery bundle or GitHub REST API
     let repoSizeFromApi = 0;
-    try {
-      const res = await this.adapter.readSingle<GitHubRepoResponse>(
-        {
-          id: 'rest.repos.get',
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path: '/repos/{owner}/{repo}',
-          pathParams: { owner: this.sourceOrg, repo: repoName },
-        },
-        this.signal ?? new AbortController().signal,
-      );
+    const bundleRepoEntity = this.discoveryBundle?.entities.find(
+      (e) => e.kind === 'repository' && e.name === repoName,
+    );
 
-      if (res.status === 200 && res.data) {
-        repoSizeFromApi = (res.data.size ?? 0) * 1024;
-      } else if (res.status === 404) {
-        blockers.push(
-          `Source repository ${this.sourceOrg}/${repoName} does not exist or is inaccessible (HTTP 404).`,
+    if (bundleRepoEntity && bundleRepoEntity.kind === 'repository') {
+      repoSizeFromApi = bundleRepoEntity.size?.value ?? 0;
+    } else {
+      try {
+        const res = await this.adapter.readSingle<GitHubRepoResponse>(
+          {
+            id: 'rest.repos.get',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}',
+            pathParams: { owner: this.sourceOrg, repo: repoName },
+          },
+          this.signal ?? new AbortController().signal,
         );
-      } else if (res.status >= 400) {
+
+        if (res.status === 200 && res.data) {
+          repoSizeFromApi = (res.data.size ?? 0) * 1024;
+        } else if (res.status === 404) {
+          blockers.push(
+            `Source repository ${this.sourceOrg}/${repoName} does not exist or is inaccessible (HTTP 404).`,
+          );
+        } else if (res.status >= 400) {
+          blockers.push(
+            `Failed to inspect source repository ${this.sourceOrg}/${repoName} (HTTP ${res.status}).`,
+          );
+        }
+      } catch (err) {
         blockers.push(
-          `Failed to inspect source repository ${this.sourceOrg}/${repoName} (HTTP ${res.status}).`,
+          `Failed to reach source repository ${this.sourceOrg}/${repoName}: ${(err as Error).message}`,
         );
       }
-    } catch (err) {
-      blockers.push(
-        `Failed to reach source repository ${this.sourceOrg}/${repoName}: ${(err as Error).message}`,
-      );
     }
 
     // 2. Resolve Git sizing statistics

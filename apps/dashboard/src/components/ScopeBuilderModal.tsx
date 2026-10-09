@@ -47,6 +47,8 @@ const REPO_MODULES = [
   'releases',
   'lfs',
   'collaborators',
+  'issues',
+  'pull-requests',
 ] as const;
 
 export const ScopeBuilderModal: React.FC<ScopeBuilderModalProps> = ({

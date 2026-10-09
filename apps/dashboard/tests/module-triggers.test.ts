@@ -43,7 +43,7 @@ describe('Task 039 (DASH-24): Interactive Module Triggers Across Domain Views', 
         sourceOrg: 'source-corp',
         targetOrg: 'target-corp-emu',
         repositories: [],
-        selectedModules: ['mannequins'],
+        selectedModules: ['post-migration-mannequins'],
         identityStrategy: 'emu-saml',
         identitySuffix: '_gxp',
       });
@@ -52,7 +52,9 @@ describe('Task 039 (DASH-24): Interactive Module Triggers Across Domain Views', 
       assert.equal(validation.success, true);
       assert.equal(scope.identityMapping?.strategy, 'emu-saml');
       assert.equal(scope.identityMapping?.suffix, '_gxp');
-      assert.deepEqual(scope.organizations[0]?.modules, ['mannequins']);
+      assert.deepEqual(scope.organizations[0]?.modules, [
+        'post-migration-mannequins',
+      ]);
     });
 
     it('generates valid scope for Releases & Assets trigger (modules: releases)', () => {

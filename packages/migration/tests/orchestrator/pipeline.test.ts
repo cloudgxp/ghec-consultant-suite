@@ -694,3 +694,83 @@ test('RepositoryMigrationPipeline Stage 6 resolves and executes repo-settings an
     rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('RepositoryMigrationPipeline automatically routes >40 GiB repository to Git mirror-push in Stage 3', async () => {
+  const tmpDir = mkdtempSync(join(tmpdir(), 'ghec-pipe-test-mirror-'));
+  try {
+    const scope: MigrationScope = {
+      version: '1.0.0',
+      name: 'large-monorepo-migration',
+      enterprise: { sourceSlug: 'src-ent', targetSlug: 'dst-ent' },
+      organizations: [
+        {
+          source: 'src-org',
+          target: 'dst-org',
+        },
+      ],
+      repositories: [
+        {
+          sourceOrg: 'src-org',
+          sourceRepo: 'chromium',
+          targetOrg: 'dst-org',
+          targetRepo: 'chromium',
+          useGei: true,
+          options: {
+            gitTransferStrategy: 'auto',
+            skipDiskCheck: true,
+          },
+        },
+      ],
+      identityMapping: { strategy: 'manual' },
+    };
+
+    const checkpointManager = new MigrationCheckpointManager(
+      'run-large-monorepo',
+      scope,
+      { rootDirectory: tmpDir },
+    );
+
+    const gitCommands: string[] = [];
+    const mockGitRunner = async (cmd: string, args: readonly string[]) => {
+      gitCommands.push(`${cmd} ${args[0] ?? ''}`);
+      return { exitCode: 0, stdout: 'Pushed refs', stderr: '' };
+    };
+
+    let geiInvoked = false;
+    const mockGeiRunner: GeiCommandRunner = async () => {
+      geiInvoked = true;
+      return { command: 'gh', args: [], exitCode: 0, stdout: '', stderr: '' };
+    };
+
+    const pipeline = new RepositoryMigrationPipeline({
+      registry: createDefaultModuleRegistry(),
+      sourceClient: new MockReadAdapter({ repoSizeKiB: 50 * 1024 * 1024 }),
+      targetClient: new MockReadAdapter({ targetRepoExists: false }),
+      targetWriteClient: new MockWriteClient(),
+      checkpointManager,
+      geiRunner: mockGeiRunner,
+      gitRunner: mockGitRunner,
+      sourceToken: 'ghp_src_mock',
+      targetToken: 'ghp_dst_mock',
+    });
+
+    const result = await pipeline.execute(scope.repositories[0]!);
+
+    assert.equal(result.status, 'complete');
+    assert.equal(
+      geiInvoked,
+      false,
+      'GEI should be bypassed for >40 GiB repository',
+    );
+    assert.equal(
+      gitCommands.length,
+      2,
+      'Should execute bare clone and mirror push',
+    );
+    const geiCp =
+      checkpointManager.getManifest().repositories['src-org/chromium']?.gei;
+    assert.equal(geiCp?.migrationId, 'git-mirror-push');
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

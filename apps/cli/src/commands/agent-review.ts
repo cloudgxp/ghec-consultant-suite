@@ -25,6 +25,7 @@ export interface RemediationAction {
     | 'assets-and-storage'
     | 'identity-and-access'
     | 'webhooks-and-integrations'
+    | 'metadata-and-content'
     | 'general';
   readonly moduleId: string;
   readonly resourceName: string;
@@ -164,6 +165,97 @@ export function generateRemediationPlan(
           command: `ghec-consultant-cli migrate --modules "${modId}" --scope "./scopes/${report.scopeName}.json"`,
           severity: 'medium',
         });
+      } else if (modId === 'issues') {
+        actions.push({
+          id: actionId,
+          category: 'metadata-and-content',
+          moduleId: modId,
+          resourceName: disc.resourceName,
+          description: `Issue or milestone discrepancy in "${disc.resourceName}": ${disc.message}`,
+          command: `ghec-consultant-cli migrate --modules issues --scope "./scopes/${report.scopeName}.json"`,
+          severity: 'high',
+        });
+      } else if (modId === 'pull-requests') {
+        actions.push({
+          id: actionId,
+          category: 'metadata-and-content',
+          moduleId: modId,
+          resourceName: disc.resourceName,
+          description: `Pull request parity discrepancy in "${disc.resourceName}": ${disc.message}`,
+          command: `ghec-consultant-cli migrate --modules pull-requests --scope "./scopes/${report.scopeName}.json"`,
+          severity: 'high',
+        });
+      } else if (modId === 'repo-settings') {
+        actions.push({
+          id: actionId,
+          category: 'metadata-and-content',
+          moduleId: modId,
+          resourceName: disc.resourceName,
+          description: `Repository settings or feature flag drift in "${disc.resourceName}": ${disc.message}`,
+          command: `ghec-consultant-cli migrate --modules repo-settings --scope "./scopes/${report.scopeName}.json"`,
+          severity: 'medium',
+        });
+      } else if (modId === 'gei-repo') {
+        const resLower = disc.resourceName.toLowerCase();
+        if (resLower === 'issues' || resLower.includes('issue')) {
+          actions.push({
+            id: actionId,
+            category: 'metadata-and-content',
+            moduleId: 'issues',
+            resourceName: disc.resourceName,
+            description: `GEI omitted issues for "${disc.resourceName}": ${disc.message}`,
+            command: `ghec-consultant-cli migrate --modules issues --scope "./scopes/${report.scopeName}.json"`,
+            severity: 'high',
+          });
+        } else if (
+          resLower === 'pull-requests' ||
+          resLower.includes('pull') ||
+          resLower.includes('pr')
+        ) {
+          actions.push({
+            id: actionId,
+            category: 'metadata-and-content',
+            moduleId: 'pull-requests',
+            resourceName: disc.resourceName,
+            description: `GEI omitted pull requests for "${disc.resourceName}": ${disc.message}`,
+            command: `ghec-consultant-cli migrate --modules pull-requests --scope "./scopes/${report.scopeName}.json"`,
+            severity: 'high',
+          });
+        } else if (resLower === 'releases' || resLower.includes('release')) {
+          actions.push({
+            id: actionId,
+            category: 'assets-and-storage',
+            moduleId: 'releases',
+            resourceName: disc.resourceName,
+            description: `GEI omitted releases or release assets for "${disc.resourceName}": ${disc.message}`,
+            command: `ghec-consultant-cli migrate --modules releases --scope "./scopes/${report.scopeName}.json"`,
+            severity: 'high',
+          });
+        } else if (
+          resLower === 'repo-settings' ||
+          resLower === 'default-branch' ||
+          resLower.includes('setting')
+        ) {
+          actions.push({
+            id: actionId,
+            category: 'metadata-and-content',
+            moduleId: 'repo-settings',
+            resourceName: disc.resourceName,
+            description: `GEI settings or branch drift for "${disc.resourceName}": ${disc.message}`,
+            command: `ghec-consultant-cli migrate --modules repo-settings --scope "./scopes/${report.scopeName}.json"`,
+            severity: 'medium',
+          });
+        } else {
+          actions.push({
+            id: actionId,
+            category: 'general',
+            moduleId: modId,
+            resourceName: disc.resourceName,
+            description: disc.message,
+            command: `ghec-consultant-cli migrate --modules gei-repo --scope "./scopes/${report.scopeName}.json"`,
+            severity: 'high',
+          });
+        }
       } else {
         actions.push({
           id: actionId,

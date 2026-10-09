@@ -26,16 +26,17 @@ packages/
 
 Run from workspace root:
 
-| Command                    | Purpose                                                                       |
-| :------------------------- | :---------------------------------------------------------------------------- |
-| `npm run check`            | **Primary quality gate**: lint, typecheck, build apps, and execute test suite |
-| `npm test`                 | Build packages and execute 480+ unit tests with 8-way concurrency             |
-| `npm run lint`             | ESLint caching check + Prettier formatting verification                       |
-| `npm run format`           | Auto-format all code via Prettier                                             |
-| `npm run typecheck`        | Build packages and validate TypeScript without emit across apps               |
-| `npm run build`            | Compile all packages and bundle CLI & Dashboard apps                          |
-| `npm run dev`              | Launch Vite development server for `@ghec/dashboard`                          |
-| `npm run dev:cli -- <cmd>` | Execute CLI binary directly with arguments                                    |
+| Command                     | Purpose                                                                       |
+| :-------------------------- | :---------------------------------------------------------------------------- |
+| `npm run check`             | **Primary quality gate**: lint, typecheck, build apps, and execute test suite |
+| `npm test`                  | Build packages and execute 480+ unit tests with 8-way concurrency             |
+| `npm run lint`              | ESLint caching check + Prettier formatting verification                       |
+| `npm run format`            | Auto-format all code via Prettier                                             |
+| `npm run typecheck`         | Build packages and validate TypeScript without emit across apps               |
+| `npm run build`             | Compile all packages and bundle CLI & Dashboard apps                          |
+| `npm run dev`               | Launch Vite development server for `@ghec/dashboard`                          |
+| `npm run dev:cli -- <cmd>`  | Execute CLI binary directly with arguments                                    |
+| `npm run task:new -- <cmd>` | Scaffold a new structured task in `.agents/tasks/backlog/`                    |
 
 ---
 
@@ -67,4 +68,5 @@ Run from workspace root:
   - Execution Model: [`docs/specs/migration-execution-model.md`](docs/specs/migration-execution-model.md)
   - Client Boundaries: [`docs/specs/github-client-boundaries.md`](docs/specs/github-client-boundaries.md)
   - Remediation Agent: [`docs/specs/verification-remediation-agent.md`](docs/specs/verification-remediation-agent.md)
+- **Task Board & Planning:** [`.agents/tasks/`](.agents/tasks/) (governed by [`.agents/rules/task-planning.md`](.agents/rules/task-planning.md))
 - **Rules & Skills:** See [`.agents/rules/`](.agents/rules/) and [`.agents/skills/`](.agents/skills/).

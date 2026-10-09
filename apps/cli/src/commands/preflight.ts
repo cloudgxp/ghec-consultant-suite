@@ -4,6 +4,8 @@ import { dirname, resolve } from 'node:path';
 import {
   type MigrationPreflightReport,
   type MigrationScope,
+  type DiscoveryBundle,
+  validateBundle,
   validateMigrationScope,
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
@@ -17,6 +19,7 @@ import {
 export interface PreflightCommandOptions {
   readonly scopePath: string;
   readonly outputPath: string;
+  readonly inputPath?: string | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
   readonly privateKeyPath?: string | undefined;
@@ -33,6 +36,8 @@ export function parsePreflightOptions(args: string[]): PreflightCommandOptions {
     options: {
       scope: { type: 'string' },
       output: { type: 'string', default: './scans/preflight-report.json' },
+      input: { type: 'string' },
+      'cached-bundle': { type: 'string' },
       verbose: { type: 'boolean', default: false },
       'app-id': { type: 'string' },
       'private-key-path': { type: 'string' },
@@ -49,6 +54,7 @@ export function parsePreflightOptions(args: string[]): PreflightCommandOptions {
   return {
     scopePath: values.scope,
     outputPath: values.output || './scans/preflight-report.json',
+    inputPath: values.input || values['cached-bundle'],
     verbose: values.verbose,
     appId: values['app-id'],
     privateKeyPath: values['private-key-path'],
@@ -60,6 +66,7 @@ export function parsePreflightOptions(args: string[]): PreflightCommandOptions {
 
 export interface PreflightDirectOptions {
   readonly scope: MigrationScope;
+  readonly discoveryBundle?: DiscoveryBundle | undefined;
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;
   readonly appId?: string | undefined;
@@ -100,6 +107,7 @@ export async function evaluatePreflightDirect(
     scope: options.scope,
     sourceAdapter: sourceClient,
     targetAdapter: targetClient,
+    discoveryBundle: options.discoveryBundle,
     signal,
   });
 
@@ -155,9 +163,33 @@ export async function executePreflightCommand(
   }
   const scope: MigrationScope = scopeValidation.data;
 
+  let discoveryBundle: DiscoveryBundle | undefined;
+  if (options.inputPath) {
+    const safeInputPath = resolve(process.cwd(), options.inputPath);
+    if (!existsSync(safeInputPath)) {
+      throw new Error(`Discovery bundle not found at "${options.inputPath}".`);
+    }
+    try {
+      const bundleJson = JSON.parse(readFileSync(safeInputPath, 'utf8'));
+      const bundleValidation = validateBundle(bundleJson);
+      if (!bundleValidation.success) {
+        throw new Error(
+          `Invalid discovery bundle in "${options.inputPath}": ${bundleValidation.message}`,
+        );
+      }
+      discoveryBundle = bundleValidation.data;
+    } catch (err) {
+      throw new Error(
+        `Failed to parse discovery bundle from "${options.inputPath}": ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
+    }
+  }
+
   const directResult = await evaluatePreflightDirect(
     {
       scope,
+      discoveryBundle,
       sourceToken: options.sourceToken,
       targetToken: options.targetToken,
       appId: options.appId,

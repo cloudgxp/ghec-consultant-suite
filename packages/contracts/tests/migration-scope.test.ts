@@ -100,3 +100,36 @@ test('migration scope rejects invalid repository options', () => {
   const validation = validateMigrationScope(scopeWithInvalidOption);
   assert.equal(validation.success, false);
 });
+
+test('migration scope accepts gitTransferStrategy options (auto, gei, mirror-push)', () => {
+  for (const strategy of ['auto', 'gei', 'mirror-push'] as const) {
+    const scopeWithStrategy = {
+      ...scope,
+      repositories: [
+        {
+          ...scope.repositories[0],
+          gitTransferStrategy: strategy,
+          options: {
+            gitTransferStrategy: strategy,
+          },
+        },
+      ],
+    };
+    const validation = validateMigrationScope(scopeWithStrategy);
+    assert.equal(validation.success, true);
+  }
+
+  const invalidScope = {
+    ...scope,
+    repositories: [
+      {
+        ...scope.repositories[0],
+        options: {
+          // @ts-expect-error invalid strategy
+          gitTransferStrategy: 'invalid-strategy',
+        },
+      },
+    ],
+  };
+  assert.equal(validateMigrationScope(invalidScope).success, false);
+});

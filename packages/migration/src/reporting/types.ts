@@ -68,6 +68,12 @@ export interface VerificationSummary {
   readonly discrepancySummaries?: readonly string[] | undefined;
 }
 
+export interface MetadataFailureSummary {
+  readonly repository?: string | undefined;
+  readonly categories: readonly string[];
+  readonly fallbackCommands: readonly string[];
+}
+
 export interface MigrationRunSummary {
   readonly schemaVersion: string;
   readonly runId: string;
@@ -83,6 +89,7 @@ export interface MigrationRunSummary {
   readonly rehydration?: RehydrationSummary | undefined;
   readonly postMigration?: PostMigrationSummary | undefined;
   readonly verification?: VerificationSummary | undefined;
+  readonly metadataFailures?: readonly MetadataFailureSummary[] | undefined;
   readonly warnings: readonly string[];
   readonly errors: readonly string[];
 }

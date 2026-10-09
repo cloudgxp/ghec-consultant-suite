@@ -6,6 +6,7 @@ import {
   normalizeVisibility,
   determineTargetVisibility,
   diffRepoSettings,
+  diffRepositoryFeatures,
   type MigrationContext,
   type TargetWriteClient,
   type TargetWriteOperation,
@@ -477,6 +478,172 @@ describe('RepoSettingsMigrationModule (Task 025)', () => {
           'delete_branch_on_merge mismatch',
         ),
       );
+    });
+
+    it('reports discrepancies when feature flags or core metadata drift', async () => {
+      const module = new RepoSettingsMigrationModule();
+      const ctx = createMockContext({
+        targetData: {
+          visibility: 'private',
+          has_issues: false,
+          has_wiki: false,
+          has_projects: false,
+          has_discussions: false,
+          description: 'Old Description',
+          homepage: 'https://old.com',
+          default_branch: 'master',
+        },
+      });
+
+      const plan = {
+        moduleId: 'repo-settings',
+        scopeLevel: 'repository' as const,
+        targetIdentifier: 'target-org/sample-repo',
+        warnings: [],
+        operations: [
+          {
+            id: 'repo-settings:sample-repo',
+            resourceType: 'repository-settings',
+            resourceName: 'target-org/sample-repo',
+            operation: 'update' as const,
+            payload: {
+              has_issues: true,
+              has_projects: true,
+              has_wiki: true,
+              has_discussions: true,
+              description: 'New Description',
+              homepage: 'https://new.com',
+              default_branch: 'main',
+            },
+          },
+        ],
+      };
+
+      const verification = await module.verify(ctx, plan);
+      assert.equal(verification.verified, false);
+      assert.equal(verification.discrepancies.length, 7);
+      const names = verification.discrepancies.map((d) => d.resourceName);
+      assert.ok(names.includes('target-org/sample-repo (has_issues)'));
+      assert.ok(names.includes('target-org/sample-repo (has_projects)'));
+      assert.ok(names.includes('target-org/sample-repo (has_wiki)'));
+      assert.ok(names.includes('target-org/sample-repo (has_discussions)'));
+      assert.ok(names.includes('target-org/sample-repo (description)'));
+      assert.ok(names.includes('target-org/sample-repo (homepage)'));
+      assert.ok(names.includes('target-org/sample-repo (default_branch)'));
+    });
+  });
+
+  describe('Feature flags & metadata reconciliation (Task 027)', () => {
+    it('diffRepositoryFeatures diffs feature toggles and core metadata accurately', () => {
+      const diff = diffRepositoryFeatures(
+        {
+          hasIssues: true,
+          hasProjects: true,
+          hasWiki: false,
+          hasDiscussions: true,
+        },
+        {
+          hasIssues: false,
+          hasProjects: false,
+          hasWiki: false,
+          hasDiscussions: false,
+        },
+        {
+          description: 'Updated repo',
+          homepage: 'https://example.com',
+          defaultBranch: 'main',
+        },
+        { description: 'Old repo', homepage: '', defaultBranch: 'master' },
+      );
+
+      assert.equal(diff.hasChanges, true);
+      assert.equal(diff.patchPayload.has_issues, true);
+      assert.equal(diff.patchPayload.has_projects, true);
+      assert.equal(diff.patchPayload.has_discussions, true);
+      assert.equal(diff.patchPayload.description, 'Updated repo');
+      assert.equal(diff.patchPayload.homepage, 'https://example.com');
+      assert.equal(diff.patchPayload.default_branch, 'main');
+      assert.equal(diff.patchPayload.has_wiki, undefined);
+    });
+
+    it('plans update operation when feature flags or core metadata drift', async () => {
+      const module = new RepoSettingsMigrationModule();
+      const ctx = createMockContext({
+        targetData: {
+          visibility: 'private',
+          has_issues: false,
+          has_projects: false,
+          has_wiki: true,
+          has_discussions: false,
+          description: 'Old Description',
+          homepage: '',
+          default_branch: 'master',
+        },
+      });
+
+      const sourceData: RepoSettingsData = {
+        owner: 'source-org',
+        repo: 'sample-repo',
+        visibility: 'private',
+        prSettings: {},
+        features: {
+          hasIssues: true,
+          hasProjects: true,
+          hasWiki: true,
+          hasDiscussions: true,
+        },
+        metadata: {
+          description: 'New Description',
+          homepage: 'https://new.org',
+          defaultBranch: 'main',
+        },
+      };
+
+      const plan = await module.plan(ctx, sourceData);
+      assert.equal(plan.operations.length, 1);
+      assert.equal(plan.operations[0]?.operation, 'update');
+      const payload = plan.operations[0]?.payload as Record<string, unknown>;
+      assert.equal(payload.has_issues, true);
+      assert.equal(payload.has_projects, true);
+      assert.equal(payload.has_discussions, true);
+      assert.equal(payload.description, 'New Description');
+      assert.equal(payload.homepage, 'https://new.org');
+      assert.equal(payload.default_branch, 'main');
+    });
+
+    it('applies feature flags and metadata in PATCH mutation', async () => {
+      const module = new RepoSettingsMigrationModule();
+      const writeClient = new MockWriteClient();
+      const ctx = createMockContext({ writeClient });
+
+      const plan = {
+        moduleId: 'repo-settings',
+        scopeLevel: 'repository' as const,
+        targetIdentifier: 'target-org/sample-repo',
+        warnings: [],
+        operations: [
+          {
+            id: 'repo-settings:sample-repo',
+            resourceType: 'repository-settings',
+            resourceName: 'target-org/sample-repo',
+            operation: 'update' as const,
+            payload: {
+              has_issues: true,
+              has_discussions: true,
+              description: 'Reconciled description',
+            },
+          },
+        ],
+      };
+
+      const result = await module.apply(ctx, plan);
+      assert.equal(result.status, 'complete');
+      assert.equal(writeClient.calls.length, 1);
+      assert.equal(writeClient.calls[0]?.method, 'PATCH');
+      const sentBody = writeClient.calls[0]?.body as Record<string, unknown>;
+      assert.equal(sentBody.has_issues, true);
+      assert.equal(sentBody.has_discussions, true);
+      assert.equal(sentBody.description, 'Reconciled description');
     });
   });
 

@@ -130,6 +130,10 @@ export const SecurityAndPoliciesTab: React.FC<Props> = ({
         cell: (item) => renderStatusLabel(item.codeScanning),
       },
       {
+        header: 'Secret Scanning',
+        cell: (item) => renderStatusLabel(item.secretScanning),
+      },
+      {
         header: 'Dependabot',
         cell: (item) => renderStatusLabel(item.dependabot),
       },
@@ -405,14 +409,30 @@ export const SecurityAndPoliciesTab: React.FC<Props> = ({
         />
       )}
       {section === 'policies' && (
-        <VirtualizedTable
-          ariaLabel="Policies and rulesets table"
-          rows={policies}
-          columns={policyColumns}
-          getRowKey={(row) => row.id}
-          emptyMessage="No policy records found."
-          minWidth={850}
-        />
+        <div className="space-y-4">
+          {policies.some(
+            (p) =>
+              p.repositoryId === null &&
+              p.policyKind === 'ruleset' &&
+              p.enforcement === 'active' &&
+              !p.bypasses?.some((b) => b.bypassMode === 'exempt'),
+          ) && (
+            <Flash variant="danger">
+              <span className="font-semibold">Blocker Detected:</span> One or
+              more active Organization-level rulesets are missing the required{' '}
+              <code>Exempt</code> bypass for migrations. Repositories governed
+              by these rulesets will fail to migrate.
+            </Flash>
+          )}
+          <VirtualizedTable
+            ariaLabel="Policies and rulesets table"
+            rows={policies}
+            columns={policyColumns}
+            getRowKey={(row) => row.id}
+            emptyMessage="No policy records found."
+            minWidth={850}
+          />
+        </div>
       )}
       {section === 'integrations' && (
         <VirtualizedTable

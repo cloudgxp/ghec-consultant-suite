@@ -12,6 +12,7 @@ import type { StructuredLogger, TargetWriteClient } from '../core/types.js';
 import type { MigrationCheckpointManager } from '../checkpoint/manager.js';
 import type { GeiCommandRunner, GeiMigrationResult } from '../gei/types.js';
 import type { ReleaseTransport } from '../strategies/releases/types.js';
+import type { GitCommandRunner } from '../strategies/mirror-push/types.js';
 
 export interface RepositoryPipelineOptions {
   readonly registry: ModuleRegistry;
@@ -29,6 +30,7 @@ export interface RepositoryPipelineOptions {
   readonly signal?: AbortSignal | undefined;
   readonly geiRunner?: GeiCommandRunner | undefined;
   readonly lfsRunner?: GeiCommandRunner | undefined;
+  readonly gitRunner?: GitCommandRunner | undefined;
   readonly releaseTransport?: ReleaseTransport | undefined;
   readonly scope?: MigrationScope | undefined;
 }
@@ -66,6 +68,7 @@ export interface MigrationOrchestratorOptions {
   readonly signal?: AbortSignal | undefined;
   readonly geiRunner?: GeiCommandRunner | undefined;
   readonly lfsRunner?: GeiCommandRunner | undefined;
+  readonly gitRunner?: GitCommandRunner | undefined;
   readonly releaseTransport?: ReleaseTransport | undefined;
 }
 
@@ -77,6 +80,7 @@ export interface MigrationExecutionReport {
   readonly exitCode: 0 | 1 | 4;
   readonly dryRun: boolean;
   readonly results: readonly ModuleExecutionResult[];
+  readonly recommendations?: readonly string[] | undefined;
 }
 
 export interface VerificationOrchestratorOptions {

@@ -7,6 +7,8 @@ export { checkGeiPreflight } from './preflight.js';
 export {
   abortGeiMigration,
   downloadMigrationLogs,
+  parseGeiMetadataDiagnostics,
+  parseMigrationLogErrors,
   parseMigrationLogWarnings,
 } from './logs.js';
 export { pollGeiMigrationStatus } from './status.js';
@@ -16,6 +18,8 @@ export type {
   GeiCommandResult,
   GeiCommandRunner,
   GeiLogDownloadOptions,
+  GeiMetadataDiagnostics,
+  GeiMetadataStatus,
   GeiMigrationLog,
   GeiMigrationRequest,
   GeiMigrationResult,

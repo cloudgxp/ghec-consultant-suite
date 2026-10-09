@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import type { DiscoveryConfig } from '@ghec/discovery';
 import type { GitHubAppConfig } from '@ghec/github-client';
 
@@ -94,14 +95,30 @@ export interface CliDualConfig {
   readonly target: TenantClientConfig;
 }
 
+function resolveAmbientGhToken(user?: string): string | undefined {
+  try {
+    const args = ['auth', 'token'];
+    if (user) {
+      args.push('--user', user);
+    }
+    const token = execFileSync('gh', args, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+    return token || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function loadDualConfig(options?: CliDualConfigOptions): CliDualConfig {
-  const sourceToken =
+  let sourceToken =
     options?.sourceToken ||
     process.env.GHEC_SOURCE_TOKEN?.trim() ||
     process.env.GHEC_TOKEN?.trim() ||
     undefined;
 
-  const targetToken =
+  let targetToken =
     options?.targetToken || process.env.GHEC_TARGET_TOKEN?.trim() || undefined;
 
   const sourceBaseUrl =
@@ -129,6 +146,17 @@ export function loadDualConfig(options?: CliDualConfigOptions): CliDualConfig {
     '2026-03-10';
 
   const baseConfig = loadConfig(options);
+
+  if (!sourceToken && !baseConfig.app) {
+    sourceToken = resolveAmbientGhToken();
+  }
+
+  if (!targetToken) {
+    const emuTargetToken = resolveAmbientGhToken('homer-simpson_gxp');
+    if (emuTargetToken && emuTargetToken !== sourceToken) {
+      targetToken = emuTargetToken;
+    }
+  }
 
   const source: TenantClientConfig = {
     token: sourceToken,

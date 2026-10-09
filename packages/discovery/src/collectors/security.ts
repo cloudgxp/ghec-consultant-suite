@@ -106,6 +106,40 @@ export const collector: Collector = {
         }
       }
 
+      let secretScanning: 'enabled' | 'disabled' | 'unknown' = 'unknown';
+      try {
+        const rRes = await context.adapter.readSingle<{
+          security_and_analysis?: {
+            secret_scanning?: { status: string };
+          };
+        }>(
+          {
+            id: 'rest.repos.get',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}',
+            pathParams: {
+              owner: context.organizationId,
+              repo: repo.name,
+            },
+          },
+          context.signal,
+        );
+        if (
+          rRes.data?.security_and_analysis?.secret_scanning?.status ===
+          'enabled'
+        ) {
+          secretScanning = 'enabled';
+        } else if (
+          rRes.data?.security_and_analysis?.secret_scanning?.status ===
+          'disabled'
+        ) {
+          secretScanning = 'disabled';
+        }
+      } catch {
+        secretScanning = 'unknown';
+      }
+
       entities.push({
         id: `org:${context.organizationId}:security:${repo.name}`,
         organizationId: context.organizationId,
@@ -120,6 +154,7 @@ export const collector: Collector = {
         repositoryId: repo.id,
         codeScanning,
         dependabot,
+        secretScanning,
         openAlertCount: {
           value: alertCount,
           unit: 'count',
