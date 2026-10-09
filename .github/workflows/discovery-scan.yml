@@ -1,14 +1,25 @@
-name: Organization Discovery Scan
+name: Discovery Scan (Single, Multi-Org & Enterprise)
 
 on:
   workflow_dispatch:
     inputs:
       organization:
-        description: 'Target GitHub organization to scan'
-        required: true
+        description: 'Target single GitHub organization to scan (or leave blank to use organizations / enterprise_slug)'
+        required: false
         type: string
+        default: ''
+      organizations:
+        description: 'Comma-separated or JSON list of organizations (e.g. "org-a, org-b")'
+        required: false
+        type: string
+        default: ''
+      enterprise_slug:
+        description: 'GitHub Enterprise slug (e.g. "octocorp") to discover all member orgs or scan enterprise tier'
+        required: false
+        type: string
+        default: ''
       modules:
-        description: 'Discovery modules to run (use "all" or comma-separated list: orgs,repos,lfs,teams,actions,actions-secrets,policies,security,integrations,users,packages)'
+        description: 'Discovery modules to run (use "all" or list: orgs,repos,lfs,teams,actions,actions-secrets,policies,security,integrations,users,packages)'
         required: false
         type: string
         default: 'all'
@@ -35,24 +46,186 @@ on:
         required: false
         type: boolean
         default: false
+      scan_enterprise_level:
+        description: 'Also execute enterprise-level discovery using enterprise credentials'
+        required: false
+        type: boolean
+        default: false
       verbose:
         description: 'Enable verbose logging output'
         required: false
         type: boolean
         default: false
+      runner_labels:
+        description: 'Runner label(s) for execution'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
 
 permissions:
   contents: read
 
 jobs:
-  discover:
-    name: 'Discovery Scan: ${{ inputs.organization }}'
-    runs-on: ubuntu-latest
+  resolve-targets:
+    name: Resolve Target Organizations
+    runs-on: ${{ inputs.runner_labels }}
+    outputs:
+      org_matrix: ${{ steps.resolve.outputs.org_matrix }}
+      has_orgs: ${{ steps.resolve.outputs.has_orgs }}
+      enterprise_slug: ${{ steps.resolve.outputs.enterprise_slug }}
+      has_app_auth: ${{ steps.check-auth.outputs.has_app_auth }}
+    steps:
+      - name: Check Authentication Mode
+        id: check-auth
+        env:
+          APP_ID: ${{ secrets.GHEC_APP_ID || vars.GHEC_APP_ID }}
+          APP_KEY: ${{ secrets.GHEC_APP_PRIVATE_KEY }}
+          PAT_TOKEN: ${{ secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
+        run: |
+          if [ -n "$APP_ID" ] && [ -n "$APP_KEY" ]; then
+            echo "has_app_auth=true" >> "$GITHUB_OUTPUT"
+            echo "GitHub App credentials detected for authentication."
+          elif [ -n "$PAT_TOKEN" ]; then
+            echo "has_app_auth=false" >> "$GITHUB_OUTPUT"
+            echo "Personal Access Token detected for authentication."
+          else
+            echo "::error::No authentication credentials found. Please configure GHEC_APP_ID & GHEC_APP_PRIVATE_KEY or GHEC_DISCOVERY_TOKEN / GHEC_TOKEN."
+            exit 1
+          fi
+
+      - name: Mint Enterprise Token (if enterprise slug & App auth available)
+        if: ${{ steps.check-auth.outputs.has_app_auth == 'true' && inputs.enterprise_slug != '' }}
+        id: ent-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHEC_APP_ID || vars.GHEC_APP_ID }}
+          private-key: ${{ secrets.GHEC_APP_PRIVATE_KEY }}
+          enterprise: ${{ inputs.enterprise_slug }}
+
+      - name: Resolve Target List
+        id: resolve
+        env:
+          INPUT_ORG: ${{ inputs.organization }}
+          INPUT_ORGS: ${{ inputs.organizations }}
+          ENTERPRISE_SLUG: ${{ inputs.enterprise_slug }}
+          GH_TOKEN: ${{ steps.ent-token.outputs.token || secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
+        run: |
+          node - << 'EOF'
+          import { appendFileSync } from 'node:fs';
+
+          const inputOrg = process.env.INPUT_ORG?.trim();
+          const inputOrgs = process.env.INPUT_ORGS?.trim();
+          const enterpriseSlug = process.env.ENTERPRISE_SLUG?.trim();
+          const ghToken = process.env.GH_TOKEN?.trim();
+          const outputFile = process.env.GITHUB_OUTPUT;
+
+          async function main() {
+            let orgs = [];
+
+            if (inputOrg) {
+              orgs = [inputOrg];
+            } else if (inputOrgs) {
+              if (inputOrgs.startsWith('[') && inputOrgs.endsWith(']')) {
+                try {
+                  orgs = JSON.parse(inputOrgs);
+                } catch {
+                  console.error('Failed to parse organizations JSON array.');
+                  process.exit(1);
+                }
+              } else {
+                orgs = inputOrgs
+                  .split(',')
+                  .map((o) => o.trim())
+                  .filter((o) => o.length > 0);
+              }
+            } else if (enterpriseSlug) {
+              console.log(`Querying organizations for enterprise: ${enterpriseSlug}`);
+              let cursor = null;
+              let hasNextPage = true;
+
+              while (hasNextPage) {
+                const response = await fetch('https://api.github.com/graphql', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${ghToken}`,
+                    'User-Agent': 'ghec-consultant-suite-actions',
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    query: `query($slug: String!, $cursor: String) {
+                      enterprise(slug: $slug) {
+                        organizations(first: 100, after: $cursor) {
+                          pageInfo {
+                            hasNextPage
+                            endCursor
+                          }
+                          nodes {
+                            login
+                          }
+                        }
+                      }
+                    }`,
+                    variables: { slug: enterpriseSlug, cursor },
+                  }),
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  throw new Error(`GraphQL query failed HTTP ${response.status}: ${errorText}`);
+                }
+
+                const payload = await response.json();
+                if (payload.errors && payload.errors.length > 0) {
+                  throw new Error(`GraphQL error: ${JSON.stringify(payload.errors)}`);
+                }
+
+                const orgConn = payload.data?.enterprise?.organizations;
+                if (!orgConn) {
+                  throw new Error(`Enterprise "${enterpriseSlug}" not found or no organization access.`);
+                }
+
+                for (const node of orgConn.nodes || []) {
+                  if (node?.login) {
+                    orgs.push(node.login);
+                  }
+                }
+
+                hasNextPage = Boolean(orgConn.pageInfo?.hasNextPage);
+                cursor = orgConn.pageInfo?.endCursor ?? null;
+              }
+            }
+
+            // Deduplicate
+            const uniqueOrgs = [...new Set(orgs)];
+            console.log(`Resolved ${uniqueOrgs.length} target organization(s): ${uniqueOrgs.join(', ')}`);
+
+            const hasOrgs = uniqueOrgs.length > 0 ? 'true' : 'false';
+            appendFileSync(outputFile, `org_matrix=${JSON.stringify(uniqueOrgs)}\n`);
+            appendFileSync(outputFile, `has_orgs=${hasOrgs}\n`);
+            appendFileSync(outputFile, `enterprise_slug=${enterpriseSlug || ''}\n`);
+          }
+
+          main().catch((err) => {
+            console.error(err.message);
+            process.exit(1);
+          });
+          EOF
+
+  scan-organizations:
+    name: Scan Org (${{ matrix.org }})
+    needs: resolve-targets
+    if: needs.resolve-targets.outputs.has_orgs == 'true'
+    runs-on: ${{ inputs.runner_labels }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        org: ${{ fromJson(needs.resolve-targets.outputs.org_matrix) }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -61,43 +234,28 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Build Monorepo
+      - name: Build Packages
         run: npm run build
 
-      - name: Validate Token & Target Scope
-        shell: bash
-        env:
-          GHEC_TOKEN: ${{ secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
-          INPUT_ORG: ${{ inputs.organization }}
-        run: |
-          if [ -z "$INPUT_ORG" ]; then
-            echo "::error::Target organization must not be empty."
-            exit 1
-          fi
-
-          if ! [[ "$INPUT_ORG" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{0,99}$ ]]; then
-            echo "::error::Invalid organization slug format: $INPUT_ORG"
-            exit 1
-          fi
-
-          if [ -z "$GHEC_TOKEN" ]; then
-            echo "::error::GHEC_DISCOVERY_TOKEN (or GHEC_TOKEN) repository secret is not set or empty."
-            echo "::notice::Please configure the GHEC_DISCOVERY_TOKEN secret in repository settings."
-            exit 1
-          fi
-          echo "Token and target organization validated successfully."
+      - name: Mint Organization Installation Token (App Auth)
+        if: ${{ needs.resolve-targets.outputs.has_app_auth == 'true' }}
+        id: org-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHEC_APP_ID || vars.GHEC_APP_ID }}
+          private-key: ${{ secrets.GHEC_APP_PRIVATE_KEY }}
+          owner: ${{ matrix.org }}
 
       - name: Execute Discovery Scan
-        shell: bash
         env:
-          GHEC_TOKEN: ${{ secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
-          INPUT_ORG: ${{ inputs.organization }}
-          INPUT_MODULES: ${{ inputs.modules }}
+          GHEC_TOKEN: ${{ steps.org-token.outputs.token || secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
           INPUT_REDACTION_PROFILE: ${{ inputs.redaction_profile }}
           INPUT_INCLUDE_SENSITIVE: ${{ inputs.include_sensitive_metadata }}
           INPUT_VERBOSE: ${{ inputs.verbose }}
+          MATRIX_ORG: ${{ matrix.org }}
+          INPUT_MODULES: ${{ inputs.modules }}
         run: |
           EXTRA_ARGS=()
           if [ "$INPUT_DRY_RUN" = "true" ]; then
@@ -116,69 +274,123 @@ jobs:
             EXTRA_ARGS+=(--redaction-profile "$INPUT_REDACTION_PROFILE")
           fi
 
-          mkdir -p "$GITHUB_WORKSPACE/scans"
+          mkdir -p scans
           npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
-            --organization "$INPUT_ORG" \
+            --organization "$MATRIX_ORG" \
             --modules "$INPUT_MODULES" \
-            --output "$GITHUB_WORKSPACE/scans" \
+            --output "./scans" \
             "${EXTRA_ARGS[@]}"
 
-      - name: Generate Summary Report
-        if: always()
-        shell: bash
-        run: |
-          node - << 'EOF'
-          import { readdirSync, readFileSync, appendFileSync, statSync } from 'node:fs';
-          import { join } from 'node:path';
-
-          const summaryFile = process.env.GITHUB_STEP_SUMMARY;
-          if (!summaryFile) process.exit(0);
-
-          let bundleFiles = [];
-          try {
-            bundleFiles = readdirSync('scans').filter((f) => f.startsWith('ghec-discovery-') && f.endsWith('.json'));
-          } catch {}
-
-          if (bundleFiles.length === 0) {
-            appendFileSync(summaryFile, `### Discovery Scan Summary\n\nNo discovery bundle file was produced.\n`);
-            process.exit(0);
-          }
-
-          appendFileSync(summaryFile, `### Discovery Scan Summary\n\n`);
-          for (const file of bundleFiles) {
-            const filePath = join('scans', file);
-            const sizeBytes = statSync(filePath).size;
-            try {
-              const content = JSON.parse(readFileSync(filePath, 'utf-8'));
-              appendFileSync(summaryFile, `| Property | Value |\n| :--- | :--- |\n`);
-              appendFileSync(summaryFile, `| **File** | \`${file}\` |\n`);
-              appendFileSync(summaryFile, `| **File Size** | ${(sizeBytes / 1024).toFixed(1)} KB |\n`);
-              appendFileSync(summaryFile, `| **Status** | \`${content.scan?.status ?? 'unknown'}\` |\n`);
-              appendFileSync(summaryFile, `| **Schema Version** | \`${content.schemaVersion ?? 'unknown'}\` |\n`);
-              appendFileSync(summaryFile, `| **Started At** | \`${content.scan?.startedAt ?? '-'}\` |\n`);
-              appendFileSync(summaryFile, `| **Completed At** | \`${content.scan?.completedAt ?? '-'}\` |\n`);
-              appendFileSync(summaryFile, `| **Modules Selected** | ${(content.configuration?.modules ?? []).join(', ')} |\n\n`);
-
-              const counts = [];
-              if (Array.isArray(content.organizations)) counts.push(`Organizations: ${content.organizations.length}`);
-              if (Array.isArray(content.repositories)) counts.push(`Repositories: ${content.repositories.length}`);
-              if (Array.isArray(content.teams)) counts.push(`Teams: ${content.teams.length}`);
-              if (Array.isArray(content.users)) counts.push(`Users: ${content.users.length}`);
-
-              if (counts.length > 0) {
-                appendFileSync(summaryFile, `**Entity Counts:** ${counts.join(' • ')}\n\n`);
-              }
-            } catch (err) {
-              appendFileSync(summaryFile, `Found bundle \`${file}\` (${sizeBytes} bytes) - failed to parse details: ${err.message}\n\n`);
-            }
-          }
-          EOF
-
-      - name: Upload Discovery Bundle Artifact
+      - name: Upload Organization Bundle Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: discovery-${{ inputs.organization }}-bundle
+          name: discovery-org-${{ matrix.org }}
           path: scans/ghec-discovery-*.json
-          if-no-files-found: warn
+          if-no-files-found: ignore
           retention-days: 30
+
+  scan-enterprise:
+    name: Scan Enterprise (${{ inputs.enterprise_slug }})
+    needs: resolve-targets
+    if: inputs.scan_enterprise_level == true && inputs.enterprise_slug != ''
+    runs-on: ${{ inputs.runner_labels }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Packages
+        run: npm run build
+
+      - name: Mint Enterprise Installation Token (App Auth)
+        if: ${{ needs.resolve-targets.outputs.has_app_auth == 'true' }}
+        id: ent-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GHEC_APP_ID || vars.GHEC_APP_ID }}
+          private-key: ${{ secrets.GHEC_APP_PRIVATE_KEY }}
+          enterprise: ${{ inputs.enterprise_slug }}
+
+      - name: Execute Enterprise Discovery Scan
+        env:
+          GHEC_TOKEN: ${{ steps.ent-token.outputs.token || secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
+          INPUT_REDACTION_PROFILE: ${{ inputs.redaction_profile }}
+          INPUT_INCLUDE_SENSITIVE: ${{ inputs.include_sensitive_metadata }}
+          INPUT_VERBOSE: ${{ inputs.verbose }}
+          INPUT_ENTERPRISE_SLUG: ${{ inputs.enterprise_slug }}
+          INPUT_MODULES: ${{ inputs.modules }}
+        run: |
+          EXTRA_ARGS=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            EXTRA_ARGS+=(--dry-run)
+          fi
+          if [ "$INPUT_CONTINUE_ON_ERROR" = "true" ]; then
+            EXTRA_ARGS+=(--continue-on-error)
+          fi
+          if [ "$INPUT_INCLUDE_SENSITIVE" = "true" ]; then
+            EXTRA_ARGS+=(--include-sensitive-metadata)
+          fi
+          if [ "$INPUT_VERBOSE" = "true" ]; then
+            EXTRA_ARGS+=(--verbose)
+          fi
+          if [ -n "$INPUT_REDACTION_PROFILE" ]; then
+            EXTRA_ARGS+=(--redaction-profile "$INPUT_REDACTION_PROFILE")
+          fi
+
+          mkdir -p scans
+          npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
+            --enterprise "$INPUT_ENTERPRISE_SLUG" \
+            --modules "$INPUT_MODULES" \
+            --output "./scans" \
+            "${EXTRA_ARGS[@]}"
+
+      - name: Upload Enterprise Bundle Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovery-enterprise-${{ inputs.enterprise_slug }}
+          path: scans/ghec-discovery-*.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  summary:
+    name: Discovery Scan Summary
+    needs: [resolve-targets, scan-organizations, scan-enterprise]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary Report
+        run: |
+          cat << 'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## 🔍 Discovery Scan Execution Summary
+
+          | Setting | Value |
+          |---|---|
+          | **Single Organization** | `${{ inputs.organization || 'N/A' }}` |
+          | **Organizations List** | `${{ inputs.organizations || 'N/A' }}` |
+          | **Enterprise Slug** | `${{ inputs.enterprise_slug || 'N/A' }}` |
+          | **Modules** | `${{ inputs.modules }}` |
+          | **Dry Run** | `${{ inputs.dry_run }}` |
+          | **Redaction Profile** | `${{ inputs.redaction_profile }}` |
+          | **Include Sensitive Metadata** | `${{ inputs.include_sensitive_metadata }}` |
+          | **Enterprise-Level Scan** | `${{ inputs.scan_enterprise_level }}` |
+
+          ### 📦 Offline Inspection & Wave Planning
+          1. Download the generated `discovery-org-*.json` bundle artifacts.
+          2. Launch the local consultant dashboard:
+             ```bash
+             npm run dev
+             ```
+          3. Inspect discovery inventory, assess migration complexity, and generate scope definitions via `generate-scope.yml`.
+          EOF
