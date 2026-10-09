@@ -62,6 +62,7 @@ export class HttpTargetWriteClient implements TargetWriteClient {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': this.apiVersion,
+      ...(operation.headers ?? {}),
     };
     if (authToken) {
       headers.Authorization = `Bearer ${authToken}`;

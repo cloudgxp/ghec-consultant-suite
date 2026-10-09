@@ -77,6 +77,7 @@ export interface MigrationExecutionReport {
   readonly exitCode: 0 | 1 | 4;
   readonly dryRun: boolean;
   readonly results: readonly ModuleExecutionResult[];
+  readonly recommendations?: readonly string[] | undefined;
 }
 
 export interface VerificationOrchestratorOptions {

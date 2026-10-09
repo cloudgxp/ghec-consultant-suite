@@ -4,7 +4,13 @@ export {
   determineTargetVisibility,
   resolvePolicyFallbackVisibility,
 } from './visibility.js';
-export { parsePullRequestSettings, diffRepoSettings } from './pr-settings.js';
+export {
+  parsePullRequestSettings,
+  parseFeatureSettings,
+  parseCoreMetadata,
+  diffRepoSettings,
+  diffRepositoryFeatures,
+} from './pr-settings.js';
 export type {
   RepositoryVisibility,
   SquashMergeCommitTitle,
@@ -13,6 +19,7 @@ export type {
   MergeCommitMessage,
   RepositoryPullRequestSettings,
   RepositoryFeatureSettings,
+  RepositoryCoreMetadata,
   RepoSettingsData,
   RepoSettingsModuleOptions,
   RawGitHubRepositoryResponse,

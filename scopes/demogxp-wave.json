@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "name": "demogxp-wave",
+  "organizations": [
+    {
+      "source": "demogxp",
+      "target": "mig-framework-test",
+      "modules": [
+        "org-variables",
+        "org-secrets",
+        "teams",
+        "org-custom-properties",
+        "webhooks",
+        "post-migration-mannequins"
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "dummy-repo-public",
+      "targetOrg": "mig-framework-test",
+      "targetRepo": "dummy-repo-public",
+      "useGei": true,
+      "targetRepoVisibility": "public",
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks",
+        "collaborators",
+        "deploy-keys",
+        "issues",
+        "pull-requests"
+      ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "dummy-repo-private-lfs",
+      "targetOrg": "mig-framework-test",
+      "targetRepo": "dummy-repo-private-lfs",
+      "useGei": true,
+      "targetRepoVisibility": "private",
+      "skipReleases": false,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "repo-variables",
+        "repo-secrets",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "environments",
+        "webhooks",
+        "collaborators",
+        "deploy-keys",
+        "issues",
+        "pull-requests"
+      ]
+    }
+  ],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_gxp"
+  }
+}

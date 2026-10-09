@@ -28,6 +28,7 @@
     "validate:manifests": "python3 scripts/collectors/validate.py",
     "setup:app": "node scripts/register-app.mjs",
     "generate:scope": "node scripts/generate-scope.mjs",
+    "task:new": "node scripts/new-task.mjs",
     "docs:sync": "node scripts/sync-github-docs.mjs",
     "probe:api": "node --import tsx scripts/collectors/probe-api-surface.ts",
     "probe:api:live": "node --import tsx scripts/collectors/probe-api-surface.ts --live"

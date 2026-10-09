@@ -197,6 +197,82 @@ export const collector: Collector = {
           },
         });
       });
+
+      // Environments
+      try {
+        const envRes = await context.adapter.fetchAll<{
+          environments: Array<{
+            id: number;
+            name: string;
+            created_at: string;
+            updated_at: string;
+            protection_rules?: Array<{ id: number; type: string }>;
+            deployment_branch_policy?: {
+              protected_branches: boolean;
+              custom_branch_policies: boolean;
+            } | null;
+          }>;
+        }>(
+          {
+            id: 'rest.repos.getAllEnvironments',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: `/repos/{owner}/{repo}/environments`,
+            pathParams: {
+              owner: context.organizationId,
+              repo: repo.name,
+            },
+          },
+          context.signal,
+        );
+        lastObservedAt = envRes.observedAt;
+
+        const environments = envRes.items.flatMap(
+          (item) => item.environments || [],
+        );
+
+        for (const env of environments) {
+          const rawPolicy = env.deployment_branch_policy;
+          const deploymentBranchPolicy = !rawPolicy
+            ? 'all'
+            : rawPolicy.custom_branch_policies
+              ? 'selected'
+              : rawPolicy.protected_branches
+                ? 'protected'
+                : 'all';
+
+          entities.push({
+            id: `org:${context.organizationId}:repo:${repo.name}:environment:${env.name}`,
+            organizationId: context.organizationId,
+            collectorExecutionId: context.executionId,
+            provenance: {
+              source: 'rest',
+              operation: 'rest.repos.getAllEnvironments',
+              observedAt: envRes.observedAt,
+              apiVersion: '2026-03-10',
+            },
+            kind: 'action-environment',
+            repositoryId: repo.id,
+            name: env.name,
+            protectionRuleCount: {
+              value: env.protection_rules?.length ?? 0,
+              unit: 'count',
+              availability: 'observed',
+              reason: null,
+            },
+            reviewerCount: {
+              value: null,
+              unit: 'count',
+              availability: 'unknown',
+              reason:
+                'Reviewer counts not exported without full rule inspection',
+            },
+            deploymentBranchPolicy,
+          });
+        }
+      } catch {
+        // Ignored
+      }
     }
 
     // 2. Organization Default Workflow Permissions Policy

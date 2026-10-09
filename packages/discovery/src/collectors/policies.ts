@@ -40,6 +40,17 @@ interface OrgRepositoriesPolicyData {
   };
 }
 
+interface GitHubRuleset {
+  id: number;
+  name: string;
+  enforcement: string;
+  bypass_actors?: Array<{
+    actor_id?: number;
+    actor_type: string;
+    bypass_mode: string;
+  }>;
+}
+
 export const collector: Collector = {
   id: 'policies',
   implementation: 'implemented',
@@ -151,6 +162,89 @@ export const collector: Collector = {
           enforcement,
         });
       }
+    }
+
+    try {
+      const rulesetsRes = await context.adapter.fetchAll<GitHubRuleset>(
+        {
+          id: 'rest.orgs.getRulesets',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: `/orgs/{org}/rulesets`,
+          pathParams: { org: context.organizationId },
+        },
+        context.signal,
+      );
+
+      for (const ruleset of rulesetsRes.items) {
+        let bypassActors = ruleset.bypass_actors;
+        if (!bypassActors) {
+          try {
+            const detailRes = await context.adapter.readSingle<GitHubRuleset>(
+              {
+                id: 'rest.orgs.getRuleset',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: `/orgs/{org}/rulesets/{ruleset_id}`,
+                pathParams: {
+                  org: context.organizationId,
+                  ruleset_id: String(ruleset.id),
+                },
+              },
+              context.signal,
+            );
+            bypassActors = detailRes.data?.bypass_actors;
+          } catch {
+            // fallback
+            bypassActors = [];
+          }
+        }
+
+        const rawEnf = ruleset.enforcement.toLowerCase();
+        const enforcement =
+          rawEnf === 'active'
+            ? 'active'
+            : rawEnf === 'evaluate'
+              ? 'evaluate'
+              : rawEnf === 'disabled'
+                ? 'disabled'
+                : 'unknown';
+
+        entities.push({
+          id: `org:${context.organizationId}:policy:ruleset:${ruleset.name}`,
+          organizationId: context.organizationId,
+          collectorExecutionId: context.executionId,
+          provenance: {
+            source: 'rest',
+            operation: 'rest.orgs.getRulesets',
+            observedAt: rulesetsRes.observedAt,
+            apiVersion: '2026-03-10',
+          },
+          kind: 'policy',
+          repositoryId: null,
+          policyKind: 'ruleset',
+          name: ruleset.name,
+          enforcement,
+          bypasses: bypassActors
+            ? bypassActors.map((actor) => ({
+                actorId: actor.actor_id ? String(actor.actor_id) : null,
+                actorType: actor.actor_type,
+                bypassMode:
+                  actor.bypass_mode === 'always'
+                    ? 'always'
+                    : actor.bypass_mode === 'pull_request'
+                      ? 'pull_request'
+                      : actor.bypass_mode === 'always_allow'
+                        ? 'always_allow'
+                        : actor.bypass_mode === 'exempt'
+                          ? 'exempt'
+                          : 'unknown',
+              }))
+            : [],
+        });
+      }
+    } catch {
+      // Ignore if org rulesets API fails (e.g., GHEC unsupported or missing perm)
     }
 
     return {

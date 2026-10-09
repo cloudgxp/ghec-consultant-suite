@@ -68,12 +68,21 @@ export const RepositoriesTab: React.FC<Props> = ({
     const lfs = new Map<string, Lfs>();
     const actions = new Map<string, Actions>();
     const security = new Map<string, Security>();
+    const portfolio = new Map<
+      string,
+      Extract<
+        DiscoveryBundle['entities'][number],
+        { kind: 'repository-portfolio' }
+      >
+    >();
     for (const entity of bundle.entities) {
       if (entity.kind === 'lfs') lfs.set(entity.repositoryId, entity);
       if (entity.kind === 'actions') actions.set(entity.repositoryId, entity);
       if (entity.kind === 'security') security.set(entity.repositoryId, entity);
+      if (entity.kind === 'repository-portfolio')
+        portfolio.set(entity.repositoryId, entity);
     }
-    return { lfs, actions, security };
+    return { lfs, actions, security, portfolio };
   }, [bundle]);
   const repositories = useMemo(
     () =>
@@ -154,16 +163,27 @@ export const RepositoriesTab: React.FC<Props> = ({
             <div className="text-[11px] text-[var(--fgColor-muted)]">
               {resolveOrgName(bundle, repo.organizationId)}
             </div>
-            {repo.archived && (
-              <Label variant="attention" size="small" className="mt-1">
-                Archived
-              </Label>
-            )}
-            {repo.fork && (
-              <Label variant="secondary" size="small" className="mt-1 ml-1">
-                Fork
-              </Label>
-            )}
+            <div className="flex flex-wrap gap-1 mt-1">
+              {repo.archived && (
+                <Label variant="attention" size="small">
+                  Archived
+                </Label>
+              )}
+              {repo.fork && (
+                <Label variant="secondary" size="small">
+                  Fork
+                </Label>
+              )}
+              {indexes.portfolio.get(repo.id)?.customProperties?.map((cp) => (
+                <span
+                  key={cp.name}
+                  className="px-1.5 py-0.5 text-[10px] font-mono border border-[var(--borderColor-default)] bg-[var(--canvas-subtle)] rounded text-[var(--fgColor-muted)]"
+                  title={`${cp.name}: ${cp.value}`}
+                >
+                  {cp.name}: {cp.value}
+                </span>
+              ))}
+            </div>
           </>
         ),
       },

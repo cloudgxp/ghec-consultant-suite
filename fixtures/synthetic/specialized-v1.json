@@ -959,6 +959,7 @@
       "repositoryId": "org:fictional-specialized:repo:core",
       "codeScanning": "enabled",
       "dependabot": "enabled",
+      "secretScanning": "unknown",
       "openAlertCount": {
         "value": 2,
         "unit": "count",
