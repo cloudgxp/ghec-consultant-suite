@@ -8,6 +8,7 @@ import type {
   RehydrationSummary,
   CoreTransferSummary,
   PostMigrationSummary,
+  MetadataFailureSummary,
 } from './types.js';
 
 export interface BuildSummaryOptions {
@@ -63,9 +64,23 @@ export function buildSummaryFromExecutionReport(
   const rehydration: RehydrationSummary = {};
   const coreTransfer: CoreTransferSummary = {};
   const postMigration: PostMigrationSummary = {};
+  const metadataFailures: MetadataFailureSummary[] = [];
 
   for (const modResult of report.results) {
     const counts = countOperations(modResult.results);
+
+    if (
+      modResult.failedMetadataCategories &&
+      modResult.failedMetadataCategories.length > 0
+    ) {
+      metadataFailures.push({
+        categories: modResult.failedMetadataCategories,
+        fallbackCommands: modResult.failedMetadataCategories.map(
+          (cat) =>
+            `ghec-consultant-cli migrate --modules ${cat} --scope <scope>`,
+        ),
+      });
+    }
 
     // Collect errors
     for (const opResult of modResult.results) {
@@ -166,6 +181,14 @@ export function buildSummaryFromExecutionReport(
   const sourceOrg = options.sourceOrg ?? 'source-org';
   const targetOrg = options.targetOrg ?? 'target-org';
 
+  if (report.recommendations) {
+    for (const rec of report.recommendations) {
+      if (!warnings.includes(rec)) {
+        warnings.push(rec);
+      }
+    }
+  }
+
   return {
     schemaVersion: '1.0.0',
     runId: options.runId ?? report.planId ?? 'unknown-run',
@@ -181,6 +204,8 @@ export function buildSummaryFromExecutionReport(
     rehydration: Object.keys(rehydration).length > 0 ? rehydration : undefined,
     postMigration:
       Object.keys(postMigration).length > 0 ? postMigration : undefined,
+    metadataFailures:
+      metadataFailures.length > 0 ? metadataFailures : undefined,
     warnings,
     errors,
   };

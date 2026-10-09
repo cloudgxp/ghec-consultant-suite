@@ -33,7 +33,10 @@ export const collector: Collector = {
     }> = [];
     let lastObservedAt = startedAt;
     let partial = false;
+    const partialDomains = new Set<string>();
+
     const append = (
+      domain: 'actions' | 'dependabot' | 'codespaces',
       items: readonly ConfigurationItem[],
       configurationKind: 'secret' | 'variable',
       level: 'organization' | 'repository',
@@ -53,7 +56,7 @@ export const collector: Collector = {
                   ? ('selected_repositories' as const)
                   : ('unknown' as const);
         entities.push({
-          id: `org:${context.organizationId}:configuration:actions:${level}:${repositoryId ?? 'org'}:${configurationKind}:${item.name}`,
+          id: `org:${context.organizationId}:configuration:${domain}:${level}:${repositoryId ?? 'org'}:${configurationKind}:${item.name}`,
           organizationId: context.organizationId,
           collectorExecutionId: context.executionId,
           provenance: {
@@ -63,7 +66,7 @@ export const collector: Collector = {
             apiVersion: '2026-03-10',
           },
           kind: 'configuration-metadata',
-          domain: 'actions',
+          domain,
           configurationKind,
           name: item.name,
           level,
@@ -85,12 +88,13 @@ export const collector: Collector = {
       }
     };
     const collectScope = async (
+      domain: 'actions' | 'dependabot' | 'codespaces',
       kind: 'secret' | 'variable',
       level: 'organization' | 'repository',
       repository: Extract<Entity, { kind: 'repository' }> | null,
     ) => {
       const suffix = kind === 'secret' ? 'secrets' : 'variables';
-      const operation = `rest.actions.list-${level === 'organization' ? 'org' : 'repo'}-${suffix}`;
+      const operation = `rest.${domain}.list-${level === 'organization' ? 'org' : 'repo'}-${suffix}`;
       try {
         const result = await context.adapter.fetchAll<ConfigurationItem>(
           {
@@ -99,8 +103,8 @@ export const collector: Collector = {
             verifiedReadOnly: true,
             path:
               level === 'organization'
-                ? `/orgs/{org}/actions/${suffix}`
-                : `/repos/{owner}/{repo}/actions/${suffix}`,
+                ? `/orgs/{org}/${domain}/${suffix}`
+                : `/repos/{owner}/{repo}/${domain}/${suffix}`,
             pathParams:
               level === 'organization'
                 ? { org: context.organizationId }
@@ -110,6 +114,7 @@ export const collector: Collector = {
         );
         lastObservedAt = result.observedAt;
         append(
+          domain,
           extractItems(result.items),
           kind,
           level,
@@ -122,45 +127,56 @@ export const collector: Collector = {
           throw err;
         }
         partial = true;
+        partialDomains.add(domain);
         errors.push({
           code: 'permission_denied',
-          message: 'Configuration metadata scope was inaccessible',
+          message: `Configuration metadata scope for ${domain} was inaccessible`,
           retryable: false,
         });
       }
     };
-    await collectScope('secret', 'organization', null);
-    await collectScope('variable', 'organization', null);
+    await collectScope('actions', 'secret', 'organization', null);
+    await collectScope('actions', 'variable', 'organization', null);
+    await collectScope('dependabot', 'secret', 'organization', null);
+    await collectScope('codespaces', 'secret', 'organization', null);
     for (const repo of context.sharedState?.repositories ?? []) {
       if (context.signal.aborted)
         throw context.signal.reason ?? new Error('Aborted');
       if (repo.archived) continue;
-      await collectScope('secret', 'repository', repo);
-      await collectScope('variable', 'repository', repo);
+      await collectScope('actions', 'secret', 'repository', repo);
+      await collectScope('actions', 'variable', 'repository', repo);
+      await collectScope('dependabot', 'secret', 'repository', repo);
+      await collectScope('codespaces', 'secret', 'repository', repo);
     }
 
     const domainCoverage = [
       [
         'actions',
-        partial ? 'partial' : 'complete',
-        partial
+        partialDomains.has('actions') ? 'partial' : 'complete',
+        partialDomains.has('actions')
           ? 'One or more Actions scopes were inaccessible'
           : 'Actions metadata collection completed',
       ],
       [
         'dependabot',
-        'unsupported',
-        'Collector has not completed security review',
+        partialDomains.has('dependabot') ? 'partial' : 'complete',
+        partialDomains.has('dependabot')
+          ? 'One or more Dependabot scopes were inaccessible'
+          : 'Dependabot metadata collection completed',
       ],
       [
         'codespaces',
-        'unsupported',
-        'Collector has not completed security review',
+        partialDomains.has('codespaces') ? 'partial' : 'complete',
+        partialDomains.has('codespaces')
+          ? 'One or more Codespaces scopes were inaccessible'
+          : 'Codespaces metadata collection completed',
       ],
       [
         'environment',
-        'unsupported',
-        'Environment metadata collection is not enabled',
+        partialDomains.has('environment') ? 'partial' : 'complete',
+        partialDomains.has('environment')
+          ? 'One or more Environment scopes were inaccessible'
+          : 'Environment metadata collection completed',
       ],
       [
         'copilot',

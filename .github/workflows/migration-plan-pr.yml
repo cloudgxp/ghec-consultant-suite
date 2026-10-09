@@ -80,6 +80,11 @@ jobs:
               continue
             fi
 
+            if ! jq -e 'has("organizations") and has("version")' "$SCOPE_FILE" >/dev/null 2>&1; then
+              echo "Skipping non-scope JSON file: $SCOPE_FILE"
+              continue
+            fi
+
             BASENAME=$(basename "$SCOPE_FILE" .json)
             PLAN_OUTPUT="./scans/${BASENAME}-plan.json"
 

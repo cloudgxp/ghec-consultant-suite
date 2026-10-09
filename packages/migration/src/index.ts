@@ -31,4 +31,6 @@ export * from './modules/deploy-keys/index.js';
 export * from './modules/collaborators/index.js';
 export * from './modules/lfs/index.js';
 export * from './modules/packages/index.js';
+export * from './modules/issues/index.js';
+export * from './modules/pull-requests/index.js';
 export * from './reporting/index.js';

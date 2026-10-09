@@ -49,6 +49,8 @@ export class MigrationOrchestrator {
     MigrationOrchestratorOptions['geiRunner'] | undefined;
   private readonly lfsRunner?:
     MigrationOrchestratorOptions['lfsRunner'] | undefined;
+  private readonly gitRunner?:
+    MigrationOrchestratorOptions['gitRunner'] | undefined;
   private readonly releaseTransport?:
     MigrationOrchestratorOptions['releaseTransport'] | undefined;
   private readonly plan?: MigrationPlan | undefined;
@@ -77,6 +79,7 @@ export class MigrationOrchestrator {
     this.targetToken = options.targetToken;
     this.geiRunner = options.geiRunner;
     this.lfsRunner = options.lfsRunner;
+    this.gitRunner = options.gitRunner;
     this.releaseTransport = options.releaseTransport;
     this.cachedDiscoveryBundle = options.cachedDiscoveryBundle;
     this.modulesFilter = options.modules;
@@ -134,6 +137,7 @@ export class MigrationOrchestrator {
       signal: this.signal,
       geiRunner: this.geiRunner,
       lfsRunner: this.lfsRunner,
+      gitRunner: this.gitRunner,
       releaseTransport: this.releaseTransport,
     });
 
@@ -187,6 +191,7 @@ export class MigrationOrchestrator {
         logger: this.logger,
         runId: this.runId,
         signal: this.signal,
+        modules: this.modulesFilter,
       });
       activePlan = await planner.generatePlan();
     }
@@ -202,6 +207,7 @@ export class MigrationOrchestrator {
     }
 
     const executionResults: ModuleExecutionResult[] = [];
+    const recommendations: string[] = [];
     let hasFailure = false;
 
     for (const modulePlan of modulePlans) {
@@ -236,6 +242,19 @@ export class MigrationOrchestrator {
           );
         }
         executionResults.push(validated.data);
+
+        // Feedback loop: inspect gei-repo metadata omissions
+        if (
+          modulePlan.moduleId === 'gei-repo' &&
+          validated.data.failedMetadataCategories &&
+          validated.data.failedMetadataCategories.length > 0
+        ) {
+          for (const cat of validated.data.failedMetadataCategories) {
+            const rec = `GEI omitted ${cat} metadata for ${modulePlan.targetIdentifier}. Recommended fallback module: '${cat}'.`;
+            recommendations.push(rec);
+            this.logger.warn(rec);
+          }
+        }
 
         const isFailed =
           validated.data.status === 'failed' ||
@@ -306,6 +325,7 @@ export class MigrationOrchestrator {
       exitCode,
       dryRun: this.dryRun,
       results: executionResults,
+      recommendations: recommendations.length > 0 ? recommendations : undefined,
     };
   }
 

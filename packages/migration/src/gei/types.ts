@@ -44,12 +44,23 @@ export interface GeiMigrationRequest {
   readonly onOutput?: (line: string) => void;
 }
 
+export type GeiMetadataStatus = 'complete' | 'partial' | 'failed' | 'skipped';
+
+export interface GeiMetadataDiagnostics {
+  readonly metadataState: GeiMetadataStatus;
+  readonly gitDataPreserved: boolean;
+  readonly failedMetadataCategories: readonly string[];
+  readonly warnings: readonly string[];
+  readonly errors: readonly string[];
+}
+
 export interface GeiMigrationResult {
   readonly migrationId?: string;
   readonly skippedReleases: boolean;
   readonly command: readonly string[];
   readonly stdout: string;
   readonly stderr: string;
+  readonly metadataDiagnostics?: GeiMetadataDiagnostics;
 }
 
 export interface GeiPreflightCheck {

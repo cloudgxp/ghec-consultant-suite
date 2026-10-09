@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "name": "chromium-test-wave",
+  "organizations": [
+    {
+      "source": "demogxp",
+      "target": "mig-framework-test",
+      "modules": [
+        "org-variables",
+        "org-secrets",
+        "teams",
+        "org-custom-properties",
+        "post-migration-mannequins",
+        "packages"
+      ]
+    }
+  ],
+  "repositories": [
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "chromium",
+      "targetOrg": "mig-framework-test",
+      "targetRepo": "chromium",
+      "useGei": true,
+      "targetRepoVisibility": "public",
+      "skipReleases": true,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "gei-repo",
+        "repo-variables",
+        "repo-secrets",
+        "environments",
+        "webhooks",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "post-migration-codeowners",
+        "security",
+        "releases",
+        "deploy-keys",
+        "collaborators",
+        "lfs",
+        "issues",
+        "pull-requests"
+      ]
+    }
+  ],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "suffix": "_gxp"
+  }
+}

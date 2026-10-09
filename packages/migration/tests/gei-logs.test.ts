@@ -7,6 +7,8 @@ import { test } from 'node:test';
 import {
   abortGeiMigration,
   downloadMigrationLogs,
+  parseGeiMetadataDiagnostics,
+  parseMigrationLogErrors,
   parseMigrationLogWarnings,
   type GeiCommandRunner,
 } from '../src/index.js';
@@ -95,4 +97,48 @@ test('recognizes standard migration log warning text', () => {
   assert.deepEqual(parseMigrationLogWarnings('ok\nwarning: one\nall good\n'), [
     'warning: one',
   ]);
+});
+
+test('detects metadata overflow and classifies all metadata categories as failed', () => {
+  const log = [
+    'Migrating git repository... complete',
+    'WARNING: Repository metadata too big to migrate (size: 45GB)',
+    'Finished migration with warnings',
+  ].join('\n');
+
+  const diagnostics = parseGeiMetadataDiagnostics(log, { exitCode: 0 });
+  assert.equal(diagnostics.metadataState, 'failed');
+  assert.equal(diagnostics.gitDataPreserved, true);
+  assert.deepEqual(
+    diagnostics.failedMetadataCategories.sort(),
+    ['issues', 'pull-requests', 'releases', 'settings'].sort(),
+  );
+  assert.equal(diagnostics.warnings.length, 1);
+  assert.ok(diagnostics.warnings[0]?.includes('Repository metadata too big'));
+});
+
+test('detects review thread corruption and flags pull-requests category', () => {
+  const log = [
+    'Git source migration succeeded, but metadata migration encountered errors',
+    'ERROR: REVIEW_THREAD_MISSING_END_COMMIT_OID on PR #42',
+    'ERROR: LINE_NOT_FOUND_IN_DIFF on PR #43',
+  ].join('\n');
+
+  const diagnostics = parseGeiMetadataDiagnostics(log, { exitCode: 0 });
+  assert.equal(diagnostics.metadataState, 'partial');
+  assert.ok(diagnostics.failedMetadataCategories.includes('pull-requests'));
+  assert.equal(diagnostics.gitDataPreserved, true);
+  assert.equal(diagnostics.errors.length, 2);
+
+  const errors = parseMigrationLogErrors(log);
+  assert.equal(errors.length, 2);
+  assert.ok(errors[0]?.includes('REVIEW_THREAD_MISSING_END_COMMIT_OID'));
+});
+
+test('redacts sensitive tokens in log warning diagnostics (DEC-004)', () => {
+  const secret = 'ghp_secrettokenvalue1234567890123456';
+  const log = `WARNING: failed connecting with https://x-access-token:${secret}@github.com/org/repo`;
+  const warnings = parseMigrationLogWarnings(log);
+  assert.ok(!warnings[0]?.includes(secret));
+  assert.ok(warnings[0]?.includes('https://***@github.com'));
 });

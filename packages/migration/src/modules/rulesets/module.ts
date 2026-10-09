@@ -158,6 +158,7 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
 
     const operations: PlannedOperation[] = [];
     const warnings: string[] = [];
+    const opPrefix = isRepo && targetRepo ? `${targetRepo}-` : '';
 
     for (const sourceRuleset of sourceData.rulesets) {
       // Inherited org rulesets cannot be migrated at repo level
@@ -172,7 +173,7 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
 
       if (!existingTarget) {
         operations.push({
-          id: `ruleset-create-${sourceRuleset.name}`,
+          id: `ruleset-create-${opPrefix}${sourceRuleset.name}`,
           operation: 'create',
           resourceType: 'ruleset',
           resourceName: sourceRuleset.name,
@@ -183,7 +184,7 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
       } else if (isRepo && isInheritedOrganizationRuleset(existingTarget)) {
         // Target has an inherited ruleset of the same name: do not attempt to overwrite!
         operations.push({
-          id: `ruleset-skip-${sourceRuleset.name}`,
+          id: `ruleset-skip-${opPrefix}${sourceRuleset.name}`,
           operation: 'skip',
           resourceType: 'ruleset',
           resourceName: sourceRuleset.name,
@@ -194,7 +195,7 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
         });
       } else if (areRulesetsEqual(sourceRuleset, existingTarget)) {
         operations.push({
-          id: `ruleset-noop-${sourceRuleset.name}`,
+          id: `ruleset-noop-${opPrefix}${sourceRuleset.name}`,
           operation: 'noop',
           resourceType: 'ruleset',
           resourceName: sourceRuleset.name,
@@ -204,7 +205,7 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
         });
       } else {
         operations.push({
-          id: `ruleset-update-${sourceRuleset.name}`,
+          id: `ruleset-update-${opPrefix}${sourceRuleset.name}`,
           operation: 'update',
           resourceType: 'ruleset',
           resourceName: sourceRuleset.name,

@@ -22,6 +22,13 @@ export interface RepositoryFeatureSettings {
   hasIssues?: boolean | undefined;
   hasProjects?: boolean | undefined;
   hasWiki?: boolean | undefined;
+  hasDiscussions?: boolean | undefined;
+}
+
+export interface RepositoryCoreMetadata {
+  description?: string | undefined;
+  homepage?: string | undefined;
+  defaultBranch?: string | undefined;
 }
 
 export interface RepoSettingsData {
@@ -30,6 +37,7 @@ export interface RepoSettingsData {
   visibility: RepositoryVisibility;
   prSettings: RepositoryPullRequestSettings;
   features?: RepositoryFeatureSettings | undefined;
+  metadata?: RepositoryCoreMetadata | undefined;
 }
 
 export interface RepoSettingsModuleOptions {
@@ -63,4 +71,8 @@ export interface RawGitHubRepositoryResponse {
   has_issues?: boolean | undefined;
   has_projects?: boolean | undefined;
   has_wiki?: boolean | undefined;
+  has_discussions?: boolean | undefined;
+  description?: string | null | undefined;
+  homepage?: string | null | undefined;
+  default_branch?: string | undefined;
 }

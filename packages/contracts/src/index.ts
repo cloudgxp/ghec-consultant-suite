@@ -196,6 +196,23 @@ export const EntitySchema = z.discriminatedUnion('kind', [
   z
     .object({
       ...base,
+      kind: z.literal('custom-property-definition'),
+      propertyName: Id,
+      valueType: z.enum([
+        'string',
+        'single_select',
+        'multi_select',
+        'true_false',
+      ]),
+      required: z.boolean().nullable(),
+      defaultValue: z.union([z.string(), z.array(z.string())]).nullable(),
+      allowedValues: z.array(z.string()).nullable(),
+      description: Text.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
       kind: z.literal('team'),
       name: Id,
       parentTeamId: Id.nullable(),
@@ -359,6 +376,28 @@ export const EntitySchema = z.discriminatedUnion('kind', [
   z
     .object({
       ...base,
+      kind: z.literal('dependabot-secret'),
+      repositoryId: Id.nullable(),
+      name: Id,
+      configurationKind: z.literal('secret'),
+      level: z.enum(['organization', 'repository']),
+      updatedAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
+      kind: z.literal('codespaces-secret'),
+      repositoryId: Id.nullable(),
+      name: Id,
+      configurationKind: z.literal('secret'),
+      level: z.enum(['organization', 'repository']),
+      updatedAt: Timestamp.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...base,
       kind: z.literal('configuration-metadata'),
       domain: z.enum([
         'actions',
@@ -415,6 +454,21 @@ export const EntitySchema = z.discriminatedUnion('kind', [
       policyKind: z.enum(['branch_protection', 'ruleset']),
       name: Id,
       enforcement: z.enum(['active', 'evaluate', 'disabled', 'unknown']),
+      bypasses: z
+        .array(
+          z.object({
+            actorId: z.string().nullable().optional(),
+            actorType: z.string(),
+            bypassMode: z.enum([
+              'always',
+              'pull_request',
+              'always_allow',
+              'exempt',
+              'unknown',
+            ]),
+          }),
+        )
+        .optional(),
     })
     .strict(),
   z
@@ -424,6 +478,7 @@ export const EntitySchema = z.discriminatedUnion('kind', [
       repositoryId: Id,
       codeScanning: z.enum(['enabled', 'disabled', 'unknown']),
       dependabot: z.enum(['enabled', 'disabled', 'unknown']),
+      secretScanning: z.enum(['enabled', 'disabled', 'unknown']),
       openAlertCount: CountMetric,
     })
     .strict(),
@@ -720,6 +775,7 @@ export const DiscoveryBundleSchema = BundleShape.superRefine((b, ctx) => {
       repository: 'repos',
       'repository-portfolio': 'repos',
       'code-ownership': 'repos',
+      'custom-property-definition': 'repos',
       project: 'repos',
       'dependency-node': 'repos',
       'dependency-edge': 'repos',
@@ -735,6 +791,8 @@ export const DiscoveryBundleSchema = BundleShape.superRefine((b, ctx) => {
       'action-environment': 'actions',
       'action-policy': 'actions',
       'actions-secret': 'actions-secrets',
+      'dependabot-secret': 'actions-secrets',
+      'codespaces-secret': 'actions-secrets',
       'configuration-metadata': 'actions-secrets',
       'configuration-coverage': 'actions-secrets',
       policy: 'policies',
@@ -883,9 +941,11 @@ export {
   MigrationScopeSchema,
   RepositoryMappingSchema,
   RepositoryOptionsSchema,
+  GitTransferStrategySchema,
   validateMigrationScope,
   type MigrationScope,
   type RepositoryOptions,
+  type GitTransferStrategy,
 } from './scope/migration-scope.js';
 export {
   MigrationPlanSchema,
@@ -929,3 +989,14 @@ export {
   type VerificationDiscrepancy,
   type VerificationReport,
 } from './verification/verification-report.js';
+export {
+  MigrationResultsManifestSchema,
+  MigrationResultsSummarySchema,
+  OrgModuleResultSummarySchema,
+  RepositoryMigrationRecordSchema,
+  validateMigrationResultsManifest,
+  type MigrationResultsManifest,
+  type MigrationResultsSummary,
+  type OrgModuleResultSummary,
+  type RepositoryMigrationRecord,
+} from './results/results-repo-manifest.js';

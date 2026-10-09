@@ -636,6 +636,69 @@ export const LiveConsoleTab: React.FC<LiveConsoleTabProps> = ({
         </div>
       </div>
 
+      <Flash variant="warning" className="mb-4">
+        <div className="flex flex-col gap-1 text-sm">
+          <strong>Migration Warnings & Limitations</strong>
+          <ul className="list-disc pl-4 mt-1 text-[var(--fgColor-muted)]">
+            <li>
+              <strong>Sub-issues:</strong> Sub-issue relationships and
+              hierarchies are NOT migrated by GEI. They will be converted to
+              standard issues or drop their parent linking.
+            </li>
+            <li>
+              <strong>Packages:</strong> GitHub Packages (npm, docker, maven,
+              rubygems, nuget) cannot be migrated automatically using GEI. They
+              must be migrated manually.
+            </li>
+            <li>
+              <strong>Dependabot & Code Scanning:</strong> Open alerts and their
+              historical statuses do not migrate. The tools must re-run on the
+              target to regenerate alerts.
+            </li>
+            <li>
+              <strong>Code Search:</strong> Code search indexing may be delayed
+              for up to 48 hours post-migration for large mono-repos.
+            </li>
+            <li>
+              <strong>LFS Push:</strong> You may need to manually run{' '}
+              <code className="text-xs">git lfs push --all</code> post-migration
+              if LFS assets exceed GEI timeouts.
+            </li>
+            <li>
+              <strong>Repository Size:</strong> Repositories exceeding 400MB may
+              experience significant delays or require split migration waves.
+            </li>
+            <li>
+              <strong>Invitations & Access:</strong> Pending invitations, team
+              memberships, and granular user repo access are not migrated.
+            </li>
+            <li>
+              <strong>Metadata:</strong> Repository discussions, fork parent
+              relationships, tag protection rules, webhook states, PR settings,
+              stars, and watchers are unsupported by GEI and must be manually
+              recreated.
+            </li>
+          </ul>
+        </div>
+      </Flash>
+
+      <Flash variant="default">
+        <div className="flex flex-col gap-1 text-sm">
+          <strong>Mannequin Reclamation Planning</strong>
+          <span className="text-[var(--fgColor-muted)]">
+            Post-migration, GEI generates placeholder mannequins for unmapped
+            contributors. If migrating to{' '}
+            <strong>Enterprise Managed Users (EMU)</strong>, you can instantly
+            reclaim these mannequins without sending email invitations by using
+            the CLI:
+            <br />
+            <code className="text-xs px-1.5 py-0.5 bg-[var(--canvas-subtle)] border border-[var(--borderColor-default)] rounded mt-1 inline-block">
+              gh gei reclaim-mannequin --skip-invitation
+            </code>
+          </span>
+        </div>
+      </Flash>
+
       {/* Checkpoint Resumption Alert Banner (When Failed/Cancelled) */}
       {(activeRun.conclusion === 'failure' ||
         activeRun.conclusion === 'cancelled') && (

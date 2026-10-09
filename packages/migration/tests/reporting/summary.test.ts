@@ -238,6 +238,68 @@ describe('Reporting & Step Summary Subsystem', () => {
       assert.equal(summary.errors.length, 1);
       assert.ok(summary.errors[0]?.includes('[repo-secrets] Key expired'));
     });
+
+    it('extracts failedMetadataCategories and recommendations into summary', () => {
+      const reportWithMetadataFailure: MigrationExecutionReport = {
+        schemaVersion: '1.0.0',
+        planId: 'plan-meta-1',
+        executedAt: '2026-10-04T10:00:00Z',
+        dryRun: false,
+        status: 'partial',
+        exitCode: 4,
+        recommendations: [
+          "GEI omitted issues metadata for my-repo. Recommended fallback module: 'issues'.",
+        ],
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            status: 'partial',
+            failedMetadataCategories: ['issues', 'pull-requests'],
+            results: [
+              {
+                operationId: 'gei-op-1',
+                status: 'succeeded',
+                completedAt: '2026-10-04T10:01:00Z',
+              },
+            ],
+            durationMs: 5000,
+          },
+        ],
+      };
+
+      const summary = buildSummaryFromExecutionReport(
+        reportWithMetadataFailure,
+        {
+          sourceOrg: 'src-org',
+          targetOrg: 'tgt-org',
+        },
+      );
+
+      assert.ok(summary.metadataFailures);
+      assert.equal(summary.metadataFailures.length, 1);
+      assert.deepEqual(summary.metadataFailures[0]?.categories, [
+        'issues',
+        'pull-requests',
+      ]);
+      assert.ok(
+        summary.metadataFailures[0]?.fallbackCommands.some((c) =>
+          c.includes('--modules issues'),
+        ),
+      );
+      assert.ok(
+        summary.warnings.some((w) => w.includes('GEI omitted issues metadata')),
+      );
+
+      const markdown = formatStepSummaryMarkdown(summary);
+      assert.ok(markdown.includes('GEI Metadata Drop & Fallback Remediation'));
+      assert.ok(
+        markdown.includes('Omitted categories: `issues`, `pull-requests`'),
+      );
+      assert.ok(
+        markdown.includes('ghec-consultant-cli migrate --modules issues'),
+      );
+    });
   });
 
   describe('buildSummaryFromVerification', () => {

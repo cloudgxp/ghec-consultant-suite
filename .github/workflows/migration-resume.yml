@@ -8,6 +8,11 @@ on:
         required: true
         type: string
         default: 'latest'
+      workflow_run_id:
+        description: 'GitHub Actions Run ID of interrupted migration run to download checkpoint artifacts from (optional if on persistent runner)'
+        required: false
+        type: string
+        default: ''
       scope:
         description: 'Optional path to original migration scope file (if re-specifying scope)'
         required: false
@@ -22,26 +27,27 @@ on:
         description: 'Execute resume in dry-run simulation mode'
         required: false
         type: boolean
-        default: false
+        default: true
       continue_on_error:
         description: 'Continue executing remaining modules on non-fatal failures'
         required: false
         type: boolean
         default: true
       runner_labels:
-        description: 'Comma-separated labels for runner selection (e.g. "self-hosted,linux")'
+        description: 'Runner label(s) for runner selection (e.g. "ubuntu-latest" or "self-hosted,linux")'
         required: false
         type: string
-        default: 'self-hosted,linux'
+        default: 'ubuntu-latest'
 
 permissions:
   contents: read
+  actions: read
   issues: write
 
 jobs:
   resume:
     name: 'Resume Run: ${{ inputs.run_id }}'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner_labels }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -60,15 +66,47 @@ jobs:
       - name: Locate or Restore Checkpoint Directory
         id: checkpoint-restore
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_WORKFLOW_RUN_ID: ${{ inputs.workflow_run_id }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
         run: |
           mkdir -p ./migrations ./scans
-          RUN_ID="${{ inputs.run_id }}"
-          echo "Checking local checkpoint directory for run: $RUN_ID..."
-          if ls ./migrations/.checkpoint-* 1> /dev/null 2>&1; then
-            echo "Local checkpoint manifests found in ./migrations/:"
+
+          # 1. If workflow_run_id is provided, download artifacts directly
+          TARGET_RUN_ID="$INPUT_WORKFLOW_RUN_ID"
+
+          # 2. If workflow_run_id was not provided, look for the most recent run of migration-execute-wave.yml
+          if [ -z "$TARGET_RUN_ID" ] && ! ls -d ./migrations/.checkpoint-* 1> /dev/null 2>&1; then
+            echo "Searching for latest migration-execute-wave workflow run to retrieve checkpoints..."
+            RECENT_RUN=$(gh run list --workflow migration-execute-wave.yml --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
+            if [ -n "$RECENT_RUN" ] && [ "$RECENT_RUN" != "null" ]; then
+              echo "Detected latest execution run ID: $RECENT_RUN"
+              TARGET_RUN_ID="$RECENT_RUN"
+            fi
+          fi
+
+          if [ -n "$TARGET_RUN_ID" ]; then
+            echo "Attempting to download checkpoint artifacts from GitHub Actions run $TARGET_RUN_ID..."
+            mkdir -p ./temp_artifacts
+            if gh run download "$TARGET_RUN_ID" --dir ./temp_artifacts 2>/dev/null; then
+              echo "Downloaded run artifacts. Scanning for checkpoint directories..."
+              find ./temp_artifacts -type d -name '.checkpoint-*' | while read -r CP_DIR; do
+                echo "Restoring checkpoint: $(basename "$CP_DIR")"
+                cp -r "$CP_DIR" ./migrations/
+              done
+            else
+              echo "::warning::Could not download artifacts from workflow run $TARGET_RUN_ID."
+            fi
+          fi
+
+          # 3. Check if checkpoints now exist
+          if ls -d ./migrations/.checkpoint-* 1> /dev/null 2>&1; then
+            echo "Active checkpoints found in ./migrations/:"
             ls -la ./migrations/.checkpoint-*
           else
-            echo "No local checkpoint directory present. Attempting artifact restoration if available..."
+            echo "::warning::No local checkpoint directory (.checkpoint-*) found in ./migrations/."
+            echo "If this is a fresh runner, specify 'workflow_run_id' input with the failed GitHub Actions run ID."
           fi
 
       - name: Execute Migration Resumption

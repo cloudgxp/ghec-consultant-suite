@@ -612,6 +612,7 @@
       "repositoryId": "org:fictional-restricted:repo:app",
       "codeScanning": "unknown",
       "dependabot": "unknown",
+      "secretScanning": "unknown",
       "openAlertCount": {
         "value": null,
         "unit": "count",

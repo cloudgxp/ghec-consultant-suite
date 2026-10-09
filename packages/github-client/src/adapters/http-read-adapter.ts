@@ -335,10 +335,14 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
             parseInt(String(response.headers['x-ratelimit-reset']), 10) * 1000,
           ).toISOString()
         : null;
+      const limitRequests = response.headers['x-ratelimit-limit']
+        ? parseInt(String(response.headers['x-ratelimit-limit']), 10)
+        : undefined;
 
       this.rateLimiter.updateREST(
         remainingRequests ?? undefined,
         resetAt ?? undefined,
+        limitRequests,
       );
 
       const linkHeader =
@@ -378,10 +382,14 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
               parseInt(String(headers['x-ratelimit-reset']), 10) * 1000,
             ).toISOString()
           : null;
+        const limitRequests = headers['x-ratelimit-limit']
+          ? parseInt(String(headers['x-ratelimit-limit']), 10)
+          : undefined;
 
         this.rateLimiter.updateREST(
           remainingRequests ?? undefined,
           resetAt ?? undefined,
+          limitRequests,
         );
 
         return {

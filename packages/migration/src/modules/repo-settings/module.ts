@@ -13,7 +13,12 @@ import type {
   PlannedOperation,
   VerificationDiscrepancy,
 } from '../../core/types.js';
-import { diffRepoSettings, parsePullRequestSettings } from './pr-settings.js';
+import {
+  diffRepoSettings,
+  parseCoreMetadata,
+  parseFeatureSettings,
+  parsePullRequestSettings,
+} from './pr-settings.js';
 import type {
   RawGitHubRepositoryResponse,
   RepoSettingsData,
@@ -89,6 +94,20 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
             repo,
             visibility,
             prSettings: parsePullRequestSettings(rawPr),
+            features: {
+              hasIssues: repoEntity.hasIssues as boolean | undefined,
+              hasProjects: repoEntity.hasProjects as boolean | undefined,
+              hasWiki: repoEntity.hasWiki as boolean | undefined,
+              hasDiscussions: repoEntity.hasDiscussions as boolean | undefined,
+            },
+            metadata: {
+              description:
+                (repoEntity.description as string | undefined) ?? undefined,
+              homepage:
+                (repoEntity.homepage as string | undefined) ?? undefined,
+              defaultBranch:
+                (repoEntity.defaultBranch as string | undefined) ?? undefined,
+            },
           };
         }
       }
@@ -115,17 +134,16 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
     const raw = res.data;
     const visibility = normalizeVisibility(raw.visibility, raw.private);
     const prSettings = parsePullRequestSettings(raw);
+    const features = parseFeatureSettings(raw);
+    const metadata = parseCoreMetadata(raw);
 
     return {
       owner: ctx.scope.sourceOrg,
       repo,
       visibility,
       prSettings,
-      features: {
-        hasIssues: raw.has_issues,
-        hasProjects: raw.has_projects,
-        hasWiki: raw.has_wiki,
-      },
+      features,
+      metadata,
     };
   }
 
@@ -147,10 +165,14 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
       this.options,
     );
     const desiredPr = sourceData.prSettings;
+    const desiredFeatures = sourceData.features;
+    const desiredMetadata = sourceData.metadata;
 
     // Fetch target repository current state
     let targetVisibility: RepositoryVisibility = 'private'; // GEI default
     let targetPr = parsePullRequestSettings({});
+    let targetFeatures = parseFeatureSettings({});
+    let targetMetadata = parseCoreMetadata({});
 
     try {
       const res =
@@ -171,6 +193,8 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           res.data.private,
         );
         targetPr = parsePullRequestSettings(res.data);
+        targetFeatures = parseFeatureSettings(res.data);
+        targetMetadata = parseCoreMetadata(res.data);
       }
     } catch {
       warnings.push(
@@ -183,6 +207,10 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
       targetVisibility,
       desiredPr,
       targetPr,
+      desiredFeatures,
+      targetFeatures,
+      desiredMetadata,
+      targetMetadata,
     );
 
     const opId = `repo-settings:${targetRepo}`;
@@ -196,10 +224,14 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
         sourceState: {
           visibility: sourceData.visibility,
           prSettings: sourceData.prSettings,
+          features: sourceData.features,
+          metadata: sourceData.metadata,
         },
         destinationCurrentState: {
           visibility: targetVisibility,
           prSettings: targetPr,
+          features: targetFeatures,
+          metadata: targetMetadata,
         },
         payload: diff.patchPayload,
         reason: `Reconcile repository settings: ${diff.changeDescriptions.join(', ')}`,
@@ -213,10 +245,14 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
         sourceState: {
           visibility: sourceData.visibility,
           prSettings: sourceData.prSettings,
+          features: sourceData.features,
+          metadata: sourceData.metadata,
         },
         destinationCurrentState: {
           visibility: targetVisibility,
           prSettings: targetPr,
+          features: targetFeatures,
+          metadata: targetMetadata,
         },
       });
     }
@@ -546,6 +582,93 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
             expected: payload.squash_merge_commit_message,
             actual: actualPr.squashMergeCommitMessage,
             message: `squash_merge_commit_message mismatch: expected "${payload.squash_merge_commit_message}", got "${actualPr.squashMergeCommitMessage}".`,
+          });
+        }
+
+        const actualFeatures = parseFeatureSettings(currentRepoData);
+        const actualMetadata = parseCoreMetadata(currentRepoData);
+
+        if (
+          payload.has_issues !== undefined &&
+          actualFeatures.hasIssues !== payload.has_issues
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (has_issues)`,
+            expected: payload.has_issues,
+            actual: actualFeatures.hasIssues,
+            message: `has_issues mismatch: expected ${payload.has_issues}, got ${actualFeatures.hasIssues}.`,
+          });
+        }
+
+        if (
+          payload.has_projects !== undefined &&
+          actualFeatures.hasProjects !== payload.has_projects
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (has_projects)`,
+            expected: payload.has_projects,
+            actual: actualFeatures.hasProjects,
+            message: `has_projects mismatch: expected ${payload.has_projects}, got ${actualFeatures.hasProjects}.`,
+          });
+        }
+
+        if (
+          payload.has_wiki !== undefined &&
+          actualFeatures.hasWiki !== payload.has_wiki
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (has_wiki)`,
+            expected: payload.has_wiki,
+            actual: actualFeatures.hasWiki,
+            message: `has_wiki mismatch: expected ${payload.has_wiki}, got ${actualFeatures.hasWiki}.`,
+          });
+        }
+
+        if (
+          payload.has_discussions !== undefined &&
+          actualFeatures.hasDiscussions !== payload.has_discussions
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (has_discussions)`,
+            expected: payload.has_discussions,
+            actual: actualFeatures.hasDiscussions,
+            message: `has_discussions mismatch: expected ${payload.has_discussions}, got ${actualFeatures.hasDiscussions}.`,
+          });
+        }
+
+        if (
+          payload.description !== undefined &&
+          actualMetadata.description !== payload.description
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (description)`,
+            expected: payload.description,
+            actual: actualMetadata.description,
+            message: `description mismatch: expected "${payload.description}", got "${actualMetadata.description ?? ''}".`,
+          });
+        }
+
+        if (
+          payload.homepage !== undefined &&
+          actualMetadata.homepage !== payload.homepage
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (homepage)`,
+            expected: payload.homepage,
+            actual: actualMetadata.homepage,
+            message: `homepage mismatch: expected "${payload.homepage}", got "${actualMetadata.homepage ?? ''}".`,
+          });
+        }
+
+        if (
+          payload.default_branch !== undefined &&
+          actualMetadata.defaultBranch !== payload.default_branch
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (default_branch)`,
+            expected: payload.default_branch,
+            actual: actualMetadata.defaultBranch,
+            message: `default_branch mismatch: expected "${payload.default_branch}", got "${actualMetadata.defaultBranch ?? ''}".`,
           });
         }
       }
