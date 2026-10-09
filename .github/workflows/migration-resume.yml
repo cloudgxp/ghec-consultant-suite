@@ -44,6 +44,9 @@ permissions:
   actions: read
   issues: write
 
+env:
+  GHEC_ALLOW_SAME_CREDENTIAL: 'true'
+
 jobs:
   resume:
     name: 'Resume Run: ${{ inputs.run_id }}'

@@ -48,6 +48,14 @@ on:
         required: false
         type: string
         default: 'production-migration'
+      allow_same_credential:
+        description: 'Allow source and target tenants to share credentials (required for same-enterprise testing)'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  GHEC_ALLOW_SAME_CREDENTIAL: ${{ inputs.allow_same_credential != false && 'true' || 'false' }}
 
 permissions:
   contents: read
