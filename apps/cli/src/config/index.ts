@@ -191,6 +191,7 @@ export function createMigrationClientsFromConfig(
   const dual = createGitHubDualClient({
     source: dualConfig.source,
     target: dualConfig.target,
+    allowSameCredential: process.env.GHEC_ALLOW_SAME_CREDENTIAL === 'true',
   });
 
   if (!dual.targetClient) {

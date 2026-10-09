@@ -14,6 +14,17 @@ test('rejects shared source and target credentials', () => {
   );
 });
 
+test('permits shared credentials when allowSameCredential is set or env var is present', () => {
+  const sharedToken = `ghp_${'a'.repeat(32)}`;
+  assert.doesNotThrow(() =>
+    createGitHubDualClient({
+      source: { token: sharedToken },
+      target: { token: sharedToken },
+      allowSameCredential: true,
+    }),
+  );
+});
+
 test('builds isolated tenant clients and never permits writes through the source client', async () => {
   const requests: Array<{ method?: string; url: string }> = [];
   const fetchImpl: typeof globalThis.fetch = async (url, init) => {

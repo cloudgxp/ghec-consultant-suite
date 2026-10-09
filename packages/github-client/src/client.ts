@@ -29,6 +29,8 @@ export interface TenantClientConfig {
 export interface GitHubDualClientConfig {
   readonly source: TenantClientConfig;
   readonly target?: TenantClientConfig | undefined;
+  /** Allow source and target tenants to share the same credential (e.g. same-enterprise testing). */
+  readonly allowSameCredential?: boolean | undefined;
 }
 
 /**
@@ -112,7 +114,11 @@ function buildTenantClient(
 export function createGitHubDualClient(
   config: GitHubDualClientConfig,
 ): GitHubDualClient {
-  if (config.target) {
+  const allowSameCredential =
+    config.allowSameCredential ??
+    process.env.GHEC_ALLOW_SAME_CREDENTIAL === 'true';
+
+  if (config.target && !allowSameCredential) {
     const sourceIdentity = credentialIdentity(config.source);
     const targetIdentity = credentialIdentity(config.target);
     if (sourceIdentity !== undefined && sourceIdentity === targetIdentity) {
