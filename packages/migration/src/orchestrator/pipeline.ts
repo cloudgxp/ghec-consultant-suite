@@ -103,20 +103,33 @@ export class RepositoryMigrationPipeline {
         });
 
         const assessment = await sourceInspector.inspect(sourceRepo);
-        if (assessment.status === 'blocked') {
-          const blockerMsg = `Repository ${repoKey} blocked in preflight: ${assessment.blockers.join('; ')}`;
-          this.checkpointManager?.recordStageResult(repoKey, 'preflight', {
-            status: 'failed',
-            assessment,
-          });
-          throw new Error(blockerMsg);
-        }
 
         if (
           assessment.releaseTotalAssetBytes > 10 * GIB ||
-          assessment.gitSizeBytes > 40 * GIB
+          assessment.gitSizeBytes > 10 * GIB
         ) {
           shouldSkipReleases = true;
+          this.logger.warn(
+            `[Stage 1] Large repository detected for ${repoKey} (${(assessment.gitSizeBytes / GIB).toFixed(2)} GiB); automatically activating --skip-releases strategy for GEI.`,
+          );
+        }
+
+        if (assessment.status === 'blocked') {
+          const nonSizingBlockers = assessment.blockers.filter(
+            (b) => !b.includes('exceeds GitHub platform limit of 40 GiB'),
+          );
+          if (nonSizingBlockers.length > 0 || !this.options.continueOnError) {
+            const blockerMsg = `Repository ${repoKey} blocked in preflight: ${assessment.blockers.join('; ')}`;
+            this.checkpointManager?.recordStageResult(repoKey, 'preflight', {
+              status: 'failed',
+              assessment,
+            });
+            throw new Error(blockerMsg);
+          } else {
+            this.logger.warn(
+              `[Stage 1] Repository ${repoKey} exceeds 40 GiB platform boundary, but continueOnError is enabled; attempting GEI with --skip-releases.`,
+            );
+          }
         }
         if (assessment.lfsObjectCount > 0 || assessment.lfsTotalBytes > 0) {
           usesLfs = true;

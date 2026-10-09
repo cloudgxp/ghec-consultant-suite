@@ -223,7 +223,30 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
 
     const repoOptions = ctx.scope.options;
     const targetRepoVisibility = repoOptions?.targetRepoVisibility ?? 'private';
-    const skipReleases = repoOptions?.skipReleases;
+    let skipReleases = repoOptions?.skipReleases;
+    if (skipReleases === undefined && ctx.sourceClient) {
+      try {
+        const repoRes = await ctx.sourceClient.readSingle<{ size?: number }>(
+          {
+            id: 'rest.repos.get',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}',
+            pathParams: { owner: sourceOrg, repo: sourceRepo },
+          },
+          ctx.signal,
+        );
+        const repoSizeBytes = (repoRes.data?.size ?? 0) * 1024;
+        if (repoSizeBytes > 10 * 1024 * 1024 * 1024) {
+          ctx.logger.warn(
+            `[gei-repo] Repository ${sourceOrg}/${sourceRepo} is large (${(repoSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GiB); automatically activating --skip-releases strategy for GEI.`,
+          );
+          skipReleases = true;
+        }
+      } catch {
+        // Fall back gracefully
+      }
+    }
     const timeoutMs =
       repoOptions?.customTimeout ??
       (repoOptions?.timeoutSeconds
