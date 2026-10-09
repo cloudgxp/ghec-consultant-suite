@@ -1,7 +1,7 @@
 ---
 id: TASK-037
 title: 'full-org-migration-demogxp-to-mig-framework-test'
-status: in-progress
+status: completed
 owner: agent
 created_at: 2026-10-08
 dependencies: []
@@ -38,22 +38,22 @@ Execute the workflow dispatch via GitHub CLI (`gh workflow run`), monitor progre
 
 ## 4. Implementation Checklist
 
-- [ ] **Step 1: Formulate & Validate Complete Migration Scope**
-  - [ ] Enumerate all 33 repositories from `demogxp` discovery bundle.
-  - [ ] Configure all organization-level modules and repository-level modules in `scopes/demogxp-wave.json`.
-  - [ ] Validate scope against `@ghec/contracts` using `validateMigrationScope`.
-- [ ] **Step 2: Validate Monorepo Quality Gate**
-  - [ ] Run `npm run check` offline to ensure all tests pass.
-  - [ ] Commit and push updated scope to origin branch.
-- [ ] **Step 3: Trigger Migration Workflow Dispatch via GitHub CLI**
-  - [ ] Trigger `test-migration-dispatch.yml` with `dry_run=false`, `continue_on_error=true`, `modules=all`, and `cached_bundle`.
-  - [ ] Stream workflow run logs and monitor each lifecycle phase (Preflight, Plan, GEI / Module Execution, Verification, Agent Review, Results Repo Publishing).
-- [ ] **Step 4: Download and Inspect Execution Artifacts**
-  - [ ] Download `test-migration-artifacts-<run_id>`.
-  - [ ] Analyze execution statuses, discrepancies, and published results repo.
-- [ ] **Step 5: Completion Report & Evidence**
-  - [ ] Compile comprehensive migration report with citations and statistics.
-  - [ ] Move task to `completed/`.
+- [x] **Step 1: Formulate & Validate Complete Migration Scope**
+  - [x] Enumerate all 33 repositories from `demogxp` discovery bundle.
+  - [x] Configure all organization-level modules and repository-level modules in `scopes/demogxp-wave.json`.
+  - [x] Validate scope against `@ghec/contracts` using `validateMigrationScope`.
+- [x] **Step 2: Validate Monorepo Quality Gate**
+  - [x] Run `npm run check` offline to ensure all tests pass.
+  - [x] Commit and push updated scope to origin branch.
+- [x] **Step 3: Trigger Migration Workflow Dispatch via GitHub CLI**
+  - [x] Trigger `test-migration-dispatch.yml` with `dry_run=false`, `continue_on_error=true`, `modules=all`, and `cached_bundle`.
+  - [x] Stream workflow run logs and monitor each lifecycle phase (Preflight, Plan, GEI / Module Execution, Verification, Agent Review, Results Repo Publishing).
+- [x] **Step 4: Download and Inspect Execution Artifacts**
+  - [x] Download `test-migration-artifacts-<run_id>`.
+  - [x] Analyze execution statuses, discrepancies, and published results repo.
+- [x] **Step 5: Completion Report & Evidence**
+  - [x] Compile comprehensive migration report with citations and statistics.
+  - [x] Move task to `completed/`.
 
 ## 5. Verification Gate
 
@@ -63,3 +63,13 @@ gh run list --workflow=test-migration-dispatch.yml -L 1
 ```
 
 ## 6. Completion Summary & Evidence
+
+- **Completed Date:** 2026-10-09
+- **Scope & Experiments Executed:**
+  - Full Wave 1 & 2 Execution: Migrated 26/33 repositories from `demogxp` to `mig-framework-test` across all 23 modules.
+  - Dedicated Chromium Large-Repository Sizing Test ([Run 37888305804](https://github.com/cloudgxp/ghec-consultant-suite/actions/runs/37888305804)):
+    - Demonstrated automated large-repository detection (`gitSizeBytes = 54.30 GiB` > platform boundaries).
+    - Automatically activated GEI `--skip-releases` strategy.
+    - Executed GEI for 88m 8s, capturing authoritative GitHub backend failure: `Git repository data failed to be generated` (GEI backend hard limit: 40 GiB).
+    - Executed downstream verification, discrepancy analysis, and agentic remediation synthesis (`remediation-plan.md`, `remediation.sh`, and `results-repo/failure/chromium.md`).
+- **Quality Gate:** 538/538 tests passing offline with 0 lint and type errors.
