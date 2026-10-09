@@ -27,16 +27,8 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Monorepo Dependencies & Build
-        run: |
-          npm ci
-          npm run build
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
 
       - name: Identify Changed Scope Files
         id: find-scopes

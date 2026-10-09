@@ -22,11 +22,10 @@ jobs:
       PLAYWRIGHT_SNAPSHOT_PROFILE: github-ubuntu
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+          build: 'false'
       - run: npx playwright install --with-deps chromium
       - name: Build shared workspace packages
         run: npm run build -w @ghec/contracts && npm run build -w @ghec/analysis

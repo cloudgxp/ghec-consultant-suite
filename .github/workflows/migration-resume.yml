@@ -52,16 +52,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
         with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install Monorepo Dependencies & Build
-        run: |
-          npm ci
-          npm run build
+          install-gei: 'true'
 
       - name: Locate or Restore Checkpoint Directory
         id: checkpoint-restore
