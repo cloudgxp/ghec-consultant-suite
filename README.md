@@ -1,115 +1,153 @@
+<p align="center">
+  <img src="ghec-consultant-suite-banner.jpeg" alt="GHEC Consultant Suite Banner" width="100%" />
+</p>
+
 # GHEC Consultant Suite
 
-A Node.js/TypeScript monorepo for consultants assessing GitHub Enterprise
-Cloud discovery, migration readiness, and security posture. The read-only CLI
-produces portable JSON evidence bundles; the local dashboard validates and
-analyzes those bundles without connecting to GitHub.
+> Enterprise consulting platform and migration engineering toolkit for assessing, planning, executing, and auditing migrations from GitHub Enterprise Cloud (GHEC) to GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU).
 
-## Current Status
+---
 
-The product is implemented and undergoing release verification. It is no
-longer a static scaffold.
+## 🛠️ Tools & Packages Directory
 
-- The CLI supports organization and enterprise discovery, GraphQL-first
-  aggregation with REST fallbacks, GitHub App or token authentication,
-  capability preflight, adaptive rate limiting, checkpoints/resume, partial
-  results, atomic bundle publishing, and HMAC identity pseudonymization.
-- The air-gapped dashboard supports local bundle import, worker-based parsing,
-  virtualized inventories, multi-organization analysis, scan comparison,
-  migration target tuning, dependency mapping, CSV export, and client-side PDF
-  reports.
-- The shared v1.0.0 contract, deterministic analysis, synthetic fixtures,
-  offline API research, and Primer-based interface have automated coverage.
-- The latest recorded root quality gate passed 116 tests. Production bundle
-  budgets (520.9 KiB / 600 KiB), browser-level release evidence (11 Playwright
-  e2e/a11y tests, 13 visual regression snapshots across 5 viewports), and GitHub
-  Actions branch protection checks are verified. Approved live-read validation
-  against synthetic GitHub resources remains open.
+The suite is structured as a modular TypeScript monorepo (`npm` workspaces). Every tool and engine operates with strict system boundaries, air-gapped guarantees, and zero-exposure security principles.
 
-This repository is not yet approved for customer production use. Consult
-[`AGENTS.md`](AGENTS.md) for current repository architecture and invariants.
+| Tool / Package                                      | What It Does                                                                                                                                                  |                 Interface / Access                  |                     Documentation                     |
+| :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------: | :---------------------------------------------------: |
+| **Consultant CLI**<br/>`apps/cli`                   | Discovery, preflight audits, planning, execution, verification, AI remediation, and audit repo publishing                                                     |          CLI binary: `ghec-consultant-cli`          |         [**CLI README**](apps/cli/README.md)          |
+| **Offline Dashboard**<br/>`apps/dashboard`          | Air-gapped Vite + React 19 + Primer assessment UI for analyzing bundles, inventory sizing, and PDF exports                                                    | Web UI: `http://localhost:5173`<br/>(`npm run dev`) |   [**Dashboard README**](apps/dashboard/README.md)    |
+| **Migration Engine**<br/>`packages/migration`       | 4-stage modular lifecycle (`discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`), DAG dependency resolver, GEI runner, and strategies |                      Core API                       | [**Migration README**](packages/migration/README.md)  |
+| **Discovery Engine**<br/>`packages/discovery`       | GraphQL/REST metadata aggregation, adaptive rate limiting, entity pseudonymization, and JSON bundle publisher                                                 |                      Core API                       | [**Discovery README**](packages/discovery/README.md)  |
+| **Readiness Analysis**<br/>`packages/analysis`      | Deterministic heuristics, risk classification, blocker evaluation, and cross-resource dependency mapping                                                      |                      Core API                       |  [**Analysis README**](packages/analysis/README.md)   |
+| **Dual GitHub Client**<br/>`packages/github-client` | Isolated source & target REST/GraphQL clients with per-tenant AdaptiveRateLimiters and retry engines                                                          |                      Core API                       | [**Client README**](packages/github-client/README.md) |
+| **Data Contracts**<br/>`packages/contracts`         | Authoritative v1.0.0 JSON schema contracts, Zod runtime validators, and immutable DTO shapes                                                                  |                      Core API                       | [**Contracts README**](packages/contracts/README.md)  |
 
-## Workspace
+---
 
-```text
-apps/cli/               read-only GHEC discovery CLI, migration runner, and bundle publisher
-apps/dashboard/         offline Vite/React/Primer assessment dashboard and control plane
-packages/contracts/     public JSON contract v1.0.0 and Zod validation schemas
-packages/analysis/      deterministic migration-readiness analysis
-packages/github-client/ headless dual-tenant GitHub client with rate limiting
-packages/discovery/     discovery engine and collector orchestration
-packages/migration/     modular 4-stage migration framework and strategies
-.agents/                Antigravity 2.0 configuration (rules, skills, subagents)
-AGENTS.md               root agent context, architecture charter, and workflows
-references/github-docs/ curated local GitHub documentation snapshot
-docs/specs/             requirements, architecture, security, and roadmap
-docs/architecture/      deployment, system boundaries, and architectural decisions
-docs/data-contracts/    public contract guidance
-docs/security/          security review material
-docs/adr/               architecture decisions
-fixtures/synthetic/     fictional evidence bundles only
-scripts/                fixture, manifest, API-probe, and setup tooling
+## 🚀 End-to-End Migration Lifecycle
+
+```mermaid
+flowchart LR
+    A["1. Discovery<br/>(CLI / Workflow)"] --> B["2. Assessment<br/>(Dashboard / Analysis)"]
+    B --> C["3. Scope Formulation<br/>(generate-scope.mjs)"]
+    C --> D["4. Preflight & Slicing<br/>(CLI preflight / plan)"]
+    D --> E["5. Wave Execution<br/>(Parallel Runners / GEI)"]
+    E --> F["6. Compliance Verification<br/>(Target Auditing)"]
+    F --> G["7. AI Remediation<br/>(Agent Review / Shell Script)"]
+    G --> H["8. Audit Publishing<br/>(Target Results Repo)"]
 ```
 
-The npm project name is `ghec-consulting-suite`; the checkout directory does
-not need to match it.
+1. **Discovery:** Extract source tenant inventory (orgs, repos, teams, secrets, variables, webhooks, rulesets) into an immutable, pseudonymized `DiscoveryBundle` JSON file.
+2. **Offline Assessment:** Load bundles into the air-gapped `@ghec/dashboard` to assess sizing risks (>40 GiB repos, >2 GiB commits, Git LFS, large releases), inspect dependency graphs, and export executive PDF reports.
+3. **Scope Formulation:** Define target waves (`scopes/*.json`) targeting specific organizations and repository subsets.
+4. **Preflight & Slicing:** Validate credentials, token permissions, and ruleset bypass actors (DEC-012), dynamically partitioning repositories across runner cohorts.
+5. **Wave Execution:** Run parallel migrations with dry-run simulation, GEI repo imports, and atomic `.checkpoint-*` tracking.
+6. **Compliance Verification:** Perform deep destination auditing comparing actual tenant state against expected plan operations.
+7. **AI Remediation Review:** Analyze discrepancies and synthesize actionable remediation runbooks (`remediation-plan.json` / `remediation.sh`).
+8. **Audit Repository Publishing:** Push an immutable audit and compliance repository (`migration-audit-<date>`) directly to the target organization.
 
-## Local Development
+---
 
-Use Node.js 22.13+ and npm 10+ (`.nvmrc` selects Node 22). Building, testing,
-fixture validation, API drift probing, and the dashboard require no GitHub
-credentials.
+## ⚡ Quick Start
+
+### 1. Prerequisites
+
+- **Node.js:** `>=22.13.0` (Use `.nvmrc`: `nvm use`)
+- **npm:** `>=10.0.0`
+- **Optional External Tools:** `gh`, `git-sizer`, `git-lfs`
+
+### 2. Installation & Build
 
 ```bash
+# Clone the repository
+git clone https://github.com/cloudgxp/ghec-consultant-suite.git
+cd ghec-consultant-suite
+
+# Install locked dependencies across all monorepo workspaces
 npm ci
-npm run check                 # lint, formatting, type checking, build, tests
-npm run validate:fixtures     # validate tracked fictional bundles
-npm run validate:manifests    # validate research manifests and collector DAG
-npm run probe:api             # offline OpenAPI and GraphQL drift verification
-npm run dev                   # local dashboard on 127.0.0.1
-npm run dev:cli -- --help
-npm run dev:cli -- discover --modules all --organization fictional-north --dry-run
+
+# Compile all packages and build applications
+npm run build
+
+# Run the full quality gate (lint, format, typecheck, unit tests)
+npm run check
 ```
 
-After building, run the workspace executable with:
+### 3. Launching the Local Dashboard
+
+Run the offline assessment dashboard on `127.0.0.1:5173` without connecting to GitHub:
+
+```bash
+npm run dev
+```
+
+Open your browser to `http://localhost:5173` and upload any discovery bundle JSON file (or sample bundles from [`fixtures/synthetic/`](fixtures/synthetic/)).
+
+### 4. Running the Consultant CLI
+
+Execute the CLI directly from source:
+
+```bash
+# Display general help and available modules
+npm run dev:cli -- --help
+
+# Run a dry-run discovery scan against a test organization
+npm run dev:cli -- discover --organization octocorp --modules all --dry-run
+```
+
+Or execute the compiled binary:
 
 ```bash
 npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli --help
 ```
 
-Live discovery requires explicitly authorized credentials and a permitted
-target. Start with `--dry-run`, a synthetic test organization, and the
-least-privilege guidance in the [CLI README](apps/cli/README.md).
+---
 
-## Evidence Flow
+## 🧭 CLI Commands At a Glance
 
-```text
-Local credential → read-only CLI adapters → bounded collectors
-→ allowlisted, validated v1.0.0 JSON bundle → explicit local import
-→ shared validation + deterministic analysis → local CSV / PDF reports
-```
+| Command           | Usage                                                             | Description                                                        |
+| :---------------- | :---------------------------------------------------------------- | :----------------------------------------------------------------- |
+| `discover`        | `ghec-consultant-cli discover --organization <org> --modules all` | Enumerate tenant metadata and emit immutable JSON bundle           |
+| `preflight`       | `ghec-consultant-cli preflight --scope <file>`                    | Audit token scopes, ruleset bypass actors, and sizing limits       |
+| `plan`            | `ghec-consultant-cli plan --scope <file> --split-matrix 5`        | Generate migration plan and partition into parallel matrix cohorts |
+| `migrate`         | `ghec-consultant-cli migrate --scope <file> --dry-run`            | Execute pre-approved migration wave (dry-run or live apply)        |
+| `verify`          | `ghec-consultant-cli verify --plan <plan.json> --scope <file>`    | Compare target tenant state against expected plan operations       |
+| `agent-review`    | `ghec-consultant-cli agent-review --report <report.json>`         | Analyze verification discrepancies and generate remediation script |
+| `publish-results` | `ghec-consultant-cli publish-results --scope <file>`              | Publish immutable migration audit repository to destination org    |
+| `console`         | `ghec-consultant-cli console --port 3000`                         | Launch local loopback proxy server and dashboard bridge            |
 
-The dashboard never receives CLI credentials and does not connect to GitHub.
-No account, cloud persistence, analytics, or server-side customer-data storage
-is required. Secret values, tokens, private keys, variable values, and webhook
-secrets must never be collected, logged, persisted, or displayed.
+For complete command-line syntax and advanced flags, see the [**CLI README**](apps/cli/README.md).
 
-## Supported and Planned Scope
+---
 
-The executable reader and writer support contract **v1.0.0 only**. ADR 0004
-freezes the implemented shape as the current release baseline. Documents that
-mention v2 describe deferred proposals, not a registered or compatible runtime
-contract.
+## 🤖 GitHub Actions Workflow Automation
 
-The runtime exposes 11 user-facing discovery modules and combines selected
-GraphQL and REST operations into typed evidence. The 237-entry collector
-registry is a broader researched implementation catalog; it must not be read as
-a claim that all 237 operations execute in the current CLI.
+The repository includes streamlined, production-hardened workflows in [`.github/workflows/`](.github/workflows/):
 
-## Remaining Release Gates
+- [**`discovery-scan.yml`**](.github/workflows/discovery-scan.yml): Unified discovery scan supporting single orgs, multiple orgs, or enterprise slugs with dual-mode App/PAT auth.
+- [**`generate-scope.yml`**](.github/workflows/generate-scope.yml): Scaffolds and commits `scopes/<wave>.json` files with full CLI option support.
+- [**`migration-execute-wave.yml`**](.github/workflows/migration-execute-wave.yml): Production wave runner with preflight checks, dynamic matrix cohort slicing, verification, agent review, and audit repo publishing (`dry_run: true` by default).
+- [**`migration-resume.yml`**](.github/workflows/migration-resume.yml): Resumes interrupted runs by retrieving checkpoint manifests from workflow artifacts.
+- [**`migration-plan-pr.yml`**](.github/workflows/migration-plan-pr.yml): Automatically plans and comments projected migration metrics on pull requests modifying `scopes/*.json`.
 
-- Run approved live-read validation against synthetic GitHub resources.
+---
 
-See the [implementation plan](docs/specs/implementation-plan.md),
-[phased collector roadmap](docs/specs/phased-roadmap.md), and
-[security guidance](docs/specs/security-and-privacy.md) for the detailed gates.
+## 🔒 Security & Architectural Invariants
+
+1. **Zero-Plaintext Local Secrets (DEC-004):** Source secrets are write-only in GitHub's API. Secret values are never fetched, logged, or stored. Target secrets default to sealed empty placeholders (`""`) or are provisioned via enterprise secret vault integrations.
+2. **Air-Gapped Dashboard:** The `@ghec/dashboard` executes 100% in-browser with zero external network connectivity or telemetry.
+3. **Offline Test Determinism:** The complete test suite (**540+ unit/integration tests**) runs 100% offline using synthetic fixtures in `fixtures/synthetic/`.
+4. **Command Injection Prevention:** All external CLI tooling (`gh`, `git`, `git-lfs`, `git-sizer`) is executed with parameterized argument arrays (`execFile`), never raw shell concatenation.
+
+---
+
+## 📚 Architectural Specifications & Deep Dives
+
+- [**Repository Charter & Agent Invariants**](AGENTS.md): Monorepo standards, code rules, and workflows.
+- [**Architectural Decisions**](docs/architecture/decisions.md): DEC-001 through DEC-020+ covering rate limiters, storage, and identity models.
+- [**Specifications Catalog**](docs/specs/README.md):
+  - [Migration Module Contract](docs/specs/migration-module-contract.md)
+  - [Migration Execution Model](docs/specs/migration-execution-model.md)
+  - [Verification & Remediation Agent](docs/specs/verification-remediation-agent.md)
+  - [Security and Privacy Requirements](docs/specs/security-and-privacy.md)
+- [**Data Contracts Specification**](docs/data-contracts/README.md): Schema validation and bundle format documentation.

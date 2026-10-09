@@ -46,6 +46,36 @@ on:
           - 'dual-remote-stream'
           - 'skip'
         default: 'dual-remote-stream'
+      target_visibility:
+        description: 'Target repository visibility override'
+        required: false
+        type: choice
+        options:
+          - 'preserve'
+          - 'public'
+          - 'private'
+          - 'internal'
+        default: 'preserve'
+      include_archived:
+        description: 'Include archived repositories in scope'
+        required: false
+        type: boolean
+        default: false
+      target_repo_prefix:
+        description: 'Optional prefix for target repository names'
+        required: false
+        type: string
+        default: ''
+      target_repo_suffix:
+        description: 'Optional suffix for target repository names'
+        required: false
+        type: string
+        default: ''
+      skip_releases:
+        description: 'Skip migrating releases/release assets for repositories'
+        required: false
+        type: boolean
+        default: false
       commit_to_branch:
         description: 'Commit and push the generated scope file to this branch'
         required: false
@@ -88,6 +118,26 @@ jobs:
 
           if [ -n "${{ inputs.scope_name }}" ]; then
             ARGS+=("--name" "${{ inputs.scope_name }}")
+          fi
+
+          if [ "${{ inputs.target_visibility }}" != "preserve" ]; then
+            ARGS+=("--target-visibility" "${{ inputs.target_visibility }}")
+          fi
+
+          if [ "${{ inputs.include_archived }}" = "true" ]; then
+            ARGS+=("--include-archived")
+          fi
+
+          if [ -n "${{ inputs.target_repo_prefix }}" ]; then
+            ARGS+=("--target-repo-prefix" "${{ inputs.target_repo_prefix }}")
+          fi
+
+          if [ -n "${{ inputs.target_repo_suffix }}" ]; then
+            ARGS+=("--target-repo-suffix" "${{ inputs.target_repo_suffix }}")
+          fi
+
+          if [ "${{ inputs.skip_releases }}" = "true" ]; then
+            ARGS+=("--skip-releases")
           fi
 
           if [ "${{ inputs.scope_type }}" = "all_repositories" ]; then
@@ -141,4 +191,4 @@ jobs:
           echo "- **Type:** \`${{ inputs.scope_type }}\`" >> "$SUMMARY_FILE"
           echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
           echo "" >> "$SUMMARY_FILE"
-          echo "Scope files in \`scopes/\` are validated and ready for \`test-migration-dispatch.yml\`." >> "$SUMMARY_FILE"
+          echo "Scope files in \`scopes/\` are validated and ready for \`migration-execute-wave.yml\`." >> "$SUMMARY_FILE"
