@@ -266,7 +266,7 @@ jobs:
           fi
 
           mkdir -p scans
-          npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
+          node ./apps/cli/bin/ghec-consultant-cli.mjs discover \
             --organization "$MATRIX_ORG" \
             --modules "$INPUT_MODULES" \
             --output "./scans" \
@@ -277,7 +277,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: discovery-org-${{ matrix.org }}
-          path: scans/ghec-discovery-*.json
+          path: |
+            scans/ghec-discovery-*.json
+            apps/cli/scans/ghec-discovery-*.json
           if-no-files-found: ignore
           retention-days: 30
 
@@ -331,7 +333,7 @@ jobs:
           fi
 
           mkdir -p scans
-          npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli discover \
+          node ./apps/cli/bin/ghec-consultant-cli.mjs discover \
             --enterprise "$INPUT_ENTERPRISE_SLUG" \
             --modules "$INPUT_MODULES" \
             --output "./scans" \
@@ -342,7 +344,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: discovery-enterprise-${{ inputs.enterprise_slug }}
-          path: scans/ghec-discovery-*.json
+          path: |
+            scans/ghec-discovery-*.json
+            apps/cli/scans/ghec-discovery-*.json
           if-no-files-found: ignore
           retention-days: 30
 
