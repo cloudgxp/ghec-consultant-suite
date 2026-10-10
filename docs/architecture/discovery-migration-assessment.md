@@ -739,6 +739,7 @@ GHEC_TARGET_APP_INSTALLATION_ID="101987"
 
 - **Standard Streams:** Clean stdout formatting with `--no-color` support.
 - **GitHub Step Summary:** Emits markdown tables directly to `$GITHUB_STEP_SUMMARY`:
+
   ```markdown
   ### 🚀 Migration Summary: Wave 1 (payment-gateway)
 
@@ -749,6 +750,7 @@ GHEC_TARGET_APP_INSTALLATION_ID="101987"
   | Rulesets             |       2       |     2     |   0    |  800ms   |
   | Environments         |       3       |     3     |   0    |  950ms   |
   ```
+
 - **Job Status & Exit Codes:**
   - Code `0`: Wave succeeded completely.
   - Code `1`: Fatal error (authentication, network, or filesystem failure).
