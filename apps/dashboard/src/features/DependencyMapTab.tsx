@@ -189,9 +189,13 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     setPrevGraph(filteredGraph);
     setCohorts(suggestMigrationCohorts(filteredGraph));
   }
-  const rows = filteredGraph.nodes.filter(
-    (n) => !query || n.label.toLowerCase().includes(query.toLowerCase()),
-  );
+  // ⚡ Bolt: Memoize rows filtering and extract toLowerCase to avoid O(N) string operations on every render
+  const rows = useMemo(() => {
+    const q = query?.toLowerCase() ?? '';
+    return filteredGraph.nodes.filter(
+      (n) => !q || n.label.toLowerCase().includes(q),
+    );
+  }, [filteredGraph.nodes, query]);
 
   // ⚡ Bolt: Optimize node lookups from O(N) to O(1) during selection and rendering
   const nodeMap = useMemo(
@@ -200,15 +204,26 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
   );
 
   const selected = selectedId ? (nodeMap.get(selectedId) ?? null) : null;
-  const outgoing = selected
-    ? filteredGraph.edges.filter((e) => e.fromNodeId === selected.id)
-    : [];
-  const incoming = selected
-    ? filteredGraph.edges.filter((e) => e.toNodeId === selected.id)
-    : [];
-  const transitive = selected
-    ? transitiveDependencies(filteredGraph, selected.id, depth)
-    : [];
+  // ⚡ Bolt: Memoize expensive graph traversals and filtering based on selection
+  const outgoing = useMemo(
+    () =>
+      selected
+        ? filteredGraph.edges.filter((e) => e.fromNodeId === selected.id)
+        : [],
+    [selected, filteredGraph.edges],
+  );
+  const incoming = useMemo(
+    () =>
+      selected
+        ? filteredGraph.edges.filter((e) => e.toNodeId === selected.id)
+        : [],
+    [selected, filteredGraph.edges],
+  );
+  const transitive = useMemo(
+    () =>
+      selected ? transitiveDependencies(filteredGraph, selected.id, depth) : [],
+    [selected, filteredGraph, depth],
+  );
   const columns: readonly VirtualizedColumn<DependencyNode>[] = [
     {
       header: 'Repository / node',
