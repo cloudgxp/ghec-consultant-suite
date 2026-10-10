@@ -19,5 +19,6 @@
 **Action:** Replace multiple sequential array passes with a single `useMemo` block that iterates through the data once, tracking all necessary metric counters in a single pass (O(N)), avoiding redundant array allocations and operations.
 
 ## 2024-05-18 - Safe String Nullability in React
+
 **Learning:** Extracting `query.toLowerCase()` outside of `.filter()` to prevent O(N) operations is a great optimization, but be extremely careful with strings that might be implicitly null or undefined. The previous implementation relied on the `!query || ...` short-circuit guard.
 **Action:** When extracting functions out of a loop/filter, always ensure you use optional chaining and null coalescing (e.g. `query?.toLowerCase() ?? ""`) to guarantee safety.
