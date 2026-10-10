@@ -13,6 +13,7 @@ description: 'Enforces @ghec/contracts schemas, Zod validation, MIGRATION_SCHEMA
 ## 2. Strict Schema Validation
 
 - All inbound and outbound JSON artifacts must be validated against their corresponding Zod schema before consumption or persistence:
+
   ```ts
   import {
     validateMigrationScope,
@@ -21,6 +22,7 @@ description: 'Enforces @ghec/contracts schemas, Zod validation, MIGRATION_SCHEMA
 
   const validatedScope = validateMigrationScope(rawJson);
   ```
+
 - Every generated manifest and report must include `schemaVersion: MIGRATION_SCHEMA_VERSION` (or matching contract version).
 
 ## 3. Immutability & Persistence

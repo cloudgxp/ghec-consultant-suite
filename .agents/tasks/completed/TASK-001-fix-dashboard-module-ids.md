@@ -64,5 +64,5 @@ npm run check
 ## 6. Completion Summary & Evidence
 
 - Completion Date: 2026-10-06
-- Execution Summary: Fixed mismatching migration module IDs in Dashboard by aligning them to post-migration-* identifiers.
+- Execution Summary: Fixed mismatching migration module IDs in Dashboard by aligning them to post-migration-\* identifiers.
 - Verification Evidence: npm run check passed successfully.
