@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import { Button, Flash, Label, UnderlineNav } from '@primer/react';
 import {
@@ -40,44 +40,68 @@ export const TeamsAndIdentitiesTab: React.FC<TeamsAndIdentitiesTabProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<TeamsSubTab>('tree');
 
-  const teams = bundle.entities.filter(
-    (e) =>
-      e.kind === 'team' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'team' }>[];
+  // ⚡ Bolt: Combine multiple array passes into a single O(N) traversal, memoized to prevent re-calculations on tab change
+  const {
+    teams,
+    identities,
+    rawTeams,
+    outsideCollaboratorsList,
+    emuIdentitiesList,
+  } = useMemo(() => {
+    const _teams: Extract<
+      (typeof bundle.entities)[number],
+      { kind: 'team' }
+    >[] = [];
+    const _identities: Extract<
+      (typeof bundle.entities)[number],
+      { kind: 'identity' }
+    >[] = [];
+    const _rawTeams: RawTeamEntity[] = [];
+    const _outsideCollaboratorsList: CollaboratorEntityItem[] = [];
+    const _emuIdentitiesList: EmuIdentityItem[] = [];
 
-  const identities = bundle.entities.filter(
-    (e) =>
-      e.kind === 'identity' &&
-      (!selectedOrgId || e.organizationId === selectedOrgId),
-  ) as Extract<(typeof bundle.entities)[number], { kind: 'identity' }>[];
+    for (const e of bundle.entities) {
+      if (!selectedOrgId || e.organizationId === selectedOrgId) {
+        if (e.kind === 'team') {
+          _teams.push(e);
+          _rawTeams.push({
+            id: e.id,
+            name: e.name,
+            parentTeamId: e.parentTeamId,
+            membershipCount: e.membershipCount,
+            repositoryAccess: e.repositoryAccess,
+          });
+        } else if (e.kind === 'identity') {
+          _identities.push(e);
+          if (e.outsideCollaborator === true || e.membership === 'outside') {
+            _outsideCollaboratorsList.push({
+              id: e.id,
+              pseudonym: e.pseudonym,
+              outsideCollaborator: e.outsideCollaborator,
+              ssoStatus: e.ssoStatus,
+              membership: e.membership,
+            });
+          }
+          _emuIdentitiesList.push({
+            id: e.id,
+            sourceLogin: e.pseudonym,
+            membership: e.membership,
+            outsideCollaborator: Boolean(e.outsideCollaborator),
+            ssoStatus: e.ssoStatus,
+            mannequinStatus: e.ssoStatus === 'linked' ? 'claimed' : 'pending',
+          });
+        }
+      }
+    }
 
-  const rawTeams: RawTeamEntity[] = teams.map((t) => ({
-    id: t.id,
-    name: t.name,
-    parentTeamId: t.parentTeamId,
-    membershipCount: t.membershipCount,
-    repositoryAccess: t.repositoryAccess,
-  }));
-
-  const outsideCollaboratorsList: CollaboratorEntityItem[] = identities
-    .filter((i) => i.outsideCollaborator === true || i.membership === 'outside')
-    .map((i) => ({
-      id: i.id,
-      pseudonym: i.pseudonym,
-      outsideCollaborator: i.outsideCollaborator,
-      ssoStatus: i.ssoStatus,
-      membership: i.membership,
-    }));
-
-  const emuIdentitiesList: EmuIdentityItem[] = identities.map((i) => ({
-    id: i.id,
-    sourceLogin: i.pseudonym,
-    membership: i.membership,
-    outsideCollaborator: Boolean(i.outsideCollaborator),
-    ssoStatus: i.ssoStatus,
-    mannequinStatus: i.ssoStatus === 'linked' ? 'claimed' : 'pending',
-  }));
+    return {
+      teams: _teams,
+      identities: _identities,
+      rawTeams: _rawTeams,
+      outsideCollaboratorsList: _outsideCollaboratorsList,
+      emuIdentitiesList: _emuIdentitiesList,
+    };
+  }, [bundle, selectedOrgId]);
 
   const [activeTrigger, setActiveTrigger] = useState<{
     title: string;
