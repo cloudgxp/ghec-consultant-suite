@@ -220,8 +220,9 @@ export const ModuleTriggerModal: React.FC<ModuleTriggerModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               type="button"
+              aria-pressed={isDryRun}
               onClick={() => setIsDryRun(true)}
-              className={`p-2.5 rounded-md border text-left flex items-start gap-2.5 transition-colors ${
+              className={`p-2.5 rounded-md border text-left flex items-start gap-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-outlineColor)] ${
                 isDryRun
                   ? 'border-[var(--borderColor-accent-emphasis)] bg-[var(--canvas-subtle)] ring-1 ring-[var(--borderColor-accent-emphasis)]'
                   : 'border-[var(--borderColor-default)] bg-[var(--canvas-default)] hover:bg-[var(--canvas-subtle)]'
@@ -246,8 +247,9 @@ export const ModuleTriggerModal: React.FC<ModuleTriggerModalProps> = ({
 
             <button
               type="button"
+              aria-pressed={!isDryRun}
               onClick={() => setIsDryRun(false)}
-              className={`p-2.5 rounded-md border text-left flex items-start gap-2.5 transition-colors ${
+              className={`p-2.5 rounded-md border text-left flex items-start gap-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-outlineColor)] ${
                 !isDryRun
                   ? 'border-[var(--borderColor-danger-emphasis)] bg-[var(--canvas-subtle)] ring-1 ring-[var(--borderColor-danger-emphasis)]'
                   : 'border-[var(--borderColor-default)] bg-[var(--canvas-default)] hover:bg-[var(--canvas-subtle)]'
