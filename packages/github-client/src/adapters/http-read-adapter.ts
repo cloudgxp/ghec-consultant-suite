@@ -1,4 +1,5 @@
 import { Octokit } from 'octokit';
+import { parse } from 'graphql';
 import { sanitizeDiagnostics } from '../diagnostics.js';
 import type { TokenProvider } from '../auth/types.js';
 import { AdaptiveRateLimiter } from '../rate-limiting/adaptive-rate-limiter.js';
@@ -59,25 +60,37 @@ function resolvePath(
 }
 
 /**
- * Strips GraphQL comments and string literals so keyword detection cannot be
- * fooled by their contents.
- */
-function stripGraphQLNoise(document: string): string {
-  return document
-    .replace(/"""[\s\S]*?"""/g, '""')
-    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
-    .replace(/#[^\n\r]*/g, '');
-}
-
-/**
  * Read-only seam: this adapter may only issue queries. Top-level `mutation`
  * and `subscription` operations are rejected before any network call.
  */
 export function assertReadOnlyGraphQL(query: string): void {
-  const stripped = stripGraphQLNoise(query);
-  if (/(?:^|\})\s*(?:mutation|subscription)\b/.test(stripped)) {
+  try {
+    const document = parse(query);
+    for (const definition of document.definitions) {
+      if (definition.kind === 'OperationDefinition') {
+        if (
+          definition.operation === 'mutation' ||
+          definition.operation === 'subscription'
+        ) {
+          throw new Error(
+            'GraphQL mutations and subscriptions are not permitted on a read-only adapter.',
+          );
+        }
+      }
+    }
+  } catch (err: unknown) {
+    if (
+      err instanceof Error &&
+      err.message ===
+        'GraphQL mutations and subscriptions are not permitted on a read-only adapter.'
+    ) {
+      throw err;
+    }
+    // Fail closed: if we cannot successfully parse the query to verify its safety,
+    // we must reject it to prevent parser discrepancies from bypassing the check.
     throw new Error(
-      'GraphQL mutations and subscriptions are not permitted on a read-only adapter.',
+      `GraphQL validation failed: unable to parse query safely. ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 }

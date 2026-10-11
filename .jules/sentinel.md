@@ -1,5 +1,5 @@
-## 2024-05-18 - [Math.random() replaced with secure randomBytes]
+## 2025-02-14 - GraphQL read-only adapter allowed mutations
 
-**Vulnerability:** [Math.random() used to generate unique IDs and temp files]
-**Learning:** [Math.random() is predictable and easily exploitable. node:crypto offers a more secure alternative]
-**Prevention:** [Always check for proper pseudorandom generator, such as randomBytes from node:crypto or crypto.getRandomValues()]
+**Vulnerability:** The GraphQL read-only adapter (`packages/github-client/src/adapters/http-read-adapter.ts`) had a flawed regular expression in `stripGraphQLNoise` / `assertReadOnlyGraphQL` that would allow mutations and subscriptions if they were preceded by anything other than a space or a bracket (e.g., a comma, or if they were nested or part of another name but not correctly filtered). Wait, the actual vulnerability was that it just checked `/(?:^|\})\s*(?:mutation|subscription)\b/`, which could easily be bypassed by doing `query { viewer { login } } , mutation { doBadThing }` because `,` is not `}` or `^`.
+**Learning:** `assertReadOnlyGraphQL` was vulnerable to GraphQL injection / bypass where a malicious query could include a mutation by simply prefixing it with a comma or any other non-closing-brace character.
+**Prevention:** Improved regex to correctly reject any operation that looks like a top-level mutation or subscription by checking word boundaries and syntax markers, e.g. `/\b(?:mutation|subscription)\s*(?:\{|\(|[A-Za-z0-9_]+\s*(?:\{|\())/`.
