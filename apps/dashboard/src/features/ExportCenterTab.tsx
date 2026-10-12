@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PageHeader, SurfaceCard } from '../components/ui/index.js';
 import { Button, Flash, Label } from '@primer/react';
 import { DownloadIcon, ShieldCheckIcon } from '@primer/octicons-react';
@@ -30,130 +30,164 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
   selectedOrgIds,
 }) => {
   const orgFilter = selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined;
-  const includesOrganization = (organizationId: string) =>
-    selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId);
 
-  const exportOptions = [
-    {
-      id: 'executive',
-      title: 'Executive Assessment Summary',
-      filename: `executive-summary-${bundle.scan.id}.csv`,
-      description:
-        'High-level roll-up of discovery scan metadata, scope boundaries, summary KPIs, and migration dimension statuses.',
-      rowsCount: insights.dimensions.length + 15,
-      columns:
-        'Scan ID, Scope, Producer, Total Orgs, Total Repos, Dimension Ratings, Findings',
-      generator: () => generateExecutiveSummaryCsv(bundle, insights),
-    },
-    {
-      id: 'repositories',
-      title: 'Repositories Full Inventory',
-      filename: `repositories-${bundle.scan.id}.csv`,
-      description:
-        'Detailed inventory of all discovered repositories including size, visibility, branch, LFS status, security status, and actions workflows.',
-      rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'repository' && includesOrganization(e.organizationId),
-      ).length,
-      columns:
-        'Org, Repo ID, Name, Visibility, Archived, Size (Formatted/Bytes), LFS, Actions, Dependabot, Code Scanning',
-      generator: () => generateRepositoriesCsv(bundle, orgFilter),
-    },
-    {
-      id: 'readiness',
-      title: 'Migration Findings & Advisories',
-      filename: `migration-findings-${bundle.scan.id}.csv`,
-      description:
-        'Documented analytical and advisory findings with severity, confidence, affected entity IDs, collector evidence references, and limitations.',
-      rowsCount: insights.findings.filter((f) =>
-        includesOrganization(f.organizationId),
-      ).length,
-      columns:
-        'Rule ID, Severity, Classification, Confidence, Org, Title, Description, Entity IDs, Evidence IDs, Limitations',
-      generator: () =>
-        generateMigrationReadinessCsv(bundle, insights, orgFilter),
-    },
-    {
-      id: 'actions',
-      title: 'Actions Workflows & Secrets Inventory',
-      filename: `actions-and-secrets-${bundle.scan.id}.csv`,
-      description:
-        'Inventory of GitHub Actions workflows, self-hosted vs hosted runner environments, and secrets/variables metadata names.',
-      rowsCount: bundle.entities.filter(
-        (e) =>
-          (e.kind === 'actions' || e.kind === 'actions-secret') &&
-          includesOrganization(e.organizationId),
-      ).length,
-      columns:
-        'Kind, Org, Target Repo, Name, Config Type, Level, Workflows, Runners, Last Updated',
-      generator: () => generateActionsAndSecretsCsv(bundle, orgFilter),
-    },
-    {
-      id: 'teams',
-      title: 'Teams & Repository Permissions',
-      filename: `teams-and-permissions-${bundle.scan.id}.csv`,
-      description:
-        'Team organizational hierarchies, membership counts, and mapped repository permission grants.',
-      rowsCount: bundle.entities.filter(
-        (e) => e.kind === 'team' && includesOrganization(e.organizationId),
-      ).length,
-      columns:
-        'Org, Team ID, Team Name, Parent Team, Members, Target Repo, Granted Permission',
-      generator: () => generateTeamsAndPermissionsCsv(bundle, orgFilter),
-    },
-    {
-      id: 'security',
-      title: 'Security Tooling Posture',
-      filename: `security-posture-${bundle.scan.id}.csv`,
-      description:
-        'Repository-level security configurations for Dependabot, Code Scanning, and open alert counts with coverage caveats.',
-      rowsCount: bundle.entities.filter(
-        (e) => e.kind === 'security' && includesOrganization(e.organizationId),
-      ).length,
-      columns:
-        'Org, Repo ID, Code Scanning, Dependabot, Open Alert Count, Availability, Reason',
-      generator: () => generateSecurityPostureCsv(bundle, orgFilter),
-    },
-    {
-      id: 'integrations',
-      title: 'External Integrations & Keys',
-      filename: `integrations-${bundle.scan.id}.csv`,
-      description:
-        'Discovered webhooks, GitHub Apps, and deploy keys requiring cutover planning and re-authorization.',
-      rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'integration' && includesOrganization(e.organizationId),
-      ).length,
-      columns: 'Org, Integration ID, Kind, Label, Target Repo, Active Status',
-      generator: () => generateIntegrationsCsv(bundle, orgFilter),
-    },
-    {
-      id: 'identities',
-      title: 'Identities & SSO Posture',
-      filename: `identities-and-access-${bundle.scan.id}.csv`,
-      description:
-        'Pseudonymized human identities with membership roles, outside collaborator flags, and SAML/SCIM SSO link statuses.',
-      rowsCount: bundle.entities.filter(
-        (e) => e.kind === 'identity' && includesOrganization(e.organizationId),
-      ).length,
-      columns:
-        'Org, Pseudonym, Membership Role, Outside Collaborator, SSO Status',
-      generator: () => generateIdentitiesCsv(bundle, orgFilter),
-    },
-    {
-      id: 'health',
-      title: 'Collector Health & Evidence Audit',
-      filename: `collector-health-${bundle.scan.id}.csv`,
-      description:
-        'Full execution audit of every collector module including terminal states, coverage ratios, warnings, and errors.',
-      rowsCount: bundle.collectors.filter((c) =>
-        includesOrganization(c.organizationId),
-      ).length,
-      columns:
-        'Module, Org, Status, Started At, Completed At, Coverage State, Observed, Expected, Errors, Warnings',
-      generator: () => generateCollectorHealthCsv(bundle, orgFilter),
-    },
-  ];
+  const includesOrganization = useMemo(
+    () => (organizationId: string) =>
+      selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId),
+    [selectedOrgIds],
+  );
+
+  const exportCounts = useMemo(() => {
+    const counts = {
+      repositories: 0,
+      actions: 0,
+      teams: 0,
+      security: 0,
+      integrations: 0,
+      identities: 0,
+      findings: 0,
+      collectors: 0,
+    };
+
+    // O(N) single pass over entities rather than multiple .filter() calls on every render
+    for (const e of bundle.entities) {
+      if (includesOrganization(e.organizationId)) {
+        if (e.kind === 'repository') counts.repositories++;
+        else if (e.kind === 'actions' || e.kind === 'actions-secret')
+          counts.actions++;
+        else if (e.kind === 'team') counts.teams++;
+        else if (e.kind === 'security') counts.security++;
+        else if (e.kind === 'integration') counts.integrations++;
+        else if (e.kind === 'identity') counts.identities++;
+      }
+    }
+
+    // O(M) single pass over findings
+    for (const f of insights.findings) {
+      if (includesOrganization(f.organizationId)) {
+        counts.findings++;
+      }
+    }
+
+    // O(K) single pass over collectors
+    for (const c of bundle.collectors) {
+      if (includesOrganization(c.organizationId)) {
+        counts.collectors++;
+      }
+    }
+
+    return counts;
+  }, [
+    bundle.entities,
+    bundle.collectors,
+    insights.findings,
+    includesOrganization,
+  ]);
+
+  const exportOptions = useMemo(
+    () => [
+      {
+        id: 'executive',
+        title: 'Executive Assessment Summary',
+        filename: `executive-summary-${bundle.scan.id}.csv`,
+        description:
+          'High-level roll-up of discovery scan metadata, scope boundaries, summary KPIs, and migration dimension statuses.',
+        rowsCount: insights.dimensions.length + 15,
+        columns:
+          'Scan ID, Scope, Producer, Total Orgs, Total Repos, Dimension Ratings, Findings',
+        generator: () => generateExecutiveSummaryCsv(bundle, insights),
+      },
+      {
+        id: 'repositories',
+        title: 'Repositories Full Inventory',
+        filename: `repositories-${bundle.scan.id}.csv`,
+        description:
+          'Detailed inventory of all discovered repositories including size, visibility, branch, LFS status, security status, and actions workflows.',
+        rowsCount: exportCounts.repositories,
+        columns:
+          'Org, Repo ID, Name, Visibility, Archived, Size (Formatted/Bytes), LFS, Actions, Dependabot, Code Scanning',
+        generator: () => generateRepositoriesCsv(bundle, orgFilter),
+      },
+      {
+        id: 'readiness',
+        title: 'Migration Findings & Advisories',
+        filename: `migration-findings-${bundle.scan.id}.csv`,
+        description:
+          'Documented analytical and advisory findings with severity, confidence, affected entity IDs, collector evidence references, and limitations.',
+        rowsCount: exportCounts.findings,
+        columns:
+          'Rule ID, Severity, Classification, Confidence, Org, Title, Description, Entity IDs, Evidence IDs, Limitations',
+        generator: () =>
+          generateMigrationReadinessCsv(bundle, insights, orgFilter),
+      },
+      {
+        id: 'actions',
+        title: 'Actions Workflows & Secrets Inventory',
+        filename: `actions-and-secrets-${bundle.scan.id}.csv`,
+        description:
+          'Inventory of GitHub Actions workflows, self-hosted vs hosted runner environments, and secrets/variables metadata names.',
+        rowsCount: exportCounts.actions,
+        columns:
+          'Kind, Org, Target Repo, Name, Config Type, Level, Workflows, Runners, Last Updated',
+        generator: () => generateActionsAndSecretsCsv(bundle, orgFilter),
+      },
+      {
+        id: 'teams',
+        title: 'Teams & Repository Permissions',
+        filename: `teams-and-permissions-${bundle.scan.id}.csv`,
+        description:
+          'Team organizational hierarchies, membership counts, and mapped repository permission grants.',
+        rowsCount: exportCounts.teams,
+        columns:
+          'Org, Team ID, Team Name, Parent Team, Members, Target Repo, Granted Permission',
+        generator: () => generateTeamsAndPermissionsCsv(bundle, orgFilter),
+      },
+      {
+        id: 'security',
+        title: 'Security Tooling Posture',
+        filename: `security-posture-${bundle.scan.id}.csv`,
+        description:
+          'Repository-level security configurations for Dependabot, Code Scanning, and open alert counts with coverage caveats.',
+        rowsCount: exportCounts.security,
+        columns:
+          'Org, Repo ID, Code Scanning, Dependabot, Open Alert Count, Availability, Reason',
+        generator: () => generateSecurityPostureCsv(bundle, orgFilter),
+      },
+      {
+        id: 'integrations',
+        title: 'External Integrations & Keys',
+        filename: `integrations-${bundle.scan.id}.csv`,
+        description:
+          'Discovered webhooks, GitHub Apps, and deploy keys requiring cutover planning and re-authorization.',
+        rowsCount: exportCounts.integrations,
+        columns: 'Org, Integration ID, Kind, Label, Target Repo, Active Status',
+        generator: () => generateIntegrationsCsv(bundle, orgFilter),
+      },
+      {
+        id: 'identities',
+        title: 'Identities & SSO Posture',
+        filename: `identities-and-access-${bundle.scan.id}.csv`,
+        description:
+          'Pseudonymized human identities with membership roles, outside collaborator flags, and SAML/SCIM SSO link statuses.',
+        rowsCount: exportCounts.identities,
+        columns:
+          'Org, Pseudonym, Membership Role, Outside Collaborator, SSO Status',
+        generator: () => generateIdentitiesCsv(bundle, orgFilter),
+      },
+      {
+        id: 'health',
+        title: 'Collector Health & Evidence Audit',
+        filename: `collector-health-${bundle.scan.id}.csv`,
+        description:
+          'Full execution audit of every collector module including terminal states, coverage ratios, warnings, and errors.',
+        rowsCount: exportCounts.collectors,
+        columns:
+          'Module, Org, Status, Started At, Completed At, Coverage State, Observed, Expected, Errors, Warnings',
+        generator: () => generateCollectorHealthCsv(bundle, orgFilter),
+      },
+    ],
+    [exportCounts, bundle, insights, orgFilter],
+  );
 
   return (
     <div className="space-y-6">
