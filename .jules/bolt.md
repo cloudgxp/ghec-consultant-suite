@@ -17,3 +17,8 @@
 
 **Learning:** When generating metrics or aggregating counts from a large dataset for UI cards (like `MetricCard`), performing multiple `.filter(...).length` and `.reduce(...)` passes over the exact same array within the render loop leads to severe performance degradation due to redundant iterations, especially when these computations are triggered repeatedly by state updates like search inputs.
 **Action:** Replace multiple sequential array passes with a single `useMemo` block that iterates through the data once, tracking all necessary metric counters in a single pass (O(N)), avoiding redundant array allocations and operations.
+
+## 2024-05-17 - O(N*M) Multiple Array Passes in UI Render Loops
+
+**Learning:** Just like `MetricCard` earlier, generating complex UI configurations (such as export tables or charts) that require different filtered lengths from a single large list (`bundle.entities`) frequently defaults to multiple `.filter(...).length` iterations. In `ExportCenterTab.tsx`, 6 unmemoized passes over `bundle.entities` were being performed to compute basic metadata rows limits for CSVs. This results in severe UI blocking lag due to 6x O(N) evaluations in rendering paths when users zoom/filter scope.
+**Action:** Replaced multiple filter queries with a single, grouped pass (`for...of`) and a `counts` dictionary within a single `useMemo` block. Memoize the top level configurations output referencing the computed properties.
