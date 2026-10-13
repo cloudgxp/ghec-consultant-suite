@@ -4,7 +4,7 @@ import type { MigrationRunSummary, StepSummaryOptions } from './types.js';
 /**
  * Characters that trigger spreadsheet formula execution when opened in Excel/Sheets/CSV.
  */
-const FORMULA_TRIGGERS = ['=', '+', '-', '@', '\t', '\r'];
+const FORMULA_TRIGGERS = ['=', '+', '-', '@', '\t', '\r', '\n'];
 
 /**
  * Neutralizes spreadsheet formula injection in user-supplied strings.
