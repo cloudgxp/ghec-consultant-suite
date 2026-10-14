@@ -26,7 +26,9 @@ function parseRunnerGroups(
 ): RunnerGroupDefinition[] {
   if (!data || typeof data !== 'object') return [];
   const list = data as RawRunnerGroupsListResponse;
-  const groups = Array.isArray(list.runner_groups) ? list.runner_groups : [];
+  const groups = Array.isArray(list.runner_groups)
+    ? list.runner_groups.filter((g) => !g.inherited)
+    : [];
 
   return groups.map((g: RawRunnerGroupResponse) => ({
     id: typeof g.id === 'number' ? g.id : undefined,
@@ -186,6 +188,7 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
               string,
               unknown
             >,
+            payload: desiredPayload,
             reason: `Runner group "${group.name}" already matches expected configuration on target`,
           });
         }
@@ -485,7 +488,14 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
           continue;
         }
 
-        if (payload?.visibility && act.visibility !== payload.visibility) {
+        const isDefaultGroupAllVisibility =
+          (op.sourceState as RunnerGroupDefinition | undefined)?.default ===
+            true && act.visibility === 'all';
+        if (
+          payload?.visibility &&
+          act.visibility !== payload.visibility &&
+          !isDefaultGroupAllVisibility
+        ) {
           discrepancies.push({
             resourceName: `${targetOrg} (runner_groups.${groupName}.visibility)`,
             expected: payload.visibility,

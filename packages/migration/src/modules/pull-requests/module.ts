@@ -346,6 +346,7 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
             payload,
             ctx.signal,
             ctx.dryRun,
+            ctx.targetClient,
           );
 
           if (prRes.success) {

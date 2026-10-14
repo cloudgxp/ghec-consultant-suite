@@ -115,6 +115,22 @@ jobs:
               echo "Prune demogxp-mig/$repo: HTTP $STATUS"
             fi
           done
+          if [ -n "$GHEC_TARGET_TOKEN" ]; then
+            for locked_candidate in migration-demo-1361857985-fork; do
+              PROBE_RESP=$(curl -s -X PATCH \
+                -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -d '{}' \
+                "https://api.github.com/repos/demogxp-mig/$locked_candidate" || true)
+              if echo "$PROBE_RESP" | grep -qi "locked for migration"; then
+                DEL_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                  -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
+                  -H "Accept: application/vnd.github+json" \
+                  "https://api.github.com/repos/demogxp-mig/$locked_candidate" || true)
+                echo "Deleted stale migration-locked target repo demogxp-mig/$locked_candidate: HTTP $DEL_STATUS"
+              fi
+            done
+          fi
 
       - name: Execute Preflight Readiness Gate
         id: preflight
@@ -408,6 +424,22 @@ jobs:
           pattern: cohort-artifacts-*-${{ github.run_id }}
           path: ./downloaded-cohorts
           merge-multiple: true
+
+      - name: Reconcile Cross-Cohort Organization & Package Modules
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+        run: |
+          echo "Reconciling teams, packages, and actions-runners after all cohort repositories have unlocked..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+            --scope "$INPUT_SCOPE" \
+            --modules teams,packages,actions-runners \
+            --continue-on-error \
+            --verbose \
+            --output ./scans/post-cohort-reconcile-report.json || true
 
       - name: Execute Full-Spectrum Verification
         id: initial-verify

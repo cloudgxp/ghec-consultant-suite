@@ -27,6 +27,7 @@ export interface RepositoryStats {
   readonly defaultBranch?: string | undefined;
   readonly issues: ParityEntityCounts;
   readonly pullRequests: ParityEntityCounts;
+  readonly hasPrArchiveIssue?: boolean | undefined;
   readonly releases: {
     readonly total: number;
     readonly assetCount: number;
@@ -127,6 +128,7 @@ async function collectStats(
   let issuesCount = 0;
   let issuesOpen = 0;
   let issuesClosed = 0;
+  let hasPrArchiveIssue = false;
   try {
     const issuesRes = await client.readPage<RawIssueResponse[]>(
       {
@@ -141,10 +143,16 @@ async function collectStats(
       signal,
     );
     const items = (issuesRes.items ?? []) as readonly RawIssueResponse[];
+    hasPrArchiveIssue = items.some(
+      (item) =>
+        !item.pull_request &&
+        item.title?.trim().toLowerCase() === 'historical pull requests archive',
+    );
     const realIssues = items.filter(
       (item) =>
         !item.pull_request &&
-        item.title?.trim().toLowerCase() !== 'migration log',
+        item.title?.trim().toLowerCase() !== 'migration log' &&
+        item.title?.trim().toLowerCase() !== 'historical pull requests archive',
     );
     issuesCount = realIssues.length;
     issuesOpen = realIssues.filter((i) => i.state === 'open').length;
@@ -214,6 +222,7 @@ async function collectStats(
       closed: prClosed,
       merged: prMerged,
     },
+    hasPrArchiveIssue,
     releases: { total: releaseCount, assetCount: releaseAssetCount },
     settings,
   };
@@ -361,9 +370,13 @@ export class RepositoryParityInspector {
     }
 
     // Pull request count parity
+    const closedPrsArchivedOnTarget =
+      Boolean(report.target.hasPrArchiveIssue) &&
+      (report.source.pullRequests.open ?? 0) === 0;
     if (
       report.source.pullRequests.total > 0 &&
-      report.target.pullRequests.total === 0
+      report.target.pullRequests.total === 0 &&
+      !closedPrsArchivedOnTarget
     ) {
       discrepancies.push({
         resourceName: 'pull-requests',

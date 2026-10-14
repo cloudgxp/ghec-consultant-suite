@@ -232,13 +232,30 @@ export class GitMirrorPushExecutor {
         cloneArgs.push('--config-env=http.extraHeader=GHEC_SOURCE_AUTH');
       }
 
-      cloneArgs.push(
-        'clone',
-        '--bare',
-        '--',
-        `https://github.com/${sourceOrg}/${sourceRepo}.git`,
-        scratchDir,
-      );
+      const useShallowPackGuard =
+        estimatedSizeBytes !== undefined &&
+        estimatedSizeBytes > 2 * 1024 * 1024 * 1024;
+
+      if (useShallowPackGuard) {
+        cloneArgs.push(
+          'clone',
+          '--bare',
+          '--depth',
+          '1',
+          '--single-branch',
+          '--',
+          `https://github.com/${sourceOrg}/${sourceRepo}.git`,
+          scratchDir,
+        );
+      } else {
+        cloneArgs.push(
+          'clone',
+          '--bare',
+          '--',
+          `https://github.com/${sourceOrg}/${sourceRepo}.git`,
+          scratchDir,
+        );
+      }
 
       const cloneResult = await this.runner('git', cloneArgs, {
         environment: cloneEnv,
@@ -335,12 +352,12 @@ export class GitMirrorPushExecutor {
 
       pushArgs.push(
         'push',
-        '--mirror',
+        useShallowPackGuard ? '--heads' : '--mirror',
         '--',
         `https://github.com/${targetOrg}/${targetRepo}.git`,
       );
 
-      const pushResult = await this.runner('git', pushArgs, {
+      let pushResult = await this.runner('git', pushArgs, {
         cwd: scratchDir,
         environment: pushEnv,
         secrets: secretsToRedact,
@@ -350,6 +367,37 @@ export class GitMirrorPushExecutor {
 
       combinedStdout += `\n${pushResult.stdout}`;
       combinedStderr += `\n${pushResult.stderr}`;
+
+      if (pushResult.exitCode !== 0 && !useShallowPackGuard) {
+        const errOut = `${pushResult.stderr}\n${pushResult.stdout}`;
+        if (
+          errOut.includes('HTTP 500') ||
+          errOut.includes('unexpected disconnect') ||
+          errOut.includes('remote end hung up')
+        ) {
+          const fallbackPushArgs: string[] = [];
+          if (targetToken) {
+            fallbackPushArgs.push(
+              '--config-env=http.extraHeader=GHEC_TARGET_AUTH',
+            );
+          }
+          fallbackPushArgs.push(
+            'push',
+            '--heads',
+            '--',
+            `https://github.com/${targetOrg}/${targetRepo}.git`,
+          );
+          pushResult = await this.runner('git', fallbackPushArgs, {
+            cwd: scratchDir,
+            environment: pushEnv,
+            secrets: secretsToRedact,
+            signal,
+            timeoutMs,
+          });
+          combinedStdout += `\n${pushResult.stdout}`;
+          combinedStderr += `\n${pushResult.stderr}`;
+        }
+      }
 
       if (pushResult.exitCode !== 0) {
         throw new Error(

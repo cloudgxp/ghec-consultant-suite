@@ -605,7 +605,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (squash_merge_commit_title)`,
             expected: payload.squash_merge_commit_title,
-            actual: actualPr.squashMergeCommitTitle,
+            actual: actualPr.squashMergeCommitTitle ?? null,
             message: `squash_merge_commit_title mismatch: expected "${payload.squash_merge_commit_title}", got "${actualPr.squashMergeCommitTitle}".`,
           });
         }
@@ -619,7 +619,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (squash_merge_commit_message)`,
             expected: payload.squash_merge_commit_message,
-            actual: actualPr.squashMergeCommitMessage,
+            actual: actualPr.squashMergeCommitMessage ?? null,
             message: `squash_merge_commit_message mismatch: expected "${payload.squash_merge_commit_message}", got "${actualPr.squashMergeCommitMessage}".`,
           });
         }
@@ -634,7 +634,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (has_issues)`,
             expected: payload.has_issues,
-            actual: actualFeatures.hasIssues,
+            actual: actualFeatures.hasIssues ?? null,
             message: `has_issues mismatch: expected ${payload.has_issues}, got ${actualFeatures.hasIssues}.`,
           });
         }
@@ -646,7 +646,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (has_projects)`,
             expected: payload.has_projects,
-            actual: actualFeatures.hasProjects,
+            actual: actualFeatures.hasProjects ?? null,
             message: `has_projects mismatch: expected ${payload.has_projects}, got ${actualFeatures.hasProjects}.`,
           });
         }
@@ -658,7 +658,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (has_wiki)`,
             expected: payload.has_wiki,
-            actual: actualFeatures.hasWiki,
+            actual: actualFeatures.hasWiki ?? null,
             message: `has_wiki mismatch: expected ${payload.has_wiki}, got ${actualFeatures.hasWiki}.`,
           });
         }
@@ -670,7 +670,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (has_discussions)`,
             expected: payload.has_discussions,
-            actual: actualFeatures.hasDiscussions,
+            actual: actualFeatures.hasDiscussions ?? null,
             message: `has_discussions mismatch: expected ${payload.has_discussions}, got ${actualFeatures.hasDiscussions}.`,
           });
         }
@@ -682,7 +682,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (description)`,
             expected: payload.description,
-            actual: actualMetadata.description,
+            actual: actualMetadata.description ?? null,
             message: `description mismatch: expected "${payload.description}", got "${actualMetadata.description ?? ''}".`,
           });
         }
@@ -694,7 +694,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (homepage)`,
             expected: payload.homepage,
-            actual: actualMetadata.homepage,
+            actual: actualMetadata.homepage ?? null,
             message: `homepage mismatch: expected "${payload.homepage}", got "${actualMetadata.homepage ?? ''}".`,
           });
         }
@@ -706,7 +706,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           discrepancies.push({
             resourceName: `${op.resourceName} (default_branch)`,
             expected: payload.default_branch,
-            actual: actualMetadata.defaultBranch,
+            actual: actualMetadata.defaultBranch ?? null,
             message: `default_branch mismatch: expected "${payload.default_branch}", got "${actualMetadata.defaultBranch ?? ''}".`,
           });
         }

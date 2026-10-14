@@ -384,6 +384,28 @@ export async function executeAgentReviewCommand(
     );
   }
 
+  if (
+    reportJson &&
+    typeof reportJson === 'object' &&
+    Array.isArray((reportJson as { modules?: unknown[] }).modules)
+  ) {
+    for (const mod of (reportJson as { modules: Record<string, unknown>[] })
+      .modules) {
+      if (mod && Array.isArray(mod.discrepancies)) {
+        for (const d of mod.discrepancies as Record<string, unknown>[]) {
+          if (d && typeof d === 'object') {
+            if (!('expected' in d) || d.expected === undefined) {
+              d.expected = null;
+            }
+            if (!('actual' in d) || d.actual === undefined) {
+              d.actual = null;
+            }
+          }
+        }
+      }
+    }
+  }
+
   const reportValidation = validateVerificationReport(reportJson);
   if (!reportValidation.success) {
     throw new Error(

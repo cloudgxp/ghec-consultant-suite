@@ -159,9 +159,33 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       if (checkRes.status === 200) {
         const targetRepoData = (checkRes.data ?? {}) as {
           locked?: boolean;
+          isLocked?: boolean;
           size?: number;
         };
-        if (targetRepoData.locked === true) {
+        let isRepoLocked =
+          targetRepoData.locked === true || targetRepoData.isLocked === true;
+        if (!isRepoLocked && ctx.targetClient.queryGraphQL) {
+          try {
+            const gqlLockRes = await ctx.targetClient.queryGraphQL<{
+              repository?: { isLocked?: boolean; lockReason?: string | null };
+            }>(
+              `query CheckRepoLock($owner: String!, $repo: String!) {
+                repository(owner: $owner, name: $repo) {
+                  isLocked
+                  lockReason
+                }
+              }`,
+              { owner: targetOrg, repo: targetRepo },
+              ctx.signal,
+            );
+            if (gqlLockRes.data?.repository?.isLocked === true) {
+              isRepoLocked = true;
+            }
+          } catch {
+            // Non-fatal GraphQL lock check
+          }
+        }
+        if (isRepoLocked) {
           ctx.logger.warn(
             `[gei-repo] Target repository ${targetOrg}/${targetRepo} is stuck in a locked state (locked=true) from a prior interrupted migration; deleting stale target repository to re-import cleanly...`,
           );
@@ -227,12 +251,24 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       ctx.logger.info(
         `[gei-repo] Target repository ${targetOrg}/${targetRepo} already exists on destination; skipping live GEI import.`,
       );
+      const isMirrorPushRepo =
+        ctx.scope.options?.gitTransferStrategy === 'mirror-push';
       return {
         schemaVersion: MIGRATION_SCHEMA_VERSION,
         moduleId: this.id,
         status: 'complete',
         durationMs: Date.now() - startTime,
         results: [],
+        ...(isMirrorPushRepo
+          ? {
+              metadataState: 'partial' as const,
+              failedMetadataCategories: [
+                'issues',
+                'pull-requests',
+                'releases',
+              ] as const,
+            }
+          : {}),
       };
     }
 
