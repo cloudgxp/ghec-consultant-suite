@@ -1,0 +1,149 @@
+name: Dedicated Migration Self-Healing Remediation
+
+on:
+  workflow_dispatch:
+    inputs:
+      remediation_plan_path:
+        description: 'Path to existing remediation-plan.json file (e.g. "scans/remediation-plan.json")'
+        required: false
+        type: string
+        default: 'scans/remediation-plan.json'
+      workflow_run_id:
+        description: 'Optional GitHub Actions run_id from an earlier run to download remediation artifacts from'
+        required: false
+        type: string
+        default: ''
+      scope:
+        description: 'Path to migration scope JSON file for re-verification'
+        required: true
+        type: string
+        default: 'scopes/wave-1.json'
+      dry_run:
+        description: 'Preview planned remediation actions without executing mutations'
+        required: false
+        type: boolean
+        default: false
+      target_environment:
+        description: 'Target GitHub Environment with review protection gates'
+        required: false
+        type: string
+        default: 'production-migration'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  apply-remediation:
+    name: Execute Targeted Remediation
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_environment }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+
+      - name: Download Prior Run Remediation Artifacts
+        if: ${{ inputs.workflow_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: migration-final-audit-${{ inputs.workflow_run_id }}
+          path: ./downloaded-audit
+          run-id: ${{ inputs.workflow_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve Remediation Plan
+        id: resolve-plan
+        shell: bash
+        run: |
+          mkdir -p ./remediations
+          PLAN_FILE="${{ inputs.remediation_plan_path }}"
+
+          if [ -n "${{ inputs.workflow_run_id }}" ] && [ -d "./downloaded-audit/remediations" ]; then
+            LATEST_PLAN=$(ls -t ./downloaded-audit/remediations/*.json 2>/dev/null | head -n1)
+            if [ -n "$LATEST_PLAN" ] && [ -f "$LATEST_PLAN" ]; then
+              PLAN_FILE="$LATEST_PLAN"
+            fi
+          fi
+
+          if [ ! -f "$PLAN_FILE" ]; then
+            echo "::error::Remediation plan file '$PLAN_FILE' not found."
+            exit 1
+          fi
+
+          echo "Using remediation plan: $PLAN_FILE"
+          cp "$PLAN_FILE" ./remediations/active-remediation-plan.json
+
+          ACTION_COUNT=$(jq '.actionableCount // 0' ./remediations/active-remediation-plan.json)
+          echo "Discovered $ACTION_COUNT actionable items."
+
+      - name: Execute Remediation Actions
+        id: execute-remediation
+        shell: bash
+        env:
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          PLAN_FILE="./remediations/active-remediation-plan.json"
+          SCRIPT_CONTENT=$(jq -r '.script // ""' "$PLAN_FILE")
+
+          if [ -z "$SCRIPT_CONTENT" ] || [ "$SCRIPT_CONTENT" = "null" ]; then
+            echo "No executable script in remediation plan."
+            exit 0
+          fi
+
+          echo "$SCRIPT_CONTENT" > ./remediations/apply-remediation.sh
+          chmod +x ./remediations/apply-remediation.sh
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "### DRY-RUN MODE: Preview of Remediation Script"
+            cat ./remediations/apply-remediation.sh
+          else
+            echo "Executing live remediation script with target token..."
+            bash ./remediations/apply-remediation.sh
+          fi
+
+      - name: Re-Verify Target Organization
+        id: re-verify
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE: ${{ inputs.scope }}
+        run: |
+          mkdir -p ./scans
+          echo "Re-running verification to confirm discrepancy resolution..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
+            --scope "$SCOPE" \
+            --output ./scans/post-remediation-verification.json || true
+
+      - name: Generate Differential Audit Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Dedicated Remediation Execution Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Plan File**: \`${{ inputs.remediation_plan_path }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Dry Run**: \`${{ inputs.dry_run }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f ./scans/post-remediation-verification.json ]; then
+            REMAINING=$(jq '.summary.totalDiscrepancies // 0' ./scans/post-remediation-verification.json)
+            STATUS=$(jq '.summary.overallStatus // "unknown"' ./scans/post-remediation-verification.json)
+            echo "### Post-Remediation Target State" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Status**: \`$STATUS\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Remaining Discrepancies**: \`$REMAINING\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload Remediation Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-remediation-results-${{ github.run_id }}
+          path: |
+            ./remediations/
+            ./scans/
+          retention-days: 14

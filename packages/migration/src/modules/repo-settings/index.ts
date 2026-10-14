@@ -5,6 +5,10 @@ export {
   resolvePolicyFallbackVisibility,
 } from './visibility.js';
 export {
+  reconcilePostGeiVisibility,
+  type ReconcileVisibilityResult,
+} from './reconcile-visibility.js';
+export {
   parsePullRequestSettings,
   parseFeatureSettings,
   parseCoreMetadata,

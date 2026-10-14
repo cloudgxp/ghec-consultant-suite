@@ -1,0 +1,122 @@
+name: Seed Demo Content
+
+on:
+  workflow_dispatch:
+    inputs:
+      organization:
+        description: 'Target GitHub organization name to provision'
+        required: true
+        type: string
+      repository:
+        description: 'Target repository name (optional; auto-created if missing)'
+        required: false
+        type: string
+      scope_level:
+        description: 'Scope level to provision'
+        required: true
+        type: choice
+        options:
+          - both
+          - organization
+          - repository
+        default: 'both'
+      content_type:
+        description: 'Content preset (all, core-governance, actions-and-security, collaboration, artifacts-and-code) or comma-separated module IDs'
+        required: true
+        type: string
+        default: 'all'
+      pat_secret_name:
+        description: 'Name of repository/organization secret containing GitHub Personal Access Token'
+        required: true
+        type: string
+        default: 'GHEC_SOURCE_TOKEN'
+      dry_run:
+        description: 'Simulate operations and validate permissions without mutating remote resources'
+        required: true
+        type: boolean
+        default: false
+      cleanup_existing:
+        description: 'Purge existing demo resources matching prefix before re-seeding'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  seed-demo:
+    name: 'Seed Demo (${{ inputs.organization }}${{ inputs.repository && format('/{0}', inputs.repository) || '' }})'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+        with:
+          build: 'false'
+
+      - name: Preflight Secret Check
+        shell: bash
+        env:
+          GHEC_TOKEN: ${{ secrets[inputs.pat_secret_name] }}
+        run: |
+          if [ -z "$GHEC_TOKEN" ]; then
+            echo "::error::Secret '${{ inputs.pat_secret_name }}' is empty or not found in repository secrets."
+            echo "::notice::Configure a Personal Access Token (PAT) with admin:org, repo, delete_repo, and workflow permissions."
+            exit 1
+          fi
+          echo "✓ Authentication secret '${{ inputs.pat_secret_name }}' verified."
+
+      - name: Compile Suite Packages
+        shell: bash
+        run: npm run build:packages
+
+      - name: Execute Demo Content Seeding
+        id: seed_step
+        shell: bash
+        env:
+          GHEC_TOKEN: ${{ secrets[inputs.pat_secret_name] }}
+          INPUT_ORG: ${{ inputs.organization }}
+          INPUT_REPO: ${{ inputs.repository }}
+          INPUT_SCOPE: ${{ inputs.scope_level }}
+          INPUT_CONTENT: ${{ inputs.content_type }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_CLEANUP: ${{ inputs.cleanup_existing }}
+        run: |
+          ARGS=(--org "$INPUT_ORG" --scope "$INPUT_SCOPE" --preset "$INPUT_CONTENT")
+          if [ -n "$INPUT_REPO" ]; then
+            ARGS+=(--repo "$INPUT_REPO")
+          fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+          if [ "$INPUT_CLEANUP" = "true" ]; then
+            ARGS+=(--cleanup)
+          fi
+
+          node --import tsx scripts/seed-demo-content.ts "${ARGS[@]}"
+
+      - name: Generate Actions Step Summary
+        if: always()
+        shell: bash
+        run: |
+          SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
+          echo "## 🚀 Synthetic Demo Content Seeding Report" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "| Parameter | Value |" >> "$SUMMARY_FILE"
+          echo "| :--- | :--- |" >> "$SUMMARY_FILE"
+          echo "| **Organization** | \`${{ inputs.organization }}\` |" >> "$SUMMARY_FILE"
+          echo "| **Repository** | \`${{ inputs.repository || '(auto-provisioned)' }}\` |" >> "$SUMMARY_FILE"
+          echo "| **Scope Level** | \`${{ inputs.scope_level }}\` |" >> "$SUMMARY_FILE"
+          echo "| **Content Preset / Filter** | \`${{ inputs.content_type }}\` |" >> "$SUMMARY_FILE"
+          echo "| **Execution Mode** | \`${{ inputs.dry_run && 'DRY-RUN (Simulated)' || 'LIVE' }}\` |" >> "$SUMMARY_FILE"
+          echo "| **Cleanup Prior** | \`${{ inputs.cleanup_existing }}\` |" >> "$SUMMARY_FILE"
+          echo "| **Timestamp (UTC)** | \`$(date -u +'%Y-%m-%d %H:%M:%S UTC')\` |" >> "$SUMMARY_FILE"
+          echo "" >> "$SUMMARY_FILE"
+          echo "### Supported Item Categories" >> "$SUMMARY_FILE"
+          echo "- **Core Governance (8 items)**: Org Settings, Teams Hierarchy, Custom Roles, IP Allow Lists, Org Custom Properties, Base Repo & Settings, Repo Custom Properties, Collaborators" >> "$SUMMARY_FILE"
+          echo "- **Actions & Security (10 items)**: Actions Policies, Runner Groups, Org Variables, Sealed Org Secrets, Repo Variables, Sealed Repo Secrets, Environments, Branch Protection, Rulesets, GHAS Security" >> "$SUMMARY_FILE"
+          echo "- **Collaboration (7 items)**: Projects v2, Issues & Milestones, Pull Requests & Reviews, Discussions, Autolinks, CODEOWNERS, Mannequin Attributions" >> "$SUMMARY_FILE"
+          echo "- **Artifacts & Code (7 items)**: Releases & Assets, Git LFS, Packages, Deploy Keys, Org Webhooks, Repo Webhooks, Apps Inventory" >> "$SUMMARY_FILE"

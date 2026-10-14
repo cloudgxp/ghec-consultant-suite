@@ -107,9 +107,19 @@ export function generateRemediationPlan(
           category: 'secrets-and-variables',
           moduleId: modId,
           resourceName: disc.resourceName,
-          description: `Missing secret "${disc.resourceName}". Secrets must be populated at destination.`,
-          command: `# Set secret for target repository\ngh secret set "${disc.resourceName}" --repo "${report.targetOrg}/${disc.resourceName.split('/')[0] ?? ''}"`,
+          description: `Missing secret "${disc.resourceName}". Provisioning DEC-004 sealed blank placeholder at destination.`,
+          command: `# DEC-004: Reserve sealed blank placeholder footprint without exposing credentials\nprintf "" | gh secret set "${disc.resourceName}" --repo "${report.targetOrg}/${disc.resourceName.split('/')[0] ?? ''}"`,
           severity: 'critical',
+        });
+      } else if (modId === 'webhooks') {
+        actions.push({
+          id: actionId,
+          category: 'webhooks-and-integrations',
+          moduleId: modId,
+          resourceName: disc.resourceName,
+          description: `Webhook configuration or activation discrepancy on "${disc.resourceName}": ${disc.message}`,
+          command: `ghec-consultant-cli migrate --modules webhooks --scope "./scopes/${report.scopeName}.json"`,
+          severity: 'medium',
         });
       } else if (modId === 'repo-variables') {
         const expectedVal =
@@ -155,13 +165,20 @@ export function generateRemediationPlan(
           command: `ghec-consultant-cli migrate --modules lfs --scope "./scopes/${report.scopeName}.json"`,
           severity: 'high',
         });
-      } else if (modId === 'collaborators' || modId === 'teams') {
+      } else if (
+        modId === 'collaborators' ||
+        modId === 'teams' ||
+        modId === 'custom-roles'
+      ) {
+        const description =
+          disc.message ||
+          `Identity reconciliation discrepancy for "${disc.resourceName}".`;
         actions.push({
           id: actionId,
           category: 'identity-and-access',
           moduleId: modId,
           resourceName: disc.resourceName,
-          description: `Identity reconciliation discrepancy for "${disc.resourceName}".`,
+          description,
           command: `ghec-consultant-cli migrate --modules "${modId}" --scope "./scopes/${report.scopeName}.json"`,
           severity: 'medium',
         });

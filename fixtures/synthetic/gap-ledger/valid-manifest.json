@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-10-12T12:00:00Z",
+  "summary": {
+    "totalResources": 2,
+    "implementedCount": 1,
+    "partialCount": 0,
+    "missingCount": 1,
+    "categoryCounts": {
+      "organization": 1,
+      "repository": 1
+    }
+  },
+  "resources": [
+    {
+      "id": "repo-rulesets",
+      "name": "Repository Rulesets",
+      "category": "repository",
+      "docsRef": "references/github-docs/content/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets.md",
+      "mechanism": "rest_rehydration",
+      "status": "implemented",
+      "existingModuleId": "rulesets",
+      "secretHandling": "none",
+      "emuConstraints": [],
+      "notes": "GEI completely drops rulesets; rehydration reconstructs branch and tag rulesets."
+    },
+    {
+      "id": "org-settings",
+      "name": "Organization Settings & Member Privileges",
+      "category": "organization",
+      "docsRef": "references/github-docs/content/organizations/managing-organization-settings/index.md",
+      "mechanism": "rest_rehydration",
+      "status": "missing",
+      "proposedModuleId": "org-settings",
+      "secretHandling": "none",
+      "emuConstraints": [
+        {
+          "type": "visibility_policy",
+          "description": "EMU organizations disallow public repository visibility by policy.",
+          "mitigation": "Constrain default repository visibility to private or internal."
+        }
+      ],
+      "notes": "Configures base repository permissions, repository creation limits, and forking policies."
+    }
+  ],
+  "waves": [
+    {
+      "wave": 1,
+      "name": "Governance Baseline",
+      "priority": "P1",
+      "moduleIds": ["org-settings"],
+      "rationale": "Essential baseline for establishing repository governance before data migration."
+    }
+  ]
+}

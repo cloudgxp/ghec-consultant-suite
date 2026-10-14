@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "invalid-timestamp",
+  "summary": {
+    "totalResources": 5,
+    "implementedCount": 1,
+    "partialCount": 0,
+    "missingCount": 1,
+    "categoryCounts": {}
+  },
+  "resources": [
+    {
+      "id": "INVALID_UPPERCASE",
+      "name": "Invalid Resource",
+      "category": "not_a_valid_category",
+      "docsRef": "references/github-docs/none.md",
+      "mechanism": "magic_wand",
+      "status": "in_progress",
+      "secretHandling": "plaintext_in_git",
+      "emuConstraints": [],
+      "notes": "Invalid schema test payload"
+    }
+  ],
+  "waves": []
+}

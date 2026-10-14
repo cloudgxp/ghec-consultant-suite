@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckpointStateContract",
+  "description": "Validates atomic checkpoint files and manifests persisted during migration execution.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "cohortId",
+    "moduleId",
+    "stage",
+    "status",
+    "updatedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "cohortId": {
+      "type": "string"
+    },
+    "moduleId": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["discover", "plan", "apply", "verify"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "in_progress", "completed", "failed", "skipped"]
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resumptionToken": {
+      "type": ["string", "null"]
+    },
+    "error": {
+      "type": ["string", "null"]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    }
+  }
+}

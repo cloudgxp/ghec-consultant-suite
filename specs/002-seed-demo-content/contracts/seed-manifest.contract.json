@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ghec.enterprise/v1/seed-manifest.json",
+  "title": "SeedManifest",
+  "description": "Schema for cataloging synthetic demo content items across the 32 migration modules",
+  "type": "object",
+  "required": ["schemaVersion", "items"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "scopeLevel",
+          "category",
+          "dependencies",
+          "enterpriseOnly"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scopeLevel": {
+            "type": "string",
+            "enum": ["organization", "repository"]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "core-governance",
+              "actions-and-security",
+              "collaboration",
+              "artifacts-and-code"
+            ]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enterpriseOnly": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

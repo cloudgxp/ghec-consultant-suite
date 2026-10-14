@@ -130,6 +130,15 @@ import { LfsMigrationModule } from '../modules/lfs/module.js';
 import { PackagesMigrationModule } from '../modules/packages/module.js';
 import { IssuesMigrationModule } from '../modules/issues/module.js';
 import { PullRequestsMigrationModule } from '../modules/pull-requests/module.js';
+import { CustomRolesMigrationModule } from '../modules/custom-roles/module.js';
+import { OrgSettingsMigrationModule } from '../modules/org-settings/module.js';
+import { ActionsPoliciesMigrationModule } from '../modules/actions-policies/module.js';
+import { AutolinksMigrationModule } from '../modules/autolinks/module.js';
+import { ActionsRunnersMigrationModule } from '../modules/actions-runners/module.js';
+import { IpAllowListsMigrationModule } from '../modules/ip-allow-lists/module.js';
+import { AppsInventoryMigrationModule } from '../modules/apps-inventory/module.js';
+import { DiscussionsMigrationModule } from '../modules/discussions/module.js';
+import { ProjectsV2MigrationModule } from '../modules/projects-v2/module.js';
 
 /**
  * Creates and returns a ModuleRegistry pre-populated with all built-in migration modules.
@@ -159,5 +168,14 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new PackagesMigrationModule());
   registry.register(new IssuesMigrationModule());
   registry.register(new PullRequestsMigrationModule());
+  registry.register(new CustomRolesMigrationModule());
+  registry.register(new OrgSettingsMigrationModule());
+  registry.register(new ActionsPoliciesMigrationModule());
+  registry.register(new AutolinksMigrationModule());
+  registry.register(new ActionsRunnersMigrationModule());
+  registry.register(new IpAllowListsMigrationModule());
+  registry.register(new AppsInventoryMigrationModule());
+  registry.register(new DiscussionsMigrationModule());
+  registry.register(new ProjectsV2MigrationModule());
   return registry;
 }

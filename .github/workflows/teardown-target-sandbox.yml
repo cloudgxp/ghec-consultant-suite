@@ -1,0 +1,101 @@
+name: Target Sandbox Teardown & Reset
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_org:
+        description: 'Target GitHub organization to clean'
+        required: true
+        type: string
+      prefix_filter:
+        description: 'Strict prefix filter for resources to delete (e.g. "dummy-", "demo-")'
+        required: true
+        type: string
+        default: 'dummy-'
+      confirm_teardown:
+        description: 'Explicit confirmation flag to proceed with live resource deletion'
+        required: true
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Simulate teardown and report discovered resources without deleting'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  teardown:
+    name: 'Teardown Target Sandbox Resources'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+
+      - name: Safety Guardrails Verification
+        shell: bash
+        run: |
+          PREFIX="${{ inputs.prefix_filter }}"
+          CONFIRM="${{ inputs.confirm_teardown }}"
+          DRY_RUN="${{ inputs.dry_run }}"
+
+          if [ -z "$PREFIX" ] || [ ${#PREFIX} -lt 3 ]; then
+            echo "::error::Prefix filter '$PREFIX' must be at least 3 characters long."
+            exit 1
+          fi
+
+          if [[ "$PREFIX" == *"*"* ]] || [[ "$PREFIX" == "all" ]]; then
+            echo "::error::Wildcard and generic prefixes are strictly prohibited for safety."
+            exit 1
+          fi
+
+          if [ "$DRY_RUN" != "true" ] && [ "$CONFIRM" != "true" ]; then
+            echo "::error::Live sandbox teardown requires confirm_teardown=true."
+            exit 1
+          fi
+
+          echo "Safety verification passed for prefix: $PREFIX"
+
+      - name: Execute Sandbox Teardown
+        id: teardown
+        shell: bash
+        env:
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          ORG: ${{ inputs.target_org }}
+          PREFIX: ${{ inputs.prefix_filter }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          CONFIRM: ${{ inputs.confirm_teardown }}
+        run: |
+          mkdir -p ./scans
+
+          DRY_RUN_ARG=()
+          if [ "$DRY_RUN" = "true" ]; then
+            DRY_RUN_ARG=(--dry-run)
+          fi
+
+          CONFIRM_ARG=()
+          if [ "$CONFIRM" = "true" ]; then
+            CONFIRM_ARG=(--confirm)
+          fi
+
+          node ./apps/cli/bin/ghec-consultant-cli.mjs teardown-sandbox \
+            --org "$ORG" \
+            --prefix "$PREFIX" \
+            "${DRY_RUN_ARG[@]}" \
+            "${CONFIRM_ARG[@]}"
+
+      - name: Publish Teardown Step Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Target Sandbox Teardown Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Target Organization**: \`${{ inputs.target_org }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Prefix Filter**: \`${{ inputs.prefix_filter }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Dry Run**: \`${{ inputs.dry_run }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Confirmed**: \`${{ inputs.confirm_teardown }}\`" >> "$GITHUB_STEP_SUMMARY"

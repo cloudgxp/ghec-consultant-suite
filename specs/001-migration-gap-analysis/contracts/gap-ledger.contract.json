@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GapLedgerManifest",
+  "description": "Authoritative contract for the migration capability gap ledger comparing GitHub platform resources against suite modules.",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "summary", "resources", "waves"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Contract version matching MIGRATION_SCHEMA_VERSION."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of audit generation."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalResources",
+        "implementedCount",
+        "partialCount",
+        "missingCount",
+        "categoryCounts"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "totalResources": { "type": "integer", "minimum": 0 },
+        "implementedCount": { "type": "integer", "minimum": 0 },
+        "partialCount": { "type": "integer", "minimum": 0 },
+        "missingCount": { "type": "integer", "minimum": 0 },
+        "categoryCounts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "docsRef",
+          "mechanism",
+          "status",
+          "secretHandling",
+          "emuConstraints",
+          "notes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "name": { "type": "string", "minLength": 1 },
+          "category": {
+            "type": "string",
+            "enum": [
+              "organization",
+              "repository",
+              "actions",
+              "security",
+              "identity"
+            ]
+          },
+          "docsRef": { "type": "string", "minLength": 1 },
+          "mechanism": {
+            "type": "string",
+            "enum": [
+              "gei_native",
+              "rest_rehydration",
+              "graphql_mutation",
+              "manual_advisory"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["implemented", "partial", "missing"]
+          },
+          "existingModuleId": { "type": "string" },
+          "proposedModuleId": { "type": "string" },
+          "secretHandling": {
+            "type": "string",
+            "enum": [
+              "sealed_box_blank",
+              "vault_hook",
+              "none",
+              "ephemeral_runtime"
+            ]
+          },
+          "emuConstraints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "description", "mitigation"],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "scim_identity",
+                    "saml_sso",
+                    "mannequin_mapping",
+                    "visibility_policy",
+                    "outside_collaborator",
+                    "runner_network"
+                  ]
+                },
+                "description": { "type": "string", "minLength": 1 },
+                "mitigation": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "waves": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["wave", "name", "priority", "moduleIds", "rationale"],
+        "additionalProperties": false,
+        "properties": {
+          "wave": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "priority": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3"]
+          },
+          "moduleIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "rationale": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

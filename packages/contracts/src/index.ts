@@ -942,10 +942,12 @@ export {
   RepositoryMappingSchema,
   RepositoryOptionsSchema,
   GitTransferStrategySchema,
+  TeamManagementSchema,
   validateMigrationScope,
   type MigrationScope,
   type RepositoryOptions,
   type GitTransferStrategy,
+  type TeamManagement,
 } from './scope/migration-scope.js';
 export {
   MigrationPlanSchema,
@@ -1000,3 +1002,6 @@ export {
   type OrgModuleResultSummary,
   type RepositoryMigrationRecord,
 } from './results/results-repo-manifest.js';
+export * from './gap-ledger/index.js';
+export * from './seeder/schemas.js';
+export * from './orchestrator/schemas.js';

@@ -24,7 +24,7 @@ on:
         type: number
         default: 5
       modules:
-        description: 'Comma-separated migration modules to execute (or "all"). Valid IDs: org-variables, org-secrets, teams, org-custom-properties, post-migration-mannequins, packages, gei-repo, repo-variables, repo-secrets, environments, webhooks, repo-settings, repo-custom-properties, rulesets, branch-protection, post-migration-codeowners, security, releases, deploy-keys, collaborators, lfs'
+        description: 'Comma-separated migration modules to execute (or "all"). Valid IDs: apps-inventory, ip-allow-lists, actions-runners, actions-policies, autolinks, discussions, projects-v2, org-settings, repo-settings, teams, custom-roles, org-variables, org-secrets, repo-variables, repo-secrets, environments, webhooks, org-custom-properties, repo-custom-properties, rulesets, branch-protection, gei-repo, mannequin-reclamation, codeowners, security, releases, deploy-keys, collaborators, lfs, packages, issues, pull-requests'
         required: false
         type: string
         default: 'all'

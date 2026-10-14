@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ModuleDecompositionBlueprint",
+  "description": "Architectural contract for decomposing an unbuilt migration capability into a 4-stage lifecycle module.",
+  "type": "object",
+  "required": [
+    "moduleId",
+    "targetResource",
+    "dependencies",
+    "discoverStage",
+    "planStage",
+    "applyStage",
+    "verifyStage"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "moduleId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "targetResource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "discoverStage": {
+      "type": "object",
+      "required": ["clientMethod", "payloadType", "queryPattern"],
+      "additionalProperties": false,
+      "properties": {
+        "clientMethod": { "type": "string" },
+        "payloadType": { "type": "string" },
+        "queryPattern": { "type": "string" }
+      }
+    },
+    "planStage": {
+      "type": "object",
+      "required": ["diffStrategy", "actionTypes", "idempotencyKey"],
+      "additionalProperties": false,
+      "properties": {
+        "diffStrategy": { "type": "string" },
+        "actionTypes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "idempotencyKey": { "type": "string" }
+      }
+    },
+    "applyStage": {
+      "type": "object",
+      "required": [
+        "clientMethod",
+        "dryRunSupported",
+        "rateLimitBucket",
+        "mutationEndpoint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "clientMethod": { "type": "string" },
+        "dryRunSupported": { "type": "boolean", "const": true },
+        "rateLimitBucket": { "type": "string" },
+        "mutationEndpoint": { "type": "string" }
+      }
+    },
+    "verifyStage": {
+      "type": "object",
+      "required": [
+        "verificationQuery",
+        "comparisonKeys",
+        "discrepancySeverity"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "verificationQuery": { "type": "string" },
+        "comparisonKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "discrepancySeverity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+        }
+      }
+    }
+  }
+}
