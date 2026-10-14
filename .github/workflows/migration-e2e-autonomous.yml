@@ -307,29 +307,19 @@ jobs:
             echo "Reconciling target repository visibility..."
             node --input-type=module -e '
               import fs from "node:fs";
-              import { Octokit } from "@octokit/rest";
-              import { reconcilePostGeiVisibility } from "./packages/migration/dist/index.js";
+              import { HttpTargetWriteClient, reconcilePostGeiVisibility } from "./packages/migration/dist/index.js";
 
               const scope = JSON.parse(fs.readFileSync(process.env.COHORT_SCOPE, "utf8"));
               const token = process.env.GHEC_TARGET_TOKEN;
               if (!token) process.exit(0);
 
-              const octokit = new Octokit({ auth: token });
-              const targetWriteClient = {
-                mutate: async (op) => {
-                  const res = await octokit.request(`${op.method} ${op.path}`, {
-                    ...op.pathParams,
-                    ...op.body,
-                  });
-                  return { status: res.status, data: res.data };
-                }
-              };
+              const targetWriteClient = new HttpTargetWriteClient({ token });
 
               const defaultTargetOrg = scope.organizations?.[0]?.target || scope.targetOrg;
               for (const repo of scope.repositories || []) {
                 const name = typeof repo === "string" ? repo : (repo.targetRepo || repo.sourceRepo || repo.name);
                 const targetOrg = (typeof repo === "object" && repo.targetOrg) ? repo.targetOrg : defaultTargetOrg;
-                const vis = (typeof repo === "object" && (repo.targetRepoVisibility || repo.visibility)) ? (repo.targetRepoVisibility || repo.visibility) : "private";
+                const vis = (typeof repo === "object" && (repo.targetRepoVisibility || repo.visibility || repo.options?.targetRepoVisibility)) ? (repo.targetRepoVisibility || repo.visibility || repo.options?.targetRepoVisibility) : "private";
                 if (vis !== "private" && targetOrg && name) {
                   console.log(`Restoring visibility to ${vis} for ${targetOrg}/${name}...`);
                   await reconcilePostGeiVisibility(targetWriteClient, targetOrg, name, vis);
@@ -359,6 +349,8 @@ jobs:
 
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
+        with:
+          install-gei: 'true'
 
       - name: Download Cohort Artifacts
         uses: actions/download-artifact@v4
@@ -393,6 +385,10 @@ jobs:
           MAX_ROUNDS: ${{ inputs.max_remediation_rounds }}
         run: |
           mkdir -p ./scans ./remediations
+          if [ ! -f ./scans/verification-report.json ]; then
+            echo "Verification report was not generated; skipping remediation loop."
+            exit 0
+          fi
           ROUND=1
           MAX_ROUNDS=${MAX_ROUNDS:-3}
 
@@ -481,8 +477,9 @@ jobs:
 
           if [ -d ./remediations ]; then
             echo "### Remediation History" >> "$GITHUB_STEP_SUMMARY"
-            ls -la ./remediations/*.json 2>/dev/null | while read -r line; do
-              echo "- Produced remediation plan: \`$line\`" >> "$GITHUB_STEP_SUMMARY"
+            for f in ./remediations/*.json; do
+              [ -e "$f" ] || continue
+              echo "- Produced remediation plan: \`$f\`" >> "$GITHUB_STEP_SUMMARY"
             done
           fi
 

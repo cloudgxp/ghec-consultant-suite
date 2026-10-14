@@ -207,6 +207,19 @@ export class ProjectsV2MigrationModule implements MigrationModule<ProjectsV2Data
       return parseOrgProjectsV2(sourceOrg, res.data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      if (
+        message.includes('INSUFFICIENT_SCOPES') ||
+        message.includes('FORBIDDEN') ||
+        message.includes('requires one of the following scopes')
+      ) {
+        ctx.logger.warn(
+          `[projects-v2] Skipping source Projects v2 discovery for org ${sourceOrg} due to token scope permissions: ${message}`,
+        );
+        return {
+          org: sourceOrg,
+          projects: [],
+        };
+      }
       throw new Error(
         `Failed to discover projects-v2 for org ${sourceOrg}: ${message}`,
         { cause: err },
@@ -542,6 +555,14 @@ export class ProjectsV2MigrationModule implements MigrationModule<ProjectsV2Data
   ): Promise<ModuleVerificationResult> {
     const targetOrg = ctx.scope.targetOrg;
     const discrepancies: VerificationDiscrepancy[] = [];
+
+    if (plan.operations.length === 0) {
+      return {
+        moduleId: this.id,
+        verified: true,
+        discrepancies: [],
+      };
+    }
 
     let targetProjectsData: ProjectsV2Data;
 

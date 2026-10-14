@@ -58,11 +58,28 @@ export const runGitCommand: GitCommandRunner = async (
   if (options.signal?.aborted) {
     throw options.signal.reason ?? new Error('Git command was aborted.');
   }
-  const secrets = options.secrets ?? [];
+  const secrets = [...(options.secrets ?? [])];
+  const envMap: Record<string, string | undefined> = {
+    ...process.env,
+    ...options.environment,
+  };
+  for (const authVar of ['GHEC_SOURCE_AUTH', 'GHEC_TARGET_AUTH'] as const) {
+    const val = envMap[authVar];
+    if (typeof val === 'string' && val.startsWith('Bearer ')) {
+      const rawToken = val.slice('Bearer '.length).trim();
+      if (rawToken) {
+        const b64 = Buffer.from(`x-access-token:${rawToken}`, 'utf8').toString(
+          'base64',
+        );
+        envMap[authVar] = `AUTHORIZATION: basic ${b64}`;
+        secrets.push(rawToken, b64);
+      }
+    }
+  }
   return new Promise<GitCommandResult>((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
-      env: { ...process.env, ...options.environment },
+      env: envMap,
       shell: false,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

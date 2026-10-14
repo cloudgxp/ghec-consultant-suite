@@ -474,11 +474,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       const msg = err instanceof Error ? err.message : String(err);
       const isGeiArchiveFailure =
         msg.includes('Git repository data failed to be generated') ||
-        msg.includes('exceeds GitHub platform limit of 40 GiB');
+        msg.includes('exceeds GitHub platform limit of 40 GiB') ||
+        msg.includes('spawn gh ENOENT') ||
+        !this.geiRunner;
 
       if (gitTransferStrategy === 'auto' && isGeiArchiveFailure) {
         ctx.logger.warn(
-          `[gei-repo] GEI archive generation failed (${msg}); automatically falling back to mirror-push strategy...`,
+          `[gei-repo] GEI migration failed (${msg}); automatically falling back to mirror-push strategy...`,
         );
         const mirrorExecutor = new GitMirrorPushExecutor(this.gitRunner);
         try {

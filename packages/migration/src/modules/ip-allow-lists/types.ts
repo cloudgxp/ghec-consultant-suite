@@ -18,6 +18,7 @@ export interface IpAllowListsData {
 export interface RawGraphQLIpAllowListNode {
   readonly id?: string | null | undefined;
   readonly name?: string | null | undefined;
+  readonly allowListValue?: string | null | undefined;
   readonly cidr?: string | null | undefined;
   readonly isActive?: boolean | null | undefined;
 }
