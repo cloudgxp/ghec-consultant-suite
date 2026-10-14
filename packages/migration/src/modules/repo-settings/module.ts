@@ -160,9 +160,20 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
     const operations: PlannedOperation[] = [];
     const warnings: string[] = [];
 
+    const effectiveOptions: RepoSettingsModuleOptions = {
+      ...this.options,
+      ...(this.options.enforceInternalForPublic === undefined &&
+      ctx.scope.targetType === 'ghec'
+        ? { enforceInternalForPublic: false }
+        : {}),
+      ...(this.options.visibilityOverride === undefined &&
+      ctx.scope.options?.targetRepoVisibility !== undefined
+        ? { visibilityOverride: ctx.scope.options.targetRepoVisibility }
+        : {}),
+    };
     const desiredVisibility = determineTargetVisibility(
       sourceData.visibility,
-      this.options,
+      effectiveOptions,
     );
     const desiredPr = sourceData.prSettings;
     const desiredFeatures = sourceData.features;

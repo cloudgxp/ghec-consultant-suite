@@ -1,10 +1,12 @@
 {
   "version": "1.0.0",
   "name": "demogxp-to-demogxp-mig",
+  "targetType": "ghec",
   "organizations": [
     {
       "source": "demogxp",
       "target": "demogxp-mig",
+      "targetType": "ghec",
       "modules": [
         "org-variables",
         "org-secrets",
@@ -716,7 +718,6 @@
     }
   ],
   "identityMapping": {
-    "strategy": "emu-saml",
-    "suffix": "_gxp"
+    "strategy": "pass-through"
   }
 }

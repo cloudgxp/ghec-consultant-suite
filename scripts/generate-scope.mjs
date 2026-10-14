@@ -62,8 +62,10 @@ Configuration Options:
   --lfs-strategy <strategy>    LFS migration strategy: 'dual-remote-stream' or 'skip' (default: 'dual-remote-stream')
   --use-gei <true|false>       Whether to use GitHub Enterprise Importer (default: true)
   --skip-releases              Skip release asset migration fallback (default: false)
-  --identity-strategy <strat>  Identity mapping strategy: 'emu-saml', 'manual', 'pass-through' (default: 'emu-saml')
-  --identity-suffix <suffix>   EMU identity suffix (default: '_gxp')
+  --target-type <ghec|emu>     Target tenant type: 'ghec' (standard GHEC) or 'emu' (GHEC-EMU)
+  --emu-shortcode <shortcode>  Admin-defined EMU shortcode/suffix (e.g. '_acme' or 'acme')
+  --identity-strategy <strat>  Identity mapping strategy: 'emu-saml', 'manual', 'pass-through'
+  --identity-suffix <suffix>   EMU identity suffix alias for --emu-shortcode
   --include-org-resources      Include org-level migration modules (default: true)
   --org-modules <list>         Comma-separated list of org modules to include
   --repo-modules <list>        Comma-separated list of repo modules to include
@@ -266,14 +268,33 @@ export async function generateScope(options) {
     lfsStrategy = 'dual-remote-stream',
     useGei = true,
     skipReleases = false,
-    identityStrategy = 'emu-saml',
-    identitySuffix = '_gxp',
+    targetType,
+    emuShortcode,
+    identityStrategy,
+    identitySuffix,
     includeOrgResources = true,
     orgModules,
     repoModules,
     dryRun = false,
     silent = false,
   } = options;
+
+  const resolvedTargetType =
+    targetType === 'ghec' || targetType === 'emu' ? targetType : undefined;
+  const resolvedStrategy =
+    identityStrategy ??
+    (resolvedTargetType === 'ghec' ? 'pass-through' : 'emu-saml');
+  const rawSuffix = emuShortcode ?? identitySuffix;
+  const resolvedSuffix =
+    resolvedStrategy === 'emu-saml'
+      ? rawSuffix !== undefined
+        ? rawSuffix
+          ? rawSuffix.startsWith('_')
+            ? rawSuffix
+            : `_${rawSuffix}`
+          : undefined
+        : '_gxp'
+      : undefined;
 
   const targetReposFilePath = reposFile || file;
   let rawEntries = [];
@@ -404,12 +425,13 @@ export async function generateScope(options) {
   const scope = {
     version: MIGRATION_SCHEMA_VERSION,
     name: resolvedName,
+    ...(resolvedTargetType ? { targetType: resolvedTargetType } : {}),
     organizations: [orgMapping],
     repositories: repositoryMappings,
     identityMapping: {
-      strategy: identityStrategy,
-      ...(identityStrategy === 'emu-saml' && identitySuffix
-        ? { suffix: identitySuffix }
+      strategy: resolvedStrategy,
+      ...(resolvedStrategy === 'emu-saml' && resolvedSuffix
+        ? { suffix: resolvedSuffix }
         : {}),
     },
   };
@@ -465,8 +487,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         'lfs-strategy': { type: 'string', default: 'dual-remote-stream' },
         'use-gei': { type: 'string', default: 'true' },
         'skip-releases': { type: 'boolean', default: false },
-        'identity-strategy': { type: 'string', default: 'emu-saml' },
-        'identity-suffix': { type: 'string', default: '_gxp' },
+        'target-type': { type: 'string' },
+        'emu-shortcode': { type: 'string' },
+        'identity-strategy': { type: 'string' },
+        'identity-suffix': { type: 'string' },
         'include-org-resources': { type: 'string', default: 'true' },
         'org-modules': { type: 'string' },
         'repo-modules': { type: 'string' },
@@ -517,6 +541,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       lfsStrategy: values['lfs-strategy'],
       useGei,
       skipReleases: values['skip-releases'],
+      targetType: values['target-type'],
+      emuShortcode: values['emu-shortcode'],
       identityStrategy: values['identity-strategy'],
       identitySuffix: values['identity-suffix'],
       includeOrgResources,

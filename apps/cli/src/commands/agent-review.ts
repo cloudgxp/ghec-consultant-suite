@@ -287,13 +287,82 @@ export function generateRemediationPlan(
     }
   }
 
+  const orgLevelModules = new Set([
+    'org-variables',
+    'org-secrets',
+    'org-custom-properties',
+    'teams',
+    'post-migration-mannequins',
+    'packages',
+    'custom-roles',
+    'org-settings',
+    'actions-policies',
+    'actions-runners',
+    'ip-allow-lists',
+    'apps-inventory',
+    'projects-v2',
+  ]);
+
+  const extractRepoName = (resourceName: string): string | undefined => {
+    const trimmed = resourceName.trim();
+    if (!trimmed) return undefined;
+    const basePart = trimmed.split(/\s+/)[0] ?? '';
+    if (basePart.includes('/')) {
+      const [first, second] = basePart.split('/');
+      if (
+        first &&
+        second &&
+        (first.toLowerCase() === report.targetOrg.toLowerCase() ||
+          first.toLowerCase() === report.sourceOrg.toLowerCase())
+      ) {
+        return second.split(':')[0];
+      }
+      if (first) {
+        return first.split(':')[0];
+      }
+    }
+    if (basePart.includes(':')) {
+      const [first] = basePart.split(':');
+      if (
+        first &&
+        first.toLowerCase() !== report.targetOrg.toLowerCase() &&
+        first.toLowerCase() !== report.sourceOrg.toLowerCase()
+      ) {
+        return first;
+      }
+    }
+    return undefined;
+  };
+
+  const reposByModule = new Map<string, Set<string>>();
+  for (const a of actions) {
+    if (!orgLevelModules.has(a.moduleId)) {
+      const repo = extractRepoName(a.resourceName);
+      if (repo) {
+        let set = reposByModule.get(a.moduleId);
+        if (!set) {
+          set = new Set<string>();
+          reposByModule.set(a.moduleId, set);
+        }
+        set.add(repo);
+      }
+    }
+  }
+
   const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -uo pipefail\nif ! command -v ghec-consultant-cli >/dev/null 2>&1 && [ -f "./apps/cli/bin/ghec-consultant-cli.mjs" ]; then\n  ghec-consultant-cli() { node ./apps/cli/bin/ghec-consultant-cli.mjs "$@"; }\nfi\nexport GH_TOKEN="\${GHEC_TARGET_TOKEN:-\${GH_TOKEN:-}}"\n\n`;
   const executedCommands = new Set<string>();
   const scriptBody = actions
     .map((a) => {
-      const isDuplicate = executedCommands.has(a.command);
-      executedCommands.add(a.command);
-      return `# [${a.severity.toUpperCase()}] ${a.description}\necho "Executing remediation for ${a.resourceName}..."\n${isDuplicate ? `# (Already executed in this batch): ${a.command.replace(/\n/g, ' ')}` : `${a.command} || echo "WARN: Remediation command for ${a.resourceName} exited non-zero; continuing..."`}\n`;
+      const repoSet = reposByModule.get(a.moduleId);
+      const effectiveCommand =
+        repoSet &&
+        repoSet.size > 0 &&
+        a.command.startsWith('ghec-consultant-cli migrate ')
+          ? `${a.command} --repos "${Array.from(repoSet).join(',')}"`
+          : a.command;
+      const isDuplicate = executedCommands.has(effectiveCommand);
+      executedCommands.add(effectiveCommand);
+      return `# [${a.severity.toUpperCase()}] ${a.description}\necho "Executing remediation for ${a.resourceName}..."\n${isDuplicate ? `# (Already executed in this batch): ${effectiveCommand.replace(/\n/g, ' ')}` : `${effectiveCommand} || echo "WARN: Remediation command for ${a.resourceName} exited non-zero; continuing..."`}\n`;
     })
     .join('\n');
 

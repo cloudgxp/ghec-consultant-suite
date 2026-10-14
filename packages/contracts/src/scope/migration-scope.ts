@@ -5,10 +5,15 @@ import {
   NonEmptyStringSchema,
 } from '../migration-common.js';
 
+export const TargetTenantTypeSchema = z.enum(['ghec', 'emu']);
+
+export type TargetTenantType = z.infer<typeof TargetTenantTypeSchema>;
+
 const OrganizationMappingSchema = z
   .object({
     source: NonEmptyStringSchema,
     target: NonEmptyStringSchema,
+    targetType: TargetTenantTypeSchema.optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
   })
   .strict();
@@ -76,6 +81,7 @@ export const MigrationScopeSchema = z
   .object({
     version: z.literal(MIGRATION_SCHEMA_VERSION),
     name: NonEmptyStringSchema,
+    targetType: TargetTenantTypeSchema.optional(),
     enterprise: z
       .object({
         sourceSlug: NonEmptyStringSchema,

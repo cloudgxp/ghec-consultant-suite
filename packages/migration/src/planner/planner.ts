@@ -110,10 +110,18 @@ export class MigrationPlanner {
 
     // 1. Process Organization-level Scopes
     for (const orgMapping of this.scope.organizations) {
+      const effectiveTargetType =
+        orgMapping.targetType ??
+        this.scope.targetType ??
+        (this.scope.identityMapping?.strategy === 'pass-through'
+          ? 'ghec'
+          : 'emu');
       const orgScope: MigrationScopeTarget = {
         level: 'organization',
         sourceOrg: orgMapping.source,
         targetOrg: orgMapping.target,
+        targetType: effectiveTargetType,
+        identityMapping: this.scope.identityMapping,
       };
 
       const orgParsed = parseModuleSelectionFlags(
@@ -198,6 +206,15 @@ export class MigrationPlanner {
         repoMapping.options ??
         this.scope.repositoryOptions?.[repoKey] ??
         this.scope.repositoryOptions?.[repoMapping.sourceRepo];
+      const matchingOrg = this.scope.organizations.find(
+        (o) => o.target === repoMapping.targetOrg,
+      );
+      const effectiveTargetType =
+        matchingOrg?.targetType ??
+        this.scope.targetType ??
+        (this.scope.identityMapping?.strategy === 'pass-through'
+          ? 'ghec'
+          : 'emu');
 
       const repoScope: MigrationScopeTarget = {
         level: 'repository',
@@ -205,6 +222,8 @@ export class MigrationPlanner {
         targetOrg: repoMapping.targetOrg,
         sourceRepo: repoMapping.sourceRepo,
         targetRepo: repoMapping.targetRepo,
+        targetType: effectiveTargetType,
+        identityMapping: this.scope.identityMapping,
         options: repoOptions,
       };
 

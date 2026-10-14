@@ -352,7 +352,7 @@ export class GitMirrorPushExecutor {
 
       pushArgs.push(
         'push',
-        useShallowPackGuard ? '--heads' : '--mirror',
+        useShallowPackGuard ? '--all' : '--mirror',
         '--',
         `https://github.com/${targetOrg}/${targetRepo}.git`,
       );
@@ -383,7 +383,7 @@ export class GitMirrorPushExecutor {
           }
           fallbackPushArgs.push(
             'push',
-            '--heads',
+            '--all',
             '--',
             `https://github.com/${targetOrg}/${targetRepo}.git`,
           );

@@ -209,7 +209,12 @@ export class OrgSettingsMigrationModule implements MigrationModule<OrgSettingsDa
       if (srcVal === undefined) continue;
 
       // Handle EMU constraint: public repo creation is prohibited in EMU organizations
-      if (key === 'members_can_create_public_repositories' && srcVal === true) {
+      const isEmuTarget = ctx.scope.targetType !== 'ghec';
+      if (
+        isEmuTarget &&
+        key === 'members_can_create_public_repositories' &&
+        srcVal === true
+      ) {
         warnings.push(
           'Source allows members to create public repositories, but EMU organizations disallow public repositories. Setting will be omitted or set to false.',
         );

@@ -38,6 +38,7 @@ export interface MigrateCommandOptions {
   readonly inputPath?: string | undefined;
   readonly modules?: readonly string[] | undefined;
   readonly excludeModules?: readonly string[] | undefined;
+  readonly repos?: readonly string[] | undefined;
   readonly resume?: string | undefined;
   readonly continueOnError: boolean;
   readonly dryRun: boolean;
@@ -73,6 +74,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       input: { type: 'string' },
       modules: { type: 'string' },
       'exclude-modules': { type: 'string' },
+      repos: { type: 'string' },
       resume: { type: 'string' },
       'checkpoint-dir': { type: 'string' },
       'continue-on-error': { type: 'boolean', default: false },
@@ -98,6 +100,13 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     values['exclude-modules'],
   );
 
+  const parsedRepos = values.repos
+    ? values.repos
+        .split(',')
+        .map((r) => r.trim())
+        .filter(Boolean)
+    : undefined;
+
   return {
     planPath: values.plan,
     scopePath: values.scope,
@@ -107,6 +116,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       parsedSelection.excludeModules.length > 0
         ? parsedSelection.excludeModules
         : undefined,
+    repos: parsedRepos && parsedRepos.length > 0 ? parsedRepos : undefined,
     resume: values.resume,
     checkpointDir: values['checkpoint-dir'],
     continueOnError: values['continue-on-error'] ?? false,
@@ -169,6 +179,23 @@ export async function executeMigrateCommand(
         );
       }
       scope = scopeValidation.data;
+      if (options.repos && options.repos.length > 0) {
+        const repoFilterSet = new Set(
+          options.repos.map((r) => r.toLowerCase()),
+        );
+        scope = {
+          ...scope,
+          repositories: scope.repositories.filter(
+            (r) =>
+              repoFilterSet.has(r.sourceRepo.toLowerCase()) ||
+              repoFilterSet.has(r.targetRepo.toLowerCase()) ||
+              repoFilterSet.has(
+                `${r.sourceOrg}/${r.sourceRepo}`.toLowerCase(),
+              ) ||
+              repoFilterSet.has(`${r.targetOrg}/${r.targetRepo}`.toLowerCase()),
+          ),
+        };
+      }
     } catch (err) {
       throw new Error(
         `Failed to read scope file "${options.scopePath}": ${err instanceof Error ? err.message : String(err)}`,

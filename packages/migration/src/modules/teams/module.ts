@@ -116,13 +116,23 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
   readonly dependencies: readonly string[] = ['gei-repo', 'custom-roles'];
 
   private readonly identityMapper: IdentityMappingEngine;
+  private readonly hasExplicitIdentityConfig: boolean;
   private readonly teamManagement?: TeamManagementConfig | undefined;
 
   constructor(options: TeamsModuleOptions = {}) {
+    this.hasExplicitIdentityConfig =
+      options.identityMappingConfig !== undefined;
     this.identityMapper = new IdentityMappingEngine(
       options.identityMappingConfig,
     );
     this.teamManagement = options.teamManagement;
+  }
+
+  private getIdentityMapper(ctx: MigrationContext): IdentityMappingEngine {
+    if (!this.hasExplicitIdentityConfig && ctx.scope.identityMapping) {
+      return new IdentityMappingEngine(ctx.scope.identityMapping);
+    }
+    return this.identityMapper;
   }
 
   async discover(
@@ -555,8 +565,9 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
 
       // Plan team memberships for non-IdP teams
       if (team.members && team.members.length > 0) {
+        const activeMapper = this.getIdentityMapper(ctx);
         for (const member of team.members) {
-          const mapping = this.identityMapper.mapLogin(member.login);
+          const mapping = activeMapper.mapLogin(member.login);
           if (mapping.warning) {
             warnings.push(mapping.warning);
           }

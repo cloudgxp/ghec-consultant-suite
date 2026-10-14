@@ -48,6 +48,19 @@ on:
         required: false
         type: string
         default: ''
+      target_type:
+        description: 'Target tenant type ("ghec" for standard GHEC, "emu" for Enterprise Managed Users)'
+        required: false
+        type: choice
+        options:
+          - 'ghec'
+          - 'emu'
+        default: 'ghec'
+      emu_shortcode:
+        description: 'Admin-defined EMU shortcode/suffix (e.g. "acme" or "_acme") — only used when target_type is "emu"'
+        required: false
+        type: string
+        default: ''
 
 env:
   GHEC_ALLOW_SAME_CREDENTIAL: ${{ inputs.allow_same_credential != false && 'true' || 'false' }}
@@ -73,6 +86,9 @@ jobs:
 
       - name: Validate Migration Scope Contract
         shell: bash
+        env:
+          INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
         run: |
           if [ ! -f "${{ inputs.scope }}" ]; then
             echo "::error::Scope file '${{ inputs.scope }}' does not exist."
@@ -82,13 +98,31 @@ jobs:
           node --input-type=module -e '
             import { validateMigrationScope } from "./packages/contracts/dist/index.js";
             import fs from "fs";
-            const parsed = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const scopePath = process.argv[1];
+            const parsed = JSON.parse(fs.readFileSync(scopePath, "utf8"));
+            const targetType = process.env.INPUT_TARGET_TYPE;
+            const emuShortcode = (process.env.INPUT_EMU_SHORTCODE || "").trim();
+            if (targetType === "ghec" || targetType === "emu") {
+              parsed.targetType = targetType;
+              if (Array.isArray(parsed.organizations)) {
+                for (const org of parsed.organizations) {
+                  org.targetType = targetType;
+                }
+              }
+              if (targetType === "ghec") {
+                parsed.identityMapping = { strategy: "pass-through" };
+              } else if (targetType === "emu" && emuShortcode) {
+                const normalizedSuffix = emuShortcode.startsWith("_") ? emuShortcode : `_${emuShortcode}`;
+                parsed.identityMapping = { strategy: "emu-saml", suffix: normalizedSuffix };
+              }
+              fs.writeFileSync(scopePath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
+            }
             const res = validateMigrationScope(parsed);
             if (!res.success) {
               console.error("Scope validation failed:", JSON.stringify(res.error, null, 2));
               process.exit(1);
             }
-            console.log("Scope schema validation passed successfully.");
+            console.log(`Scope schema validation passed successfully (targetType=${parsed.targetType ?? "default"}).`);
           ' "${{ inputs.scope }}"
 
       - name: Prune Retired Oversized Repositories
@@ -432,7 +466,33 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
         run: |
+          node --input-type=module -e '
+            import fs from "fs";
+            const scopePath = process.env.INPUT_SCOPE;
+            if (scopePath && fs.existsSync(scopePath)) {
+              const parsed = JSON.parse(fs.readFileSync(scopePath, "utf8"));
+              const targetType = process.env.INPUT_TARGET_TYPE;
+              const emuShortcode = (process.env.INPUT_EMU_SHORTCODE || "").trim();
+              if (targetType === "ghec" || targetType === "emu") {
+                parsed.targetType = targetType;
+                if (Array.isArray(parsed.organizations)) {
+                  for (const org of parsed.organizations) {
+                    org.targetType = targetType;
+                  }
+                }
+                if (targetType === "ghec") {
+                  parsed.identityMapping = { strategy: "pass-through" };
+                } else if (targetType === "emu" && emuShortcode) {
+                  const normalizedSuffix = emuShortcode.startsWith("_") ? emuShortcode : `_${emuShortcode}`;
+                  parsed.identityMapping = { strategy: "emu-saml", suffix: normalizedSuffix };
+                }
+                fs.writeFileSync(scopePath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
+              }
+            }
+          '
           echo "Reconciling teams, packages, and actions-runners after all cohort repositories have unlocked..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --scope "$INPUT_SCOPE" \
@@ -533,6 +593,12 @@ jobs:
               echo "All verification discrepancies resolved to 0!"
               break
             fi
+
+            if [ -n "${PREV_REMAINING:-}" ] && [ "$REMAINING" -ge "$PREV_REMAINING" ]; then
+              echo "Discrepancy count plateaued ($REMAINING vs previous $PREV_REMAINING); stopping remediation loop early."
+              break
+            fi
+            PREV_REMAINING="$REMAINING"
 
             ROUND=$((ROUND + 1))
           done

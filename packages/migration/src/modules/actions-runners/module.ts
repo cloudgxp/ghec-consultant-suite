@@ -129,8 +129,9 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
       const existing = targetGroupMap.get(groupKey);
 
       // EMU constraint: Public repositories are not permitted in GHEC-EMU organizations
+      const isEmuTarget = ctx.scope.targetType !== 'ghec';
       let targetAllowsPublic = group.allows_public_repositories;
-      if (group.allows_public_repositories) {
+      if (isEmuTarget && group.allows_public_repositories) {
         warnings.push(
           `Runner group "${group.name}" allows public repositories. In GHEC-EMU environments, public repositories are prohibited; setting allows_public_repositories to false.`,
         );

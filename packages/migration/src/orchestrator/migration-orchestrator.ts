@@ -462,12 +462,24 @@ export class MigrationOrchestrator {
             }
           : undefined);
 
+      const matchingOrg = this.scope?.organizations.find(
+        (o) => o.target === targetOrg,
+      );
+      const effectiveTargetType =
+        matchingOrg?.targetType ??
+        this.scope?.targetType ??
+        (this.scope?.identityMapping?.strategy === 'pass-through'
+          ? 'ghec'
+          : 'emu');
+
       return {
         level: 'repository',
         sourceOrg,
         targetOrg: targetOrg!,
         sourceRepo,
         targetRepo: targetRepo!,
+        targetType: effectiveTargetType,
+        identityMapping: this.scope?.identityMapping,
         options: repoOptions,
       };
     }
@@ -475,10 +487,18 @@ export class MigrationOrchestrator {
     const orgMapping = this.scope?.organizations.find(
       (o) => o.target === targetId,
     );
+    const effectiveTargetType =
+      orgMapping?.targetType ??
+      this.scope?.targetType ??
+      (this.scope?.identityMapping?.strategy === 'pass-through'
+        ? 'ghec'
+        : 'emu');
     return {
       level: 'organization',
       sourceOrg: orgMapping?.source ?? targetId,
       targetOrg: targetId,
+      targetType: effectiveTargetType,
+      identityMapping: this.scope?.identityMapping,
     };
   }
 }
