@@ -318,6 +318,29 @@ Options: --input <bundle.json> --modules <list> --resume [checkpoint-id|latest]
       console.log(`Migration finished with status: ${report.status}`);
       console.log(`Execution report saved: ${filePath}`);
       console.log(`Modules executed: ${report.results.length}`);
+      for (const modRes of report.results) {
+        const failedOps = modRes.results.filter((op) => op.status === 'failed');
+        if (
+          migrateOptions.verbose ||
+          modRes.status === 'failed' ||
+          modRes.status === 'partial' ||
+          failedOps.length > 0
+        ) {
+          console.log(
+            `  [${modRes.status.toUpperCase()}] module=${modRes.moduleId} ops=${modRes.results.length} failed=${failedOps.length} duration=${modRes.durationMs}ms`,
+          );
+          for (const fOp of failedOps) {
+            console.error(
+              `    -> Operation ${fOp.operationId} failed: ${sanitizeDiagnostics(fOp.error ?? 'unknown error')}`,
+            );
+          }
+        }
+      }
+      if (report.recommendations && report.recommendations.length > 0) {
+        for (const rec of report.recommendations) {
+          console.warn(`  [RECOMMENDATION] ${sanitizeDiagnostics(rec)}`);
+        }
+      }
       return report.exitCode;
     } catch (err) {
       if (controller.signal.aborted) {
@@ -370,6 +393,22 @@ Options: --scope <file> --output <file> --verbose
       console.log(
         `Discrepancies found: ${result.report.summary.discrepancyCount}`,
       );
+      for (const mod of result.report.modules) {
+        if (
+          verifyOptions.verbose ||
+          !mod.verified ||
+          mod.discrepancies.length > 0
+        ) {
+          console.log(
+            `  [${mod.verified ? 'COMPLIANT' : 'DISCREPANCY'}] module=${mod.moduleId} discrepancies=${mod.discrepancies.length}`,
+          );
+          for (const d of mod.discrepancies) {
+            console.log(
+              `    -> ${d.resourceName}: ${sanitizeDiagnostics(d.message)} (expected=${JSON.stringify(d.expected)}, actual=${JSON.stringify(d.actual)})`,
+            );
+          }
+        }
+      }
       return result.exitCode;
     } catch (err) {
       if (controller.signal.aborted) {

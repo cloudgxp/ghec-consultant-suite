@@ -10,6 +10,7 @@ import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
   MigrationPlanner,
+  type StructuredLogger,
   type VerificationOrchestratorResult,
   VerificationOrchestrator,
   writeVerificationReportFile,
@@ -21,6 +22,7 @@ import {
 import {
   createMigrationClientsFromConfig,
   loadDualConfig,
+  sanitizeDiagnostics,
   type CliDualConfigOptions,
 } from '../config/index.js';
 
@@ -153,6 +155,37 @@ export async function executeVerifyCommand(
 
   const registry = createDefaultModuleRegistry();
 
+  const logger: StructuredLogger = {
+    debug: (msg, meta) => {
+      if (options.verbose) {
+        const suffix = meta
+          ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+          : '';
+        console.log(`[DEBUG] ${sanitizeDiagnostics(msg)}${suffix}`);
+      }
+    },
+    info: (msg, meta) => {
+      if (options.verbose) {
+        const suffix = meta
+          ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+          : '';
+        console.log(`[INFO] ${sanitizeDiagnostics(msg)}${suffix}`);
+      }
+    },
+    warn: (msg, meta) => {
+      const suffix = meta
+        ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+        : '';
+      console.warn(`[WARN] ${sanitizeDiagnostics(msg)}${suffix}`);
+    },
+    error: (msg, meta) => {
+      const suffix = meta
+        ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+        : '';
+      console.error(`[ERROR] ${sanitizeDiagnostics(msg)}${suffix}`);
+    },
+  };
+
   if (!plan) {
     if (!scope) {
       throw new Error(
@@ -164,6 +197,7 @@ export async function executeVerifyCommand(
       registry,
       sourceClient: sourceClient ?? targetClient,
       targetClient,
+      logger,
       signal,
     });
     plan = await planner.generatePlan();
@@ -175,6 +209,7 @@ export async function executeVerifyCommand(
     sourceClient,
     plan,
     scope,
+    logger,
     signal,
   });
 

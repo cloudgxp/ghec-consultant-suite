@@ -10,8 +10,10 @@ import {
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
+  MigrationCheckpointManager,
   MigrationOrchestrator,
   type MigrationExecutionReport,
+  type StructuredLogger,
   type TargetWriteClient,
   writeMigrationExecutionReportFile,
   buildSummaryFromExecutionReport,
@@ -25,6 +27,7 @@ import {
 import {
   createMigrationClientsFromConfig,
   loadDualConfig,
+  sanitizeDiagnostics,
   type CliDualConfigOptions,
 } from '../config/index.js';
 
@@ -226,6 +229,44 @@ export async function executeMigrateCommand(
 
   const registry = createDefaultModuleRegistry();
 
+  const logger: StructuredLogger = {
+    debug: (msg, meta) => {
+      if (options.verbose) {
+        const suffix = meta
+          ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+          : '';
+        console.log(`[DEBUG] ${sanitizeDiagnostics(msg)}${suffix}`);
+      }
+    },
+    info: (msg, meta) => {
+      if (options.verbose) {
+        const suffix = meta
+          ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+          : '';
+        console.log(`[INFO] ${sanitizeDiagnostics(msg)}${suffix}`);
+      }
+    },
+    warn: (msg, meta) => {
+      const suffix = meta
+        ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+        : '';
+      console.warn(`[WARN] ${sanitizeDiagnostics(msg)}${suffix}`);
+    },
+    error: (msg, meta) => {
+      const suffix = meta
+        ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+        : '';
+      console.error(`[ERROR] ${sanitizeDiagnostics(msg)}${suffix}`);
+    },
+  };
+
+  const checkpointManager =
+    options.checkpointDir && scope
+      ? new MigrationCheckpointManager(`migrate-${Date.now()}`, scope, {
+          rootDirectory: options.checkpointDir,
+        })
+      : undefined;
+
   const orchestrator = new MigrationOrchestrator({
     registry,
     sourceClient,
@@ -235,10 +276,12 @@ export async function executeMigrateCommand(
     targetToken,
     plan,
     scope,
+    checkpointManager,
     cachedDiscoveryBundle: cachedBundle,
     modules: options.modules,
     dryRun: options.dryRun,
     continueOnError: options.continueOnError,
+    logger,
     signal,
   });
 

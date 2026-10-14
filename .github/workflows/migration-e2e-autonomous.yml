@@ -286,8 +286,14 @@ jobs:
             --scope "$COHORT_SCOPE" \
             "${DRY_RUN_ARG[@]}" \
             --continue-on-error \
+            --verbose \
             --checkpoint-dir ./migrations/ \
             --output "$REPORT_OUTPUT" || true
+
+          if [ -f "$REPORT_OUTPUT" ]; then
+            echo "Cohort $MATRIX_COHORT_ID execution summary:"
+            jq '{status, exitCode, totalModules: (.results | length), complete: ([.results[] | select(.status == "complete")] | length), partial: ([.results[] | select(.status == "partial")] | length), skipped: ([.results[] | select(.status == "skipped")] | length), failed: ([.results[] | select(.status == "failed")] | length), failedModules: [.results[] | select(.status == "failed" or .status == "partial") | {moduleId, status, failedOps: [.results[] | select(.status == "failed")]}]}' "$REPORT_OUTPUT" || true
+          fi
 
       - name: Post-GEI Visibility Restoration Reconciliation
         if: always() && inputs.dry_run == false
@@ -399,7 +405,8 @@ jobs:
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
               --output "./remediations/remediation-plan-round-${ROUND}.json" \
-              --output-markdown "./remediations/remediation-plan-round-${ROUND}.md"
+              --output-markdown "./remediations/remediation-plan-round-${ROUND}.md" \
+              --verbose
 
             PLAN_FILE="./remediations/remediation-plan-round-${ROUND}.json"
             ACTION_COUNT=$(jq '.actionableCount // 0' "$PLAN_FILE")
@@ -423,7 +430,8 @@ jobs:
             echo "Re-running target verification after round $ROUND..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --scope "$INPUT_SCOPE" \
-              --output ./scans/verification-report.json || true
+              --output ./scans/verification-report.json \
+              --verbose || true
 
             REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
             echo "Verification post-round $ROUND reported $REMAINING discrepancies."
