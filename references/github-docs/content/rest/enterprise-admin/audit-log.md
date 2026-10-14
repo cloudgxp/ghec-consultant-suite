@@ -14,3 +14,181 @@ category:
 {% data reusables.user-settings.enterprise-admin-api-classic-pat-only %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get the audit log for an enterprise
+
+`GET /enterprises/{enterprise}/audit-log`
+
+Gets the audit log for an enterprise.
+
+This endpoint has a rate limit of 1,750 queries per hour per user and IP address. If your integration receives a rate limit error (typically a 403 or 429 response), it should wait before making another request to the GitHub API. For more information, see "[Rate limits for the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/rate-limits-for-the-rest-api)" and "[Best practices for integrators](https://docs.github.com/enterprise-cloud@latest/rest/guides/best-practices-for-integrators)."
+
+The authenticated user must be an enterprise admin to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:audit_log` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `phrase` | query | `string` | No | A search phrase. For more information, see [Searching the audit log](https://docs.github.com/enterprise-cloud@latest/admin/monitoring-activity-in-your-enterprise/reviewing-audit-logs-for-your-enterprise/searching-the-audit-log-for-your-enterprise#searching-the-audit-log). |
+| `include` | query | `string` | No | The event types to include: `web` - returns web (non-Git) events. `git` - returns Git events. `all` - returns both web and Git events. The default is `web`. |
+| `after` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for events after this cursor. |
+| `before` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for events before this cursor. |
+| `order` | query | `string` | No | The order of audit log events. To list newest events first, specify `desc`. To list oldest events first, specify `asc`. The default is `desc`. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get the audit log stream key for encrypting secrets
+
+`GET /enterprises/{enterprise}/audit-log/stream-key`
+
+Retrieves the audit log streaming public key for encrypting secrets.
+
+When using this endpoint, you must encrypt the credentials following the same encryption steps as outlined in the guide on encrypting secrets. See "[Encrypting secrets for the REST API](/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | The stream key for the audit log streaming configuration was retrieved successfully. |
+
+## List audit log stream configurations for an enterprise
+
+`GET /enterprises/{enterprise}/audit-log/streams`
+
+Lists the configured audit log streaming configurations for an enterprise.
+This only lists configured streams for supported providers.
+
+When using this endpoint, you must encrypt the credentials following the same encryption steps as outlined in the guide on encrypting secrets. See "[Encrypting secrets for the REST API](/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create an audit log streaming configuration for an enterprise
+
+`POST /enterprises/{enterprise}/audit-log/streams`
+
+Creates an audit log streaming configuration for any of the supported streaming endpoints: Azure Blob Storage, Azure Event Hubs, Amazon S3, Splunk, Google Cloud Storage, Datadog.
+
+Microsoft Agent 365 and Microsoft Purview streams require Microsoft Entra authorization and cannot be created with this endpoint. Configure those destinations from the enterprise audit log streaming settings.
+
+When using this endpoint, you must encrypt the credentials following the same encryption steps as outlined in the guide on encrypting secrets. See "[Encrypting secrets for the REST API](/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `boolean` | Yes | This setting pauses or resumes a stream. |
+| `stream_type` | `string` | Yes | The audit log streaming provider. The name is case sensitive. |
+| `vendor_specific` | `object` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | The audit log stream configuration was created successfully. |
+
+## List one audit log streaming configuration via a stream ID
+
+`GET /enterprises/{enterprise}/audit-log/streams/{stream_id}`
+
+Lists one audit log stream configuration via a stream ID.
+
+When using this endpoint, you must encrypt the credentials following the same encryption steps as outlined in the guide on encrypting secrets. See "[Encrypting secrets for the REST API](/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `stream_id` | path | `integer` | Yes | The ID of the audit log stream configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Lists one audit log stream configuration via stream ID. |
+
+## Update an existing audit log stream configuration
+
+`PUT /enterprises/{enterprise}/audit-log/streams/{stream_id}`
+
+Updates an existing audit log stream configuration for an enterprise.
+
+Microsoft Agent 365 streams are configured through Microsoft Entra authorization. For those streams, this endpoint can only pause or resume the stream. Authorization-managed fields cannot be updated; delete and recreate the stream to change its Entra tenant or authorization.
+
+When using this endpoint, you must encrypt the credentials following the same encryption steps as outlined in the guide on encrypting secrets. See "[Encrypting secrets for the REST API](/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `stream_id` | path | `integer` | Yes | The ID of the audit log stream configuration. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `boolean` | Yes | This setting pauses or resumes a stream. |
+| `stream_type` | `string` | Yes | The audit log streaming provider. The name is case sensitive. |
+| `vendor_specific` | `object` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Successful update |
+| `422` | Validation error |
+
+## Delete an audit log streaming configuration for an enterprise
+
+`DELETE /enterprises/{enterprise}/audit-log/streams/{stream_id}`
+
+Deletes an existing audit log stream configuration for an enterprise.
+
+When using this endpoint, you must encrypt the credentials following the same encryption steps as outlined in the guide on encrypting secrets. See "[Encrypting secrets for the REST API](/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `stream_id` | path | `integer` | Yes | The ID of the audit log stream configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | The audit log stream configuration was deleted successfully. |

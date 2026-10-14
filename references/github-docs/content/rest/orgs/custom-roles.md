@@ -16,3 +16,347 @@ category:
 
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Closing down - List custom repository roles in an organization
+
+`GET /organizations/{organization_id}/custom_roles`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed in the future. Use the "[List custom repository roles](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#list-custom-repository-roles-in-an-organization)" endpoint instead.
+
+List the custom repository roles available in this organization. For more information on custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be administrator of the organization or of a repository of the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `organization_id` | path | `string` | Yes | The unique identifier of the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - list of custom role names |
+
+## List custom repository roles in an organization
+
+`GET /orgs/{org}/custom-repository-roles`
+
+List the custom repository roles available in this organization. For more information on custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator of the organization or of a repository of the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - list of custom role names |
+
+## Create a custom repository role
+
+`POST /orgs/{org}/custom-repository-roles`
+
+Creates a custom repository role that can be used by all repositories owned by the organization. For more information on custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the custom role. |
+| `description` | `string or null` | No | A short description about who this role is for or what permissions it grants. |
+| `base_role` | `string` | Yes | The system role from which this role inherits permissions. |
+| `permissions` | `array of strings` | Yes | A list of additional permissions included in this role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a custom repository role
+
+`GET /orgs/{org}/custom-repository-roles/{role_id}`
+
+Gets a custom repository role that is available to all repositories owned by the organization. For more information on custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator of the organization or of a repository of the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update a custom repository role
+
+`PATCH /orgs/{org}/custom-repository-roles/{role_id}`
+
+Updates a custom repository role that can be used by all repositories owned by the organization. For more information about custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the custom role. |
+| `description` | `string or null` | No | A short description about who this role is for or what permissions it grants. |
+| `base_role` | `string` | No | The system role from which this role inherits permissions. |
+| `permissions` | `array of strings` | No | A list of additional permissions included in this role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a custom repository role
+
+`DELETE /orgs/{org}/custom-repository-roles/{role_id}`
+
+Deletes a custom role from an organization. Once the custom role has been deleted, any
+user, team, or invitation with the deleted custom role will be reassigned the inherited role. For more information about custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Closing down - Create a custom role
+
+`POST /orgs/{org}/custom_roles`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed after September 6, 2023. Use the "[Create a custom repository role](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#create-a-custom-repository-role)" endpoint instead.
+
+Creates a custom repository role that can be used by all repositories owned by the organization. For more information on custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the custom role. |
+| `description` | `string or null` | No | A short description about who this role is for or what permissions it grants. |
+| `base_role` | `string` | Yes | The system role from which this role inherits permissions. |
+| `permissions` | `array of strings` | Yes | A list of additional permissions included in this role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Closing down - Get a custom role
+
+`GET /orgs/{org}/custom_roles/{role_id}`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed after September 6, 2023. Use the "[Get a custom repository role](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#get-a-custom-repository-role)" endpoint instead.
+
+Gets a custom repository role that is available to all repositories owned by the organization. For more information on custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator of the organization or of a repository of the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Closing down - Update a custom role
+
+`PATCH /orgs/{org}/custom_roles/{role_id}`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed after September 6, 2023. Use the "[Update a custom repository role](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#update-a-custom-repository-role)" endpoint instead.
+
+Updates a custom repository role that can be used by all repositories owned by the organization. For more information about custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the custom role. |
+| `description` | `string or null` | No | A short description about who this role is for or what permissions it grants. |
+| `base_role` | `string` | No | The system role from which this role inherits permissions. |
+| `permissions` | `array of strings` | No | A list of additional permissions included in this role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Closing down - Delete a custom role
+
+`DELETE /orgs/{org}/custom_roles/{role_id}`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed after September 6, 2023. Use the "[Delete a custom repository role](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#delete-a-custom-repository-role)" endpoint instead.
+
+Deletes a custom role from an organization. Once the custom role has been deleted, any
+user, team, or invitation with the deleted custom role will be reassigned the inherited role. For more information about custom repository roles, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Closing down - List fine-grained permissions for an organization
+
+`GET /orgs/{org}/fine_grained_permissions`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed after September 6, 2023. Use the "[List fine-grained repository permissions](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#list-repository-fine-grained-permissions-for-an-organization)" endpoint instead.
+
+Lists the fine-grained permissions that can be used in custom repository roles for an organization. For more information, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+To use this endpoint the authenticated user must be an administrator of the organization or of a repository of the organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List repository fine-grained permissions for an organization
+
+`GET /orgs/{org}/repository-fine-grained-permissions`
+
+Lists the fine-grained permissions that can be used in custom repository roles for an organization. For more information, see "[About custom repository roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-repository-roles)."
+
+The authenticated user must be an administrator of the organization or of a repository of the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

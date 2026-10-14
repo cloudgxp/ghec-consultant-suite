@@ -13,3 +13,1709 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/graphql/data/ghec -->
+
+## Queries
+
+### `organization`: `Organization`
+
+Lookup a organization by login.
+
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `login` | `String!` | The organization's login. |
+
+## Mutations
+
+### `addVerifiableDomain`
+
+Adds a verifiable domain to an owning account.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `AddVerifiableDomainInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `domain` | `VerifiableDomain` | The verifiable domain that was added. |
+
+### `approveVerifiableDomain`
+
+Approve a verifiable domain for notification delivery.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `ApproveVerifiableDomainInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `domain` | `VerifiableDomain` | The verifiable domain that was approved. |
+
+### `deleteVerifiableDomain`
+
+Deletes a verifiable domain.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `DeleteVerifiableDomainInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `owner` | `VerifiableDomainOwner` | The owning account from which the domain was deleted. |
+
+### `followOrganization`
+
+Follow an organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `FollowOrganizationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organization` | `Organization` | The organization that was followed. |
+
+### `regenerateVerifiableDomainToken`
+
+Regenerates a verifiable domain's verification token.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RegenerateVerifiableDomainTokenInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `verificationToken` | `String` | The verification token that was generated. |
+
+### `removeOutsideCollaborator`
+
+Removes outside collaborator from all repositories in an organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RemoveOutsideCollaboratorInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `removedUser` | `User` | The user that was removed as an outside collaborator. |
+
+### `setOrganizationInteractionLimit`
+
+Set an organization level interaction limit for an organization's public repositories.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `SetOrganizationInteractionLimitInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organization` | `Organization` | The organization that the interaction limit was set for. |
+
+### `unfollowOrganization`
+
+Unfollow an organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UnfollowOrganizationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organization` | `Organization` | The organization that was unfollowed. |
+
+### `updateOrganizationAllowPrivateRepositoryForkingSetting`
+
+Sets whether private repository forks are enabled for an organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateOrganizationAllowPrivateRepositoryForkingSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `message` | `String` | A message confirming the result of updating the allow private repository forking setting. |
+| `organization` | `Organization` | The organization with the updated allow private repository forking setting. |
+
+### `updateOrganizationWebCommitSignoffSetting`
+
+Sets whether contributors are required to sign off on web-based commits for repositories in an organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateOrganizationWebCommitSignoffSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `message` | `String` | A message confirming the result of updating the web commit signoff setting. |
+| `organization` | `Organization` | The organization with the updated web commit signoff setting. |
+
+### `verifyVerifiableDomain`
+
+Verify that a verifiable domain has the expected DNS record.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `VerifyVerifiableDomainInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `domain` | `VerifiableDomain` | The verifiable domain that was verified. |
+
+## Input Objects
+
+### `AddVerifiableDomainInput`
+
+Autogenerated input type of AddVerifiableDomain.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `domain` | `URI!` | The URL of the domain. |
+| `ownerId` | `ID!` | The ID of the owner to add the domain to. |
+
+### `ApproveVerifiableDomainInput`
+
+Autogenerated input type of ApproveVerifiableDomain.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `id` | `ID!` | The ID of the verifiable domain to approve. |
+
+### `DeleteVerifiableDomainInput`
+
+Autogenerated input type of DeleteVerifiableDomain.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `id` | `ID!` | The ID of the verifiable domain to delete. |
+
+### `FollowOrganizationInput`
+
+Autogenerated input type of FollowOrganization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organizationId` | `ID!` | ID of the organization to follow. |
+
+### `OrgEnterpriseOwnerOrder`
+
+Ordering options for an organization's enterprise owner connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `OrgEnterpriseOwnerOrderField!` | The field to order enterprise owners by. |
+
+### `OrganizationOrder`
+
+Ordering options for organization connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `OrganizationOrderField!` | The field to order organizations by. |
+
+### `OrganizationPropertyConditionTargetInput`
+
+Parameters to be used for the organization_property condition.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `exclude` | `[OrganizationPropertyTargetDefinitionInput!]!` | Array of organization properties that must not match. |
+| `include` | `[OrganizationPropertyTargetDefinitionInput!]!` | Array of organization properties that must match. |
+
+### `OrganizationPropertyTargetDefinitionInput`
+
+A property that must match.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `name` | `String!` | The name of the property. |
+| `propertyValues` | `[String!]!` | The values to match for. |
+
+### `RegenerateVerifiableDomainTokenInput`
+
+Autogenerated input type of RegenerateVerifiableDomainToken.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `id` | `ID!` | The ID of the verifiable domain to regenerate the verification token of. |
+
+### `RemoveOutsideCollaboratorInput`
+
+Autogenerated input type of RemoveOutsideCollaborator.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organizationId` | `ID!` | The ID of the organization to remove the outside collaborator from. |
+| `userId` | `ID!` | The ID of the outside collaborator to remove. |
+
+### `SetOrganizationInteractionLimitInput`
+
+Autogenerated input type of SetOrganizationInteractionLimit.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `expiry` | `RepositoryInteractionLimitExpiry` | When this limit should expire. |
+| `limit` | `RepositoryInteractionLimit!` | The limit to set. |
+| `organizationId` | `ID!` | The ID of the organization to set a limit for. |
+
+### `UnfollowOrganizationInput`
+
+Autogenerated input type of UnfollowOrganization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organizationId` | `ID!` | ID of the organization to unfollow. |
+
+### `UpdateOrganizationAllowPrivateRepositoryForkingSettingInput`
+
+Autogenerated input type of UpdateOrganizationAllowPrivateRepositoryForkingSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `forkingEnabled` | `Boolean!` | Enable forking of private repositories in the organization?. |
+| `organizationId` | `ID!` | The ID of the organization on which to set the allow private repository forking setting. |
+
+### `UpdateOrganizationWebCommitSignoffSettingInput`
+
+Autogenerated input type of UpdateOrganizationWebCommitSignoffSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organizationId` | `ID!` | The ID of the organization on which to set the web commit signoff setting. |
+| `webCommitSignoffRequired` | `Boolean!` | Enable signoff on web-based commits for repositories in the organization?. |
+
+### `VerifiableDomainOrder`
+
+Ordering options for verifiable domain connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `VerifiableDomainOrderField!` | The field to order verifiable domains by. |
+
+### `VerifyVerifiableDomainInput`
+
+Autogenerated input type of VerifyVerifiableDomain.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `id` | `ID!` | The ID of the verifiable domain to verify. |
+
+## Objects
+
+### `EnterpriseFailedInvitationConnection`
+
+The connection type for OrganizationInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseFailedInvitationEdge]` | A list of edges. |
+| `nodes` | `[OrganizationInvitation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+| `totalUniqueUserCount` | `Int!` | Identifies the total count of unique users in the connection. |
+
+### `EnterpriseFailedInvitationEdge`
+
+A failed invitation to be a member in an enterprise organization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `OrganizationInvitation` | The item at the end of the edge. |
+
+### `EnterpriseOrganizationMembershipConnection`
+
+The connection type for Organization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseOrganizationMembershipEdge]` | A list of edges. |
+| `nodes` | `[Organization]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseOrganizationMembershipEdge`
+
+An enterprise organization that a user is a member of.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `Organization` | The item at the end of the edge. |
+| `role` | `EnterpriseUserAccountMembershipRole!` | The role of the user in the enterprise membership. |
+
+### `EnterprisePendingMemberInvitationConnection`
+
+The connection type for OrganizationInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterprisePendingMemberInvitationEdge]` | A list of edges. |
+| `nodes` | `[OrganizationInvitation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+| `totalUniqueUserCount` | `Int!` | Identifies the total count of unique users in the connection. |
+
+### `EnterprisePendingMemberInvitationEdge`
+
+An invitation to be a member in an enterprise organization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `OrganizationInvitation` | The item at the end of the edge. |
+
+### `EnterpriseTeamAssignedOrganizationConnection`
+
+The connection type for Organization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseTeamAssignedOrganizationEdge]` | A list of edges. |
+| `nodes` | `[Organization]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseTeamAssignedOrganizationEdge`
+
+Represents an organization that an enterprise team is assigned to.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `Organization` |  |
+
+### `MemberFeatureRequestNotification`
+
+Represents a member feature request notification.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `body` | `String!` | Represents member feature request body containing entity name and the number of feature requests. |
+| `id` | `ID!` | The Node ID of the MemberFeatureRequestNotification object. |
+| `title` | `String!` | Represents member feature request notification title. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+
+### `OrgAddBillingManagerAuditEntry`
+
+Audit log entry for a org.add_billing_manager.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgAddBillingManagerAuditEntry object. |
+| `invitationEmail` | `String` | The email address used to invite a billing manager for the organization. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgAddMemberAuditEntry`
+
+Audit log entry for a org.add_member.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgAddMemberAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `permission` | `OrgAddMemberAuditEntryPermission` | The permission level of the member added to the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgBlockUserAuditEntry`
+
+Audit log entry for a org.block_user.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `blockedUser` | `User` | The blocked user. |
+| `blockedUserName` | `String` | The username of the blocked user. |
+| `blockedUserResourcePath` | `URI` | The HTTP path for the blocked user. |
+| `blockedUserUrl` | `URI` | The HTTP URL for the blocked user. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgBlockUserAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgConfigDisableCollaboratorsOnlyAuditEntry`
+
+Audit log entry for a org.config.disable_collaborators_only event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgConfigDisableCollaboratorsOnlyAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgConfigEnableCollaboratorsOnlyAuditEntry`
+
+Audit log entry for a org.config.enable_collaborators_only event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgConfigEnableCollaboratorsOnlyAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgCreateAuditEntry`
+
+Audit log entry for a org.create event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `billingPlan` | `OrgCreateAuditEntryBillingPlan` | The billing plan for the Organization. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgCreateAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgDisableOauthAppRestrictionsAuditEntry`
+
+Audit log entry for a org.disable_oauth_app_restrictions event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgDisableOauthAppRestrictionsAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgDisableSamlAuditEntry`
+
+Audit log entry for a org.disable_saml event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `digestMethodUrl` | `URI` | The SAML provider's digest algorithm URL. |
+| `id` | `ID!` | The Node ID of the OrgDisableSamlAuditEntry object. |
+| `issuerUrl` | `URI` | The SAML provider's issuer URL. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `signatureMethodUrl` | `URI` | The SAML provider's signature algorithm URL. |
+| `singleSignOnUrl` | `URI` | The SAML provider's single sign-on URL. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgDisableTwoFactorRequirementAuditEntry`
+
+Audit log entry for a org.disable_two_factor_requirement event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgDisableTwoFactorRequirementAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgEnableOauthAppRestrictionsAuditEntry`
+
+Audit log entry for a org.enable_oauth_app_restrictions event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgEnableOauthAppRestrictionsAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgEnableSamlAuditEntry`
+
+Audit log entry for a org.enable_saml event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `digestMethodUrl` | `URI` | The SAML provider's digest algorithm URL. |
+| `id` | `ID!` | The Node ID of the OrgEnableSamlAuditEntry object. |
+| `issuerUrl` | `URI` | The SAML provider's issuer URL. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `signatureMethodUrl` | `URI` | The SAML provider's signature algorithm URL. |
+| `singleSignOnUrl` | `URI` | The SAML provider's single sign-on URL. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgEnableTwoFactorRequirementAuditEntry`
+
+Audit log entry for a org.enable_two_factor_requirement event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgEnableTwoFactorRequirementAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgInviteMemberAuditEntry`
+
+Audit log entry for a org.invite_member event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `email` | `String` | The email address of the organization invitation. |
+| `id` | `ID!` | The Node ID of the OrgInviteMemberAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationInvitation` | `OrganizationInvitation` | The organization invitation. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgInviteToBusinessAuditEntry`
+
+Audit log entry for a org.invite_to_business event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the OrgInviteToBusinessAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgOauthAppAccessApprovedAuditEntry`
+
+Audit log entry for a org.oauth_app_access_approved event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgOauthAppAccessApprovedAuditEntry object. |
+| `oauthApplicationName` | `String` | The name of the OAuth application. |
+| `oauthApplicationResourcePath` | `URI` | The HTTP path for the OAuth application. |
+| `oauthApplicationUrl` | `URI` | The HTTP URL for the OAuth application. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgOauthAppAccessBlockedAuditEntry`
+
+Audit log entry for a org.oauth_app_access_blocked event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgOauthAppAccessBlockedAuditEntry object. |
+| `oauthApplicationName` | `String` | The name of the OAuth application. |
+| `oauthApplicationResourcePath` | `URI` | The HTTP path for the OAuth application. |
+| `oauthApplicationUrl` | `URI` | The HTTP URL for the OAuth application. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgOauthAppAccessDeniedAuditEntry`
+
+Audit log entry for a org.oauth_app_access_denied event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgOauthAppAccessDeniedAuditEntry object. |
+| `oauthApplicationName` | `String` | The name of the OAuth application. |
+| `oauthApplicationResourcePath` | `URI` | The HTTP path for the OAuth application. |
+| `oauthApplicationUrl` | `URI` | The HTTP URL for the OAuth application. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgOauthAppAccessRequestedAuditEntry`
+
+Audit log entry for a org.oauth_app_access_requested event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgOauthAppAccessRequestedAuditEntry object. |
+| `oauthApplicationName` | `String` | The name of the OAuth application. |
+| `oauthApplicationResourcePath` | `URI` | The HTTP path for the OAuth application. |
+| `oauthApplicationUrl` | `URI` | The HTTP URL for the OAuth application. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgOauthAppAccessUnblockedAuditEntry`
+
+Audit log entry for a org.oauth_app_access_unblocked event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgOauthAppAccessUnblockedAuditEntry object. |
+| `oauthApplicationName` | `String` | The name of the OAuth application. |
+| `oauthApplicationResourcePath` | `URI` | The HTTP path for the OAuth application. |
+| `oauthApplicationUrl` | `URI` | The HTTP URL for the OAuth application. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgRemoveBillingManagerAuditEntry`
+
+Audit log entry for a org.remove_billing_manager event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgRemoveBillingManagerAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `reason` | `OrgRemoveBillingManagerAuditEntryReason` | The reason for the billing manager being removed. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgRemoveMemberAuditEntry`
+
+Audit log entry for a org.remove_member event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgRemoveMemberAuditEntry object. |
+| `membershipTypes` | `[OrgRemoveMemberAuditEntryMembershipType!]` | The types of membership the member has with the organization. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `reason` | `OrgRemoveMemberAuditEntryReason` | The reason for the member being removed. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgRemoveOutsideCollaboratorAuditEntry`
+
+Audit log entry for a org.remove_outside_collaborator event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgRemoveOutsideCollaboratorAuditEntry object. |
+| `membershipTypes` | `[OrgRemoveOutsideCollaboratorAuditEntryMembershipType!]` | The types of membership the outside collaborator has with the organization. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `reason` | `OrgRemoveOutsideCollaboratorAuditEntryReason` | The reason for the outside collaborator being removed from the Organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgRestoreMemberAuditEntry`
+
+Audit log entry for a org.restore_member event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgRestoreMemberAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `restoredCustomEmailRoutingsCount` | `Int` | The number of custom email routings for the restored member. |
+| `restoredIssueAssignmentsCount` | `Int` | The number of issue assignments for the restored member. |
+| `restoredMemberships` | `[OrgRestoreMemberAuditEntryMembership!]` | Restored organization membership objects. |
+| `restoredMembershipsCount` | `Int` | The number of restored memberships. |
+| `restoredRepositoriesCount` | `Int` | The number of repositories of the restored member. |
+| `restoredRepositoryStarsCount` | `Int` | The number of starred repositories for the restored member. |
+| `restoredRepositoryWatchesCount` | `Int` | The number of watched repositories for the restored member. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgRestoreMemberMembershipOrganizationAuditEntryData`
+
+Metadata for an organization membership for org.restore_member actions.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+
+### `OrgRestoreMemberMembershipRepositoryAuditEntryData`
+
+Metadata for a repository membership for org.restore_member actions.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+
+### `OrgRestoreMemberMembershipTeamAuditEntryData`
+
+Metadata for a team membership for org.restore_member actions.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `team` | `Team` | The team associated with the action. |
+| `teamName` | `String` | The name of the team. |
+| `teamResourcePath` | `URI` | The HTTP path for this team. |
+| `teamUrl` | `URI` | The HTTP URL for this team. |
+
+### `OrgUnblockUserAuditEntry`
+
+Audit log entry for a org.unblock_user.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `blockedUser` | `User` | The user being unblocked by the organization. |
+| `blockedUserName` | `String` | The username of the blocked user. |
+| `blockedUserResourcePath` | `URI` | The HTTP path for the blocked user. |
+| `blockedUserUrl` | `URI` | The HTTP URL for the blocked user. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgUnblockUserAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgUpdateDefaultRepositoryPermissionAuditEntry`
+
+Audit log entry for a org.update_default_repository_permission.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgUpdateDefaultRepositoryPermissionAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `permission` | `OrgUpdateDefaultRepositoryPermissionAuditEntryPermission` | The new base repository permission level for the organization. |
+| `permissionWas` | `OrgUpdateDefaultRepositoryPermissionAuditEntryPermission` | The former base repository permission level for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgUpdateMemberAuditEntry`
+
+Audit log entry for a org.update_member event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgUpdateMemberAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `permission` | `OrgUpdateMemberAuditEntryPermission` | The new member permission level for the organization. |
+| `permissionWas` | `OrgUpdateMemberAuditEntryPermission` | The former member permission level for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OrgUpdateMemberRepositoryCreationPermissionAuditEntry`
+
+Audit log entry for a org.update_member_repository_creation_permission event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `canCreateRepositories` | `Boolean` | Can members create repositories in the organization. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgUpdateMemberRepositoryCreationPermissionAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+| `visibility` | `OrgUpdateMemberRepositoryCreationPermissionAuditEntryVisibility` | The permission for visibility level of repositories for this organization. |
+
+### `OrgUpdateMemberRepositoryInvitationPermissionAuditEntry`
+
+Audit log entry for a org.update_member_repository_invitation_permission event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `canInviteOutsideCollaboratorsToRepositories` | `Boolean` | Can outside collaborators be invited to repositories in the organization. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OrgUpdateMemberRepositoryInvitationPermissionAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `Organization`
+
+An account on GitHub, with one or more owners, that has repositories, members and teams.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `announcementBanner` | `AnnouncementBanner` | The announcement banner set on this organization, if any. Only visible to members of the organization's enterprise. |
+| `anyPinnableItems` | `Boolean!` | Determine if this repository owner has any items that can be pinned to their profile. |
+| `archivedAt` | `DateTime` | Identifies the date and time when the organization was archived. |
+| `auditLog` | `OrganizationAuditEntryConnection!` | Audit log entries of the organization. |
+| `avatarUrl` | `URI!` | A URL pointing to the organization's public avatar. |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `databaseId` | `Int` | Identifies the primary key from the database. |
+| `description` | `String` | The organization's public profile description. |
+| `descriptionHTML` | `String` | The organization's public profile description rendered to HTML. |
+| `domains` | `VerifiableDomainConnection` | A list of domains owned by the organization. |
+| `email` | `String` | The organization's public email. |
+| `enterpriseOwners` | `OrganizationEnterpriseOwnerConnection!` | A list of owners of the organization's enterprise account. |
+| `estimatedNextSponsorsPayoutInCents` | `Int!` | The estimated next GitHub Sponsors payout for this user/organization in cents (USD). |
+| `hasSponsorsListing` | `Boolean!` | True if this user/organization has a GitHub Sponsors listing. |
+| `id` | `ID!` | The Node ID of the Organization object. |
+| `innersourceVulnerabilities` | `SecurityVulnerabilityConnection!` | Innersource security vulnerabilities scoped to this organization. |
+| `interactionAbility` | `RepositoryInteractionAbility` | The interaction ability settings for this organization. |
+| `ipAllowListEnabledSetting` | `IpAllowListEnabledSettingValue!` | The setting value for whether the organization has an IP allow list enabled. |
+| `ipAllowListEntries` | `IpAllowListEntryConnection!` | The IP addresses that are allowed to access resources owned by the organization. |
+| `ipAllowListForInstalledAppsEnabledSetting` | `IpAllowListForInstalledAppsEnabledSettingValue!` | The setting value for whether the organization has IP allow list configuration for installed GitHub Apps enabled. |
+| `isSponsoredBy` | `Boolean!` | Whether the given account is sponsoring this user/organization. |
+| `isSponsoringViewer` | `Boolean!` | True if the viewer is sponsored by this user/organization. |
+| `isVerified` | `Boolean!` | Whether the organization has verified its profile email and website. |
+| `issueFields` | `IssueFieldsConnection` | A list of the organization's issue fields. |
+| `issueTypes` | `IssueTypeConnection` | A list of the organization's issue types. |
+| `itemShowcase` | `ProfileItemShowcase!` | Showcases a selection of repositories and gists that the profile owner has either curated or that have been selected automatically based on popularity. |
+| `lifetimeReceivedSponsorshipValues` | `SponsorAndLifetimeValueConnection!` | Calculate how much each sponsor has ever paid total to this maintainer via GitHub Sponsors. Does not include sponsorships paid via Patreon. |
+| `location` | `String` | The organization's public profile location. |
+| `login` | `String!` | The organization's login name. |
+| `mannequins` | `MannequinConnection!` | A list of all mannequins for this organization. |
+| `memberStatuses` | `UserStatusConnection!` | Get the status messages members of this entity have set that are either public or visible only to the organization. |
+| `membersCanForkPrivateRepositories` | `Boolean!` | Members can fork private repositories in this organization. |
+| `membersWithRole` | `OrganizationMemberConnection!` | A list of users who are members of this organization. |
+| `monthlyEstimatedSponsorsIncomeInCents` | `Int!` | The estimated monthly GitHub Sponsors income for this user/organization in cents (USD). |
+| `name` | `String` | The organization's public profile name. |
+| `newTeamResourcePath` | `URI!` | The HTTP path creating a new team. |
+| `newTeamUrl` | `URI!` | The HTTP URL creating a new team. |
+| `notificationDeliveryRestrictionEnabledSetting` | `NotificationRestrictionSettingValue!` | Indicates if email notification delivery for this organization is restricted to verified or approved domains. |
+| `organizationBillingEmail` | `String` | The billing email for the organization. |
+| `packages` | `PackageConnection!` | A list of packages under the owner. |
+| `pendingMembers` | `UserConnection!` | A list of users who have been invited to join this organization. |
+| `pinnableItems` | `PinnableItemConnection!` | A list of repositories and gists this profile owner can pin to their profile. |
+| `pinnedIssueFields` | `IssueFieldsConnection` | An ordered list of issue fields pinned to issues when no type is selected. |
+| `pinnedItems` | `PinnableItemConnection!` | A list of repositories and gists this profile owner has pinned to their profile. |
+| `pinnedItemsRemaining` | `Int!` | Returns how many more items this profile owner can pin to their profile. |
+| `project` | `Project` | Find project by number. |
+| `projectV2` | `ProjectV2` | Find a project by number. |
+| `projects` | `ProjectConnection!` | A list of projects under the owner. |
+| `projectsResourcePath` | `URI!` | The HTTP path listing organization's projects. |
+| `projectsUrl` | `URI!` | The HTTP URL listing organization's projects. |
+| `projectsV2` | `ProjectV2Connection!` | A list of projects under the owner. |
+| `recentProjects` | `ProjectV2Connection!` | Recent projects that this user has modified in the context of the owner. |
+| `repositories` | `RepositoryConnection!` | A list of repositories that the user owns. |
+| `repository` | `Repository` | Find Repository. |
+| `repositoryCustomProperties` | `RepositoryCustomPropertyConnection` | A list of custom properties for this organization. |
+| `repositoryCustomProperty` | `RepositoryCustomProperty` | Returns a single custom property from the current organization by name. |
+| `repositoryDiscussionComments` | `DiscussionCommentConnection!` | Discussion comments this user has authored. |
+| `repositoryDiscussions` | `DiscussionConnection!` | Discussions this user has started. |
+| `repositoryMigrations` | `RepositoryMigrationConnection!` | A list of all repository migrations for this organization. |
+| `requiresTwoFactorAuthentication` | `Boolean` | When true the organization requires all members, billing managers, and outside collaborators to enable two-factor authentication. |
+| `resourcePath` | `URI!` | The HTTP path for this organization. |
+| `ruleset` | `RepositoryRuleset` | Returns a single ruleset from the current organization by ID. |
+| `rulesets` | `RepositoryRulesetConnection` | A list of rulesets for this organization. |
+| `samlIdentityProvider` | `OrganizationIdentityProvider` | The Organization's SAML identity provider. Visible to (1) organization owners, (2) organization owners' personal access tokens (classic) with read:org or admin:org scope, (3) GitHub App with an installation token with read or write access to members. |
+| `sponsoring` | `SponsorConnection!` | List of users and organizations this entity is sponsoring. |
+| `sponsors` | `SponsorConnection!` | List of sponsors for this user or organization. |
+| `sponsorsActivities` | `SponsorsActivityConnection!` | Events involving this sponsorable, such as new sponsorships. |
+| `sponsorsListing` | `SponsorsListing` | The GitHub Sponsors listing for this user or organization. |
+| `sponsorshipForViewerAsSponsor` | `Sponsorship` | The sponsorship from the viewer to this user/organization; that is, the sponsorship where you're the sponsor. |
+| `sponsorshipForViewerAsSponsorable` | `Sponsorship` | The sponsorship from this user/organization to the viewer; that is, the sponsorship you're receiving. |
+| `sponsorshipNewsletters` | `SponsorshipNewsletterConnection!` | List of sponsorship updates sent from this sponsorable to sponsors. |
+| `sponsorshipsAsMaintainer` | `SponsorshipConnection!` | The sponsorships where this user or organization is the maintainer receiving the funds. |
+| `sponsorshipsAsSponsor` | `SponsorshipConnection!` | The sponsorships where this user or organization is the funder. |
+| `team` | `Team` | Find an organization's team by its slug. |
+| `teams` | `TeamConnection!` | A list of teams in this organization. |
+| `teamsResourcePath` | `URI!` | The HTTP path listing organization's teams. |
+| `teamsUrl` | `URI!` | The HTTP URL listing organization's teams. |
+| `totalSponsorshipAmountAsSponsorInCents` | `Int` | The amount in United States cents (e.g., 500 = $5.00 USD) that this entity has spent on GitHub to fund sponsorships. Only returns a value when viewed by the user themselves or by a user who can manage sponsorships for the requested organization. |
+| `twitterUsername` | `String` | The organization's Twitter username. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `url` | `URI!` | The HTTP URL for this organization. |
+| `viewerCanAdminister` | `Boolean!` | Organization is adminable by the viewer. |
+| `viewerCanChangePinnedItems` | `Boolean!` | Can the viewer pin repositories and gists to the profile?. |
+| `viewerCanCreateProjects` | `Boolean!` | Can the current viewer create new projects on this owner. |
+| `viewerCanCreateRepositories` | `Boolean!` | Viewer can create repositories on this organization. |
+| `viewerCanCreateTeams` | `Boolean!` | Viewer can create teams on this organization. |
+| `viewerCanSponsor` | `Boolean!` | Whether or not the viewer is able to sponsor this user/organization. |
+| `viewerIsAMember` | `Boolean!` | Viewer is an active member of this organization. |
+| `viewerIsFollowing` | `Boolean!` | Whether or not this Organization is followed by the viewer. |
+| `viewerIsSponsoring` | `Boolean!` | True if the viewer is sponsoring this user/organization. |
+| `webCommitSignoffRequired` | `Boolean!` | Whether contributors are required to sign off on web-based commits for repositories in this organization. |
+| `websiteUrl` | `URI` | The organization's public profile URL. |
+
+### `OrganizationAuditEntryConnection`
+
+The connection type for OrganizationAuditEntry.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[OrganizationAuditEntryEdge]` | A list of edges. |
+| `nodes` | `[OrganizationAuditEntry]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `OrganizationAuditEntryEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `OrganizationAuditEntry` | The item at the end of the edge. |
+
+### `OrganizationConnection`
+
+A list of organizations managed by an enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[OrganizationEdge]` | A list of edges. |
+| `nodes` | `[Organization]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `OrganizationEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `Organization` | The item at the end of the edge. |
+
+### `OrganizationIdentityProvider`
+
+An Identity Provider configured to provision SAML and SCIM identities for
+Organizations. Visible to (1) organization owners, (2) organization owners'
+personal access tokens (classic) with read:org or admin:org scope, (3) GitHub
+App with an installation token with read or write access to members.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `digestMethod` | `URI` | The digest algorithm used to sign SAML requests for the Identity Provider. |
+| `externalIdentities` | `ExternalIdentityConnection!` | External Identities provisioned by this Identity Provider. |
+| `id` | `ID!` | The Node ID of the OrganizationIdentityProvider object. |
+| `idpCertificate` | `X509Certificate` | The x509 certificate used by the Identity Provider to sign assertions and responses. |
+| `issuer` | `String` | The Issuer Entity ID for the SAML Identity Provider. |
+| `organization` | `Organization` | Organization this Identity Provider belongs to. |
+| `signatureMethod` | `URI` | The signature algorithm used to sign SAML requests for the Identity Provider. |
+| `ssoUrl` | `URI` | The URL endpoint for the Identity Provider's SAML SSO. |
+
+### `OrganizationInvitation`
+
+An Invitation for a user to an organization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `email` | `String` | The email address of the user invited to the organization. |
+| `id` | `ID!` | The Node ID of the OrganizationInvitation object. |
+| `invitationSource` | `OrganizationInvitationSource!` | The source of the invitation. |
+| `invitationType` | `OrganizationInvitationType!` | The type of invitation that was sent (e.g. email, user). |
+| `invitee` | `User` | The user who was invited to the organization. |
+| `inviter` | `User!` | The user who created the invitation. |
+| `inviterActor` | `User` | The user who created the invitation. |
+| `organization` | `Organization!` | The organization the invite is for. |
+| `role` | `OrganizationInvitationRole!` | The user's pending role in the organization (e.g. member, owner). |
+
+### `OrganizationInvitationConnection`
+
+The connection type for OrganizationInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[OrganizationInvitationEdge]` | A list of edges. |
+| `nodes` | `[OrganizationInvitation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `OrganizationInvitationEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `OrganizationInvitation` | The item at the end of the edge. |
+
+### `OrganizationPropertyConditionTarget`
+
+Parameters to be used for the organization_property condition.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `exclude` | `[OrganizationPropertyTargetDefinition!]!` | Array of organization properties that must not match. |
+| `include` | `[OrganizationPropertyTargetDefinition!]!` | Array of organization properties that must match. |
+
+### `OrganizationPropertyTargetDefinition`
+
+A property that must match.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `name` | `String!` | The name of the property. |
+| `propertyValues` | `[String!]!` | The values to match for. |
+
+### `OrganizationsHovercardContext`
+
+An organization list hovercard context.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `message` | `String!` | A string describing this context. |
+| `octicon` | `String!` | An octicon to accompany this context. |
+| `relevantOrganizations` | `OrganizationConnection!` | Organizations this user is a member of that are relevant. |
+| `totalOrganizationCount` | `Int!` | The total number of organizations this user is in. |
+
+### `VerifiableDomain`
+
+A domain that can be verified or approved for an organization or an enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `databaseId` | `Int` | Identifies the primary key from the database. |
+| `dnsHostName` | `URI` | The DNS host name that should be used for verification. |
+| `domain` | `URI!` | The unicode encoded domain. |
+| `hasFoundHostName` | `Boolean!` | Whether a TXT record for verification with the expected host name was found. |
+| `hasFoundVerificationToken` | `Boolean!` | Whether a TXT record for verification with the expected verification token was found. |
+| `id` | `ID!` | The Node ID of the VerifiableDomain object. |
+| `isApproved` | `Boolean!` | Whether or not the domain is approved. |
+| `isRequiredForPolicyEnforcement` | `Boolean!` | Whether this domain is required to exist for an organization or enterprise policy to be enforced. |
+| `isVerified` | `Boolean!` | Whether or not the domain is verified. |
+| `owner` | `VerifiableDomainOwner!` | The owner of the domain. |
+| `punycodeEncodedDomain` | `URI!` | The punycode encoded domain. |
+| `tokenExpirationTime` | `DateTime` | The time that the current verification token will expire. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `verificationToken` | `String` | The current verification token for the domain. |
+
+### `VerifiableDomainConnection`
+
+The connection type for VerifiableDomain.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[VerifiableDomainEdge]` | A list of edges. |
+| `nodes` | `[VerifiableDomain]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `VerifiableDomainEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `VerifiableDomain` | The item at the end of the edge. |
+
+## Enums
+
+### `OrgAddMemberAuditEntryPermission`
+
+The permissions available to members on an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | Can read, clone, push, and add collaborators to repositories. |
+| `READ` | Can read and clone repositories. |
+
+### `OrgCreateAuditEntryBillingPlan`
+
+The billing plans available for organizations.
+
+| Value | Description |
+| :--- | :--- |
+| `BUSINESS` | Team Plan. |
+| `BUSINESS_PLUS` | Enterprise Cloud Plan. |
+| `FREE` | Free Plan. |
+| `TIERED_PER_SEAT` | Tiered Per Seat Plan. |
+| `UNLIMITED` | Legacy Unlimited Plan. |
+
+### `OrgEnterpriseOwnerOrderField`
+
+Properties by which enterprise owners can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `LOGIN` | Order enterprise owners by login. |
+
+### `OrgRemoveBillingManagerAuditEntryReason`
+
+The reason a billing manager was removed from an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `SAML_EXTERNAL_IDENTITY_MISSING` | SAML external identity missing. |
+| `SAML_SSO_ENFORCEMENT_REQUIRES_EXTERNAL_IDENTITY` | SAML SSO enforcement requires an external identity. |
+| `TWO_FACTOR_REQUIREMENT_NON_COMPLIANCE` | The organization required 2FA of its billing managers and this user did not have 2FA enabled. |
+
+### `OrgRemoveMemberAuditEntryMembershipType`
+
+The type of membership a user has with an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | Organization owners have full access and can change several settings, including the names of repositories that belong to the Organization and Owners team membership. In addition, organization owners can delete the organization and all of its repositories. |
+| `BILLING_MANAGER` | A billing manager is a user who manages the billing settings for the Organization, such as updating payment information. |
+| `DIRECT_MEMBER` | A direct member is a user that is a member of the Organization. |
+| `OUTSIDE_COLLABORATOR` | An outside collaborator is a person who isn't explicitly a member of the Organization, but who has Read, Write, or Admin permissions to one or more repositories in the organization. |
+| `SUSPENDED` | A suspended member. |
+| `UNAFFILIATED` | An unaffiliated collaborator is a person who is not a member of the Organization and does not have access to any repositories in the Organization. |
+
+### `OrgRemoveMemberAuditEntryReason`
+
+The reason a member was removed from an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `SAML_EXTERNAL_IDENTITY_MISSING` | SAML external identity missing. |
+| `SAML_SSO_ENFORCEMENT_REQUIRES_EXTERNAL_IDENTITY` | SAML SSO enforcement requires an external identity. |
+| `TWO_FACTOR_ACCOUNT_RECOVERY` | User was removed from organization during account recovery. |
+| `TWO_FACTOR_REQUIREMENT_NON_COMPLIANCE` | The organization required 2FA of its billing managers and this user did not have 2FA enabled. |
+| `USER_ACCOUNT_DELETED` | User account has been deleted. |
+
+### `OrgRemoveOutsideCollaboratorAuditEntryMembershipType`
+
+The type of membership a user has with an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `BILLING_MANAGER` | A billing manager is a user who manages the billing settings for the Organization, such as updating payment information. |
+| `OUTSIDE_COLLABORATOR` | An outside collaborator is a person who isn't explicitly a member of the Organization, but who has Read, Write, or Admin permissions to one or more repositories in the organization. |
+| `UNAFFILIATED` | An unaffiliated collaborator is a person who is not a member of the Organization and does not have access to any repositories in the organization. |
+
+### `OrgRemoveOutsideCollaboratorAuditEntryReason`
+
+The reason an outside collaborator was removed from an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `SAML_EXTERNAL_IDENTITY_MISSING` | SAML external identity missing. |
+| `TWO_FACTOR_REQUIREMENT_NON_COMPLIANCE` | The organization required 2FA of its billing managers and this user did not have 2FA enabled. |
+
+### `OrgUpdateDefaultRepositoryPermissionAuditEntryPermission`
+
+The default permission a repository can have in an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | Can read, clone, push, and add collaborators to repositories. |
+| `NONE` | No default permission value. |
+| `READ` | Can read and clone repositories. |
+| `WRITE` | Can read, clone and push to repositories. |
+
+### `OrgUpdateMemberAuditEntryPermission`
+
+The permissions available to members on an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | Can read, clone, push, and add collaborators to repositories. |
+| `READ` | Can read and clone repositories. |
+
+### `OrgUpdateMemberRepositoryCreationPermissionAuditEntryVisibility`
+
+The permissions available for repository creation on an Organization.
+
+| Value | Description |
+| :--- | :--- |
+| `ALL` | All organization members are restricted from creating any repositories. |
+| `INTERNAL` | All organization members are restricted from creating internal repositories. |
+| `NONE` | All organization members are allowed to create any repositories. |
+| `PRIVATE` | All organization members are restricted from creating private repositories. |
+| `PRIVATE_INTERNAL` | All organization members are restricted from creating private or internal repositories. |
+| `PUBLIC` | All organization members are restricted from creating public repositories. |
+| `PUBLIC_INTERNAL` | All organization members are restricted from creating public or internal repositories. |
+| `PUBLIC_PRIVATE` | All organization members are restricted from creating public or private repositories. |
+
+### `OrganizationInvitationRole`
+
+The possible organization invitation roles.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | The user is invited to be an admin of the organization. |
+| `BILLING_MANAGER` | The user is invited to be a billing manager of the organization. |
+| `DIRECT_MEMBER` | The user is invited to be a direct member of the organization. |
+| `REINSTATE` | The user's previous role will be reinstated. |
+
+### `OrganizationInvitationSource`
+
+The possible organization invitation sources.
+
+| Value | Description |
+| :--- | :--- |
+| `ENTERPRISE_ORGANIZATION_CREATION` | The invitation was created with an enterprise organization. |
+| `MEMBER` | The invitation was created from the web interface or from API. |
+| `SCIM` | The invitation was created from SCIM. |
+| `UNKNOWN` | The invitation was sent before this feature was added. |
+
+### `OrganizationInvitationType`
+
+The possible organization invitation types.
+
+| Value | Description |
+| :--- | :--- |
+| `EMAIL` | The invitation was to an email address. |
+| `USER` | The invitation was to an existing user. |
+
+### `OrganizationMemberRole`
+
+The possible roles within an organization for its members.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | The user is an administrator of the organization. |
+| `MEMBER` | The user is a member of the organization. |
+
+### `OrganizationMembersCanCreateRepositoriesSettingValue`
+
+The possible values for the members can create repositories setting on an organization.
+
+| Value | Description |
+| :--- | :--- |
+| `ALL` | Members will be able to create public and private repositories. |
+| `DISABLED` | Members will not be able to create public or private repositories. |
+| `INTERNAL` | Members will be able to create only internal repositories. |
+| `PRIVATE` | Members will be able to create only private repositories. |
+
+### `OrganizationOrderField`
+
+Properties by which organization connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order organizations by creation time. |
+| `LOGIN` | Order organizations by login. |
+
+### `RoleInOrganization`
+
+Possible roles a user may have in relation to an organization.
+
+| Value | Description |
+| :--- | :--- |
+| `DIRECT_MEMBER` | A user who is a direct member of the organization. |
+| `OWNER` | A user with full administrative access to the organization. |
+| `UNAFFILIATED` | A user who is unaffiliated with the organization. |
+
+### `VerifiableDomainOrderField`
+
+Properties by which verifiable domain connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order verifiable domains by their creation date. |
+| `DOMAIN` | Order verifiable domains by the domain name. |

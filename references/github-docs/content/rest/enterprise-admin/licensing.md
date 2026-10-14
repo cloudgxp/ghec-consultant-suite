@@ -13,3 +13,146 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List enterprise consumed licenses
+
+`GET /enterprises/{enterprise}/consumed-licenses`
+
+Lists the license consumption information for all users, including those from connected servers, associated with an enterprise.
+
+The authenticated user must be an enterprise admin to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Consumed Licenses Response |
+
+## Get a license sync status
+
+`GET /enterprises/{enterprise}/license-sync-status`
+
+Gets information about the status of a license sync job for an enterprise.
+
+The authenticated user must be an enterprise admin to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | License Sync Status Response |
+
+## Get GitHub Advanced Security active committers for an enterprise
+
+`GET /enterprises/{enterprise}/settings/billing/advanced-security`
+
+Gets the GitHub Advanced Security active committers for an enterprise per repository. The authenticated user must be an enterprise admin or billing manager.
+
+Each distinct user login across all repositories is counted as a single Advanced Security seat, so the `total_advanced_security_committers` is not the sum of active_users for each repository.
+
+The total number of repositories with committer information is tracked by the `total_count` field.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `advanced_security_product` | query | `string` | No | The security product to get GitHub Advanced Security active committers for. For standalone Code Scanning or Secret Protection products, this parameter is required to specify which product you want committer information for. For other plans this parameter cannot be used. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success |
+
+## Get a list of Visual Studio subscriptions for the enterprise
+
+`GET /enterprises/{enterprise}/visual-studio-subscriptions`
+
+Retrieves a list of Visual Studio subscriptions for the specified enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name |
+| `is_unmatched_only` | query | `boolean` | No | When true, only returns Visual Studio subscriptions that are not matched to a GitHub user. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Add or update a Visual Studio subscription user match
+
+`PUT /enterprises/{enterprise}/visual-studio-subscriptions/{visual_studio_subscription_id}`
+
+Updates a manual match between a user and a Visual Studio subscription.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `visual_studio_subscription_id` | path | `string` | Yes | The ID of the Visual Studio subscription to add or update the match for. This is a GUID that comes from the Visual Studio management portal. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `user_identifier` | `string` | No | The handle for the GitHub user account or a verified email associated with their account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a Visual Studio subscription user match
+
+`DELETE /enterprises/{enterprise}/visual-studio-subscriptions/{visual_studio_subscription_id}`
+
+Deletes a manual match between a user and a Visual Studio subscription.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `visual_studio_subscription_id` | path | `string` | Yes | The ID of the Visual Studio subscription to delete the match for. This is a GUID that comes from the visual studio management portal. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

@@ -19,3 +19,547 @@ category:
 {% data reusables.organizations.team-api %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List teams
+
+`GET /orgs/{org}/teams`
+
+Lists all teams in an organization that are visible to the authenticated user.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `team_type` | query | `string` | No | Filter team results by their type. For more information, see "[What kind of team should I use?](https://docs.github.com/enterprise-cloud@latest/enterprise-cloud@latest/admin/concepts/enterprise-fundamentals/teams-in-an-enterprise#what-kind-of-team-should-i-use)" |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+
+## Create a team
+
+`POST /orgs/{org}/teams`
+
+To create a team, the authenticated user must be a member or owner of `{org}`. By default, organization members can create teams. Organization owners can limit team creation to organization owners. For more information, see "[Setting team creation permissions](https://docs.github.com/enterprise-cloud@latest/articles/setting-team-creation-permissions-in-your-organization)."
+
+When you create a new team, you automatically become a team maintainer without explicitly adding yourself to the optional array of `maintainers`. For more information, see "[About teams](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/about-teams)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the team. |
+| `description` | `string` | No | The description of the team. |
+| `maintainers` | `array of strings` | No | List GitHub usernames for organization members who will become team maintainers. |
+| `repo_names` | `array of strings` | No | The full name (e.g., "organization-name/repository-name") of repositories to add the team to. |
+| `privacy` | `string` | No | The level of privacy this team should have. The options are: For a non-nested team: `secret` - only visible to organization owners and members of this team. `closed` - visible to all members of this organization. Default: `secret` For a parent or child team: `closed` - visible to all members of this organization. Default for child team: `closed` |
+| `notification_setting` | `string` | No | The notification setting the team has chosen. The options are: `notifications_enabled` - team members receive notifications when the team is @mentioned. `notifications_disabled` - no one receives notifications. Default: `notifications_enabled` |
+| `permission` | `string` | No | Closing down notice. The permission that new repositories will be added to the team with when none is specified. |
+| `parent_team_id` | `integer` | No | The ID of a team to set as the parent team. |
+| `parent_team_slug` | `string` | No | The slug of a team to set as the parent team. Ignored when `parent_team_id` is also provided. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a team by name
+
+`GET /orgs/{org}/teams/{team_slug}`
+
+Gets a team using the team's `slug`. To create the `slug`, GitHub Enterprise Cloud replaces special characters in the `name` string, changes all words to lowercase, and replaces spaces with a `-` separator. For example, `"My TEam Näme"` would become `my-team-name`.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update a team
+
+`PATCH /orgs/{org}/teams/{team_slug}`
+
+To edit a team, the authenticated user must either be an organization owner or a team maintainer.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `PATCH /organizations/{org_id}/team/{team_id}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the team. |
+| `description` | `string` | No | The description of the team. |
+| `privacy` | `string` | No | The level of privacy this team should have. Editing teams without specifying this parameter leaves `privacy` intact. When a team is nested, the `privacy` for parent teams cannot be `secret`. The options are: For a non-nested team: `secret` - only visible to organization owners and members of this team. `closed` - visible to all members of this organization. For a parent or child team: `closed` - visible to all members of this organization. |
+| `notification_setting` | `string` | No | The notification setting the team has chosen. Editing teams without specifying this parameter leaves `notification_setting` intact. The options are: `notifications_enabled` - team members receive notifications when the team is @mentioned. `notifications_disabled` - no one receives notifications. |
+| `permission` | `string` | No | Closing down notice. The permission that new repositories will be added to the team with when none is specified. |
+| `parent_team_id` | `integer or null` | No | The ID of a team to set as the parent team. |
+| `parent_team_slug` | `string or null` | No | The slug of a team to set as the parent team. Ignored when `parent_team_id` is also provided. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response when the updated information already exists |
+| `201` | Created |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a team
+
+`DELETE /orgs/{org}/teams/{team_slug}`
+
+To delete a team, the authenticated user must be an organization owner or team maintainer.
+
+If you are an organization owner, deleting a parent team will delete all of its child teams as well.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `DELETE /organizations/{org_id}/team/{team_id}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `422` | Unprocessable entity if you attempt to modify an enterprise team at the organization level. |
+
+## List team repositories
+
+`GET /orgs/{org}/teams/{team_slug}/repos`
+
+Lists a team's repositories visible to the authenticated user.
+
+OAuth app tokens and personal access tokens (classic) need the `read:org` or `repo` scope to use this endpoint.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}/repos`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Check team permissions for a repository
+
+`GET /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}`
+
+Checks whether a team has `admin`, `push`, `maintain`, `triage`, or `pull` permission for a repository. Repositories inherited through a parent team will also be checked.
+
+You can also get information about the specified repository, including what permissions the team grants on it, by passing the following custom [media type](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/getting-started-with-the-rest-api#media-types/) via the `application/vnd.github.v3.repository+json` accept header.
+
+If a team doesn't have permission for the repository, you will receive a `404 Not Found` response status.
+
+If the repository is private, you must have at least `read` permission for that repository, and your token must have the `repo` or `admin:org` scope. Otherwise, you will receive a `404 Not Found` response status.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}/repos/{owner}/{repo}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Alternative response with repository permissions |
+| `204` | Response if team has permission for the repository. This is the response when the repository media type hasn't been provded in the Accept header. |
+| `404` | Not Found if team does not have permission for the repository |
+
+## Add or update team repository permissions
+
+`PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}`
+
+To add a repository to a team or update the team's permission on a repository, the authenticated user must have admin access to the repository, and must be able to see the team. The repository must be owned by the organization, or a direct fork of a repository owned by the organization. You will get a `422 Unprocessable Entity` status if you attempt to add a repository to a team that is not owned by the organization. Note that, if you choose not to pass any parameters, you'll need to set `Content-Length` to zero when calling out to this endpoint. For more information, see "[HTTP method](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#http-method)."
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `PUT /organizations/{org_id}/team/{team_id}/repos/{owner}/{repo}`.
+
+For more information about the permission levels, see "[Repository permission levels for an organization](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/repository-permission-levels-for-an-organization#permission-levels-for-repositories-owned-by-an-organization)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `permission` | `string` | No | The permission to grant the team on this repository. We accept the following permissions to be set: `pull`, `triage`, `push`, `maintain`, `admin` and you can also specify a custom repository role name, if the owning organization has defined any. If no permission is specified, the team's `permission` attribute will be used to determine what permission to grant the team on this repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove a repository from a team
+
+`DELETE /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}`
+
+If the authenticated user is an organization owner or a team maintainer, they can remove any repositories from the team. To remove a repository from a team as an organization member, the authenticated user must have admin access to the repository and must be able to see the team. This does not delete the repository, it just removes it from the team.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `DELETE /organizations/{org_id}/team/{team_id}/repos/{owner}/{repo}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List child teams
+
+`GET /orgs/{org}/teams/{team_slug}/teams`
+
+Lists the child teams of the team specified by `{team_slug}`.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}/teams`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | if child teams exist |
+
+## Get a team (Legacy)
+
+`GET /teams/{team_id}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the [Get a team by name](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#get-a-team-by-name) endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update a team (Legacy)
+
+`PATCH /teams/{team_id}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Update a team](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#update-a-team) endpoint.
+
+To edit a team, the authenticated user must either be an organization owner or a team maintainer.
+
+Note
+
+With nested teams, the `privacy` for parent teams cannot be `secret`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the team. |
+| `description` | `string` | No | The description of the team. |
+| `privacy` | `string` | No | The level of privacy this team should have. Editing teams without specifying this parameter leaves `privacy` intact. The options are: For a non-nested team: `secret` - only visible to organization owners and members of this team. `closed` - visible to all members of this organization. For a parent or child team: `closed` - visible to all members of this organization. |
+| `notification_setting` | `string` | No | The notification setting the team has chosen. Editing teams without specifying this parameter leaves `notification_setting` intact. The options are: `notifications_enabled` - team members receive notifications when the team is @mentioned. `notifications_disabled` - no one receives notifications. |
+| `permission` | `string` | No | Closing down notice. The permission that new repositories will be added to the team with when none is specified. |
+| `parent_team_id` | `integer or null` | No | The ID of a team to set as the parent team. |
+| `parent_team_slug` | `string or null` | No | The slug of a team to set as the parent team. Ignored when `parent_team_id` is also provided. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response when the updated information already exists |
+| `201` | Created |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a team (Legacy)
+
+`DELETE /teams/{team_id}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Delete a team](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#delete-a-team) endpoint.
+
+To delete a team, the authenticated user must be an organization owner or team maintainer.
+
+If you are an organization owner, deleting a parent team will delete all of its child teams as well.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List team repositories (Legacy)
+
+`GET /teams/{team_id}/repos`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [List team repositories](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#list-team-repositories) endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Check team permissions for a repository (Legacy)
+
+`GET /teams/{team_id}/repos/{owner}/{repo}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Check team permissions for a repository](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#check-team-permissions-for-a-repository) endpoint.
+
+Note
+
+Repositories inherited through a parent team will also be checked.
+
+You can also get information about the specified repository, including what permissions the team grants on it, by passing the following custom [media type](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/getting-started-with-the-rest-api#media-types/) via the `Accept` header:
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Alternative response with extra repository information |
+| `204` | Response if repository is managed by this team |
+| `404` | Not Found if repository is not managed by this team |
+
+## Add or update team repository permissions (Legacy)
+
+`PUT /teams/{team_id}/repos/{owner}/{repo}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new "[Add or update team repository permissions](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#add-or-update-team-repository-permissions)" endpoint.
+
+To add a repository to a team or update the team's permission on a repository, the authenticated user must have admin access to the repository, and must be able to see the team. The repository must be owned by the organization, or a direct fork of a repository owned by the organization. You will get a `422 Unprocessable Entity` status if you attempt to add a repository to a team that is not owned by the organization.
+
+Note that, if you choose not to pass any parameters, you'll need to set `Content-Length` to zero when calling out to this endpoint. For more information, see "[HTTP method](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#http-method)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `permission` | `string` | No | The permission to grant the team on this repository. If no permission is specified, the team's `permission` attribute will be used to determine what permission to grant the team on this repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove a repository from a team (Legacy)
+
+`DELETE /teams/{team_id}/repos/{owner}/{repo}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Remove a repository from a team](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#remove-a-repository-from-a-team) endpoint.
+
+If the authenticated user is an organization owner or a team maintainer, they can remove any repositories from the team. To remove a repository from a team as an organization member, the authenticated user must have admin access to the repository and must be able to see the team. NOTE: This does not delete the repository, it just removes it from the team.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List child teams (Legacy)
+
+`GET /teams/{team_id}/teams`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [`List child teams`](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#list-child-teams) endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | if child teams exist |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List teams for the authenticated user
+
+`GET /user/teams`
+
+List all of the teams across all of the organizations to which the authenticated
+user belongs.
+
+OAuth app tokens and personal access tokens (classic) need the `user`, `repo`, or `read:org` scope to use this endpoint.
+
+When using a fine-grained personal access token, the resource owner of the token must be a single organization, and the response will only include the teams from that organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+| `403` | Forbidden |
+| `404` | Resource not found |

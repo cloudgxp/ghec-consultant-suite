@@ -11,3 +11,139 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List hosted compute network configurations for an enterprise
+
+`GET /enterprises/{enterprise}/network-configurations`
+
+Lists all hosted compute network configurations configured in an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a hosted compute network configuration for an enterprise
+
+`POST /enterprises/{enterprise}/network-configurations`
+
+Creates a hosted compute network configuration for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the network configuration. Must be between 1 and 100 characters and may only contain upper and lowercase letters a-z, numbers 0-9, `.`, `-`, and `_`. |
+| `compute_service` | `string` | No | The hosted compute service to use for the network configuration. |
+| `network_settings_ids` | `array of strings` | Yes | A list of identifiers of the network settings resources to use for the network configuration. Exactly one resource identifier must be specified in the list. |
+| `failover_network_settings_ids` | `array of strings` | No | A list of identifiers of the failover network settings resources to use for the network configuration. Exactly one resource identifier must be specified in the list. |
+| `failover_network_enabled` | `boolean` | No | Indicates whether the failover network resource is enabled. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a hosted compute network configuration for an enterprise
+
+`GET /enterprises/{enterprise}/network-configurations/{network_configuration_id}`
+
+Gets a hosted compute network configuration configured in an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `network_configuration_id` | path | `string` | Yes | Unique identifier of the hosted compute network configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a hosted compute network configuration for an enterprise
+
+`PATCH /enterprises/{enterprise}/network-configurations/{network_configuration_id}`
+
+Updates a hosted compute network configuration for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `network_configuration_id` | path | `string` | Yes | Unique identifier of the hosted compute network configuration. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Name of the network configuration. Must be between 1 and 100 characters and may only contain upper and lowercase letters a-z, numbers 0-9, `.`, `-`, and `_`. |
+| `compute_service` | `string` | No | The hosted compute service to use for the network configuration. |
+| `network_settings_ids` | `array of strings` | No | A list of identifiers of the network settings resources to use for the network configuration. Exactly one resource identifier must be specified in the list. |
+| `failover_network_settings_ids` | `array of strings` | No | A list of identifiers of the failover network settings resources to use for the network configuration. Exactly one resource identifier must be specified in the list. |
+| `failover_network_enabled` | `boolean` | No | Indicates whether the failover network resource is enabled. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a hosted compute network configuration from an enterprise
+
+`DELETE /enterprises/{enterprise}/network-configurations/{network_configuration_id}`
+
+Deletes a hosted compute network configuration from an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `network_configuration_id` | path | `string` | Yes | Unique identifier of the hosted compute network configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get a hosted compute network settings resource for an enterprise
+
+`GET /enterprises/{enterprise}/network-settings/{network_settings_id}`
+
+Gets a hosted compute network settings resource configured for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `network_settings_id` | path | `string` | Yes | Unique identifier of the hosted compute network settings. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

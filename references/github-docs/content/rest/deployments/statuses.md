@@ -25,3 +25,85 @@ A deployment can accumulate multiple statuses over time as it progresses, for ex
 This retention policy applies to all deployment status endpoints, including [List deployment statuses](#list-deployment-statuses) and [Get a deployment status](#get-a-deployment-status). The current status of a deployment is not affected, because it is stored on the deployment itself and remains available regardless of the deployment's age.
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List deployment statuses
+
+`GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses`
+
+Users with pull access can view deployment statuses for a deployment:
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `deployment_id` | path | `integer` | Yes | deployment_id parameter |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Create a deployment status
+
+`POST /repos/{owner}/{repo}/deployments/{deployment_id}/statuses`
+
+Users with `push` access can create deployment statuses for a given deployment.
+
+OAuth app tokens and personal access tokens (classic) need the `repo_deployment` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `deployment_id` | path | `integer` | Yes | deployment_id parameter |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `state` | `string` | Yes | The state of the status. When you set a transient deployment to `inactive`, the deployment will be shown as `destroyed` in GitHub. |
+| `target_url` | `string` | No | The target URL to associate with this status. This URL should contain output to keep the user updated while the task is running or serve as historical information for what happened in the deployment. Note It's recommended to use the `log_url` parameter, which replaces `target_url`. |
+| `log_url` | `string` | No | The full URL of the deployment's output. This parameter replaces `target_url`. We will continue to accept `target_url` to support legacy uses, but we recommend replacing `target_url` with `log_url`. Setting `log_url` will automatically set `target_url` to the same value. Default: `""` |
+| `description` | `string` | No | A short description of the status. The maximum description length is 140 characters. |
+| `environment` | `string` | No | Name for the target deployment environment, which can be changed when setting a deploy status. For example, `production`, `staging`, or `qa`. If not defined, the environment of the previous status on the deployment will be used, if it exists. Otherwise, the environment of the deployment will be used. |
+| `environment_url` | `string` | No | Sets the URL for accessing your environment. Default: `""` |
+| `auto_inactive` | `boolean` | No | Adds a new `inactive` status to all prior non-transient, non-production environment deployments with the same repository and `environment` name as the created status's deployment. An `inactive` status is only added to deployments that had a `success` state. Default: `true` |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a deployment status
+
+`GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses/{status_id}`
+
+Users with pull access can view a deployment status for a deployment:
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `deployment_id` | path | `integer` | Yes | deployment_id parameter |
+| `status_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |

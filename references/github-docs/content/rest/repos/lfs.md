@@ -32,3 +32,48 @@ If you want to use these endpoints for a repository that belongs to an organizat
 {% endif %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Enable Git LFS for a repository
+
+`PUT /repos/{owner}/{repo}/lfs`
+
+Enables Git LFS for a repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `403` | We will return a 403 with one of the following messages: Git LFS support not enabled because Git LFS is globally disabled. Git LFS support not enabled because Git LFS is disabled for the root repository in the network. Git LFS support not enabled because Git LFS is disabled for . |
+
+## Disable Git LFS for a repository
+
+`DELETE /repos/{owner}/{repo}/lfs`
+
+Disables Git LFS for a repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

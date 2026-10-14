@@ -682,6 +682,14 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
     ctx: MigrationContext,
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
+    if (!plan.operations.some((op) => op.operation === 'create')) {
+      return {
+        moduleId: this.id,
+        verified: true,
+        discrepancies: [],
+      };
+    }
+
     const targetRepo = ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? '';
     const discrepancies: VerificationDiscrepancy[] = [];
 

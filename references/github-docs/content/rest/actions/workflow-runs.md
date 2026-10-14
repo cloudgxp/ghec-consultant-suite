@@ -19,3 +19,515 @@ category:
 You can use the REST API to view, re-run, cancel, and view logs for workflow runs in {% data variables.product.prodname_actions %}. {% data reusables.actions.about-workflow-runs %} For more information, see [AUTOTITLE](/actions/how-tos/manage-workflow-runs).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Re-run a job from a workflow run
+
+`POST /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun`
+
+Re-run a job and its dependent jobs in a workflow run.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `job_id` | path | `integer` | Yes | The unique identifier of the job. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enable_debug_logging` | `boolean` | No | Whether to enable debug logging for the re-run. |
+| `enable_debugger` | `boolean` | No | Whether to enable the debugger for the re-run of this job. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+
+## List workflow runs for a repository
+
+`GET /repos/{owner}/{repo}/actions/runs`
+
+Lists all workflow runs for a repository. You can use parameters to narrow the list of results. For more information about using parameters, see [Parameters](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#parameters).
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+This endpoint will return up to 1,000 results for each search when using the following parameters: `actor`, `branch`, `check_suite_id`, `created`, `event`, `head_sha`, `status`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `actor` | query | `string` | No | Returns someone's workflow runs. Use the login for the user who created the `push` associated with the check suite or workflow run. |
+| `branch` | query | `string` | No | Returns workflow runs associated with a branch. Use the name of the branch of the `push`. |
+| `event` | query | `string` | No | Returns workflow run triggered by the event you specify. For example, `push`, `pull_request` or `issue`. For more information, see "[Events that trigger workflows](https://docs.github.com/enterprise-cloud@latest/actions/automating-your-workflow-with-github-actions/events-that-trigger-workflows)." |
+| `status` | query | `string` | No | Returns workflow runs with the check run `status` or `conclusion` that you specify. For example, a conclusion can be `success` or a status can be `in_progress`. Only GitHub Actions can set a status of `waiting`, `pending`, or `requested`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `created` | query | `string` | No | Returns workflow runs created within the given date-time range. For more information on the syntax, see "[Understanding the search syntax](https://docs.github.com/enterprise-cloud@latest/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates)." |
+| `exclude_pull_requests` | query | `boolean` | No | If `true` pull requests are omitted from the response (empty array). |
+| `check_suite_id` | query | `integer` | No | Returns workflow runs with the `check_suite_id` that you specify. |
+| `head_sha` | query | `string` | No | Only returns workflow runs that are associated with the specified `head_sha`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get a workflow run
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}`
+
+Gets a specific workflow run.
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+| `exclude_pull_requests` | query | `boolean` | No | If `true` pull requests are omitted from the response (empty array). |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a workflow run
+
+`DELETE /repos/{owner}/{repo}/actions/runs/{run_id}`
+
+Deletes a specific workflow run.
+
+Anyone with write access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get the review history for a workflow run
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/approvals`
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Approve a workflow run for a fork pull request
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/approve`
+
+Approves a workflow run for a pull request from a public fork of a first time contributor. For more information, see ["Approving workflow runs from public forks](https://docs.github.com/enterprise-cloud@latest/actions/managing-workflow-runs/approving-workflow-runs-from-public-forks)."
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get a workflow run attempt
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}`
+
+Gets a specific workflow run attempt.
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+| `attempt_number` | path | `integer` | Yes | The attempt number of the workflow run. |
+| `exclude_pull_requests` | query | `boolean` | No | If `true` pull requests are omitted from the response (empty array). |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Download workflow run attempt logs
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/logs`
+
+Gets a redirect URL to download an archive of log files for a specific workflow run attempt. This link expires after
+1 minute. Look for `Location:` in the response header to find the URL for the download.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+| `attempt_number` | path | `integer` | Yes | The attempt number of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `302` | Found |
+
+## Cancel a workflow run
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel`
+
+Cancels a workflow run using its `id`.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `409` | Conflict |
+
+## Review custom deployment protection rules for a workflow run
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/deployment_protection_rule`
+
+Approve or reject custom deployment protection rules provided by a GitHub App for a workflow run. For more information, see "[Using environments for deployment](https://docs.github.com/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)."
+
+Note
+
+GitHub Apps can only review their own custom deployment protection rules. To approve or reject pending deployments that are waiting for review from a specific person or team, see [`POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments`](/rest/actions/workflow-runs#review-pending-deployments-for-a-workflow-run).
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Force cancel a workflow run
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel`
+
+Cancels a workflow run and bypasses conditions that would otherwise cause a workflow execution to continue, such as an `always()` condition on a job.
+You should only use this endpoint to cancel a workflow run when the workflow run is not responding to [`POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel`](/rest/actions/workflow-runs#cancel-a-workflow-run).
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `409` | Conflict |
+
+## Download workflow run logs
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs`
+
+Gets a redirect URL to download an archive of log files for a workflow run. This link expires after 1 minute. Look for
+`Location:` in the response header to find the URL for the download.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `302` | Found |
+
+## Delete workflow run logs
+
+`DELETE /repos/{owner}/{repo}/actions/runs/{run_id}/logs`
+
+Deletes all logs for a workflow run.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `500` | Internal Error |
+
+## Get pending deployments for a workflow run
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments`
+
+Get all deployment environments for a workflow run that are waiting for protection rules to pass.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Review pending deployments for a workflow run
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments`
+
+Approve or reject pending deployments that are waiting on approval by a required reviewer.
+
+Required reviewers with read access to the repository contents and deployments can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `environment_ids` | `array of integers` | Yes | The list of environment ids to approve or reject |
+| `state` | `string` | Yes | Whether to approve or reject deployment to the specified environments. |
+| `comment` | `string` | Yes | A comment to accompany the deployment review |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Re-run a workflow
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun`
+
+Re-runs your workflow run using its `id`.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enable_debug_logging` | `boolean` | No | Whether to enable debug logging for the re-run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Re-run failed jobs from a workflow run
+
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs`
+
+Re-run all of the failed jobs and their dependent jobs in a workflow run using the `id` of the workflow run.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enable_debug_logging` | `boolean` | No | Whether to enable debug logging for the re-run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get workflow run usage
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing`
+
+Warning
+
+This endpoint is in the process of closing down. Refer to "[Actions Get workflow usage and Get workflow run usage endpoints closing down](https://github.blog/changelog/2025-02-02-actions-get-workflow-usage-and-get-workflow-run-usage-endpoints-closing-down/)" for more information.
+
+Gets the number of billable minutes and total run time for a specific workflow run. Billable minutes only apply to workflows in private repositories that use GitHub Enterprise Cloud-hosted runners. Usage is listed for each GitHub Enterprise Cloud-hosted runner operating system in milliseconds. Any job re-runs are also included in the usage. The usage does not include the multiplier for macOS and Windows runners and is not rounded up to the nearest whole minute. For more information, see "[Managing billing for GitHub Actions](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-billing-and-payments-on-github/managing-billing-for-github-actions)".
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List workflow runs for a workflow
+
+`GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs`
+
+List all workflow runs for a workflow. You can replace `workflow_id` with the workflow file name. For example, you could use `main.yaml`. You can use parameters to narrow the list of results. For more information about using parameters, see [Parameters](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#parameters).
+
+Anyone with read access to the repository can use this endpoint
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+This endpoint will return up to 1,000 results for each search when using the following parameters: `actor`, `branch`, `check_suite_id`, `created`, `event`, `head_sha`, `status`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `workflow_id` | path | `` | Yes | The ID of the workflow. You can also pass the workflow file name as a string. |
+| `actor` | query | `string` | No | Returns someone's workflow runs. Use the login for the user who created the `push` associated with the check suite or workflow run. |
+| `branch` | query | `string` | No | Returns workflow runs associated with a branch. Use the name of the branch of the `push`. |
+| `event` | query | `string` | No | Returns workflow run triggered by the event you specify. For example, `push`, `pull_request` or `issue`. For more information, see "[Events that trigger workflows](https://docs.github.com/enterprise-cloud@latest/actions/automating-your-workflow-with-github-actions/events-that-trigger-workflows)." |
+| `status` | query | `string` | No | Returns workflow runs with the check run `status` or `conclusion` that you specify. For example, a conclusion can be `success` or a status can be `in_progress`. Only GitHub Actions can set a status of `waiting`, `pending`, or `requested`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `created` | query | `string` | No | Returns workflow runs created within the given date-time range. For more information on the syntax, see "[Understanding the search syntax](https://docs.github.com/enterprise-cloud@latest/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates)." |
+| `exclude_pull_requests` | query | `boolean` | No | If `true` pull requests are omitted from the response (empty array). |
+| `check_suite_id` | query | `integer` | No | Returns workflow runs with the `check_suite_id` that you specify. |
+| `head_sha` | query | `string` | No | Only returns workflow runs that are associated with the specified `head_sha`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

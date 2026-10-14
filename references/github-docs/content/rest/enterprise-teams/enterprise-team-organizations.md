@@ -18,3 +18,137 @@ category:
 {% data reusables.enterprise.enterprise-team-api %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get organization assignments
+
+`GET /enterprises/{enterprise}/teams/{enterprise-team}/organizations`
+
+Get all organizations assigned to an enterprise team
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | An array of organizations the team is assigned to |
+
+## Add organization assignments
+
+`POST /enterprises/{enterprise}/teams/{enterprise-team}/organizations/add`
+
+Assign an enterprise team to multiple organizations.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `organization_slugs` | `array of strings` | Yes | Organization slug to assign the team to. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Successfully assigned the enterprise team to organizations. |
+
+## Remove organization assignments
+
+`POST /enterprises/{enterprise}/teams/{enterprise-team}/organizations/remove`
+
+Unassign an enterprise team from multiple organizations.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `organization_slugs` | `array of strings` | Yes | Organization slug to unassign the team from. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Successfully unassigned the enterprise team from organizations. |
+
+## Get organization assignment
+
+`GET /enterprises/{enterprise}/teams/{enterprise-team}/organizations/{org}`
+
+Check if an enterprise team is assigned to an organization
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | The team is assigned to the organization |
+| `404` | The team is not assigned to the organization |
+
+## Add an organization assignment
+
+`PUT /enterprises/{enterprise}/teams/{enterprise-team}/organizations/{org}`
+
+Assign an enterprise team to an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Successfully assigned the enterprise team to the organization. |
+
+## Delete an organization assignment
+
+`DELETE /enterprises/{enterprise}/teams/{enterprise-team}/organizations/{org}`
+
+Unassign an enterprise team from an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Successfully unassigned the enterprise team from the organization. |

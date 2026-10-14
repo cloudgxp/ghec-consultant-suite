@@ -136,6 +136,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       };
     }
 
+    const sourceToken =
+      process.env.GHEC_SOURCE_TOKEN?.trim() ??
+      process.env.GH_SOURCE_PAT?.trim() ??
+      process.env.GHEC_TOKEN?.trim();
+    const targetToken =
+      process.env.GHEC_TARGET_TOKEN?.trim() ?? process.env.GH_PAT?.trim();
+
     // Live mode: check if target already exists at destination
     let targetAlreadyPresent = false;
     try {
@@ -150,7 +157,67 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         ctx.signal,
       );
       if (checkRes.status === 200) {
-        targetAlreadyPresent = true;
+        const targetRepoData = (checkRes.data ?? {}) as {
+          locked?: boolean;
+          size?: number;
+        };
+        if (targetRepoData.locked === true) {
+          ctx.logger.warn(
+            `[gei-repo] Target repository ${targetOrg}/${targetRepo} is stuck in a locked state (locked=true) from a prior interrupted migration; deleting stale target repository to re-import cleanly...`,
+          );
+          let deleted = false;
+          if (ctx.targetWriteClient) {
+            try {
+              await ctx.targetWriteClient.mutate(
+                {
+                  id: 'rest.repos.deleteLockedTarget',
+                  method: 'DELETE',
+                  path: '/repos/{owner}/{repo}',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                },
+                ctx.signal,
+              );
+              deleted = true;
+            } catch {
+              deleted = false;
+            }
+          }
+          if (!deleted && targetToken) {
+            try {
+              const delRes = await fetch(
+                `https://api.github.com/repos/${targetOrg}/${targetRepo}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    Authorization: `Bearer ${targetToken}`,
+                    Accept: 'application/vnd.github+json',
+                  },
+                  signal: ctx.signal,
+                },
+              );
+              deleted = delRes.ok || delRes.status === 204;
+            } catch {
+              deleted = false;
+            }
+          }
+          if (deleted) {
+            await new Promise((r) => setTimeout(r, 2000));
+            targetAlreadyPresent = false;
+          } else {
+            targetAlreadyPresent = true;
+          }
+        } else if (
+          typeof targetRepoData.size === 'number' &&
+          targetRepoData.size === 0 &&
+          ctx.scope.options?.gitTransferStrategy === 'mirror-push'
+        ) {
+          ctx.logger.warn(
+            `[gei-repo] Target repository ${targetOrg}/${targetRepo} exists as an empty shell (size=0 KB); proceeding with mirror-push transfer.`,
+          );
+          targetAlreadyPresent = false;
+        } else {
+          targetAlreadyPresent = true;
+        }
       }
     } catch {
       targetAlreadyPresent = false;
@@ -168,13 +235,6 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         results: [],
       };
     }
-
-    const sourceToken =
-      process.env.GHEC_SOURCE_TOKEN?.trim() ??
-      process.env.GH_SOURCE_PAT?.trim() ??
-      process.env.GHEC_TOKEN?.trim();
-    const targetToken =
-      process.env.GHEC_TARGET_TOKEN?.trim() ?? process.env.GH_PAT?.trim();
 
     if (!this.geiRunner && !this.gitRunner && (!sourceToken || !targetToken)) {
       ctx.logger.info(

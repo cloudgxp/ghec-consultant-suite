@@ -63,3 +63,167 @@ When you set the state of a deployment to `success`, then all prior non-transien
 You can communicate that a transient environment no longer exists by setting its `state` to `inactive`. Setting the `state` to `inactive` shows the deployment as `destroyed` in {% data variables.product.prodname_dotcom %} and removes access to it.
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List deployments
+
+`GET /repos/{owner}/{repo}/deployments`
+
+Simple filtering of deployments is available via query parameters:
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `sha` | query | `string` | No | The SHA recorded at creation time. |
+| `ref` | query | `string` | No | The name of the ref. This can be a branch, tag, or SHA. |
+| `task` | query | `string` | No | The name of the task for the deployment (e.g., `deploy` or `deploy:migrations`). |
+| `environment` | query | `string,null` | No | The name of the environment that was deployed to (e.g., `staging` or `production`). |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a deployment
+
+`POST /repos/{owner}/{repo}/deployments`
+
+Deployments offer a few configurable parameters with certain defaults.
+
+The `ref` parameter can be any named branch, tag, or SHA. At GitHub Enterprise Cloud we often deploy branches and verify them
+before we merge a pull request.
+
+The `environment` parameter allows deployments to be issued to different runtime environments. Teams often have
+multiple environments for verifying their applications, such as `production`, `staging`, and `qa`. This parameter
+makes it easier to track which environments have requested deployments. The default environment is `production`.
+
+The `auto_merge` parameter is used to ensure that the requested ref is not behind the repository's default branch. If
+the ref is behind the default branch for the repository, we will attempt to merge it for you. If the merge succeeds,
+the API will return a successful merge commit. If merge conflicts prevent the merge from succeeding, the API will
+return a failure response.
+
+By default, [commit statuses](https://docs.github.com/enterprise-cloud@latest/rest/commits/statuses) for every submitted context must be in a `success`
+state. The `required_contexts` parameter allows you to specify a subset of contexts that must be `success`, or to
+specify contexts that have not yet been submitted. You are not required to use commit statuses to deploy. If you do
+not require any contexts or create any commit statuses, the deployment will always succeed.
+
+The `payload` parameter is available for any extra information that a deployment system might need. It is a JSON text
+field that will be passed on when a deployment event is dispatched.
+
+The `task` parameter is used by the deployment system to allow different execution paths. In the web world this might
+be `deploy:migrations` to run schema changes on the system. In the compiled world this could be a flag to compile an
+application with debugging enabled.
+
+Merged branch response:
+
+You will see this response when GitHub automatically merges the base branch into the topic branch instead of creating
+a deployment. This auto-merge happens when:
+
+Auto-merge option is enabled in the repository
+
+Topic branch does not include the latest changes on the base branch, which is `master` in the response example
+
+There are no merge conflicts
+
+If there are no new commits in the base branch, a new request to create a deployment should give a successful
+response.
+
+Merge conflict response:
+
+This error happens when the `auto_merge` option is enabled and when the default branch (in this case `master`), can't
+be merged into the branch that's being deployed (in this case `topic-branch`), due to merge conflicts.
+
+Failed commit status checks:
+
+This error happens when the `required_contexts` parameter indicates that one or more contexts need to have a `success`
+status for the commit to be deployed, but one or more of the required contexts do not have a state of `success`.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` or `repo_deployment` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `ref` | `string` | Yes | The ref to deploy. This can be a branch, tag, or SHA. |
+| `task` | `string` | No | Specifies a task to execute (e.g., `deploy` or `deploy:migrations`). |
+| `auto_merge` | `boolean` | No | Attempts to automatically merge the default branch into the requested ref, if it's behind the default branch. |
+| `required_contexts` | `array of strings` | No | The [status](https://docs.github.com/enterprise-cloud@latest/rest/commits/statuses) contexts to verify against commit status checks. If you omit this parameter, GitHub verifies all unique contexts before creating a deployment. To bypass checking entirely, pass an empty array. Defaults to all unique contexts. |
+| `payload` | `object or string` | No | JSON payload with extra information about the deployment. |
+| `environment` | `string` | No | Name for the target deployment environment (e.g., `production`, `staging`, `qa`). |
+| `description` | `string or null` | No | Short description of the deployment. |
+| `transient_environment` | `boolean` | No | Specifies if the given environment is specific to the deployment and will no longer exist at some point in the future. Default: `false` |
+| `production_environment` | `boolean` | No | Specifies if the given environment is one that end-users directly interact with. Default: `true` when `environment` is `production` and `false` otherwise. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `202` | Merged branch response |
+| `409` | Conflict when there is a merge conflict or the commit's status checks failed |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a deployment
+
+`GET /repos/{owner}/{repo}/deployments/{deployment_id}`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `deployment_id` | path | `integer` | Yes | deployment_id parameter |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Delete a deployment
+
+`DELETE /repos/{owner}/{repo}/deployments/{deployment_id}`
+
+If the repository only has one deployment, you can delete the deployment regardless of its status. If the repository has more than one deployment, you can only delete inactive deployments. This ensures that repositories with multiple deployments will always have an active deployment.
+
+To set a deployment as inactive, you must:
+
+Create a new deployment that is active so that the system has a record of the current state, then delete the previously active deployment.
+
+Mark the active deployment as inactive by adding any non-successful deployment status.
+
+For more information, see "[Create a deployment](https://docs.github.com/enterprise-cloud@latest/rest/deployments/deployments/#create-a-deployment)" and "[Create a deployment status](https://docs.github.com/enterprise-cloud@latest/rest/deployments/statuses#create-a-deployment-status)."
+
+OAuth app tokens and personal access tokens (classic) need the `repo` or `repo_deployment` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `deployment_id` | path | `integer` | Yes | deployment_id parameter |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

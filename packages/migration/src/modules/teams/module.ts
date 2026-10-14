@@ -213,26 +213,6 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
     // 2. Live REST discovery mode
     const teams: TeamDefinition[] = [];
     const securityManagerTeamSlugs = new Set<string>();
-    try {
-      const secRes = await ctx.sourceClient.readSingle<unknown>(
-        {
-          id: 'rest.orgs.listSecurityManagers',
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path: '/orgs/{org}/security-managers',
-          pathParams: { org: sourceOrg },
-        },
-        ctx.signal,
-      );
-      if (Array.isArray(secRes.data)) {
-        for (const t of secRes.data as Array<{ slug?: string }>) {
-          if (t.slug) securityManagerTeamSlugs.add(t.slug);
-        }
-      }
-    } catch {
-      // Non-fatal if security managers endpoint is unsupported or empty
-    }
-
     const teamCustomOrgRoles = new Map<
       string,
       Array<{ roleName: string; roleId?: number }>
@@ -275,11 +255,17 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           const teamsInRole = Array.isArray(roleTeamsRes.data)
             ? (roleTeamsRes.data as Array<{ slug?: string }>)
             : [];
+          const isSecurityManagerRole =
+            role.name.toLowerCase() === 'security_manager';
           for (const t of teamsInRole) {
             if (!t.slug) continue;
-            const existing = teamCustomOrgRoles.get(t.slug) ?? [];
-            existing.push({ roleName: role.name, roleId: role.id });
-            teamCustomOrgRoles.set(t.slug, existing);
+            if (isSecurityManagerRole) {
+              securityManagerTeamSlugs.add(t.slug);
+            } else {
+              const existing = teamCustomOrgRoles.get(t.slug) ?? [];
+              existing.push({ roleName: role.name, roleId: role.id });
+              teamCustomOrgRoles.set(t.slug, existing);
+            }
           }
         } catch {
           // Non-fatal per role
@@ -888,27 +874,12 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             roleName?: string;
           };
 
-          if (roleState.roleType === 'security_manager') {
-            const writeOp: TargetWriteOperation = {
-              id: `mutate-${op.id}`,
-              method: 'PUT',
-              path: '/orgs/{org}/security-managers/teams/{team_slug}',
-              pathParams: {
-                org: targetOrg,
-                team_slug: roleState.teamSlug,
-              },
-            };
-            const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
-            results.push({
-              operationId: op.id,
-              status: 'succeeded',
-              httpStatus: res.status,
-              completedAt: new Date().toISOString(),
-            });
-          } else if (
-            roleState.roleType === 'custom_org_role' &&
-            roleState.roleName
-          ) {
+          const targetRoleName =
+            roleState.roleType === 'security_manager'
+              ? 'security_manager'
+              : roleState.roleName;
+
+          if (targetRoleName) {
             let roleId: number | undefined;
             try {
               const rolesRes = await ctx.targetClient.readSingle<unknown>(
@@ -934,7 +905,9 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
                   : Array.isArray(rolesRes.data)
                     ? (rolesRes.data as Array<{ id: number; name: string }>)
                     : [];
-              const match = roles.find((r) => r.name === roleState.roleName);
+              const match = roles.find(
+                (r) => r.name.toLowerCase() === targetRoleName.toLowerCase(),
+              );
               if (match?.id) roleId = match.id;
             } catch {
               // Could not query
@@ -963,7 +936,7 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
               });
             } else {
               throw new Error(
-                `Target custom organization role '${roleState.roleName}' not found on '${targetOrg}'`,
+                `Target organization role '${targetRoleName}' not found on '${targetOrg}'`,
               );
             }
           }
@@ -1148,42 +1121,12 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           roleName?: string;
         };
 
-        if (roleState.roleType === 'security_manager') {
-          try {
-            const secRes = await ctx.targetClient.readSingle<unknown>(
-              {
-                id: 'rest.orgs.verifySecurityManagers',
-                transport: 'rest',
-                verifiedReadOnly: true,
-                path: '/orgs/{org}/security-managers',
-                pathParams: { org: targetOrg },
-              },
-              ctx.signal,
-            );
-            const secTeams = Array.isArray(secRes.data)
-              ? (secRes.data as Array<{ slug?: string }>)
-              : [];
-            const hasTeam = secTeams.some((t) => t.slug === roleState.teamSlug);
-            if (!hasTeam) {
-              discrepancies.push({
-                resourceName: `${roleState.teamSlug}:security_manager`,
-                expected: 'assigned',
-                actual: 'missing',
-                message: `Team '${roleState.teamSlug}' is missing Security Manager role on '${targetOrg}'`,
-              });
-            }
-          } catch (err) {
-            discrepancies.push({
-              resourceName: `${roleState.teamSlug}:security_manager`,
-              expected: 'assigned',
-              actual: 'error',
-              message: `Failed to verify Security Manager role for team '${roleState.teamSlug}': ${String(err)}`,
-            });
-          }
-        } else if (
-          roleState.roleType === 'custom_org_role' &&
-          roleState.roleName
-        ) {
+        const targetRoleName =
+          roleState.roleType === 'security_manager'
+            ? 'security_manager'
+            : roleState.roleName;
+
+        if (targetRoleName) {
           try {
             const rolesRes = await ctx.targetClient.readSingle<unknown>(
               {
@@ -1208,13 +1151,15 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
                 : Array.isArray(rolesRes.data)
                   ? (rolesRes.data as Array<{ id: number; name: string }>)
                   : [];
-            const match = roles.find((r) => r.name === roleState.roleName);
+            const match = roles.find(
+              (r) => r.name.toLowerCase() === targetRoleName.toLowerCase(),
+            );
             if (!match?.id) {
               discrepancies.push({
-                resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
-                expected: `Role '${roleState.roleName}' to exist and be assigned`,
+                resourceName: `${roleState.teamSlug}:${targetRoleName}`,
+                expected: `Role '${targetRoleName}' to exist and be assigned`,
                 actual: 'role_missing',
-                message: `Custom organization role '${roleState.roleName}' is missing on target organization '${targetOrg}'`,
+                message: `Organization role '${targetRoleName}' is missing on target organization '${targetOrg}'`,
               });
             } else {
               const roleTeamsRes = await ctx.targetClient.readSingle<unknown>(
@@ -1235,19 +1180,19 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
               );
               if (!hasTeam) {
                 discrepancies.push({
-                  resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
-                  expected: `Assigned to role '${roleState.roleName}'`,
+                  resourceName: `${roleState.teamSlug}:${targetRoleName}`,
+                  expected: `Assigned to role '${targetRoleName}'`,
                   actual: 'not_assigned',
-                  message: `Team '${roleState.teamSlug}' is not assigned to custom organization role '${roleState.roleName}' on '${targetOrg}'`,
+                  message: `Team '${roleState.teamSlug}' is not assigned to organization role '${targetRoleName}' on '${targetOrg}'`,
                 });
               }
             }
           } catch (err) {
             discrepancies.push({
-              resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
+              resourceName: `${roleState.teamSlug}:${targetRoleName}`,
               expected: 'assigned',
               actual: 'error',
-              message: `Failed to verify custom organization role for team '${roleState.teamSlug}': ${String(err)}`,
+              message: `Failed to verify organization role '${targetRoleName}' for team '${roleState.teamSlug}': ${String(err)}`,
             });
           }
         }

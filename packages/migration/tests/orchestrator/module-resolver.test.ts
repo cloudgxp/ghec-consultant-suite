@@ -33,7 +33,7 @@ describe('Strategy-Aware Automatic Module Resolution (--modules auto & --exclude
     ]);
   });
 
-  it('resolves standard GEI repository modules by excluding issues, pull-requests, and releases from applyModules while keeping them in verifyModules', () => {
+  it('resolves standard GEI repository modules by excluding issues, pull-requests, and releases from applyModules and verifyModules (verified via gei-repo parity inspector)', () => {
     const standardRepo: MigrationScope['repositories'][number] = {
       sourceOrg: 'demogxp',
       sourceRepo: 'service-a',
@@ -51,15 +51,10 @@ describe('Strategy-Aware Automatic Module Resolution (--modules auto & --exclude
     assert.equal(resolved.applyModules.includes('gei-repo'), true);
     assert.equal(resolved.applyModules.includes('repo-settings'), true);
     assert.equal(resolved.applyModules.includes('lfs'), true);
-
-    // Verification still checks all 19 modules including GEI-native metadata
-    assert.equal(resolved.verifyModules.length, ALL_REPOSITORY_MODULES.length);
-    assert.equal(resolved.verifyModules.includes('issues'), true);
-    assert.equal(resolved.verifyModules.includes('pull-requests'), true);
-    assert.equal(resolved.verifyModules.includes('releases'), true);
+    assert.deepEqual(resolved.verifyModules, resolved.applyModules);
   });
 
-  it('includes issues, pull-requests, and releases in applyModules for mirror-push repositories', () => {
+  it('includes issues, pull-requests, and releases in applyModules and verifyModules for mirror-push repositories', () => {
     const massiveRepo: MigrationScope['repositories'][number] = {
       sourceOrg: 'demogxp',
       sourceRepo: 'chromium',
@@ -73,6 +68,13 @@ describe('Strategy-Aware Automatic Module Resolution (--modules auto & --exclude
     assert.equal(resolved.applyModules.includes('issues'), true);
     assert.equal(resolved.applyModules.includes('pull-requests'), true);
     assert.equal(resolved.applyModules.includes('releases'), true);
+    assert.equal(resolved.verifyModules.includes('issues'), true);
+    assert.equal(resolved.verifyModules.includes('pull-requests'), true);
+    assert.equal(resolved.verifyModules.includes('releases'), true);
+    assert.equal(
+      resolved.applyModules.length,
+      ALL_REPOSITORY_MODULES.length - 1,
+    );
   });
 
   it('honors excludeModules across both organization and repository resolutions and DAG sorting', () => {

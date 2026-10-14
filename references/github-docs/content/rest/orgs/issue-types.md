@@ -12,3 +12,119 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List issue types for an organization
+
+`GET /orgs/{org}/issue-types`
+
+Lists all issue types for an organization. OAuth app tokens and personal access tokens (classic) need the read:org scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Create issue type for an organization
+
+`POST /orgs/{org}/issue-types`
+
+Create a new issue type for an organization.
+
+You can find out more about issue types in [Managing issue types in an organization](https://docs.github.com/enterprise-cloud@latest/issues/tracking-your-work-with-issues/configuring-issues/managing-issue-types-in-an-organization).
+
+To use this endpoint, the authenticated user must be an administrator for the organization. OAuth app tokens and
+personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the issue type. |
+| `is_enabled` | `boolean` | Yes | Whether or not the issue type is enabled at the organization level. |
+| `description` | `string or null` | No | Description of the issue type. |
+| `color` | `string or null` | No | Color for the issue type. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Update issue type for an organization
+
+`PUT /orgs/{org}/issue-types/{issue_type_id}`
+
+Updates an issue type for an organization.
+
+You can find out more about issue types in [Managing issue types in an organization](https://docs.github.com/enterprise-cloud@latest/issues/tracking-your-work-with-issues/configuring-issues/managing-issue-types-in-an-organization).
+
+To use this endpoint, the authenticated user must be an administrator for the organization. OAuth app tokens and
+personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `issue_type_id` | path | `integer` | Yes | The unique identifier of the issue type. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the issue type. |
+| `is_enabled` | `boolean` | Yes | Whether or not the issue type is enabled at the organization level. |
+| `description` | `string or null` | No | Description of the issue type. |
+| `color` | `string or null` | No | Color for the issue type. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete issue type for an organization
+
+`DELETE /orgs/{org}/issue-types/{issue_type_id}`
+
+Deletes an issue type for an organization.
+
+You can find out more about issue types in [Managing issue types in an organization](https://docs.github.com/enterprise-cloud@latest/issues/tracking-your-work-with-issues/configuring-issues/managing-issue-types-in-an-organization).
+
+To use this endpoint, the authenticated user must be an administrator for the organization. OAuth app tokens and
+personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `issue_type_id` | path | `integer` | Yes | The unique identifier of the issue type. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

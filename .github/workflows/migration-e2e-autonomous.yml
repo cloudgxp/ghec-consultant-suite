@@ -308,6 +308,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          GHEC_SCRATCH_DIR: ${{ runner.temp }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_MODULES: ${{ inputs.modules || 'auto' }}
           INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
@@ -415,11 +416,18 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
         run: |
           mkdir -p ./scans
-          echo "Executing initial target verification across all 32 modules..."
+          VERIFY_ARGS=(--modules "${INPUT_MODULES:-auto}")
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            VERIFY_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
+          fi
+          echo "Executing initial target verification (modules=${INPUT_MODULES:-auto}, exclude=${INPUT_EXCLUDE_MODULES:-none})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
             --scope "$INPUT_SCOPE" \
+            "${VERIFY_ARGS[@]}" \
             --output ./scans/verification-report.json \
             --verbose || true
 
@@ -430,13 +438,20 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          GHEC_SCRATCH_DIR: ${{ runner.temp }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
           MAX_ROUNDS: ${{ inputs.max_remediation_rounds }}
         run: |
           mkdir -p ./scans ./remediations
           if [ ! -f ./scans/verification-report.json ]; then
             echo "Verification report was not generated; skipping remediation loop."
             exit 0
+          fi
+          VERIFY_ARGS=(--modules "${INPUT_MODULES:-auto}")
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            VERIFY_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
           fi
           ROUND=1
           MAX_ROUNDS=${MAX_ROUNDS:-3}
@@ -475,6 +490,7 @@ jobs:
             echo "Re-running target verification after round $ROUND..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --scope "$INPUT_SCOPE" \
+              "${VERIFY_ARGS[@]}" \
               --output ./scans/verification-report.json \
               --verbose || true
 

@@ -18,3 +18,128 @@ category:
 {% data reusables.enterprise.enterprise-team-api %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List enterprise teams
+
+`GET /enterprises/{enterprise}/teams`
+
+List all teams in the enterprise for the authenticated user
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+
+## Create an enterprise team
+
+`POST /enterprises/{enterprise}/teams`
+
+To create an enterprise team, the authenticated user must be an owner of the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the team. |
+| `description` | `string or null` | No | A description of the team. |
+| `sync_to_organizations` | `string` | No | Retired: this field is no longer supported. Whether the enterprise team should be reflected in each organization. This value cannot be set. |
+| `organization_selection_type` | `string` | No | Specifies which organizations in the enterprise should have access to this team. Can be one of `disabled`, `selected`, or `all`. `disabled`: The team is not assigned to any organizations. This is the default when you create a new team. `selected`: The team is assigned to specific organizations. You can then use the [add organization assignments API](https://docs.github.com/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-organizations#add-organization-assignments) endpoint. `all`: The team is assigned to all current and future organizations in the enterprise. |
+| `group_id` | `string or null` | No | The ID of the IdP group to assign team membership with. You can get this value from the [REST API endpoints for SCIM](https://docs.github.com/enterprise-cloud@latest/rest/scim#list-provisioned-scim-groups-for-an-enterprise). |
+| `notification_setting` | `string` | No | The notification setting the team is set to. The options are: `notifications_enabled` - team members receive notifications when the team is @mentioned. `notifications_disabled` - no one receives notifications. Default: `notifications_enabled` |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get an enterprise team
+
+`GET /enterprises/{enterprise}/teams/{team_slug}`
+
+Gets a team using the team's slug. To create the slug, GitHub replaces special characters in the name string, changes all words to lowercase, and replaces spaces with a `-` separator and adds the "ent:" prefix. For example, "My TEam Näme" would become `ent:my-team-name`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+
+## Update an enterprise team
+
+`PATCH /enterprises/{enterprise}/teams/{team_slug}`
+
+To edit a team, the authenticated user must be an enterprise owner.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string or null` | No | A new name for the team. |
+| `description` | `string or null` | No | A new description for the team. |
+| `sync_to_organizations` | `string` | No | Retired: this field is no longer supported. Whether the enterprise team should be reflected in each organization. This value cannot be changed. |
+| `organization_selection_type` | `string` | No | Specifies which organizations in the enterprise should have access to this team. Can be one of `disabled`, `selected`, or `all`. `disabled`: The team is not assigned to any organizations. This is the default when you create a new team. `selected`: The team is assigned to specific organizations. You can then use the [add organization assignments API](https://docs.github.com/enterprise-cloud@latest/rest/enterprise-teams/enterprise-team-organizations#add-organization-assignments). `all`: The team is assigned to all current and future organizations in the enterprise. |
+| `group_id` | `string or null` | No | The ID of the IdP group to assign team membership with. The new IdP group will replace the existing one, or replace existing direct members if the team isn't currently linked to an IdP group. |
+| `notification_setting` | `string` | No | The notification setting the team is set to. The options are: `notifications_enabled` - team members receive notifications when the team is @mentioned. `notifications_disabled` - no one receives notifications. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+
+## Delete an enterprise team
+
+`DELETE /enterprises/{enterprise}/teams/{team_slug}`
+
+To delete an enterprise team, the authenticated user must be an enterprise owner.
+
+If you are an enterprise owner, deleting an enterprise team will delete all of its IdP mappings as well.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |

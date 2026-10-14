@@ -17,3 +17,293 @@ category:
 Organization webhooks allow your server to receive HTTP `POST` payloads whenever certain events happen in an organization. For more information, see [AUTOTITLE](/webhooks).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization webhooks
+
+`GET /orgs/{org}/hooks`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Create an organization webhook
+
+`POST /orgs/{org}/hooks`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Must be passed as "web". |
+| `config` | `object` | Yes | Key/value pairs to provide settings for this webhook. |
+| `events` | `array of strings` | No | Determines what [events](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads) the hook is triggered for. Set to `["*"]` to receive all possible events. |
+| `active` | `boolean` | No | Determines if notifications are sent when the webhook is triggered. Set to `true` to send notifications. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get an organization webhook
+
+`GET /orgs/{org}/hooks/{hook_id}`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update an organization webhook
+
+`PATCH /orgs/{org}/hooks/{hook_id}`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `config` | `object` | No | Key/value pairs to provide settings for this webhook. |
+| `events` | `array of strings` | No | Determines what [events](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads) the hook is triggered for. |
+| `active` | `boolean` | No | Determines if notifications are sent when the webhook is triggered. Set to `true` to send notifications. |
+| `name` | `string` | No |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete an organization webhook
+
+`DELETE /orgs/{org}/hooks/{hook_id}`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+
+## Get a webhook configuration for an organization
+
+`GET /orgs/{org}/hooks/{hook_id}/config`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a webhook configuration for an organization
+
+`PATCH /orgs/{org}/hooks/{hook_id}/config`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `url` | `string` | No | The URL to which the payloads will be delivered. |
+| `content_type` | `string` | No | The media type used to serialize the payloads. Supported values include `json` and `form`. The default is `form`. |
+| `secret` | `string` | No | If provided, the `secret` will be used as the `key` to generate the HMAC hex digest value for [delivery signature headers](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads/#delivery-headers). |
+| `insecure_ssl` | `string or number` | No | Determines whether the SSL certificate of the host for `url` will be verified when delivering payloads. Supported values include `0` (verification is performed) and `1` (verification is not performed). The default is `0`. We strongly recommend not setting this to `1` as you are subject to man-in-the-middle and other attacks. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List deliveries for an organization webhook
+
+`GET /orgs/{org}/hooks/{hook_id}/deliveries`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `cursor` | query | `string` | No | Used for pagination: the starting delivery from which the page of deliveries is fetched. Refer to the `link` header for the next and previous page cursors. |
+| `status` | query | `string` | No | Returns webhook deliveries filtered by delivery outcome classification based on `status_code` range. A `status` of `success` returns deliveries with a `status_code` in the 200-399 range (inclusive). A `status` of `failure` returns deliveries with a `status_code` in the 400-599 range (inclusive). |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Bad Request |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a webhook delivery for an organization webhook
+
+`GET /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+| `delivery_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Bad Request |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Redeliver a delivery for an organization webhook
+
+`POST /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}/attempts`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+| `delivery_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `400` | Bad Request |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Ping an organization webhook
+
+`POST /orgs/{org}/hooks/{hook_id}/pings`
+
+You must be an organization owner or have the "Manage organization webhooks" permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need `admin:org_hook` scope. OAuth apps cannot list, view, or edit webhooks
+that they did not create and users cannot list, view, or edit webhooks that were created by OAuth apps.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |

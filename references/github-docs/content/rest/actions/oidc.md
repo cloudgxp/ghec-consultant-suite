@@ -17,3 +17,285 @@ category:
 You can use the REST API to query and manage a customization template for an OpenID Connect (OIDC) subject claim. For more information, see [AUTOTITLE](/actions/concepts/security/openid-connect).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Set the GitHub Actions OIDC custom issuer policy for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/oidc/customization/issuer`
+
+Sets the GitHub Actions OpenID Connect (OIDC) custom issuer policy for an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `include_enterprise_slug` | `boolean` | No | Whether the enterprise customer requested a custom issuer URL. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List OIDC custom property inclusions for an enterprise
+
+`GET /enterprises/{enterprise}/actions/oidc/customization/properties/repo`
+
+Lists the repository custom properties that are included in the OIDC token for repository actions in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | A JSON array of OIDC custom property inclusions |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create an OIDC custom property inclusion for an enterprise
+
+`POST /enterprises/{enterprise}/actions/oidc/customization/properties/repo`
+
+Adds a repository custom property to be included in the OIDC token for repository actions in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `custom_property_name` | `string` | Yes | The name of the custom property to include in the OIDC token |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | OIDC custom property inclusion created |
+| `400` | Invalid input |
+| `403` | Forbidden |
+| `422` | Property inclusion already exists |
+
+## Delete an OIDC custom property inclusion for an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/oidc/customization/properties/repo/{custom_property_name}`
+
+Removes a repository custom property from being included in the OIDC token for repository actions in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The name of the custom property to remove from OIDC token inclusion |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | OIDC custom property inclusion deleted |
+| `400` | Invalid input |
+| `403` | Forbidden |
+| `404` | Property inclusion not found |
+
+## List OIDC custom property inclusions for an organization
+
+`GET /orgs/{org}/actions/oidc/customization/properties/repo`
+
+Lists the repository custom properties that are included in the OIDC token for repository actions in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `read:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | A JSON array of OIDC custom property inclusions |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create an OIDC custom property inclusion for an organization
+
+`POST /orgs/{org}/actions/oidc/customization/properties/repo`
+
+Adds a repository custom property to be included in the OIDC token for repository actions in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `custom_property_name` | `string` | Yes | The name of the custom property to include in the OIDC token |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | OIDC custom property inclusion created |
+| `400` | Invalid input |
+| `403` | Forbidden |
+| `422` | Property inclusion already exists |
+
+## Delete an OIDC custom property inclusion for an organization
+
+`DELETE /orgs/{org}/actions/oidc/customization/properties/repo/{custom_property_name}`
+
+Removes a repository custom property from being included in the OIDC token for repository actions in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `custom_property_name` | path | `string` | Yes | The name of the custom property to remove from OIDC token inclusion |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | OIDC custom property inclusion deleted |
+| `400` | Invalid input |
+| `403` | Forbidden |
+| `404` | Property inclusion not found |
+
+## Get the customization template for an OIDC subject claim for an organization
+
+`GET /orgs/{org}/actions/oidc/customization/sub`
+
+Gets the customization template for an OpenID Connect (OIDC) subject claim.
+
+OAuth app tokens and personal access tokens (classic) need the `read:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | A JSON serialized template for OIDC subject claim customization |
+
+## Set the customization template for an OIDC subject claim for an organization
+
+`PUT /orgs/{org}/actions/oidc/customization/sub`
+
+Creates or updates the customization template for an OpenID Connect (OIDC) subject claim.
+
+OAuth app tokens and personal access tokens (classic) need the `write:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `include_claim_keys` | `array of strings` | No | Array of unique strings. Each claim key can only contain alphanumeric characters and underscores. |
+| `use_immutable_subject` | `boolean` | No | Whether to opt in to the immutable OIDC subject claim format for the organization. When `true`, new OIDC tokens will use a stable, repository-ID-based `sub` claim instead of the name-based format. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Empty response |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get the customization template for an OIDC subject claim for a repository
+
+`GET /repos/{owner}/{repo}/actions/oidc/customization/sub`
+
+Gets the customization template for an OpenID Connect (OIDC) subject claim.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Status response |
+| `400` | Bad Request |
+| `404` | Resource not found |
+
+## Set the customization template for an OIDC subject claim for a repository
+
+`PUT /repos/{owner}/{repo}/actions/oidc/customization/sub`
+
+Sets the customization template and `opt-in` or `opt-out` flag for an OpenID Connect (OIDC) subject claim for a repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `use_default` | `boolean` | Yes | Whether to use the default template or not. If `true`, the `include_claim_keys` field is ignored. |
+| `include_claim_keys` | `array of strings` | No | Array of unique strings. Each claim key can only contain alphanumeric characters and underscores. |
+| `use_immutable_subject` | `boolean` | No | Whether to opt in to the immutable OIDC subject claim format for this repository. When `true`, OIDC tokens will use a stable, repository-ID-based `sub` claim. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Empty response |
+| `400` | Bad Request |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

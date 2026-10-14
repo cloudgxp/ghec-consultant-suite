@@ -76,8 +76,24 @@ export const runGitCommand: GitCommandRunner = async (
       }
     }
   }
+  const effectiveArgs =
+    command === 'git'
+      ? [
+          '-c',
+          'pack.threads=2',
+          '-c',
+          'pack.windowMemory=100m',
+          '-c',
+          'pack.packSizeLimit=2g',
+          '-c',
+          'core.deltaBaseCacheLimit=128m',
+          '-c',
+          'http.postBuffer=524288000',
+          ...args,
+        ]
+      : args;
   return new Promise<GitCommandResult>((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(command, effectiveArgs, {
       cwd: options.cwd,
       env: envMap,
       shell: false,
@@ -171,7 +187,11 @@ export class GitMirrorPushExecutor {
       );
     }
 
-    const parentScratch = request.scratchDir ?? tmpdir();
+    const parentScratch =
+      request.scratchDir ??
+      process.env.GHEC_SCRATCH_DIR ??
+      process.env.RUNNER_TEMP ??
+      tmpdir();
     let diskSpaceChecked: DiskSpaceCheckResult | undefined;
 
     if (
@@ -193,75 +213,6 @@ export class GitMirrorPushExecutor {
       }
     }
 
-    // Provision target repo if not already existing
-    let targetCreated = false;
-    let targetExists = false;
-
-    if (request.targetClient) {
-      try {
-        const checkRes = await request.targetClient.readSingle(
-          {
-            id: 'rest.repos.get',
-            transport: 'rest',
-            verifiedReadOnly: true,
-            path: '/repos/{owner}/{repo}',
-            pathParams: { owner: targetOrg, repo: targetRepo },
-          },
-          effectiveSignal,
-        );
-        if (checkRes.status === 200) {
-          targetExists = true;
-        }
-      } catch {
-        targetExists = false;
-      }
-    }
-
-    if (!targetExists) {
-      if (request.targetWriteClient) {
-        await request.targetWriteClient.mutate(
-          {
-            id: 'rest.repos.createInOrg',
-            method: 'POST',
-            path: '/orgs/{org}/repos',
-            pathParams: { org: targetOrg },
-            body: {
-              name: targetRepo,
-              visibility: targetRepoVisibility,
-              private: targetRepoVisibility === 'private',
-            },
-          },
-          effectiveSignal,
-        );
-        targetCreated = true;
-      } else if (targetToken) {
-        try {
-          const res = await fetch(
-            `https://api.github.com/orgs/${targetOrg}/repos`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${targetToken}`,
-                Accept: 'application/vnd.github+json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                name: targetRepo,
-                visibility: targetRepoVisibility,
-                private: targetRepoVisibility === 'private',
-              }),
-              signal: effectiveSignal,
-            },
-          );
-          if (res.ok || res.status === 201 || res.status === 422) {
-            targetCreated = res.status === 201;
-          }
-        } catch {
-          // If fetch fails, git push may still attempt creation or error cleanly
-        }
-      }
-    }
-
     const secretsToRedact: string[] = [];
     if (sourceToken) secretsToRedact.push(sourceToken);
     if (targetToken) secretsToRedact.push(targetToken);
@@ -269,9 +220,10 @@ export class GitMirrorPushExecutor {
     const scratchDir = mkdtempSync(join(parentScratch, 'ghec-mirror-push-'));
     let combinedStdout = '';
     let combinedStderr = '';
+    let targetCreated = false;
 
     try {
-      // 1. Bare Clone
+      // 1. Bare Clone (before provisioning target repo so failed clones never leave empty target repos)
       const cloneArgs: string[] = [];
       const cloneEnv: Record<string, string> = {};
 
@@ -304,7 +256,75 @@ export class GitMirrorPushExecutor {
         );
       }
 
-      // 2. Mirror Push
+      // 2. Provision target repo if not already existing
+      let targetExists = false;
+
+      if (request.targetClient) {
+        try {
+          const checkRes = await request.targetClient.readSingle(
+            {
+              id: 'rest.repos.get',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}',
+              pathParams: { owner: targetOrg, repo: targetRepo },
+            },
+            effectiveSignal,
+          );
+          if (checkRes.status === 200) {
+            targetExists = true;
+          }
+        } catch {
+          targetExists = false;
+        }
+      }
+
+      if (!targetExists) {
+        if (request.targetWriteClient) {
+          await request.targetWriteClient.mutate(
+            {
+              id: 'rest.repos.createInOrg',
+              method: 'POST',
+              path: '/orgs/{org}/repos',
+              pathParams: { org: targetOrg },
+              body: {
+                name: targetRepo,
+                visibility: targetRepoVisibility,
+                private: targetRepoVisibility === 'private',
+              },
+            },
+            effectiveSignal,
+          );
+          targetCreated = true;
+        } else if (targetToken) {
+          try {
+            const res = await fetch(
+              `https://api.github.com/orgs/${targetOrg}/repos`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${targetToken}`,
+                  Accept: 'application/vnd.github+json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  name: targetRepo,
+                  visibility: targetRepoVisibility,
+                  private: targetRepoVisibility === 'private',
+                }),
+                signal: effectiveSignal,
+              },
+            );
+            if (res.ok || res.status === 201 || res.status === 422) {
+              targetCreated = res.status === 201;
+            }
+          } catch {
+            // If fetch fails, git push may still attempt creation or error cleanly
+          }
+        }
+      }
+
+      // 3. Mirror Push
       const pushArgs: string[] = [];
       const pushEnv: Record<string, string> = {};
 

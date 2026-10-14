@@ -14,3 +14,158 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Create an enterprise repository ruleset
+
+`POST /enterprises/{enterprise}/rulesets`
+
+Create a repository ruleset for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the ruleset. |
+| `target` | `string` | No | The target of the ruleset |
+| `enforcement` | `string` | Yes | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `bypass_actors` | `array of objects` | No | The actors that can bypass the rules in this ruleset |
+| `conditions` | `object` | No | Conditions for an enterprise ruleset. The `conditions` object supports either of the following combinations: - `organization_id` and `repository_name` - `organization_id` and `repository_property` - `organization_name` and `repository_name` - `organization_name` and `repository_property` - `organization_property` and `repository_name` - `organization_property` and `repository_property` For branch and tag rulesets, the `conditions` object should also contain the `ref_name` property. |
+| `rules` | `array of objects` | No | An array of rules within the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get an enterprise repository ruleset
+
+`GET /enterprises/{enterprise}/rulesets/{ruleset_id}`
+
+Get a repository ruleset for an enterprise.
+
+Note: To prevent leaking sensitive information, the `bypass_actors` property is only returned if the user
+making the API request has write access to the ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Update an enterprise repository ruleset
+
+`PUT /enterprises/{enterprise}/rulesets/{ruleset_id}`
+
+Update a ruleset for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the ruleset. |
+| `target` | `string` | No | The target of the ruleset |
+| `enforcement` | `string` | No | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `bypass_actors` | `array of objects` | No | The actors that can bypass the rules in this ruleset |
+| `conditions` | `object` | No | Conditions for an enterprise ruleset. The `conditions` object supports either of the following combinations: - `organization_id` and `repository_name` - `organization_id` and `repository_property` - `organization_name` and `repository_name` - `organization_name` and `repository_property` - `organization_property` and `repository_name` - `organization_property` and `repository_property` For branch and tag rulesets, the `conditions` object should also contain the `ref_name` property. |
+| `rules` | `array of objects` | No | An array of rules within the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Delete an enterprise repository ruleset
+
+`DELETE /enterprises/{enterprise}/rulesets/{ruleset_id}`
+
+Delete a ruleset for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get enterprise ruleset history
+
+`GET /enterprises/{enterprise}/rulesets/{ruleset_id}/history`
+
+Get the history of an enterprise ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get enterprise ruleset version
+
+`GET /enterprises/{enterprise}/rulesets/{ruleset_id}/history/{version_id}`
+
+Get a version of an enterprise ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+| `version_id` | path | `integer` | Yes | The ID of the version |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |

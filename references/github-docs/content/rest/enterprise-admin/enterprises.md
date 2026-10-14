@@ -11,3 +11,47 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Disable access restrictions for an enterprise
+
+`POST /enterprises/{enterprise}/access-restrictions/disable`
+
+Disable access restriction by proxy header using the network proxy owned by the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Forbidden |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Enable access restrictions for an enterprise
+
+`POST /enterprises/{enterprise}/access-restrictions/enable`
+
+Enable access restriction by proxy header using the network proxy owned by the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Forbidden |
+| `404` | Resource not found |
+| `500` | Internal Error |

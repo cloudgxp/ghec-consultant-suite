@@ -18,3 +18,109 @@ category:
 You can use the REST API to read the state of {% data variables.product.prodname_actions %} concurrency groups, which ensure that only a single job or workflow using the same group will run at a time while additional runs are pending or canceled depending on configuration. For more information, see [AUTOTITLE](/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List concurrency groups for a repository
+
+`GET /repos/{owner}/{repo}/actions/concurrency_groups`
+
+Lists the active concurrency groups for a repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `after` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for results after this cursor. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a concurrency group for a repository
+
+`GET /repos/{owner}/{repo}/actions/concurrency_groups/{concurrency_group_name}`
+
+Gets a specific concurrency group for a repository, including all instances in the group's queue.
+Returns 404 if the group is inactive or does not exist.
+
+Optionally, pass `ahead_of_run` or `ahead_of_job` to filter the results to only the items
+ahead of the specified workflow run or job in the queue, plus the specified item itself
+(returned as the last element). This is useful for determining what is blocking a particular
+run or job. Returns 422 if the specified run or job is not in this concurrency group.
+
+When using `ahead_of_run`, this matches workflow-level concurrency and any reusable-workflow
+leases held on behalf of that run. Job-level leases within the run are not considered to
+block the run as a whole. Use `ahead_of_job` to match job-level concurrency and reusable-workflow
+leases on the job's ancestor paths.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `concurrency_group_name` | path | `string` | Yes | The name of the concurrency group. |
+| `ahead_of_run` | query | `integer` | No | Filter to items ahead of this workflow run ID in the queue, plus the run itself. Matches workflow-level concurrency and reusable-workflow leases held on behalf of the run. Mutually exclusive with `ahead_of_job`. |
+| `ahead_of_job` | query | `integer` | No | Filter to items ahead of this job ID in the queue, plus the job itself. Matches job-level concurrency and reusable-workflow leases on the job's ancestor paths. Mutually exclusive with `ahead_of_run`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List concurrency groups for a workflow run
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/concurrency_groups`
+
+Lists all concurrency groups associated with a workflow run or its jobs.
+
+The set of groups is derived from the run's configuration, so a group is
+included even when the run no longer has any items currently holding or
+waiting in it. In that case the `group_members` array will be empty.
+`total_count` reflects the number of groups the run participates in by
+configuration, not the number with active items.
+
+This differs from `GET /repos/{owner}/{repo}/actions/concurrency_groups/{group_name}`,
+which returns 404 when a group has no active items. That endpoint reports
+the live state of a group repo-wide, while this endpoint reports the
+groups associated with a specific run by configuration.
+
+Results are sorted by group name and support cursor-based pagination via
+`before` and `after`. The `after` cursor paginates forward only and does
+not emit a `rel="prev"` Link; use `before` to page backward from a
+forward page's `next` cursor.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `before` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for results before this cursor. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `after` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for results after this cursor. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

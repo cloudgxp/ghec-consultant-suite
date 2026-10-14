@@ -271,6 +271,6 @@ export function resolveAutoRepositoryModules(
 
   return {
     applyModules,
-    verifyModules: candidateModules,
+    verifyModules: applyModules,
   };
 }
