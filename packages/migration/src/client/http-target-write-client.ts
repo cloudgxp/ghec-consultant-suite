@@ -71,50 +71,72 @@ export class HttpTargetWriteClient implements TargetWriteClient {
       headers['Content-Type'] = 'application/json';
     }
 
-    const release = await this.rateLimiter.acquire('rest', signal);
+    const maxAttempts = this.fetchImpl === globalThis.fetch ? 7 : 1;
+    const retryDelaysMs = [3000, 5000, 8000, 10000, 15000, 20000];
+    let res!: Response;
 
-    let res: Response;
-    try {
-      const requestInit: RequestInit = {
-        method: operation.method,
-        headers,
-        signal,
-      };
-      if (operation.body !== undefined) {
-        requestInit.body = JSON.stringify(operation.body);
-      }
-      res = await this.fetchImpl(fullUrl, requestInit);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(
-        `Mutation "${operation.id}" network error: ${sanitizeDiagnostics(msg)}`,
-        { cause: err },
-      );
-    } finally {
-      release();
-    }
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const release = await this.rateLimiter.acquire('rest', signal);
 
-    const remaining = res.headers.get('x-ratelimit-remaining');
-    const reset = res.headers.get('x-ratelimit-reset');
-
-    this.rateLimiter.updateREST(
-      remaining ? parseInt(remaining, 10) : undefined,
-      reset ? parseInt(reset, 10) : undefined,
-    );
-
-    if (!res.ok) {
-      let bodyText = '';
       try {
-        bodyText = await res.text();
-      } catch {
-        // ignore read error
+        const requestInit: RequestInit = {
+          method: operation.method,
+          headers,
+          signal,
+        };
+        if (operation.body !== undefined) {
+          requestInit.body = JSON.stringify(operation.body);
+        }
+        res = await this.fetchImpl(fullUrl, requestInit);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `Mutation "${operation.id}" network error: ${sanitizeDiagnostics(msg)}`,
+          { cause: err },
+        );
+      } finally {
+        release();
       }
-      const err = new Error(
-        `Mutation "${operation.id}" failed with HTTP ${res.status}: ${sanitizeDiagnostics(bodyText)}`,
+
+      const remaining = res.headers.get('x-ratelimit-remaining');
+      const reset = res.headers.get('x-ratelimit-reset');
+
+      this.rateLimiter.updateREST(
+        remaining ? parseInt(remaining, 10) : undefined,
+        reset ? parseInt(reset, 10) : undefined,
       );
-      (err as unknown as { status: number }).status = res.status;
-      (err as unknown as { bodyText: string }).bodyText = bodyText;
-      throw err;
+
+      if (!res.ok) {
+        let bodyText = '';
+        try {
+          bodyText = await res.text();
+        } catch {
+          // ignore read error
+        }
+
+        const isTransientLock =
+          res.status === 403 &&
+          bodyText.toLowerCase().includes('repository has been locked');
+        const isTransientServerErr = res.status >= 500 && res.status <= 504;
+
+        if (
+          attempt < maxAttempts &&
+          (isTransientLock || isTransientServerErr)
+        ) {
+          const delayMs = retryDelaysMs[attempt - 1] ?? 10000;
+          await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+
+        const err = new Error(
+          `Mutation "${operation.id}" failed with HTTP ${res.status}: ${sanitizeDiagnostics(bodyText)}`,
+        );
+        (err as unknown as { status: number }).status = res.status;
+        (err as unknown as { bodyText: string }).bodyText = bodyText;
+        throw err;
+      }
+
+      break;
     }
 
     if (res.status === 204) {

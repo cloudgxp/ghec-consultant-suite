@@ -456,6 +456,35 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         });
       }
 
+      if (!this.geiRunner) {
+        for (let poll = 0; poll < 10; poll++) {
+          try {
+            const repoCheck = await ctx.targetClient.readSingle<{
+              locked?: boolean;
+            }>(
+              {
+                id: 'rest.repos.getLockState',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: targetOrg, repo: targetRepo },
+              },
+              ctx.signal,
+            );
+            if (repoCheck.data && repoCheck.data.locked === true) {
+              ctx.logger.info(
+                `[gei-repo] Target repository ${targetOrg}/${targetRepo} is still locked post-GEI; waiting 3s before downstream modules...`,
+              );
+              await new Promise<void>((resolve) => setTimeout(resolve, 3000));
+              continue;
+            }
+            break;
+          } catch {
+            break;
+          }
+        }
+      }
+
       ctx.logger.info(
         `[gei-repo] Successfully migrated ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo} via GEI.`,
       );

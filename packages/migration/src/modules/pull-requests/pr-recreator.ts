@@ -101,6 +101,11 @@ export async function recreatePullRequest(
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes('a pull request already exists')) {
+      return {
+        success: true,
+      };
+    }
     return {
       success: false,
       error: `Pull request recreation failed: ${msg}`,

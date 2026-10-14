@@ -300,6 +300,9 @@ export class ProjectsV2MigrationModule implements MigrationModule<ProjectsV2Data
               reason: `Field "${field.name}" already exists on project "${project.title}"`,
             });
           } else {
+            if (PROJECT_BUILTIN_FIELD_NAMES.has(field.name.toLowerCase())) {
+              continue;
+            }
             const fieldPayload: CreateProjectV2FieldPayload = {
               org: targetOrg,
               projectTitle: project.title,
@@ -377,6 +380,14 @@ export class ProjectsV2MigrationModule implements MigrationModule<ProjectsV2Data
     for (const op of plan.operations) {
       const completedAt = new Date().toISOString();
 
+      if (op.resourceType === 'project_v2') {
+        const destProj = op.destinationCurrentState as
+          { id?: string; title?: string } | undefined;
+        if (typeof destProj?.id === 'string') {
+          createdProjectIds.set(op.resourceName.toLowerCase(), destProj.id);
+        }
+      }
+
       if (op.operation === 'noop' || op.operation === 'skip') {
         results.push({
           operationId: op.id,
@@ -441,9 +452,18 @@ export class ProjectsV2MigrationModule implements MigrationModule<ProjectsV2Data
                 id?: string;
               };
             };
+            data?: {
+              createProjectV2?: {
+                projectV2?: {
+                  id?: string;
+                };
+              };
+            };
           }>(writeOp, ctx.signal);
 
-          const createdId = res.data?.createProjectV2?.projectV2?.id;
+          const createdId =
+            res.data?.createProjectV2?.projectV2?.id ??
+            res.data?.data?.createProjectV2?.projectV2?.id;
           if (createdId) {
             createdProjectIds.set(title.toLowerCase(), createdId);
           }
@@ -457,6 +477,17 @@ export class ProjectsV2MigrationModule implements MigrationModule<ProjectsV2Data
         } else if (op.resourceType === 'project_v2_field') {
           const payload = op.payload as CreateProjectV2FieldPayload | undefined;
           const projectTitle = payload?.projectTitle ?? '';
+          const fieldName =
+            payload?.name ?? op.resourceName.split(':')[1] ?? 'Field';
+          if (PROJECT_BUILTIN_FIELD_NAMES.has(fieldName.toLowerCase())) {
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: 200,
+              completedAt: new Date().toISOString(),
+            });
+            continue;
+          }
           const projectId =
             payload?.projectId ??
             createdProjectIds.get(projectTitle.toLowerCase());

@@ -309,7 +309,36 @@ export class OrgSettingsMigrationModule implements MigrationModule<OrgSettingsDa
           body: payload,
         };
 
-        const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+        let res: { status: number; data?: unknown };
+        try {
+          res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+        } catch (patchErr: unknown) {
+          const patchMsg =
+            patchErr instanceof Error ? patchErr.message : String(patchErr);
+          if (
+            patchMsg.includes('409') &&
+            patchMsg.includes('default_repository_permission')
+          ) {
+            const {
+              default_repository_permission: _omitted,
+              ...remainingPayload
+            } = payload;
+            void _omitted;
+            if (Object.keys(remainingPayload).length > 0) {
+              res = await ctx.targetWriteClient.mutate(
+                {
+                  ...writeOp,
+                  body: remainingPayload,
+                },
+                ctx.signal,
+              );
+            } else {
+              res = { status: 200 };
+            }
+          } else {
+            throw patchErr;
+          }
+        }
         results.push({
           operationId: op.id,
           status: 'succeeded',

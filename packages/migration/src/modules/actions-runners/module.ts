@@ -135,13 +135,22 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
         targetAllowsPublic = false;
       }
 
+      const sourceOrgPrefix = ctx.scope.sourceOrg
+        ? `${ctx.scope.sourceOrg}/`
+        : '';
+      const mappedWorkflows = (group.selected_workflows ?? []).map((wf) =>
+        sourceOrgPrefix && wf.startsWith(sourceOrgPrefix)
+          ? `${targetOrg}/${wf.slice(sourceOrgPrefix.length)}`
+          : wf,
+      );
+
       const desiredPayload = {
         ...(existing?.id ? { id: existing.id } : {}),
         name: group.name,
         visibility: group.visibility,
         allows_public_repositories: targetAllowsPublic,
         restricted_to_workflows: group.restricted_to_workflows ?? false,
-        selected_workflows: group.selected_workflows ?? [],
+        selected_workflows: mappedWorkflows,
       };
 
       if (existing) {
@@ -150,10 +159,7 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
           existing.allows_public_repositories !== targetAllowsPublic ||
           existing.restricted_to_workflows !==
             (group.restricted_to_workflows ?? false) ||
-          !areWorkflowsEqual(
-            existing.selected_workflows,
-            group.selected_workflows,
-          );
+          !areWorkflowsEqual(existing.selected_workflows, mappedWorkflows);
 
         if (needsUpdate) {
           operations.push({
@@ -283,7 +289,34 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
             pathParams: { org: targetOrg },
             body,
           };
-          const res = await client.mutate(writeOp, ctx.signal);
+          let res: { status: number; data?: unknown };
+          try {
+            res = await client.mutate(writeOp, ctx.signal);
+          } catch (wfErr: unknown) {
+            const wfMsg =
+              wfErr instanceof Error ? wfErr.message : String(wfErr);
+            if (
+              wfMsg.includes('does not resolve to a file') &&
+              body.selected_workflows.length > 0
+            ) {
+              ctx.logger.warn(
+                `[actions-runners] Workflow reference in runner group "${op.resourceName}" could not resolve on ${targetOrg}; creating runner group without workflow restriction.`,
+              );
+              res = await client.mutate(
+                {
+                  ...writeOp,
+                  body: {
+                    ...body,
+                    restricted_to_workflows: false,
+                    selected_workflows: [],
+                  },
+                },
+                ctx.signal,
+              );
+            } else {
+              throw wfErr;
+            }
+          }
           results.push({
             operationId: op.id,
             status: 'succeeded',
@@ -313,7 +346,34 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
             pathParams: { org: targetOrg, runner_group_id: String(groupId) },
             body,
           };
-          const res = await client.mutate(writeOp, ctx.signal);
+          let res: { status: number; data?: unknown };
+          try {
+            res = await client.mutate(writeOp, ctx.signal);
+          } catch (wfErr: unknown) {
+            const wfMsg =
+              wfErr instanceof Error ? wfErr.message : String(wfErr);
+            if (
+              wfMsg.includes('does not resolve to a file') &&
+              body.selected_workflows.length > 0
+            ) {
+              ctx.logger.warn(
+                `[actions-runners] Workflow reference in runner group "${op.resourceName}" could not resolve on ${targetOrg}; updating runner group without workflow restriction.`,
+              );
+              res = await client.mutate(
+                {
+                  ...writeOp,
+                  body: {
+                    ...body,
+                    restricted_to_workflows: false,
+                    selected_workflows: [],
+                  },
+                },
+                ctx.signal,
+              );
+            } else {
+              throw wfErr;
+            }
+          }
           results.push({
             operationId: op.id,
             status: 'succeeded',

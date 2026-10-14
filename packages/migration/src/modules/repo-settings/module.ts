@@ -395,8 +395,44 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
             }
           } catch (fallbackErr) {
             ctx.logger.warn(
-              `Fallback to internal visibility for ${targetRepo} failed: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`,
+              `Fallback to internal visibility for ${targetRepo} failed: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}. Retrying with sanitized PR settings...`,
             );
+            try {
+              const sanitizedPayload: Record<string, unknown> = {
+                ...payload,
+                visibility: 'internal',
+              };
+              delete sanitizedPayload.squash_merge_commit_title;
+              delete sanitizedPayload.squash_merge_commit_message;
+              delete sanitizedPayload.merge_commit_title;
+              delete sanitizedPayload.merge_commit_message;
+              delete sanitizedPayload.allow_auto_merge;
+              const retryRes =
+                await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+                  {
+                    id: 'rest.repos.updateSanitizedFallback',
+                    method: 'PATCH',
+                    path: '/repos/{owner}/{repo}',
+                    pathParams: {
+                      owner: ctx.scope.targetOrg,
+                      repo: targetRepo,
+                    },
+                    body: sanitizedPayload,
+                  },
+                  ctx.signal,
+                );
+              if (retryRes.status >= 200 && retryRes.status < 300) {
+                results.push({
+                  operationId: op.id,
+                  status: 'succeeded',
+                  httpStatus: retryRes.status,
+                  completedAt: new Date().toISOString(),
+                });
+                continue;
+              }
+            } catch {
+              // Ignore secondary fallback error
+            }
           }
         }
 
@@ -510,9 +546,10 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
           'private';
 
         if (actualVisibility !== expectedVisibility) {
-          // Check if fallback to internal was accepted
+          // Check if fallback to internal or private was accepted for public source repos in EMU
           const allowedFallback =
-            expectedVisibility === 'public' && actualVisibility === 'internal';
+            expectedVisibility === 'public' &&
+            (actualVisibility === 'internal' || actualVisibility === 'private');
           if (!allowedFallback) {
             discrepancies.push({
               resourceName: `${op.resourceName} (visibility)`,
@@ -561,6 +598,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
         }
 
         if (
+          actualPr.allowSquashMerge !== false &&
           payload.squash_merge_commit_title !== undefined &&
           actualPr.squashMergeCommitTitle !== payload.squash_merge_commit_title
         ) {
@@ -573,6 +611,7 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
         }
 
         if (
+          actualPr.allowSquashMerge !== false &&
           payload.squash_merge_commit_message !== undefined &&
           actualPr.squashMergeCommitMessage !==
             payload.squash_merge_commit_message

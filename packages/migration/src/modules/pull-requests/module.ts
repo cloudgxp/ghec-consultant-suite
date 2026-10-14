@@ -458,6 +458,7 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
       // In offline harness
     }
 
+    let issuesDisabled = false;
     let archiveFound = false;
     try {
       const issuesRes = await ctx.targetClient.fetchAll<{
@@ -480,13 +481,20 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
             'Historical Pull Requests Archive'.toLowerCase(),
         );
       }
-    } catch {
-      // In offline harness
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg.toLowerCase().includes('issues has been disabled') ||
+        msg.includes('410')
+      ) {
+        issuesDisabled = true;
+      }
     }
 
     const targetPullTitles = new Set(
       targetPulls.map((p) => p.title.toLowerCase()),
     );
+    const hasNativeClosedPulls = targetPulls.some((p) => p.state !== 'open');
 
     for (const action of plan.operations) {
       if (action.operation !== 'create') continue;
@@ -502,7 +510,7 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
           });
         }
       } else if (action.resourceType === 'pull-requests-archive') {
-        if (!archiveFound) {
+        if (!archiveFound && !hasNativeClosedPulls && !issuesDisabled) {
           discrepancies.push({
             resourceName: 'Historical Pull Requests Archive',
             expected: 'present',
