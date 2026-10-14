@@ -1058,6 +1058,8 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
       };
     }
 
+    const targetTeamReposBySlug = new Map<string, readonly RawTeamRepo[]>();
+
     for (const op of plan.operations) {
       if (op.operation === 'noop' || op.operation === 'skip') {
         continue;
@@ -1106,9 +1108,47 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             ctx.signal,
           );
 
-          const actualPerm = permRes.data
-            ? deriveTeamRepoPermission(permRes.data)
-            : null;
+          let actualPerm: TeamRepoPermission | null =
+            permRes.data &&
+            (permRes.data.role_name !== undefined ||
+              permRes.data.permissions !== undefined)
+              ? deriveTeamRepoPermission(permRes.data)
+              : null;
+
+          if (!actualPerm) {
+            let teamRepos = targetTeamReposBySlug.get(permState.teamSlug);
+            if (!teamRepos) {
+              try {
+                const teamReposRes =
+                  await ctx.targetClient.fetchAll<RawTeamRepo>(
+                    {
+                      id: 'rest.teams.listReposVerify',
+                      transport: 'rest',
+                      verifiedReadOnly: true,
+                      path: '/orgs/{org}/teams/{team_slug}/repos',
+                      pathParams: {
+                        org: targetOrg,
+                        team_slug: permState.teamSlug,
+                      },
+                      queryParams: { per_page: 100 },
+                    },
+                    ctx.signal,
+                  );
+                teamRepos = teamReposRes.items ?? [];
+              } catch {
+                teamRepos = [];
+              }
+              targetTeamReposBySlug.set(permState.teamSlug, teamRepos);
+            }
+            const matchedRepo = teamRepos.find(
+              (r) =>
+                r.name.toLowerCase() === permState.repositoryName.toLowerCase(),
+            );
+            if (matchedRepo) {
+              actualPerm = deriveTeamRepoPermission(matchedRepo);
+            }
+          }
+
           if (!actualPerm || actualPerm !== permState.permission) {
             discrepancies.push({
               resourceName: `${permState.teamSlug}:${permState.repositoryName}`,

@@ -547,6 +547,11 @@ jobs:
           fi
           ROUND=1
           MAX_ROUNDS=${MAX_ROUNDS:-3}
+          PREV_REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+          if [ "$PREV_REMAINING" -eq 0 ]; then
+            echo "Initial verification reported 0 discrepancies. Skipping remediation loop."
+            exit 0
+          fi
 
           while [ "$ROUND" -le "$MAX_ROUNDS" ]; do
             echo "=================================================="

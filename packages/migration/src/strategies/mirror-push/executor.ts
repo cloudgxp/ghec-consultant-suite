@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
@@ -271,6 +271,54 @@ export class GitMirrorPushExecutor {
         throw new Error(
           `git clone --bare failed with exit code ${cloneResult.exitCode}: ${redact(cloneResult.stderr || cloneResult.stdout, secretsToRedact)}`,
         );
+      }
+
+      if (useShallowPackGuard && existsSync(join(scratchDir, 'shallow'))) {
+        const symRefRes = await this.runner('git', ['symbolic-ref', 'HEAD'], {
+          cwd: scratchDir,
+          secrets: secretsToRedact,
+          signal,
+          timeoutMs,
+        });
+        const branchRef = symRefRes.stdout.trim() || 'refs/heads/main';
+        const commitTreeRes = await this.runner(
+          'git',
+          [
+            '-c',
+            'user.name=GHEC Migration',
+            '-c',
+            'user.email=ghec-migration@users.noreply.github.com',
+            'commit-tree',
+            'HEAD^{tree}',
+            '-m',
+            `Shallow mirror snapshot of ${sourceOrg}/${sourceRepo}`,
+          ],
+          {
+            cwd: scratchDir,
+            environment: {
+              GIT_AUTHOR_NAME: 'GHEC Migration',
+              GIT_AUTHOR_EMAIL: 'ghec-migration@users.noreply.github.com',
+              GIT_COMMITTER_NAME: 'GHEC Migration',
+              GIT_COMMITTER_EMAIL: 'ghec-migration@users.noreply.github.com',
+            },
+            secrets: secretsToRedact,
+            signal,
+            timeoutMs,
+          },
+        );
+        const newCommitSha = commitTreeRes.stdout.trim();
+        if (
+          commitTreeRes.exitCode === 0 &&
+          /^[0-9a-f]{40}$/i.test(newCommitSha)
+        ) {
+          await this.runner('git', ['update-ref', branchRef, newCommitSha], {
+            cwd: scratchDir,
+            secrets: secretsToRedact,
+            signal,
+            timeoutMs,
+          });
+          rmSync(join(scratchDir, 'shallow'), { force: true });
+        }
       }
 
       // 2. Provision target repo if not already existing

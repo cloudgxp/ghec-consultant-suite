@@ -232,13 +232,38 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           }
         } else if (
           typeof targetRepoData.size === 'number' &&
-          targetRepoData.size === 0 &&
           ctx.scope.options?.gitTransferStrategy === 'mirror-push'
         ) {
-          ctx.logger.warn(
-            `[gei-repo] Target repository ${targetOrg}/${targetRepo} exists as an empty shell (size=0 KB); proceeding with mirror-push transfer.`,
-          );
-          targetAlreadyPresent = false;
+          let hasBranches = targetRepoData.size > 0;
+          if (hasBranches) {
+            try {
+              const branchesRes = await ctx.targetClient.readPage<
+                readonly unknown[]
+              >(
+                {
+                  id: 'rest.repos.listBranches',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/repos/{owner}/{repo}/branches',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                  queryParams: { per_page: 1 },
+                },
+                null,
+                ctx.signal,
+              );
+              hasBranches = (branchesRes.items?.length ?? 0) > 0;
+            } catch {
+              hasBranches = false;
+            }
+          }
+          if (!hasBranches) {
+            ctx.logger.warn(
+              `[gei-repo] Target repository ${targetOrg}/${targetRepo} exists as an empty shell (0 branches); proceeding with mirror-push transfer.`,
+            );
+            targetAlreadyPresent = false;
+          } else {
+            targetAlreadyPresent = true;
+          }
         } else {
           targetAlreadyPresent = true;
         }

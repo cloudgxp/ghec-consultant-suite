@@ -102,7 +102,23 @@ export class VerificationOrchestrator {
         existing.verified = false;
       }
       for (const disc of res.discrepancies) {
-        existing.discrepancies.push(disc);
+        const repoName =
+          scopeTarget.level === 'repository'
+            ? scopeTarget.targetRepo
+            : undefined;
+        const shouldPrefix =
+          Boolean(repoName) &&
+          disc.resourceName !== repoName &&
+          !disc.resourceName.startsWith(`${repoName}:`) &&
+          !disc.resourceName.startsWith(`${scopeTarget.targetOrg}/${repoName}`);
+        existing.discrepancies.push(
+          shouldPrefix
+            ? {
+                ...disc,
+                resourceName: `${repoName}:${disc.resourceName}`,
+              }
+            : disc,
+        );
       }
     }
 
