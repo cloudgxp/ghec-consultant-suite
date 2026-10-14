@@ -17,6 +17,12 @@ import type {
   MigrationScopeTarget,
   StructuredLogger,
 } from '../core/types.js';
+import {
+  isAutoModuleSelection,
+  parseModuleSelectionFlags,
+  resolveAutoOrganizationModules,
+  resolveAutoRepositoryModules,
+} from '../orchestrator/module-resolver.js';
 
 export interface MigrationPlannerOptions {
   readonly scope: MigrationScope;
@@ -25,8 +31,12 @@ export interface MigrationPlannerOptions {
   readonly targetClient: GitHubReadAdapter;
   /** Cached discovery bundle. If supplied, validated and passed to discover() without source network calls. */
   readonly cachedDiscoveryBundle?: DiscoveryBundle | unknown | undefined;
-  /** Modules to restrict planning to (defaults to all modules in scope). */
+  /** Modules to restrict planning to (defaults to all modules in scope, or "auto"). */
   readonly modules?: readonly string[] | undefined;
+  /** Modules to explicitly exclude from planning and execution. */
+  readonly excludeModules?: readonly string[] | undefined;
+  /** When true, resolves full verification module set even under "auto" mode. */
+  readonly verificationMode?: boolean | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly runId?: string | undefined;
   readonly signal?: AbortSignal | undefined;
@@ -45,6 +55,8 @@ export class MigrationPlanner {
   private readonly targetClient: GitHubReadAdapter;
   private readonly cachedBundle?: DiscoveryBundle | undefined;
   private readonly modules?: readonly string[] | undefined;
+  private readonly excludeModules?: readonly string[] | undefined;
+  private readonly verificationMode: boolean;
   private readonly logger: StructuredLogger;
   private readonly runId: string;
   private readonly signal: AbortSignal;
@@ -55,6 +67,8 @@ export class MigrationPlanner {
     this.sourceClient = options.sourceClient;
     this.targetClient = options.targetClient;
     this.modules = options.modules;
+    this.excludeModules = options.excludeModules;
+    this.verificationMode = options.verificationMode ?? false;
     this.logger = options.logger ?? defaultLogger;
     this.runId =
       options.runId ?? `plan-${Date.now()}-${randomBytes(4).toString('hex')}`;
@@ -89,6 +103,11 @@ export class MigrationPlanner {
       warn: 0,
     };
 
+    const cliParsed = parseModuleSelectionFlags(
+      this.modules,
+      this.excludeModules,
+    );
+
     // 1. Process Organization-level Scopes
     for (const orgMapping of this.scope.organizations) {
       const orgScope: MigrationScopeTarget = {
@@ -97,17 +116,46 @@ export class MigrationPlanner {
         targetOrg: orgMapping.target,
       };
 
-      let selectedModules: readonly string[] =
-        orgMapping.modules ?? this.registry.getAll().map((m) => m.id);
-      if (
-        this.modules &&
-        this.modules.length > 0 &&
-        !this.modules.includes('all')
-      ) {
-        selectedModules = this.modules;
+      const orgParsed = parseModuleSelectionFlags(
+        orgMapping.modules,
+        cliParsed.excludeModules,
+      );
+      const effectiveExcludes = orgParsed.excludeModules;
+      const registeredOrgIds = this.registry
+        .getAll()
+        .filter((m) => m.scopeLevel === 'organization')
+        .map((m) => m.id);
+
+      let selectedModules: readonly string[];
+      if (orgMapping.modules !== undefined && orgMapping.modules.length === 0) {
+        selectedModules =
+          cliParsed.modules && !cliParsed.isAuto ? cliParsed.modules : [];
+      } else if (cliParsed.isAuto || orgParsed.isAuto) {
+        const baseOrgIds =
+          orgParsed.modules && !isAutoModuleSelection(orgParsed.modules)
+            ? orgParsed.modules.filter((id) => this.registry.has(id))
+            : registeredOrgIds;
+        const resolved = resolveAutoOrganizationModules(
+          orgMapping,
+          baseOrgIds,
+          effectiveExcludes,
+        );
+        selectedModules = this.verificationMode
+          ? resolved.verifyModules
+          : resolved.applyModules;
+      } else {
+        selectedModules =
+          orgParsed.modules ??
+          orgMapping.modules ??
+          this.registry.getAll().map((m) => m.id);
+        if (cliParsed.modules && cliParsed.modules.length > 0) {
+          selectedModules = cliParsed.modules;
+        }
       }
       const executionModules = this.registry
-        .resolveExecutionPlan(selectedModules)
+        .resolveExecutionPlan(selectedModules, {
+          excludeModules: effectiveExcludes,
+        })
         .filter((m) => m.scopeLevel === 'organization');
 
       for (const module of executionModules) {
@@ -160,17 +208,49 @@ export class MigrationPlanner {
         options: repoOptions,
       };
 
-      let selectedModules: readonly string[] =
-        repoMapping.modules ?? this.registry.getAll().map((m) => m.id);
+      const repoParsed = parseModuleSelectionFlags(
+        repoMapping.modules,
+        cliParsed.excludeModules,
+      );
+      const effectiveExcludes = repoParsed.excludeModules;
+      const registeredRepoIds = this.registry
+        .getAll()
+        .filter((m) => m.scopeLevel === 'repository')
+        .map((m) => m.id);
+
+      let selectedModules: readonly string[];
       if (
-        this.modules &&
-        this.modules.length > 0 &&
-        !this.modules.includes('all')
+        repoMapping.modules !== undefined &&
+        repoMapping.modules.length === 0
       ) {
-        selectedModules = this.modules;
+        selectedModules =
+          cliParsed.modules && !cliParsed.isAuto ? cliParsed.modules : [];
+      } else if (cliParsed.isAuto || repoParsed.isAuto) {
+        const baseRepoIds =
+          repoParsed.modules && !isAutoModuleSelection(repoParsed.modules)
+            ? repoParsed.modules.filter((id) => this.registry.has(id))
+            : registeredRepoIds;
+        const resolved = resolveAutoRepositoryModules(repoMapping, {
+          repositoryOptions: this.scope.repositoryOptions,
+          baseModules: baseRepoIds,
+          excludeModules: effectiveExcludes,
+        });
+        selectedModules = this.verificationMode
+          ? resolved.verifyModules
+          : resolved.applyModules;
+      } else {
+        selectedModules =
+          repoParsed.modules ??
+          repoMapping.modules ??
+          this.registry.getAll().map((m) => m.id);
+        if (cliParsed.modules && cliParsed.modules.length > 0) {
+          selectedModules = cliParsed.modules;
+        }
       }
       const executionModules = this.registry
-        .resolveExecutionPlan(selectedModules)
+        .resolveExecutionPlan(selectedModules, {
+          excludeModules: effectiveExcludes,
+        })
         .filter((m) => m.scopeLevel === 'repository');
 
       for (const module of executionModules) {

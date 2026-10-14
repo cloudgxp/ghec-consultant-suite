@@ -174,12 +174,32 @@ export class VerificationOrchestrator {
       const repoMapping = this.scope?.repositories.find(
         (r) => r.targetOrg === targetOrg && r.targetRepo === targetRepo,
       );
+      const sourceOrg = repoMapping?.sourceOrg ?? targetOrg!;
+      const sourceRepo = repoMapping?.sourceRepo ?? targetRepo!;
+      const repoKey = `${sourceOrg}/${sourceRepo}`;
+      const repoOptions =
+        repoMapping?.options ??
+        this.scope?.repositoryOptions?.[repoKey] ??
+        this.scope?.repositoryOptions?.[sourceRepo] ??
+        (repoMapping?.skipReleases !== undefined ||
+        repoMapping?.lfsStrategy !== undefined ||
+        repoMapping?.targetRepoVisibility !== undefined ||
+        repoMapping?.gitTransferStrategy !== undefined
+          ? {
+              skipReleases: repoMapping.skipReleases,
+              lfsStrategy: repoMapping.lfsStrategy,
+              targetRepoVisibility: repoMapping.targetRepoVisibility,
+              gitTransferStrategy: repoMapping.gitTransferStrategy,
+            }
+          : undefined);
+
       return {
         level: 'repository',
-        sourceOrg: repoMapping?.sourceOrg ?? targetOrg!,
+        sourceOrg,
         targetOrg: targetOrg!,
-        sourceRepo: repoMapping?.sourceRepo ?? targetRepo!,
+        sourceRepo,
         targetRepo: targetRepo!,
+        options: repoOptions,
       };
     }
 

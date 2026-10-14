@@ -38,6 +38,16 @@ on:
         required: false
         type: boolean
         default: true
+      modules:
+        description: 'Modules to execute ("auto" for strategy-aware resolution, or comma-separated list)'
+        required: false
+        type: string
+        default: 'auto'
+      exclude_modules:
+        description: 'Optional comma-separated module IDs to exclude (e.g. "teams,post-migration-mannequins")'
+        required: false
+        type: string
+        default: ''
 
 env:
   GHEC_ALLOW_SAME_CREDENTIAL: ${{ inputs.allow_same_credential != false && 'true' || 'false' }}
@@ -80,6 +90,31 @@ jobs:
             }
             console.log("Scope schema validation passed successfully.");
           ' "${{ inputs.scope }}"
+
+      - name: Prune Retired Oversized Repositories
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          RETIRED_REPOS=(WebKit linux llvm-project nixpkgs next.js TypeScript grafana node kubernetes rust)
+          for repo in "${RETIRED_REPOS[@]}"; do
+            if [ -n "$GHEC_SOURCE_TOKEN" ]; then
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GHEC_SOURCE_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/demogxp/$repo" || true)
+              echo "Prune demogxp/$repo: HTTP $STATUS"
+            fi
+            if [ -n "$GHEC_TARGET_TOKEN" ]; then
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/demogxp-mig/$repo" || true)
+              echo "Prune demogxp-mig/$repo: HTTP $STATUS"
+            fi
+          done
 
       - name: Execute Preflight Readiness Gate
         id: preflight
@@ -197,10 +232,19 @@ jobs:
                 organizations: isLastCohort
                   ? scope.organizations
                   : (scope.organizations || []).map(o => ({ ...o, modules: [] })),
-                repositories: scope.repositories.filter(r => {
-                  const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
-                  return cohort.repositories.includes(name);
-                })
+                repositories: scope.repositories
+                  .filter(r => {
+                    const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
+                    return cohort.repositories.includes(name);
+                  })
+                  .map(r => {
+                    if (typeof r !== "object" || !r) return r;
+                    return {
+                      ...r,
+                      ...(cohort.useMirrorPush ? { gitTransferStrategy: "mirror-push" } : {}),
+                      ...(cohort.skipReleases ? { skipReleases: true } : {}),
+                    };
+                  })
               };
               fs.writeFileSync(`./cohorts/${cohort.cohortId}-scope.json`, JSON.stringify(cohortScope, null, 2), "utf8");
             });
@@ -265,6 +309,8 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
           MATRIX_COHORT_ID: ${{ matrix.cohortId }}
           USE_GEI: ${{ matrix.useGei }}
           SKIP_RELEASES: ${{ matrix.skipReleases }}
@@ -276,15 +322,18 @@ jobs:
           COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
           REPORT_OUTPUT="./scans/cohort-report-${MATRIX_COHORT_ID}.json"
 
-          DRY_RUN_ARG=()
+          EXTRA_ARGS=(--modules "${INPUT_MODULES:-auto}")
           if [ "$INPUT_DRY_RUN" = "true" ]; then
-            DRY_RUN_ARG=(--dry-run)
+            EXTRA_ARGS+=(--dry-run)
+          fi
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            EXTRA_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
           fi
 
-          echo "Executing migration for cohort $MATRIX_COHORT_ID..."
+          echo "Executing migration for cohort $MATRIX_COHORT_ID (modules=${INPUT_MODULES:-auto}, exclude=${INPUT_EXCLUDE_MODULES:-none})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --scope "$COHORT_SCOPE" \
-            "${DRY_RUN_ARG[@]}" \
+            "${EXTRA_ARGS[@]}" \
             --continue-on-error \
             --verbose \
             --checkpoint-dir ./migrations/ \

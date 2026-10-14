@@ -12,6 +12,7 @@ import {
   createDefaultModuleRegistry,
   MigrationCheckpointManager,
   MigrationOrchestrator,
+  parseModuleSelectionFlags,
   type MigrationExecutionReport,
   type StructuredLogger,
   type TargetWriteClient,
@@ -36,6 +37,7 @@ export interface MigrateCommandOptions {
   readonly scopePath?: string | undefined;
   readonly inputPath?: string | undefined;
   readonly modules?: readonly string[] | undefined;
+  readonly excludeModules?: readonly string[] | undefined;
   readonly resume?: string | undefined;
   readonly continueOnError: boolean;
   readonly dryRun: boolean;
@@ -70,6 +72,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       scope: { type: 'string' },
       input: { type: 'string' },
       modules: { type: 'string' },
+      'exclude-modules': { type: 'string' },
       resume: { type: 'string' },
       'checkpoint-dir': { type: 'string' },
       'continue-on-error': { type: 'boolean', default: false },
@@ -90,19 +93,20 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     throw new Error('Either --plan <file> or --scope <file> is required.');
   }
 
-  const modules =
-    values.modules && values.modules.toLowerCase() !== 'all'
-      ? values.modules
-          .split(',')
-          .map((m) => m.trim())
-          .filter(Boolean)
-      : undefined;
+  const parsedSelection = parseModuleSelectionFlags(
+    values.modules,
+    values['exclude-modules'],
+  );
 
   return {
     planPath: values.plan,
     scopePath: values.scope,
     inputPath: values.input,
-    modules,
+    modules: parsedSelection.modules,
+    excludeModules:
+      parsedSelection.excludeModules.length > 0
+        ? parsedSelection.excludeModules
+        : undefined,
     resume: values.resume,
     checkpointDir: values['checkpoint-dir'],
     continueOnError: values['continue-on-error'] ?? false,
@@ -279,6 +283,7 @@ export async function executeMigrateCommand(
     checkpointManager,
     cachedDiscoveryBundle: cachedBundle,
     modules: options.modules,
+    excludeModules: options.excludeModules,
     dryRun: options.dryRun,
     continueOnError: options.continueOnError,
     logger,

@@ -10,6 +10,7 @@ import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
   MigrationPlanner,
+  parseModuleSelectionFlags,
   type StructuredLogger,
   type VerificationOrchestratorResult,
   VerificationOrchestrator,
@@ -29,6 +30,8 @@ import {
 export interface VerifyCommandOptions {
   readonly planPath?: string | undefined;
   readonly scopePath?: string | undefined;
+  readonly modules?: readonly string[] | undefined;
+  readonly excludeModules?: readonly string[] | undefined;
   readonly outputPath: string;
   readonly jsonSummaryPath?: string | undefined;
   readonly verbose?: boolean | undefined;
@@ -47,6 +50,8 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
     options: {
       plan: { type: 'string' },
       scope: { type: 'string' },
+      modules: { type: 'string' },
+      'exclude-modules': { type: 'string' },
       output: { type: 'string', default: './scans/verification-report.json' },
       'json-summary': { type: 'string' },
       verbose: { type: 'boolean', default: false },
@@ -67,9 +72,19 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
     );
   }
 
+  const parsedSelection = parseModuleSelectionFlags(
+    values.modules,
+    values['exclude-modules'],
+  );
+
   return {
     planPath: values.plan,
     scopePath: values.scope,
+    modules: parsedSelection.modules,
+    excludeModules:
+      parsedSelection.excludeModules.length > 0
+        ? parsedSelection.excludeModules
+        : undefined,
     outputPath: values.output || './scans/verification-report.json',
     jsonSummaryPath: values['json-summary'],
     verbose: values.verbose,
@@ -197,6 +212,9 @@ export async function executeVerifyCommand(
       registry,
       sourceClient: sourceClient ?? targetClient,
       targetClient,
+      modules: options.modules,
+      excludeModules: options.excludeModules,
+      verificationMode: true,
       logger,
       signal,
     });

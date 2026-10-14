@@ -11,6 +11,7 @@ import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
   MigrationPlanner,
+  parseModuleSelectionFlags,
   ScopeMatrixSlicer,
   writeMigrationPlanFile,
   type GitHubActionsMatrix,
@@ -25,6 +26,7 @@ export interface PlanCommandOptions {
   readonly scopePath: string;
   readonly inputPath?: string | undefined;
   readonly modules?: readonly string[] | undefined;
+  readonly excludeModules?: readonly string[] | undefined;
   readonly outputPath: string;
   readonly splitMatrix?: number | undefined;
   readonly runnerCapacity?: number | undefined;
@@ -46,6 +48,7 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
       scope: { type: 'string' },
       input: { type: 'string' },
       modules: { type: 'string' },
+      'exclude-modules': { type: 'string' },
       output: { type: 'string', default: './scans/migration-plan.json' },
       'split-matrix': { type: 'string' },
       'runner-capacity': { type: 'string' },
@@ -66,13 +69,10 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
     throw new Error('The --scope <file> flag is required.');
   }
 
-  const modules =
-    values.modules && values.modules.toLowerCase() !== 'all'
-      ? values.modules
-          .split(',')
-          .map((m) => m.trim())
-          .filter(Boolean)
-      : undefined;
+  const parsedSelection = parseModuleSelectionFlags(
+    values.modules,
+    values['exclude-modules'],
+  );
 
   let splitMatrix: number | undefined;
   if (values['split-matrix']) {
@@ -93,7 +93,11 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
   return {
     scopePath: values.scope,
     inputPath: values.input,
-    modules,
+    modules: parsedSelection.modules,
+    excludeModules:
+      parsedSelection.excludeModules.length > 0
+        ? parsedSelection.excludeModules
+        : undefined,
     outputPath: values.output || './scans/migration-plan.json',
     splitMatrix,
     runnerCapacity,
@@ -195,6 +199,7 @@ export async function executePlanCommand(
     targetClient,
     cachedDiscoveryBundle: cachedBundle,
     modules: options.modules,
+    excludeModules: options.excludeModules,
     signal,
   });
 

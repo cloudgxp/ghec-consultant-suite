@@ -5,3 +5,4 @@ export * from './pipeline.js';
 export * from './matrix.js';
 export * from './sizing.js';
 export * from './slicer.js';
+export * from './module-resolver.js';
