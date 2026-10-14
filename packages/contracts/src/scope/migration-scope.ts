@@ -57,6 +57,17 @@ const IdentityMappingSchema = z
   })
   .strict();
 
+export const TeamManagementSchema = z
+  .object({
+    defaultMode: z.enum(['idp', 'native', 'hybrid']).optional(),
+    nonIdpTeams: z.array(NonEmptyStringSchema).optional(),
+    idpTeams: z.array(NonEmptyStringSchema).optional(),
+    migrateMembers: z.boolean().optional(),
+  })
+  .strict();
+
+export type TeamManagement = z.infer<typeof TeamManagementSchema>;
+
 /**
  * A declarative source-to-target boundary. Repository mappings must use the
  * organization pair declared in this scope when an organization mapping exists.
@@ -78,6 +89,7 @@ export const MigrationScopeSchema = z
       .record(NonEmptyStringSchema, RepositoryOptionsSchema)
       .optional(),
     identityMapping: IdentityMappingSchema.optional(),
+    teamManagement: TeamManagementSchema.optional(),
   })
   .strict()
   .superRefine((scope, ctx) => {

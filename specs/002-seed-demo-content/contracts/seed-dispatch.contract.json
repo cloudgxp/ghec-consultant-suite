@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ghec.enterprise/v1/seed-dispatch.json",
+  "title": "SeedDispatchRequest",
+  "description": "Schema for GitHub Actions workflow dispatch inputs and local CLI arguments for demo content seeding",
+  "type": "object",
+  "required": [
+    "organization",
+    "scopeLevel",
+    "contentType",
+    "patSecretName",
+    "dryRun",
+    "cleanupExisting"
+  ],
+  "properties": {
+    "organization": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Target GitHub organization name"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9_.-]+$",
+      "description": "Target repository name. Auto-created if missing."
+    },
+    "scopeLevel": {
+      "type": "string",
+      "enum": ["both", "organization", "repository"],
+      "default": "both",
+      "description": "Scope level governing the seeded assets"
+    },
+    "contentType": {
+      "type": "string",
+      "default": "all",
+      "description": "Preset name or comma-separated list of migration module IDs"
+    },
+    "patSecretName": {
+      "type": "string",
+      "default": "GHEC_SOURCE_TOKEN",
+      "description": "Name of secret containing the GitHub Personal Access Token"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, simulates operations without mutating remote state"
+    },
+    "cleanupExisting": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, purges existing demo assets matching prefix before re-seeding"
+    },
+    "resourcePrefix": {
+      "type": "string",
+      "default": "demo-",
+      "description": "Prefix used for created demo assets"
+    }
+  },
+  "additionalProperties": false
+}

@@ -3,4 +3,5 @@ export * from './migration-orchestrator.js';
 export * from './verification-orchestrator.js';
 export * from './pipeline.js';
 export * from './matrix.js';
+export * from './sizing.js';
 export * from './slicer.js';

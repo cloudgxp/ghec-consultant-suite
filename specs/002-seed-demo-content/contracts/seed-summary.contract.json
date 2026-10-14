@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ghec.enterprise/v1/seed-summary.json",
+  "title": "SeedExecutionSummary",
+  "description": "Schema for the aggregated execution summary produced by the demo content seeder",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "organization",
+    "scopeLevel",
+    "contentType",
+    "dryRun",
+    "cleanupExisting",
+    "startedAt",
+    "completedAt",
+    "totalDurationMs",
+    "counts",
+    "items",
+    "warnings",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "organization": {
+      "type": "string"
+    },
+    "repository": {
+      "type": ["string", "null"]
+    },
+    "scopeLevel": {
+      "type": "string",
+      "enum": ["both", "organization", "repository"]
+    },
+    "contentType": {
+      "type": "string"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "cleanupExisting": {
+      "type": "boolean"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "totalDurationMs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "total",
+        "created",
+        "updated",
+        "skipped",
+        "deleted",
+        "failed"
+      ],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "created": { "type": "integer", "minimum": 0 },
+        "updated": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "deleted": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "itemId",
+          "itemName",
+          "scope",
+          "action",
+          "durationMs",
+          "resourceIdentifier"
+        ],
+        "properties": {
+          "itemId": { "type": "string" },
+          "itemName": { "type": "string" },
+          "scope": { "type": "string", "enum": ["organization", "repository"] },
+          "action": {
+            "type": "string",
+            "enum": [
+              "created",
+              "updated",
+              "skipped",
+              "deleted",
+              "dry-run-create",
+              "dry-run-update",
+              "dry-run-skip",
+              "failed"
+            ]
+          },
+          "durationMs": { "type": "number", "minimum": 0 },
+          "resourceIdentifier": { "type": "string" },
+          "details": { "type": ["string", "null"] },
+          "warning": { "type": ["string", "null"] },
+          "error": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

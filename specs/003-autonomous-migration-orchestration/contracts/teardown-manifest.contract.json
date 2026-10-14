@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TeardownManifestContract",
+  "description": "Validates the target environment sandbox teardown manifest and purge audit report.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "targetOrg",
+    "prefixFilter",
+    "dryRun",
+    "discoveredAt",
+    "totalDiscovered",
+    "totalPurged",
+    "totalRetained"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "targetOrg": {
+      "type": "string"
+    },
+    "prefixFilter": {
+      "type": "string",
+      "minLength": 3
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "discoveredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "totalDiscovered": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalPurged": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalRetained": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "identifier", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["repository", "team", "custom-role", "ruleset"]
+          },
+          "identifier": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "deleted", "skipped", "failed"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  }
+}

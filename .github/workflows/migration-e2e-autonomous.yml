@@ -1,0 +1,406 @@
+name: Autonomous Scale-Adaptive Migration & Remediation
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Path to migration scope JSON file (e.g. "scopes/wave-1.json")'
+        required: true
+        type: string
+        default: 'scopes/wave-1.json'
+      auto_remediate:
+        description: 'Automatically execute synthesized remediation plans in closed loop'
+        required: false
+        type: boolean
+        default: true
+      max_remediation_rounds:
+        description: 'Maximum self-healing retry iterations (closed-loop)'
+        required: false
+        type: number
+        default: 3
+      default_runner_labels:
+        description: 'Runner pool for standard/small repos (comma-separated or single label)'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+      large_repo_runner_labels:
+        description: 'High-capacity runner pool with >=100 GB scratch disk for large repos'
+        required: false
+        type: string
+        default: 'self-hosted,high-disk'
+      dry_run:
+        description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
+        required: false
+        type: boolean
+        default: false
+      allow_same_credential:
+        description: 'Allow source and target tenants to share credentials (for testing)'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  GHEC_ALLOW_SAME_CREDENTIAL: ${{ inputs.allow_same_credential != false && 'true' || 'false' }}
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  slicer:
+    name: 'Phase 1: Scale-Adaptive Sizing & Strategy Classification'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.slice.outputs.matrix }}
+      cohort_count: ${{ steps.slice.outputs.cohort_count }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+
+      - name: Validate Migration Scope Contract
+        shell: bash
+        run: |
+          if [ ! -f "${{ inputs.scope }}" ]; then
+            echo "::error::Scope file '${{ inputs.scope }}' does not exist."
+            exit 1
+          fi
+          echo "Validating migration scope: ${{ inputs.scope }}"
+          node --input-type=module -e '
+            import { validateMigrationScope } from "./packages/contracts/dist/index.js";
+            import fs from "fs";
+            const parsed = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const res = validateMigrationScope(parsed);
+            if (!res.success) {
+              console.error("Scope validation failed:", JSON.stringify(res.error, null, 2));
+              process.exit(1);
+            }
+            console.log("Scope schema validation passed successfully.");
+          ' "${{ inputs.scope }}"
+
+      - name: Diagnose Repository Sizes & Generate Slicer Matrix
+        id: slice
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE_FILE: ${{ inputs.scope }}
+          DEFAULT_RUNNERS: ${{ inputs.default_runner_labels }}
+          LARGE_RUNNERS: ${{ inputs.large_repo_runner_labels }}
+        run: |
+          mkdir -p ./scans ./cohorts
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import { sliceScaleAdaptiveMatrix } from "./packages/migration/dist/index.js";
+
+            const scope = JSON.parse(fs.readFileSync(process.env.SCOPE_FILE, "utf8"));
+            const repos = scope.repositories || [];
+            const defaultLabels = process.env.DEFAULT_RUNNERS.split(",").map(s => s.trim()).filter(Boolean);
+            const largeLabels = process.env.LARGE_RUNNERS.split(",").map(s => s.trim()).filter(Boolean);
+
+            // Generate sizing profiles (combining metadata and API query estimates)
+            const profiles = repos.map(r => {
+              const name = typeof r === "string" ? r : r.name;
+              const diskUsage = (typeof r === "object" && r.diskUsageBytes) ? r.diskUsageBytes : 500 * 1024 * 1024;
+              const releaseBytes = (typeof r === "object" && r.releaseAssetsBytes) ? r.releaseAssetsBytes : 0;
+              const lfsCount = (typeof r === "object" && r.lfsObjectCount) ? r.lfsObjectCount : 0;
+              const visibility = (typeof r === "object" && r.visibility) ? r.visibility : "private";
+
+              return {
+                repositoryName: name,
+                gitDiskUsageBytes: diskUsage,
+                gitLfsObjectCount: lfsCount,
+                gitLfsTotalBytes: lfsCount > 0 ? 1048576 : 0,
+                releaseCount: releaseBytes > 0 ? 1 : 0,
+                releaseAssetsTotalBytes: releaseBytes,
+                estimatedScratchBytes: Math.ceil(diskUsage * 1.5 + (releaseBytes > 10 * 1024 * 1024 * 1024 ? 0 : releaseBytes)),
+                sourceVisibility: visibility,
+              };
+            });
+
+            const matrixOutput = sliceScaleAdaptiveMatrix(profiles, {
+              defaultRunnerLabels: defaultLabels,
+              largeRepoRunnerLabels: largeLabels,
+              batchSize: 5,
+              massiveBatchSize: 1,
+            });
+
+            fs.writeFileSync("./scans/slicer-matrix.json", JSON.stringify(matrixOutput, null, 2), "utf8");
+
+            // Write individual cohort scopes
+            for (const cohort of matrixOutput.matrix.include) {
+              const cohortScope = {
+                ...scope,
+                repositories: scope.repositories.filter(r => {
+                  const name = typeof r === "string" ? r : r.name;
+                  return cohort.repositories.includes(name);
+                })
+              };
+              fs.writeFileSync(`./cohorts/${cohort.cohortId}-scope.json`, JSON.stringify(cohortScope, null, 2), "utf8");
+            }
+
+            console.log(`Generated ${matrixOutput.cohortCount} scale-adaptive cohorts.`);
+          '
+
+          MATRIX_JSON=$(jq -c .matrix ./scans/slicer-matrix.json)
+          COHORT_COUNT=$(jq '.cohortCount' ./scans/slicer-matrix.json)
+
+          echo "matrix=$MATRIX_JSON" >> "$GITHUB_OUTPUT"
+          echo "cohort_count=$COHORT_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Slicer Matrix & Cohort Scopes
+        uses: actions/upload-artifact@v4
+        with:
+          name: slicer-matrix-${{ github.run_id }}
+          path: |
+            ./scans/slicer-matrix.json
+            ./cohorts/*-scope.json
+          retention-days: 14
+
+  migrate-cohorts:
+    name: 'Phase 2: Migrate Cohort [${{ matrix.cohortId }}]'
+    needs: [slicer]
+    runs-on: ${{ matrix.runnerLabels }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.slicer.outputs.matrix) }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Cohort Scope
+        uses: actions/download-artifact@v4
+        with:
+          name: slicer-matrix-${{ github.run_id }}
+          path: .
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+        with:
+          install-gei: ${{ matrix.useGei && 'true' || 'false' }}
+
+      - name: Runner Scratch Disk Headroom Check
+        if: ${{ matrix.requiresHeadroomCheck }}
+        shell: bash
+        run: |
+          echo "Verifying scratch disk headroom for massive repository migration..."
+          node --input-type=module -e '
+            import { assertScratchDiskSpace } from "./packages/migration/dist/index.js";
+            const estimatedBytes = ${{ matrix.estimatedScratchBytes }} || 45 * 1024 * 1024 * 1024;
+            const check = assertScratchDiskSpace(process.cwd(), estimatedBytes, 1.5);
+            console.log(`Scratch disk check passed: ${(check.freeBytes / 1024**3).toFixed(2)} GiB available (required: ${(check.requiredBytes / 1024**3).toFixed(2)} GiB).`);
+          '
+
+      - name: Execute Cohort Migration & Transfer Strategies
+        id: execute-cohort
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          MATRIX_COHORT_ID: ${{ matrix.cohortId }}
+          USE_GEI: ${{ matrix.useGei }}
+          SKIP_RELEASES: ${{ matrix.skipReleases }}
+          USE_RELEASE_FALLBACK: ${{ matrix.useReleaseFallback }}
+          USE_LFS_STREAMER: ${{ matrix.useLfsStreamer }}
+          USE_MIRROR_PUSH: ${{ matrix.useMirrorPush }}
+        run: |
+          mkdir -p ./scans ./migrations
+          COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
+          REPORT_OUTPUT="./scans/cohort-report-${MATRIX_COHORT_ID}.json"
+
+          DRY_RUN_ARG=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            DRY_RUN_ARG=(--dry-run)
+          fi
+
+          echo "Executing migration for cohort $MATRIX_COHORT_ID..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+            --scope "$COHORT_SCOPE" \
+            "${DRY_RUN_ARG[@]}" \
+            --checkpoint-dir ./migrations/ \
+            --output "$REPORT_OUTPUT"
+
+      - name: Post-GEI Visibility Restoration Reconciliation
+        if: always() && inputs.dry_run == false
+        shell: bash
+        env:
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          MATRIX_COHORT_ID: ${{ matrix.cohortId }}
+        run: |
+          COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
+          if [ -f "$COHORT_SCOPE" ]; then
+            echo "Reconciling target repository visibility..."
+            node --input-type=module -e '
+              import fs from "node:fs";
+              import { Octokit } from "@octokit/rest";
+              import { reconcilePostGeiVisibility } from "./packages/migration/dist/index.js";
+
+              const scope = JSON.parse(fs.readFileSync(process.env.COHORT_SCOPE, "utf8"));
+              const token = process.env.GHEC_TARGET_TOKEN;
+              if (!token) process.exit(0);
+
+              const octokit = new Octokit({ auth: token });
+              const targetWriteClient = {
+                mutate: async (op) => {
+                  const res = await octokit.request(`${op.method} ${op.path}`, {
+                    ...op.pathParams,
+                    ...op.body,
+                  });
+                  return { status: res.status, data: res.data };
+                }
+              };
+
+              for (const repo of scope.repositories || []) {
+                const name = typeof repo === "string" ? repo : repo.name;
+                const vis = (typeof repo === "object" && repo.visibility) ? repo.visibility : "private";
+                if (vis !== "private") {
+                  console.log(`Restoring visibility to ${vis} for ${scope.targetOrg}/${name}...`);
+                  await reconcilePostGeiVisibility(targetWriteClient, scope.targetOrg, name, vis);
+                }
+              }
+            '
+          fi
+
+      - name: Upload Cohort Checkpoints & Execution Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cohort-artifacts-${{ matrix.cohortId }}-${{ github.run_id }}
+          path: |
+            ./scans/cohort-report-${{ matrix.cohortId }}.json
+            ./migrations/
+          retention-days: 14
+
+  verification-and-remediation:
+    name: 'Phase 3 & 4: Verification & Autonomous Closed-Loop Self-Healing'
+    needs: [slicer, migrate-cohorts]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+
+      - name: Download Cohort Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cohort-artifacts-*-${{ github.run_id }}
+          path: ./downloaded-cohorts
+          merge-multiple: true
+
+      - name: Execute Full-Spectrum Verification
+        id: initial-verify
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+        run: |
+          mkdir -p ./scans
+          echo "Executing initial target verification across all 32 modules..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
+            --scope "$INPUT_SCOPE" \
+            --output ./scans/verification-report.json \
+            --verbose || true
+
+      - name: Autonomous Closed-Loop Self-Healing Loop
+        if: ${{ inputs.auto_remediate && inputs.dry_run == false }}
+        id: self-heal
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          MAX_ROUNDS: ${{ inputs.max_remediation_rounds }}
+        run: |
+          mkdir -p ./scans ./remediations
+          ROUND=1
+          MAX_ROUNDS=${MAX_ROUNDS:-3}
+
+          while [ "$ROUND" -le "$MAX_ROUNDS" ]; do
+            echo "=================================================="
+            echo "Starting Autonomous Remediation Round $ROUND of $MAX_ROUNDS"
+            echo "=================================================="
+
+            # 1. Synthesize remediation plan from latest verification report
+            node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
+              --report ./scans/verification-report.json \
+              --output "./remediations/remediation-plan-round-${ROUND}.json" \
+              --output-markdown "./remediations/remediation-plan-round-${ROUND}.md"
+
+            PLAN_FILE="./remediations/remediation-plan-round-${ROUND}.json"
+            ACTION_COUNT=$(jq '.actionableCount // 0' "$PLAN_FILE")
+            echo "Round $ROUND identified $ACTION_COUNT actionable discrepancies."
+
+            if [ "$ACTION_COUNT" -eq 0 ]; then
+              echo "Zero actionable discrepancies remaining. Remediation loop satisfied."
+              break
+            fi
+
+            # 2. Extract and execute remediation bash script
+            SCRIPT_CONTENT=$(jq -r '.script // ""' "$PLAN_FILE")
+            if [ -n "$SCRIPT_CONTENT" ] && [ "$SCRIPT_CONTENT" != "null" ]; then
+              echo "$SCRIPT_CONTENT" > "./remediations/remediation-round-${ROUND}.sh"
+              chmod +x "./remediations/remediation-round-${ROUND}.sh"
+              echo "Executing remediation script for round $ROUND..."
+              bash "./remediations/remediation-round-${ROUND}.sh" || true
+            fi
+
+            # 3. Re-verify target state
+            echo "Re-running target verification after round $ROUND..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
+              --scope "$INPUT_SCOPE" \
+              --output ./scans/verification-report.json || true
+
+            REMAINING=$(jq '.summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+            echo "Verification post-round $ROUND reported $REMAINING discrepancies."
+
+            if [ "$REMAINING" -eq 0 ]; then
+              echo "All verification discrepancies resolved to 0!"
+              break
+            fi
+
+            ROUND=$((ROUND + 1))
+          done
+
+      - name: Generate Final Audit & Step Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Autonomous Migration & Self-Healing Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Scope**: \`${{ inputs.scope }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Dry Run**: \`${{ inputs.dry_run }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Auto Remediate**: \`${{ inputs.auto_remediate }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f ./scans/verification-report.json ]; then
+            TOTAL_DISC=$(jq '.summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+            PASS_RATE=$(jq '.summary.overallStatus // "unknown"' ./scans/verification-report.json)
+            echo "### Verification State" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Overall Status**: \`$PASS_RATE\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Remaining Discrepancies**: \`$TOTAL_DISC\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -d ./remediations ]; then
+            echo "### Remediation History" >> "$GITHUB_STEP_SUMMARY"
+            ls -la ./remediations/*.json 2>/dev/null | while read -r line; do
+              echo "- Produced remediation plan: \`$line\`" >> "$GITHUB_STEP_SUMMARY"
+            done
+          fi
+
+      - name: Upload Final Audit Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-final-audit-${{ github.run_id }}
+          path: |
+            ./scans/
+            ./remediations/
+          retention-days: 30

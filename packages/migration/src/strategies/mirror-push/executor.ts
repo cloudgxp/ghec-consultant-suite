@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, statfsSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { sanitizeDiagnostics } from '@ghec/github-client';
+import { checkScratchDiskSpace } from './headroom.js';
 import type {
   DiskSpaceCheckResult,
   GitCommandResult,
@@ -122,31 +123,6 @@ export const runGitCommand: GitCommandRunner = async (
     );
   });
 };
-
-export function checkScratchDiskSpace(
-  dir: string,
-  estimatedSizeBytes: number,
-  headroomMultiplier = 1.5,
-): DiskSpaceCheckResult {
-  const requiredBytes = Math.ceil(estimatedSizeBytes * headroomMultiplier);
-  try {
-    const stats = statfsSync(dir);
-    const freeBytes = Number(stats.bavail) * Number(stats.bsize);
-    return {
-      freeBytes,
-      requiredBytes,
-      sufficient: freeBytes >= requiredBytes,
-      path: dir,
-    };
-  } catch {
-    return {
-      freeBytes: 0,
-      requiredBytes,
-      sufficient: true,
-      path: dir,
-    };
-  }
-}
 
 export class GitMirrorPushExecutor {
   private readonly runner: GitCommandRunner;

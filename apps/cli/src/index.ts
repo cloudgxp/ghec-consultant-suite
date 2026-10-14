@@ -27,6 +27,18 @@ import {
   executePublishResultsCommand,
 } from './commands/publish-results.js';
 import {
+  parseAuditGapLedgerOptions,
+  executeAuditGapLedgerCommand,
+} from './commands/audit/gap-ledger.js';
+import {
+  parseSeedDemoOptions,
+  executeSeedDemoCommand,
+} from './commands/seed-demo.js';
+import {
+  parseTeardownOptions,
+  executeTeardownSandbox,
+} from './commands/teardown-sandbox.js';
+import {
   loadConfig,
   sanitizeDiagnostics,
   type CliConfig,
@@ -62,6 +74,9 @@ Commands:
   console          Launch local loopback console server and dashboard proxy
   agent-review     Analyze verification report and generate automated remediation plan
   publish-results  Generate and publish migration audit repository to target organization
+  audit-gap-ledger Audit platform migration capabilities against suite modules and emit GapLedgerManifest
+  seed-demo        Provision synthetic source content across 32 migration modules
+  teardown-sandbox Purge test resources matching prefix filter from target organization
 
 Global Options:
   --help      Show help for command
@@ -477,6 +492,83 @@ Options: --execution-report <file> --verification-report <file> --remediation-pl
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`Publish results failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    }
+  }
+
+  if (command === 'audit-gap-ledger') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli audit-gap-ledger — Platform capability gap analysis
+Usage: ghec-consultant-cli audit-gap-ledger [options]
+Options: --format <json|table|markdown> --output <path> --category <category> --status <status>`);
+      return 0;
+    }
+
+    const options = parseAuditGapLedgerOptions(commandArgs);
+    return await executeAuditGapLedgerCommand(options);
+  }
+
+  if (command === 'seed-demo') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli seed-demo — Seed synthetic migration demo content
+Usage: ghec-consultant-cli seed-demo --org <name> [options]
+Options:
+  --org, --organization <name>  Target organization name (required)
+  --repo, --repository <name>   Target repository name (optional, auto-created)
+  --scope <both|organization|repository> Scope level (default: both)
+  --preset <preset|module-list> Content filter preset or comma-separated list (default: all)
+  --prefix <string>             Resource prefix (default: demo-)
+  --dry-run                     Simulate operations without making remote changes
+  --cleanup                     Purge demo resources matching prefix before re-seeding
+  --pat-secret <name>           Secret containing Personal Access Token (default: GHEC_SOURCE_TOKEN)`);
+      return 0;
+    }
+
+    let options;
+    try {
+      options = parseSeedDemoOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Invalid seed-demo options: ${sanitizeDiagnostics(msg)}`);
+      return 2;
+    }
+
+    return await executeSeedDemoCommand(options);
+  }
+
+  if (command === 'teardown-sandbox') {
+    if (commandArgs.includes('--help')) {
+      console.log(`ghec-consultant-cli teardown-sandbox — Purge test resources from target organization
+Usage: ghec-consultant-cli teardown-sandbox --org <name> --prefix <prefix> [options]
+Options:
+  --org <name>      Target organization name (required)
+  --prefix <string> Resource prefix filter (e.g. "dummy-", "demo-") (required, min 3 chars)
+  --confirm         Confirm live deletion of matching resources (required for live run)
+  --dry-run         Simulate deletion without mutating target resources
+  --token <string>  Target administrative token (defaults to GHEC_TARGET_TOKEN)`);
+      return 0;
+    }
+
+    let options;
+    try {
+      options = parseTeardownOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `Invalid teardown-sandbox options: ${sanitizeDiagnostics(msg)}`,
+      );
+      return 2;
+    }
+
+    try {
+      const manifest = await executeTeardownSandbox(options);
+      console.log(
+        `Teardown completed: ${manifest.totalPurged} purged, ${manifest.totalRetained} retained (dryRun: ${manifest.dryRun}).`,
+      );
+      return 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Teardown failed: ${sanitizeDiagnostics(msg)}`);
       return 1;
     }
   }

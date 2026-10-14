@@ -2,7 +2,13 @@ import {
   stronglyConnectedComponents,
   weaklyConnectedComponents,
 } from '@ghec/analysis';
-import type { MigrationScope } from '@ghec/contracts';
+import {
+  ORCHESTRATOR_SCHEMA_VERSION,
+  type MigrationScope,
+  type SlicerCohortItem,
+  type SlicerMatrix,
+  type SlicerTier,
+} from '@ghec/contracts';
 import type {
   AggregatedMigrationSummary,
   CohortExecutionResult,
@@ -10,6 +16,7 @@ import type {
   MatrixCohort,
   ScopeMatrixOptions,
 } from './matrix.js';
+import type { RepositorySizingProfile } from './sizing.js';
 
 export class ScopeMatrixSlicer {
   /**
@@ -370,4 +377,191 @@ export class ScopeMatrixSlicer {
       cohortSummaries,
     };
   }
+}
+
+export const TEN_GIB = 10 * 1024 * 1024 * 1024;
+export const FORTY_GIB = 40 * 1024 * 1024 * 1024;
+
+export interface ClassifiedRepositoryStrategy {
+  readonly repositoryName: string;
+  readonly tier: SlicerTier;
+  readonly useGei: boolean;
+  readonly skipReleases: boolean;
+  readonly useReleaseFallback: boolean;
+  readonly useLfsStreamer: boolean;
+  readonly useMirrorPush: boolean;
+  readonly requiresHeadroomCheck: boolean;
+  readonly assignedRunnerLabels: readonly string[];
+  readonly estimatedScratchBytes: number;
+}
+
+export interface SlicerOptions {
+  readonly defaultRunnerLabels?: readonly string[];
+  readonly largeRepoRunnerLabels?: readonly string[];
+  readonly batchSize?: number;
+  readonly massiveBatchSize?: number;
+}
+
+export function classifyRepository(
+  profile: RepositorySizingProfile,
+  options: SlicerOptions = {},
+): ClassifiedRepositoryStrategy {
+  const defaultLabels = options.defaultRunnerLabels?.length
+    ? options.defaultRunnerLabels
+    : ['ubuntu-latest'];
+  const largeLabels = options.largeRepoRunnerLabels?.length
+    ? options.largeRepoRunnerLabels
+    : ['self-hosted', 'high-disk'];
+
+  // 1. Massive Repository (>40 GiB or total metadata >40 GiB)
+  if (profile.gitDiskUsageBytes > FORTY_GIB) {
+    return {
+      repositoryName: profile.repositoryName,
+      tier: 'massive-mirror',
+      useGei: false,
+      skipReleases: true,
+      useReleaseFallback: profile.releaseAssetsTotalBytes > 0,
+      useLfsStreamer: profile.gitLfsObjectCount > 0,
+      useMirrorPush: true,
+      requiresHeadroomCheck: true,
+      assignedRunnerLabels: largeLabels,
+      estimatedScratchBytes: profile.estimatedScratchBytes,
+    };
+  }
+
+  // 2. Large Releases (>10 GiB release binaries)
+  if (profile.releaseAssetsTotalBytes > TEN_GIB) {
+    return {
+      repositoryName: profile.repositoryName,
+      tier: 'large-releases',
+      useGei: true,
+      skipReleases: true,
+      useReleaseFallback: true,
+      useLfsStreamer: profile.gitLfsObjectCount > 0,
+      useMirrorPush: false,
+      requiresHeadroomCheck: false,
+      assignedRunnerLabels: defaultLabels,
+      estimatedScratchBytes: profile.estimatedScratchBytes,
+    };
+  }
+
+  // 3. Git LFS Objects
+  if (profile.gitLfsObjectCount > 0) {
+    return {
+      repositoryName: profile.repositoryName,
+      tier: 'git-lfs',
+      useGei: true,
+      skipReleases: false,
+      useReleaseFallback: false,
+      useLfsStreamer: true,
+      useMirrorPush: false,
+      requiresHeadroomCheck: false,
+      assignedRunnerLabels: defaultLabels,
+      estimatedScratchBytes: profile.estimatedScratchBytes,
+    };
+  }
+
+  // 4. Standard Repository
+  return {
+    repositoryName: profile.repositoryName,
+    tier: 'standard',
+    useGei: true,
+    skipReleases: false,
+    useReleaseFallback: false,
+    useLfsStreamer: false,
+    useMirrorPush: false,
+    requiresHeadroomCheck: false,
+    assignedRunnerLabels: defaultLabels,
+    estimatedScratchBytes: profile.estimatedScratchBytes,
+  };
+}
+
+export function sliceScaleAdaptiveMatrix(
+  profiles: readonly RepositorySizingProfile[],
+  options: SlicerOptions = {},
+): SlicerMatrix {
+  const standardBatchSize =
+    options.batchSize && options.batchSize > 0 ? options.batchSize : 5;
+  const massiveBatchSize =
+    options.massiveBatchSize && options.massiveBatchSize > 0
+      ? options.massiveBatchSize
+      : 1;
+
+  const standardItems: ClassifiedRepositoryStrategy[] = [];
+  const massiveItems: ClassifiedRepositoryStrategy[] = [];
+
+  for (const profile of profiles) {
+    const strategy = classifyRepository(profile, options);
+    if (strategy.tier === 'massive-mirror') {
+      massiveItems.push(strategy);
+    } else {
+      standardItems.push(strategy);
+    }
+  }
+
+  const cohorts: SlicerCohortItem[] = [];
+
+  // Partition standard cohorts
+  for (let i = 0; i < standardItems.length; i += standardBatchSize) {
+    const chunk = standardItems.slice(i, i + standardBatchSize);
+    const first = chunk[0];
+    if (!first) continue;
+    const cohortId = `cohort-standard-${String(Math.floor(i / standardBatchSize) + 1).padStart(2, '0')}`;
+    const primaryTier = chunk.some((c) => c.tier === 'large-releases')
+      ? 'large-releases'
+      : chunk.some((c) => c.tier === 'git-lfs')
+        ? 'git-lfs'
+        : 'standard';
+
+    cohorts.push({
+      cohortId,
+      runnerLabels: [...first.assignedRunnerLabels],
+      repositories: chunk.map((c) => c.repositoryName),
+      tier: primaryTier,
+      useGei: chunk.some((c) => c.useGei),
+      skipReleases: chunk.some((c) => c.skipReleases),
+      useReleaseFallback: chunk.some((c) => c.useReleaseFallback),
+      useLfsStreamer: chunk.some((c) => c.useLfsStreamer),
+      useMirrorPush: false,
+      requiresHeadroomCheck: false,
+      estimatedScratchBytes: chunk.reduce(
+        (sum, c) => sum + c.estimatedScratchBytes,
+        0,
+      ),
+    });
+  }
+
+  // Partition massive cohorts
+  for (let i = 0; i < massiveItems.length; i += massiveBatchSize) {
+    const chunk = massiveItems.slice(i, i + massiveBatchSize);
+    const first = chunk[0];
+    if (!first) continue;
+    const cohortId = `cohort-massive-${String(Math.floor(i / massiveBatchSize) + 1).padStart(2, '0')}`;
+
+    cohorts.push({
+      cohortId,
+      runnerLabels: [...first.assignedRunnerLabels],
+      repositories: chunk.map((c) => c.repositoryName),
+      tier: 'massive-mirror',
+      useGei: false,
+      skipReleases: true,
+      useReleaseFallback: chunk.some((c) => c.useReleaseFallback),
+      useLfsStreamer: chunk.some((c) => c.useLfsStreamer),
+      useMirrorPush: true,
+      requiresHeadroomCheck: true,
+      estimatedScratchBytes: chunk.reduce(
+        (sum, c) => sum + c.estimatedScratchBytes,
+        0,
+      ),
+    });
+  }
+
+  return {
+    schemaVersion: ORCHESTRATOR_SCHEMA_VERSION,
+    generatedAt: new Date().toISOString(),
+    cohortCount: cohorts.length,
+    matrix: {
+      include: cohorts,
+    },
+  };
 }

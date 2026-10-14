@@ -14,12 +14,17 @@ import type {
   MigrationScopeLevel,
   TargetWriteOperation,
 } from '../../core/types.js';
+import { IdentityMappingEngine } from './identity-mapper.js';
 import type {
   TeamDefinition,
+  TeamManagementConfig,
+  TeamMember,
+  TeamOrgRoleBinding,
   TeamPrivacy,
   TeamRepoPermission,
   TeamRepositoryAccess,
   TeamsMigrationData,
+  TeamsModuleOptions,
 } from './types.js';
 
 interface RawGitHubTeam {
@@ -82,7 +87,7 @@ export function sortTeamsTopologically(
 }
 
 /**
- * Maps GitHub permission flags to a normalized permission string.
+ * Maps GitHub permission flags to a normalized permission string or preserves custom role.
  */
 export function deriveTeamRepoPermission(
   repo: RawTeamRepo,
@@ -94,6 +99,7 @@ export function deriveTeamRepoPermission(
     if (role === 'write' || role === 'push') return 'push';
     if (role === 'triage') return 'triage';
     if (role === 'read' || role === 'pull') return 'pull';
+    return repo.role_name;
   }
   const perms = repo.permissions;
   if (perms?.admin) return 'admin';
@@ -107,7 +113,17 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
   readonly id = 'teams';
   readonly displayName = 'Teams, Access Permissions & IdP Sync Blueprint';
   readonly scopeLevel: MigrationScopeLevel = 'organization';
-  readonly dependencies: readonly string[] = ['gei-repo'];
+  readonly dependencies: readonly string[] = ['gei-repo', 'custom-roles'];
+
+  private readonly identityMapper: IdentityMappingEngine;
+  private readonly teamManagement?: TeamManagementConfig | undefined;
+
+  constructor(options: TeamsModuleOptions = {}) {
+    this.identityMapper = new IdentityMappingEngine(
+      options.identityMappingConfig,
+    );
+    this.teamManagement = options.teamManagement;
+  }
 
   async discover(
     ctx: MigrationContext,
@@ -196,6 +212,83 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
 
     // 2. Live REST discovery mode
     const teams: TeamDefinition[] = [];
+    const securityManagerTeamSlugs = new Set<string>();
+    try {
+      const secRes = await ctx.sourceClient.readSingle<unknown>(
+        {
+          id: 'rest.orgs.listSecurityManagers',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/orgs/{org}/security-managers',
+          pathParams: { org: sourceOrg },
+        },
+        ctx.signal,
+      );
+      if (Array.isArray(secRes.data)) {
+        for (const t of secRes.data as Array<{ slug?: string }>) {
+          if (t.slug) securityManagerTeamSlugs.add(t.slug);
+        }
+      }
+    } catch {
+      // Non-fatal if security managers endpoint is unsupported or empty
+    }
+
+    const teamCustomOrgRoles = new Map<
+      string,
+      Array<{ roleName: string; roleId?: number }>
+    >();
+    try {
+      const rolesRes = await ctx.sourceClient.readSingle<unknown>(
+        {
+          id: 'rest.orgs.listOrgRoles',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/orgs/{org}/organization-roles',
+          pathParams: { org: sourceOrg },
+        },
+        ctx.signal,
+      );
+      const roles =
+        rolesRes.data &&
+        typeof rolesRes.data === 'object' &&
+        'roles' in rolesRes.data &&
+        Array.isArray((rolesRes.data as { roles: unknown }).roles)
+          ? (rolesRes.data as { roles: Array<{ id: number; name: string }> })
+              .roles
+          : Array.isArray(rolesRes.data)
+            ? (rolesRes.data as Array<{ id: number; name: string }>)
+            : [];
+
+      for (const role of roles) {
+        if (!role.id || !role.name) continue;
+        try {
+          const roleTeamsRes = await ctx.sourceClient.readSingle<unknown>(
+            {
+              id: 'rest.orgs.listOrgRoleTeams',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/orgs/{org}/organization-roles/{role_id}/teams',
+              pathParams: { org: sourceOrg, role_id: String(role.id) },
+            },
+            ctx.signal,
+          );
+          const teamsInRole = Array.isArray(roleTeamsRes.data)
+            ? (roleTeamsRes.data as Array<{ slug?: string }>)
+            : [];
+          for (const t of teamsInRole) {
+            if (!t.slug) continue;
+            const existing = teamCustomOrgRoles.get(t.slug) ?? [];
+            existing.push({ roleName: role.name, roleId: role.id });
+            teamCustomOrgRoles.set(t.slug, existing);
+          }
+        } catch {
+          // Non-fatal per role
+        }
+      }
+    } catch {
+      // Non-fatal if organization roles are unsupported or empty
+    }
+
     try {
       const teamsRes = await ctx.sourceClient.fetchAll<RawGitHubTeam>(
         {
@@ -237,6 +330,56 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           );
         }
 
+        const isNonIdp =
+          this.teamManagement?.defaultMode === 'native' ||
+          this.teamManagement?.migrateMembers === true ||
+          (this.teamManagement?.nonIdpTeams?.includes('*') ?? false) ||
+          (this.teamManagement?.nonIdpTeams?.includes(raw.slug) ?? false);
+
+        let members: TeamMember[] = [];
+        if (isNonIdp) {
+          try {
+            const membersRes = await ctx.sourceClient.fetchAll<{
+              login: string;
+              role?: 'member' | 'maintainer';
+            }>(
+              {
+                id: 'rest.teams.listMembers',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/orgs/{org}/teams/{team_slug}/members',
+                pathParams: { org: sourceOrg, team_slug: raw.slug },
+                queryParams: { per_page: 100 },
+              },
+              ctx.signal,
+            );
+            members = membersRes.items.map((m) => ({
+              login: m.login,
+              role: m.role ?? 'member',
+            }));
+          } catch (err) {
+            ctx.logger.warn?.(
+              `Could not query members for non-IdP team '${raw.slug}': ${String(err)}`,
+            );
+          }
+        }
+
+        const orgRoles: TeamOrgRoleBinding[] = [];
+        if (securityManagerTeamSlugs.has(raw.slug)) {
+          orgRoles.push({
+            roleType: 'security_manager',
+            roleName: 'security_manager',
+          });
+        }
+        const customRoles = teamCustomOrgRoles.get(raw.slug) ?? [];
+        for (const cr of customRoles) {
+          orgRoles.push({
+            roleType: 'custom_org_role',
+            roleName: cr.roleName,
+            roleId: cr.roleId,
+          });
+        }
+
         teams.push({
           id: raw.id,
           slug: raw.slug,
@@ -247,6 +390,9 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           parentTeamId: raw.parent?.id ?? undefined,
           membershipCount: raw.members_count ?? 0,
           repositoryAccess,
+          orgRoles: orgRoles.length > 0 ? orgRoles : undefined,
+          members: members.length > 0 ? members : undefined,
+          isIdpManaged: !isNonIdp,
         });
       }
     } catch (err) {
@@ -288,6 +434,7 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
   ): Promise<ModulePlan> {
     const targetOrg = ctx.scope.targetOrg;
     const operations: PlannedOperation[] = [];
+    const warnings: string[] = [];
 
     // Query target organization teams
     const targetTeamsBySlug = new Map<string, RawGitHubTeam>();
@@ -385,6 +532,64 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           reason: `Binding '${access.permission}' permission for team '${team.slug}' on '${targetRepo}'`,
         });
       }
+
+      // Plan team organization roles (Security Manager, Custom Org Roles)
+      if (team.orgRoles && team.orgRoles.length > 0) {
+        for (const orgRole of team.orgRoles) {
+          if (orgRole.roleType === 'security_manager') {
+            operations.push({
+              id: `op-team-org-secman-${team.slug}`,
+              resourceType: 'team-org-role',
+              resourceName: `${team.slug}:security_manager`,
+              operation: 'create',
+              sourceState: {
+                teamSlug: team.slug,
+                roleType: 'security_manager',
+              },
+              destinationCurrentState: undefined,
+              reason: `Granting Security Manager organization role to team '${team.slug}'`,
+            });
+          } else if (orgRole.roleType === 'custom_org_role') {
+            operations.push({
+              id: `op-team-org-custom-${team.slug}-${orgRole.roleName}`,
+              resourceType: 'team-org-role',
+              resourceName: `${team.slug}:${orgRole.roleName}`,
+              operation: 'create',
+              sourceState: {
+                teamSlug: team.slug,
+                roleType: 'custom_org_role',
+                roleName: orgRole.roleName,
+              },
+              destinationCurrentState: undefined,
+              reason: `Assigning custom organization role '${orgRole.roleName}' to team '${team.slug}'`,
+            });
+          }
+        }
+      }
+
+      // Plan team memberships for non-IdP teams
+      if (team.members && team.members.length > 0) {
+        for (const member of team.members) {
+          const mapping = this.identityMapper.mapLogin(member.login);
+          if (mapping.warning) {
+            warnings.push(mapping.warning);
+          }
+          const targetLogin = mapping.mappedLogin;
+          operations.push({
+            id: `op-team-member-${team.slug}-${targetLogin}`,
+            resourceType: 'team-member',
+            resourceName: `${team.slug}:${targetLogin}`,
+            operation: 'create',
+            sourceState: {
+              teamSlug: team.slug,
+              username: targetLogin,
+              role: member.role,
+            },
+            destinationCurrentState: undefined,
+            reason: `Adding mapped EMU member '${targetLogin}' to team '${team.slug}' as '${member.role}'`,
+          });
+        }
+      }
     }
 
     // Plan base organization default repository permission alignment if present
@@ -407,7 +612,7 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
       scopeLevel: this.scopeLevel,
       targetIdentifier: targetOrg,
       operations,
-      warnings: [],
+      warnings,
     };
   }
 
@@ -593,6 +798,117 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             httpStatus: res.status,
             completedAt: new Date().toISOString(),
           });
+        } else if (op.resourceType === 'team-org-role') {
+          const roleState = op.sourceState as {
+            teamSlug: string;
+            roleType: 'security_manager' | 'custom_org_role';
+            roleName?: string;
+          };
+
+          if (roleState.roleType === 'security_manager') {
+            const writeOp: TargetWriteOperation = {
+              id: `mutate-${op.id}`,
+              method: 'PUT',
+              path: '/orgs/{org}/security-managers/teams/{team_slug}',
+              pathParams: {
+                org: targetOrg,
+                team_slug: roleState.teamSlug,
+              },
+            };
+            const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          } else if (
+            roleState.roleType === 'custom_org_role' &&
+            roleState.roleName
+          ) {
+            let roleId: number | undefined;
+            try {
+              const rolesRes = await ctx.targetClient.readSingle<unknown>(
+                {
+                  id: 'rest.orgs.getTargetOrgRoleForTeam',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/orgs/{org}/organization-roles',
+                  pathParams: { org: targetOrg },
+                },
+                ctx.signal,
+              );
+              const roles =
+                rolesRes.data &&
+                typeof rolesRes.data === 'object' &&
+                'roles' in rolesRes.data &&
+                Array.isArray((rolesRes.data as { roles: unknown }).roles)
+                  ? (
+                      rolesRes.data as {
+                        roles: Array<{ id: number; name: string }>;
+                      }
+                    ).roles
+                  : Array.isArray(rolesRes.data)
+                    ? (rolesRes.data as Array<{ id: number; name: string }>)
+                    : [];
+              const match = roles.find((r) => r.name === roleState.roleName);
+              if (match?.id) roleId = match.id;
+            } catch {
+              // Could not query
+            }
+
+            if (roleId !== undefined) {
+              const writeOp: TargetWriteOperation = {
+                id: `mutate-${op.id}`,
+                method: 'PUT',
+                path: '/orgs/{org}/organization-roles/teams/{team_slug}/{role_id}',
+                pathParams: {
+                  org: targetOrg,
+                  team_slug: roleState.teamSlug,
+                  role_id: String(roleId),
+                },
+              };
+              const res = await ctx.targetWriteClient.mutate(
+                writeOp,
+                ctx.signal,
+              );
+              results.push({
+                operationId: op.id,
+                status: 'succeeded',
+                httpStatus: res.status,
+                completedAt: new Date().toISOString(),
+              });
+            } else {
+              throw new Error(
+                `Target custom organization role '${roleState.roleName}' not found on '${targetOrg}'`,
+              );
+            }
+          }
+        } else if (op.resourceType === 'team-member') {
+          const memberState = op.sourceState as {
+            teamSlug: string;
+            username: string;
+            role: 'member' | 'maintainer';
+          };
+
+          const writeOp: TargetWriteOperation = {
+            id: `mutate-${op.id}`,
+            method: 'PUT',
+            path: '/orgs/{org}/teams/{team_slug}/memberships/{username}',
+            pathParams: {
+              org: targetOrg,
+              team_slug: memberState.teamSlug,
+              username: memberState.username,
+            },
+            body: { role: memberState.role },
+          };
+          const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+          results.push({
+            operationId: op.id,
+            status: 'succeeded',
+            httpStatus: res.status,
+            completedAt: new Date().toISOString(),
+          });
         } else {
           results.push({
             operationId: op.id,
@@ -740,6 +1056,157 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             expected: permState.permission,
             actual: 'permission not found on target repository',
             message: `Permission not found on target repository '${permState.repositoryName}' for team '${permState.teamSlug}'`,
+          });
+        }
+      } else if (op.resourceType === 'team-org-role') {
+        const roleState = op.sourceState as {
+          teamSlug: string;
+          roleType: 'security_manager' | 'custom_org_role';
+          roleName?: string;
+        };
+
+        if (roleState.roleType === 'security_manager') {
+          try {
+            const secRes = await ctx.targetClient.readSingle<unknown>(
+              {
+                id: 'rest.orgs.verifySecurityManagers',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/orgs/{org}/security-managers',
+                pathParams: { org: targetOrg },
+              },
+              ctx.signal,
+            );
+            const secTeams = Array.isArray(secRes.data)
+              ? (secRes.data as Array<{ slug?: string }>)
+              : [];
+            const hasTeam = secTeams.some((t) => t.slug === roleState.teamSlug);
+            if (!hasTeam) {
+              discrepancies.push({
+                resourceName: `${roleState.teamSlug}:security_manager`,
+                expected: 'assigned',
+                actual: 'missing',
+                message: `Team '${roleState.teamSlug}' is missing Security Manager role on '${targetOrg}'`,
+              });
+            }
+          } catch (err) {
+            discrepancies.push({
+              resourceName: `${roleState.teamSlug}:security_manager`,
+              expected: 'assigned',
+              actual: 'error',
+              message: `Failed to verify Security Manager role for team '${roleState.teamSlug}': ${String(err)}`,
+            });
+          }
+        } else if (
+          roleState.roleType === 'custom_org_role' &&
+          roleState.roleName
+        ) {
+          try {
+            const rolesRes = await ctx.targetClient.readSingle<unknown>(
+              {
+                id: 'rest.orgs.verifyGetTargetOrgRole',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/orgs/{org}/organization-roles',
+                pathParams: { org: targetOrg },
+              },
+              ctx.signal,
+            );
+            const roles =
+              rolesRes.data &&
+              typeof rolesRes.data === 'object' &&
+              'roles' in rolesRes.data &&
+              Array.isArray((rolesRes.data as { roles: unknown }).roles)
+                ? (
+                    rolesRes.data as {
+                      roles: Array<{ id: number; name: string }>;
+                    }
+                  ).roles
+                : Array.isArray(rolesRes.data)
+                  ? (rolesRes.data as Array<{ id: number; name: string }>)
+                  : [];
+            const match = roles.find((r) => r.name === roleState.roleName);
+            if (!match?.id) {
+              discrepancies.push({
+                resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
+                expected: `Role '${roleState.roleName}' to exist and be assigned`,
+                actual: 'role_missing',
+                message: `Custom organization role '${roleState.roleName}' is missing on target organization '${targetOrg}'`,
+              });
+            } else {
+              const roleTeamsRes = await ctx.targetClient.readSingle<unknown>(
+                {
+                  id: 'rest.orgs.verifyOrgRoleTeams',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/orgs/{org}/organization-roles/{role_id}/teams',
+                  pathParams: { org: targetOrg, role_id: String(match.id) },
+                },
+                ctx.signal,
+              );
+              const teamsInRole = Array.isArray(roleTeamsRes.data)
+                ? (roleTeamsRes.data as Array<{ slug?: string }>)
+                : [];
+              const hasTeam = teamsInRole.some(
+                (t) => t.slug === roleState.teamSlug,
+              );
+              if (!hasTeam) {
+                discrepancies.push({
+                  resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
+                  expected: `Assigned to role '${roleState.roleName}'`,
+                  actual: 'not_assigned',
+                  message: `Team '${roleState.teamSlug}' is not assigned to custom organization role '${roleState.roleName}' on '${targetOrg}'`,
+                });
+              }
+            }
+          } catch (err) {
+            discrepancies.push({
+              resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
+              expected: 'assigned',
+              actual: 'error',
+              message: `Failed to verify custom organization role for team '${roleState.teamSlug}': ${String(err)}`,
+            });
+          }
+        }
+      } else if (op.resourceType === 'team-member') {
+        const memberState = op.sourceState as {
+          teamSlug: string;
+          username: string;
+          role: 'member' | 'maintainer';
+        };
+
+        try {
+          const membershipRes = await ctx.targetClient.readSingle<{
+            role?: string;
+          }>(
+            {
+              id: 'rest.teams.verifyMembership',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/orgs/{org}/teams/{team_slug}/memberships/{username}',
+              pathParams: {
+                org: targetOrg,
+                team_slug: memberState.teamSlug,
+                username: memberState.username,
+              },
+            },
+            ctx.signal,
+          );
+
+          if (!membershipRes.data?.role) {
+            discrepancies.push({
+              resourceName: `${memberState.teamSlug}:${memberState.username}`,
+              expected: `Member '${memberState.username}' on team '${memberState.teamSlug}' with role '${memberState.role}'`,
+              actual: 'missing',
+              message: `Member '${memberState.username}' is missing from team '${memberState.teamSlug}' on '${targetOrg}'`,
+            });
+          }
+        } catch {
+          discrepancies.push({
+            resourceName: `${memberState.teamSlug}:${memberState.username}`,
+            expected: `Member '${memberState.username}' on team '${memberState.teamSlug}'`,
+            actual: 'missing',
+            message: `Member '${memberState.username}' not found on team '${memberState.teamSlug}' on '${targetOrg}'`,
           });
         }
       }

@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemediationExecutionContract",
+  "description": "Validates the results of remediation plan execution and subsequent differential verification.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "planId",
+    "round",
+    "executedAt",
+    "totalActions",
+    "successfulActions",
+    "failedActions",
+    "preRemediationDiscrepancies",
+    "postRemediationDiscrepancies",
+    "resolvedDiscrepancies",
+    "remainingDiscrepancies"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "planId": {
+      "type": "string"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "executedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "totalActions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "successfulActions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failedActions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "actionResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["actionId", "moduleId", "resourceName", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "actionId": {
+            "type": "string"
+          },
+          "moduleId": {
+            "type": "string"
+          },
+          "resourceName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["succeeded", "failed", "skipped"]
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "preRemediationDiscrepancies": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "postRemediationDiscrepancies": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "resolvedDiscrepancies": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "remainingDiscrepancies": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unresolvedItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "discrepancyId",
+          "moduleId",
+          "resourceIdentifier",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "discrepancyId": {
+            "type": "string"
+          },
+          "moduleId": {
+            "type": "string"
+          },
+          "resourceIdentifier": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
