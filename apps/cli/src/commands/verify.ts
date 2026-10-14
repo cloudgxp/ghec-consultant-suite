@@ -9,6 +9,7 @@ import {
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
+  MigrationPlanner,
   type VerificationOrchestratorResult,
   VerificationOrchestrator,
   writeVerificationReportFile,
@@ -24,7 +25,7 @@ import {
 } from '../config/index.js';
 
 export interface VerifyCommandOptions {
-  readonly planPath: string;
+  readonly planPath?: string | undefined;
   readonly scopePath?: string | undefined;
   readonly outputPath: string;
   readonly jsonSummaryPath?: string | undefined;
@@ -55,8 +56,13 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
     },
   });
 
-  if (!values.plan || !values.plan.trim()) {
-    throw new Error('The --plan <file> flag is required.');
+  if (
+    (!values.plan || !values.plan.trim()) &&
+    (!values.scope || !values.scope.trim())
+  ) {
+    throw new Error(
+      'The --plan <file> flag is required (or specify --scope <file>).',
+    );
   }
 
   return {
@@ -81,27 +87,30 @@ export async function executeVerifyCommand(
   },
   signal?: AbortSignal,
 ): Promise<{ result: VerificationOrchestratorResult; filePath: string }> {
-  if (!existsSync(options.planPath)) {
-    throw new Error(`Plan file not found at "${options.planPath}".`);
-  }
+  let plan: MigrationPlan | undefined;
+  if (options.planPath) {
+    if (!existsSync(options.planPath)) {
+      throw new Error(`Plan file not found at "${options.planPath}".`);
+    }
 
-  let planJson: unknown;
-  try {
-    planJson = JSON.parse(readFileSync(options.planPath, 'utf8'));
-  } catch (err) {
-    throw new Error(
-      `Failed to read plan file "${options.planPath}": ${err instanceof Error ? err.message : String(err)}`,
-      { cause: err },
-    );
-  }
+    let planJson: unknown;
+    try {
+      planJson = JSON.parse(readFileSync(options.planPath, 'utf8'));
+    } catch (err) {
+      throw new Error(
+        `Failed to read plan file "${options.planPath}": ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err },
+      );
+    }
 
-  const planValidation = validateMigrationPlan(planJson);
-  if (!planValidation.success) {
-    throw new Error(
-      `Invalid plan schema: ${planValidation.error.issues.map((i) => i.message).join('; ')}`,
-    );
+    const planValidation = validateMigrationPlan(planJson);
+    if (!planValidation.success) {
+      throw new Error(
+        `Invalid plan schema: ${planValidation.error.issues.map((i) => i.message).join('; ')}`,
+      );
+    }
+    plan = planValidation.data;
   }
-  const plan: MigrationPlan = planValidation.data;
 
   let scope: MigrationScope | undefined;
   if (options.scopePath) {
@@ -128,7 +137,7 @@ export async function executeVerifyCommand(
   let targetClient = clientOverrides?.targetClient;
   let sourceClient = clientOverrides?.sourceClient;
 
-  if (!targetClient) {
+  if (!targetClient || (!plan && !sourceClient)) {
     const configOptions: CliDualConfigOptions = {
       appId: options.appId,
       privateKeyPath: options.privateKeyPath,
@@ -138,11 +147,27 @@ export async function executeVerifyCommand(
     };
     const dualConfig = loadDualConfig(configOptions);
     const clients = createMigrationClientsFromConfig(dualConfig);
-    targetClient = clients.targetClient;
+    targetClient = targetClient ?? clients.targetClient;
     sourceClient = sourceClient ?? clients.sourceClient;
   }
 
   const registry = createDefaultModuleRegistry();
+
+  if (!plan) {
+    if (!scope) {
+      throw new Error(
+        'Either --plan <file> or --scope <file> must be provided for verification.',
+      );
+    }
+    const planner = new MigrationPlanner({
+      scope,
+      registry,
+      sourceClient: sourceClient ?? targetClient,
+      targetClient,
+      signal,
+    });
+    plan = await planner.generatePlan();
+  }
 
   const orchestrator = new VerificationOrchestrator({
     registry,

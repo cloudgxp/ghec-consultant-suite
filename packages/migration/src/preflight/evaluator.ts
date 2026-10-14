@@ -103,10 +103,28 @@ export class PreflightEvaluator {
 
     const finalRepoAssessments: RepositoryAssessment[] =
       initialRepoAssessments.map((assessment) => {
-        const blockers = [...assessment.blockers];
+        let blockers = [...assessment.blockers];
         let status = assessment.status;
         const mapping = repoMappingBySource.get(assessment.repo);
         const targetRepoName = mapping?.targetRepo ?? assessment.repo;
+        const repoKey = `${sourceOrg}/${assessment.repo}`;
+        const transferStrategy =
+          mapping?.gitTransferStrategy ??
+          mapping?.options?.gitTransferStrategy ??
+          scope.repositoryOptions?.[repoKey]?.gitTransferStrategy ??
+          scope.repositoryOptions?.[assessment.repo]?.gitTransferStrategy;
+
+        if (transferStrategy === 'mirror-push' && status === 'blocked') {
+          const nonGeiSizeBlockers = blockers.filter(
+            (b) => !b.includes('exceeds GitHub platform limit of 40 GiB'),
+          );
+          if (nonGeiSizeBlockers.length === 0) {
+            status = 'requires-special-strategy';
+            blockers = [
+              'Repository Git size exceeds 40 GiB GEI limit; configured for direct Git mirror-push strategy.',
+            ];
+          }
+        }
 
         // Check source credential blockers
         if (credentialAssessment.blockers.length > 0) {

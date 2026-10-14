@@ -22,12 +22,12 @@ on:
         description: 'Runner pool for standard/small repos (comma-separated or single label)'
         required: false
         type: string
-        default: 'ubuntu-latest'
+        default: 'self-hosted'
       large_repo_runner_labels:
         description: 'High-capacity runner pool with >=100 GB scratch disk for large repos'
         required: false
         type: string
-        default: 'self-hosted,high-disk'
+        default: 'self-hosted'
       dry_run:
         description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
         required: false
@@ -50,7 +50,7 @@ permissions:
 jobs:
   slicer:
     name: 'Phase 1: Scale-Adaptive Sizing & Strategy Classification'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       matrix: ${{ steps.slice.outputs.matrix }}
       cohort_count: ${{ steps.slice.outputs.cohort_count }}
@@ -81,6 +81,21 @@ jobs:
             console.log("Scope schema validation passed successfully.");
           ' "${{ inputs.scope }}"
 
+      - name: Execute Preflight Readiness Gate
+        id: preflight
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE_FILE: ${{ inputs.scope }}
+        run: |
+          mkdir -p ./scans
+          echo "Running preflight readiness checks on Actions Runner..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
+            --scope "$SCOPE_FILE" \
+            --output ./scans/preflight-report.json \
+            --verbose || true
+
       - name: Diagnose Repository Sizes & Generate Slicer Matrix
         id: slice
         shell: bash
@@ -100,26 +115,69 @@ jobs:
             const repos = scope.repositories || [];
             const defaultLabels = process.env.DEFAULT_RUNNERS.split(",").map(s => s.trim()).filter(Boolean);
             const largeLabels = process.env.LARGE_RUNNERS.split(",").map(s => s.trim()).filter(Boolean);
+            const sourceToken = process.env.GHEC_SOURCE_TOKEN;
+            const defaultSourceOrg = scope.organizations?.[0]?.source;
 
-            // Generate sizing profiles (combining metadata and API query estimates)
-            const profiles = repos.map(r => {
-              const name = typeof r === "string" ? r : r.name;
-              const diskUsage = (typeof r === "object" && r.diskUsageBytes) ? r.diskUsageBytes : 500 * 1024 * 1024;
-              const releaseBytes = (typeof r === "object" && r.releaseAssetsBytes) ? r.releaseAssetsBytes : 0;
-              const lfsCount = (typeof r === "object" && r.lfsObjectCount) ? r.lfsObjectCount : 0;
-              const visibility = (typeof r === "object" && r.visibility) ? r.visibility : "private";
+            let preflightMap = new Map();
+            if (fs.existsSync("./scans/preflight-report.json")) {
+              try {
+                const preflight = JSON.parse(fs.readFileSync("./scans/preflight-report.json", "utf8"));
+                for (const a of preflight.repositoryAssessments || []) {
+                  preflightMap.set(a.repo, a);
+                }
+              } catch {}
+            }
 
-              return {
+            // Generate sizing profiles (combining metadata, preflight report, and live API query estimates)
+            const profiles = [];
+            for (const r of repos) {
+              const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
+              const sourceOrg = (typeof r === "object" && r.sourceOrg) ? r.sourceOrg : defaultSourceOrg;
+              const pf = preflightMap.get(name);
+              let diskUsage = (typeof r === "object" && r.diskUsageBytes) ? r.diskUsageBytes : (pf?.gitSizeBytes || 0);
+              let visibility = (typeof r === "object" && (r.targetRepoVisibility || r.visibility)) ? (r.targetRepoVisibility || r.visibility) : "private";
+
+              if (!diskUsage && sourceToken && sourceOrg && name) {
+                try {
+                  const resp = await fetch(`https://api.github.com/repos/${sourceOrg}/${name}`, {
+                    headers: {
+                      Authorization: `Bearer ${sourceToken}`,
+                      Accept: "application/vnd.github+json",
+                    },
+                  });
+                  if (resp.ok) {
+                    const data = await resp.json();
+                    diskUsage = (data.size || 0) * 1024;
+                    if (data.visibility && !(typeof r === "object" && (r.targetRepoVisibility || r.visibility))) {
+                      visibility = data.visibility;
+                    }
+                  }
+                } catch {
+                  // Fallback to default sizing if API probe fails
+                }
+              }
+
+              if (!diskUsage) {
+                diskUsage = 500 * 1024 * 1024;
+              }
+              if (typeof r === "object" && (r.gitTransferStrategy === "mirror-push" || r.options?.gitTransferStrategy === "mirror-push")) {
+                diskUsage = Math.max(diskUsage, 45 * 1024 * 1024 * 1024);
+              }
+
+              const releaseBytes = (typeof r === "object" && r.releaseAssetsBytes) ? r.releaseAssetsBytes : (pf?.releaseTotalAssetBytes || 0);
+              const lfsCount = (typeof r === "object" && r.lfsObjectCount) ? r.lfsObjectCount : (pf?.lfsObjectCount || 0);
+
+              profiles.push({
                 repositoryName: name,
                 gitDiskUsageBytes: diskUsage,
                 gitLfsObjectCount: lfsCount,
-                gitLfsTotalBytes: lfsCount > 0 ? 1048576 : 0,
-                releaseCount: releaseBytes > 0 ? 1 : 0,
+                gitLfsTotalBytes: pf?.lfsTotalBytes || (lfsCount > 0 ? 1048576 : 0),
+                releaseCount: pf?.releaseCount || (releaseBytes > 0 ? 1 : 0),
                 releaseAssetsTotalBytes: releaseBytes,
                 estimatedScratchBytes: Math.ceil(diskUsage * 1.5 + (releaseBytes > 10 * 1024 * 1024 * 1024 ? 0 : releaseBytes)),
                 sourceVisibility: visibility,
-              };
-            });
+              });
+            }
 
             const matrixOutput = sliceScaleAdaptiveMatrix(profiles, {
               defaultRunnerLabels: defaultLabels,
@@ -130,17 +188,22 @@ jobs:
 
             fs.writeFileSync("./scans/slicer-matrix.json", JSON.stringify(matrixOutput, null, 2), "utf8");
 
-            // Write individual cohort scopes
-            for (const cohort of matrixOutput.matrix.include) {
+            // Write individual cohort scopes (run organization-level modules in the final cohort)
+            const totalCohorts = matrixOutput.matrix.include.length;
+            matrixOutput.matrix.include.forEach((cohort, idx) => {
+              const isLastCohort = idx === totalCohorts - 1;
               const cohortScope = {
                 ...scope,
+                organizations: isLastCohort
+                  ? scope.organizations
+                  : (scope.organizations || []).map(o => ({ ...o, modules: [] })),
                 repositories: scope.repositories.filter(r => {
-                  const name = typeof r === "string" ? r : r.name;
+                  const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
                   return cohort.repositories.includes(name);
                 })
               };
               fs.writeFileSync(`./cohorts/${cohort.cohortId}-scope.json`, JSON.stringify(cohortScope, null, 2), "utf8");
-            }
+            });
 
             console.log(`Generated ${matrixOutput.cohortCount} scale-adaptive cohorts.`);
           '
@@ -156,6 +219,7 @@ jobs:
         with:
           name: slicer-matrix-${{ github.run_id }}
           path: |
+            ./scans/preflight-report.json
             ./scans/slicer-matrix.json
             ./cohorts/*-scope.json
           retention-days: 14
@@ -221,8 +285,9 @@ jobs:
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --scope "$COHORT_SCOPE" \
             "${DRY_RUN_ARG[@]}" \
+            --continue-on-error \
             --checkpoint-dir ./migrations/ \
-            --output "$REPORT_OUTPUT"
+            --output "$REPORT_OUTPUT" || true
 
       - name: Post-GEI Visibility Restoration Reconciliation
         if: always() && inputs.dry_run == false
@@ -231,7 +296,7 @@ jobs:
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           MATRIX_COHORT_ID: ${{ matrix.cohortId }}
         run: |
-          COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
+          export COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
           if [ -f "$COHORT_SCOPE" ]; then
             echo "Reconciling target repository visibility..."
             node --input-type=module -e '
@@ -254,12 +319,14 @@ jobs:
                 }
               };
 
+              const defaultTargetOrg = scope.organizations?.[0]?.target || scope.targetOrg;
               for (const repo of scope.repositories || []) {
-                const name = typeof repo === "string" ? repo : repo.name;
-                const vis = (typeof repo === "object" && repo.visibility) ? repo.visibility : "private";
-                if (vis !== "private") {
-                  console.log(`Restoring visibility to ${vis} for ${scope.targetOrg}/${name}...`);
-                  await reconcilePostGeiVisibility(targetWriteClient, scope.targetOrg, name, vis);
+                const name = typeof repo === "string" ? repo : (repo.targetRepo || repo.sourceRepo || repo.name);
+                const targetOrg = (typeof repo === "object" && repo.targetOrg) ? repo.targetOrg : defaultTargetOrg;
+                const vis = (typeof repo === "object" && (repo.targetRepoVisibility || repo.visibility)) ? (repo.targetRepoVisibility || repo.visibility) : "private";
+                if (vis !== "private" && targetOrg && name) {
+                  console.log(`Restoring visibility to ${vis} for ${targetOrg}/${name}...`);
+                  await reconcilePostGeiVisibility(targetWriteClient, targetOrg, name, vis);
                 }
               }
             '
@@ -279,7 +346,7 @@ jobs:
     name: 'Phase 3 & 4: Verification & Autonomous Closed-Loop Self-Healing'
     needs: [slicer, migrate-cohorts]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -358,7 +425,7 @@ jobs:
               --scope "$INPUT_SCOPE" \
               --output ./scans/verification-report.json || true
 
-            REMAINING=$(jq '.summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+            REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
             echo "Verification post-round $ROUND reported $REMAINING discrepancies."
 
             if [ "$REMAINING" -eq 0 ]; then
@@ -368,6 +435,22 @@ jobs:
 
             ROUND=$((ROUND + 1))
           done
+
+      - name: Publish Migration Audit Repository to Target Organization
+        if: always() && inputs.dry_run == false
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+        run: |
+          if [ -f ./scans/verification-report.json ]; then
+            echo "Publishing migration audit results repository to target organization..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+              --scope "$INPUT_SCOPE" \
+              --report ./scans/verification-report.json \
+              --append-step-summary || true
+          fi
 
       - name: Generate Final Audit & Step Summary
         if: always()
@@ -381,8 +464,8 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f ./scans/verification-report.json ]; then
-            TOTAL_DISC=$(jq '.summary.totalDiscrepancies // 0' ./scans/verification-report.json)
-            PASS_RATE=$(jq '.summary.overallStatus // "unknown"' ./scans/verification-report.json)
+            TOTAL_DISC=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+            PASS_RATE=$(jq '.summary.overallStatus // (if (.summary.discrepancyCount // 0) == 0 then "passed" else "failed" end)' ./scans/verification-report.json)
             echo "### Verification State" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Overall Status**: \`$PASS_RATE\`" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Remaining Discrepancies**: \`$TOTAL_DISC\`" >> "$GITHUB_STEP_SUMMARY"

@@ -345,11 +345,13 @@ export class MigrationOrchestrator {
         this.scope?.repositoryOptions?.[sourceRepo] ??
         (repoMapping?.skipReleases !== undefined ||
         repoMapping?.lfsStrategy !== undefined ||
-        repoMapping?.targetRepoVisibility !== undefined
+        repoMapping?.targetRepoVisibility !== undefined ||
+        repoMapping?.gitTransferStrategy !== undefined
           ? {
               skipReleases: repoMapping.skipReleases,
               lfsStrategy: repoMapping.lfsStrategy,
               targetRepoVisibility: repoMapping.targetRepoVisibility,
+              gitTransferStrategy: repoMapping.gitTransferStrategy,
             }
           : undefined);
 

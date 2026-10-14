@@ -45,6 +45,7 @@ export interface MigrateCommandOptions {
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;
   readonly publishResults?: boolean | undefined;
+  readonly checkpointDir?: string | undefined;
 }
 
 export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
@@ -67,6 +68,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       input: { type: 'string' },
       modules: { type: 'string' },
       resume: { type: 'string' },
+      'checkpoint-dir': { type: 'string' },
       'continue-on-error': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       output: { type: 'string', default: './scans/migration-execution.json' },
@@ -99,6 +101,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     inputPath: values.input,
     modules,
     resume: values.resume,
+    checkpointDir: values['checkpoint-dir'],
     continueOnError: values['continue-on-error'] ?? false,
     dryRun: values['dry-run'] ?? false,
     outputPath: values.output || './scans/migration-execution.json',

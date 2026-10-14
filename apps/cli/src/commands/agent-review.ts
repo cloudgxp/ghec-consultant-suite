@@ -287,12 +287,14 @@ export function generateRemediationPlan(
     }
   }
 
-  const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -euo pipefail\n\n`;
+  const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -euo pipefail\nif ! command -v ghec-consultant-cli >/dev/null 2>&1 && [ -f "./apps/cli/bin/ghec-consultant-cli.mjs" ]; then\n  ghec-consultant-cli() { node ./apps/cli/bin/ghec-consultant-cli.mjs "$@"; }\nfi\nexport GH_TOKEN="\${GHEC_TARGET_TOKEN:-\${GH_TOKEN:-}}"\n\n`;
+  const executedCommands = new Set<string>();
   const scriptBody = actions
-    .map(
-      (a) =>
-        `# [${a.severity.toUpperCase()}] ${a.description}\necho "Executing remediation for ${a.resourceName}..."\n${a.command}\n`,
-    )
+    .map((a) => {
+      const isDuplicate = executedCommands.has(a.command);
+      executedCommands.add(a.command);
+      return `# [${a.severity.toUpperCase()}] ${a.description}\necho "Executing remediation for ${a.resourceName}..."\n${isDuplicate ? `# (Already executed in this batch): ${a.command.replace(/\n/g, ' ')}` : a.command}\n`;
+    })
     .join('\n');
 
   return {

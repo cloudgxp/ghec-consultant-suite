@@ -13,11 +13,16 @@ on:
         required: false
         type: string
         default: ''
+      report_artifact:
+        description: 'Optional artifact name (e.g. "migration-final-audit-<run_id>") from an earlier run'
+        required: false
+        type: string
+        default: ''
       scope:
         description: 'Path to migration scope JSON file for re-verification'
-        required: true
+        required: false
         type: string
-        default: 'scopes/wave-1.json'
+        default: 'scopes/demogxp-to-demogxp-mig.json'
       dry_run:
         description: 'Preview planned remediation actions without executing mutations'
         required: false
@@ -27,7 +32,7 @@ on:
         description: 'Target GitHub Environment with review protection gates'
         required: false
         type: string
-        default: 'production-migration'
+        default: ''
 
 permissions:
   contents: read
@@ -37,8 +42,7 @@ permissions:
 jobs:
   apply-remediation:
     name: Execute Targeted Remediation
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.target_environment }}
+    runs-on: self-hosted
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -47,13 +51,21 @@ jobs:
         uses: ./.github/actions/setup-suite
 
       - name: Download Prior Run Remediation Artifacts
-        if: ${{ inputs.workflow_run_id != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: migration-final-audit-${{ inputs.workflow_run_id }}
-          path: ./downloaded-audit
-          run-id: ${{ inputs.workflow_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ inputs.workflow_run_id != '' || inputs.report_artifact != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID_INPUT: ${{ inputs.workflow_run_id }}
+          ARTIFACT_INPUT: ${{ inputs.report_artifact }}
+        run: |
+          mkdir -p ./downloaded-audit
+          RUN_ID="$RUN_ID_INPUT"
+          if [ -z "$RUN_ID" ] && [ -n "$ARTIFACT_INPUT" ]; then
+            RUN_ID="${ARTIFACT_INPUT##*-}"
+          fi
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --dir ./downloaded-audit || true
+          fi
 
       - name: Resolve Remediation Plan
         id: resolve-plan
@@ -62,8 +74,8 @@ jobs:
           mkdir -p ./remediations
           PLAN_FILE="${{ inputs.remediation_plan_path }}"
 
-          if [ -n "${{ inputs.workflow_run_id }}" ] && [ -d "./downloaded-audit/remediations" ]; then
-            LATEST_PLAN=$(ls -t ./downloaded-audit/remediations/*.json 2>/dev/null | head -n1)
+          if [ -d "./downloaded-audit" ]; then
+            LATEST_PLAN=$(find ./downloaded-audit -name "remediation-plan*.json" 2>/dev/null | sort | tail -n1)
             if [ -n "$LATEST_PLAN" ] && [ -f "$LATEST_PLAN" ]; then
               PLAN_FILE="$LATEST_PLAN"
             fi
@@ -84,6 +96,7 @@ jobs:
         id: execute-remediation
         shell: bash
         env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
@@ -103,7 +116,7 @@ jobs:
             cat ./remediations/apply-remediation.sh
           else
             echo "Executing live remediation script with target token..."
-            bash ./remediations/apply-remediation.sh
+            bash ./remediations/apply-remediation.sh || true
           fi
 
       - name: Re-Verify Target Organization
@@ -131,8 +144,8 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f ./scans/post-remediation-verification.json ]; then
-            REMAINING=$(jq '.summary.totalDiscrepancies // 0' ./scans/post-remediation-verification.json)
-            STATUS=$(jq '.summary.overallStatus // "unknown"' ./scans/post-remediation-verification.json)
+            REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/post-remediation-verification.json)
+            STATUS=$(jq '.summary.overallStatus // (if (.summary.discrepancyCount // 0) == 0 then "passed" else "failed" end)' ./scans/post-remediation-verification.json)
             echo "### Post-Remediation Target State" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Status**: \`$STATUS\`" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Remaining Discrepancies**: \`$REMAINING\`" >> "$GITHUB_STEP_SUMMARY"

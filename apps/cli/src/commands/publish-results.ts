@@ -61,6 +61,7 @@ export function parsePublishResultsOptions(
     options: {
       'execution-report': { type: 'string' },
       'verification-report': { type: 'string' },
+      report: { type: 'string' },
       'remediation-plan': { type: 'string' },
       scope: { type: 'string' },
       'target-org': { type: 'string' },
@@ -81,7 +82,7 @@ export function parsePublishResultsOptions(
 
   return {
     executionReportPath: values['execution-report'],
-    verificationReportPath: values['verification-report'],
+    verificationReportPath: values['verification-report'] ?? values.report,
     remediationPlanPath: values['remediation-plan'],
     scopePath: values.scope,
     targetOrg: values['target-org'],
