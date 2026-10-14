@@ -111,12 +111,15 @@ test('sanitizeDiagnostics redacts private keys, JWTs, and installation tokens', 
   const rawKey = testPrivateKey;
   const rawJwt = createGitHubAppJwt('123', testPrivateKey);
   const rawToken = 'ghs_ABC1234567890abcdef1234567890ABCDEF';
+  const rawPat =
+    'github_pat_11AAAAAAA0000000000000_12345678901234567890123456789012345678901234567890123456789012';
 
-  const logMessage = `Auth failed with key: ${rawKey} and jwt: ${rawJwt} and token: ${rawToken}`;
+  const logMessage = `Auth failed with key: ${rawKey} and jwt: ${rawJwt} and token: ${rawToken} and pat: ${rawPat}`;
   const sanitized = sanitizeDiagnostics(logMessage);
 
   assert.doesNotMatch(sanitized, /BEGIN (?:RSA )?PRIVATE KEY/);
   assert.doesNotMatch(sanitized, /ghs_ABC/);
+  assert.doesNotMatch(sanitized, /github_pat_/);
   assert.match(sanitized, /\[REDACTED_PRIVATE_KEY\]/);
   assert.match(sanitized, /\[REDACTED_JWT\]/);
   assert.match(sanitized, /\[REDACTED_TOKEN\]/);

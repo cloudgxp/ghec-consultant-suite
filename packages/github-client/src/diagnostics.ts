@@ -14,7 +14,7 @@ export function sanitizeDiagnostics(message: string): string {
       '[REDACTED_JWT]',
     )
     .replace(
-      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,255}|ghs_[A-Za-z0-9_]{20,255})\b/g,
+      /\b(?:gh[pousr]_[A-Za-z0-9_]{20,255}|ghs_[A-Za-z0-9_]{20,255}|github_pat_[A-Za-z0-9_]{82,255})\b/g,
       '[REDACTED_TOKEN]',
     )
     .replace(/\b(Bearer\s+)[A-Za-z0-9_.-]{16,}\b/gi, '$1[REDACTED_TOKEN]')
