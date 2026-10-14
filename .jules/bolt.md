@@ -17,3 +17,8 @@
 
 **Learning:** When generating metrics or aggregating counts from a large dataset for UI cards (like `MetricCard`), performing multiple `.filter(...).length` and `.reduce(...)` passes over the exact same array within the render loop leads to severe performance degradation due to redundant iterations, especially when these computations are triggered repeatedly by state updates like search inputs.
 **Action:** Replace multiple sequential array passes with a single `useMemo` block that iterates through the data once, tracking all necessary metric counters in a single pass (O(N)), avoiding redundant array allocations and operations.
+
+## 2024-05-18 - Multiple filter passes on large DiscoveryBundle arrays
+
+**Learning:** Found an anti-pattern where components perform multiple `.filter().length` passes over the `bundle.entities` array inside the render cycle (e.g., computing different metric summaries). Since `bundle.entities` can be extremely large, O(k*N) traversals block the main thread and impact UI responsiveness significantly on re-renders.
+**Action:** When computing summary metrics or splitting `DiscoveryBundle` entities by kind, always consolidate multiple `.filter()` passes into a single O(N) loop (using `for...of` or `reduce`) wrapped in a `useMemo` hook.

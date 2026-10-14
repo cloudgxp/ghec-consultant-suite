@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { PageHeader, SurfaceCard } from '../components/ui/index.js';
 import { Button, Flash, Label } from '@primer/react';
 import { DownloadIcon, ShieldCheckIcon } from '@primer/octicons-react';
@@ -30,8 +30,51 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
   selectedOrgIds,
 }) => {
   const orgFilter = selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined;
-  const includesOrganization = (organizationId: string) =>
-    selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId);
+  const includesOrganization = React.useCallback(
+    (organizationId: string) =>
+      selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId),
+    [selectedOrgIds],
+  );
+
+  // ⚡ Bolt Optimization: Consolidate multiple O(N) filters into a single O(N) pass.
+  // Instead of iterating through `bundle.entities` 6 separate times (O(6N)) on every render,
+  // we count the matching entities in one pass wrapped in a useMemo hook.
+  const entityCounts = useMemo(() => {
+    const counts = {
+      repository: 0,
+      actionsAndSecrets: 0,
+      team: 0,
+      security: 0,
+      integration: 0,
+      identity: 0,
+    };
+    for (const e of bundle.entities) {
+      if (!includesOrganization(e.organizationId)) continue;
+
+      switch (e.kind) {
+        case 'repository':
+          counts.repository++;
+          break;
+        case 'actions':
+        case 'actions-secret':
+          counts.actionsAndSecrets++;
+          break;
+        case 'team':
+          counts.team++;
+          break;
+        case 'security':
+          counts.security++;
+          break;
+        case 'integration':
+          counts.integration++;
+          break;
+        case 'identity':
+          counts.identity++;
+          break;
+      }
+    }
+    return counts;
+  }, [bundle.entities, includesOrganization]);
 
   const exportOptions = [
     {
@@ -51,10 +94,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `repositories-${bundle.scan.id}.csv`,
       description:
         'Detailed inventory of all discovered repositories including size, visibility, branch, LFS status, security status, and actions workflows.',
-      rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'repository' && includesOrganization(e.organizationId),
-      ).length,
+      rowsCount: entityCounts.repository,
       columns:
         'Org, Repo ID, Name, Visibility, Archived, Size (Formatted/Bytes), LFS, Actions, Dependabot, Code Scanning',
       generator: () => generateRepositoriesCsv(bundle, orgFilter),
@@ -79,11 +119,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `actions-and-secrets-${bundle.scan.id}.csv`,
       description:
         'Inventory of GitHub Actions workflows, self-hosted vs hosted runner environments, and secrets/variables metadata names.',
-      rowsCount: bundle.entities.filter(
-        (e) =>
-          (e.kind === 'actions' || e.kind === 'actions-secret') &&
-          includesOrganization(e.organizationId),
-      ).length,
+      rowsCount: entityCounts.actionsAndSecrets,
       columns:
         'Kind, Org, Target Repo, Name, Config Type, Level, Workflows, Runners, Last Updated',
       generator: () => generateActionsAndSecretsCsv(bundle, orgFilter),
@@ -94,9 +130,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `teams-and-permissions-${bundle.scan.id}.csv`,
       description:
         'Team organizational hierarchies, membership counts, and mapped repository permission grants.',
-      rowsCount: bundle.entities.filter(
-        (e) => e.kind === 'team' && includesOrganization(e.organizationId),
-      ).length,
+      rowsCount: entityCounts.team,
       columns:
         'Org, Team ID, Team Name, Parent Team, Members, Target Repo, Granted Permission',
       generator: () => generateTeamsAndPermissionsCsv(bundle, orgFilter),
@@ -107,9 +141,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `security-posture-${bundle.scan.id}.csv`,
       description:
         'Repository-level security configurations for Dependabot, Code Scanning, and open alert counts with coverage caveats.',
-      rowsCount: bundle.entities.filter(
-        (e) => e.kind === 'security' && includesOrganization(e.organizationId),
-      ).length,
+      rowsCount: entityCounts.security,
       columns:
         'Org, Repo ID, Code Scanning, Dependabot, Open Alert Count, Availability, Reason',
       generator: () => generateSecurityPostureCsv(bundle, orgFilter),
@@ -120,10 +152,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `integrations-${bundle.scan.id}.csv`,
       description:
         'Discovered webhooks, GitHub Apps, and deploy keys requiring cutover planning and re-authorization.',
-      rowsCount: bundle.entities.filter(
-        (e) =>
-          e.kind === 'integration' && includesOrganization(e.organizationId),
-      ).length,
+      rowsCount: entityCounts.integration,
       columns: 'Org, Integration ID, Kind, Label, Target Repo, Active Status',
       generator: () => generateIntegrationsCsv(bundle, orgFilter),
     },
@@ -133,9 +162,7 @@ export const ExportCenterTab: React.FC<ExportCenterTabProps> = ({
       filename: `identities-and-access-${bundle.scan.id}.csv`,
       description:
         'Pseudonymized human identities with membership roles, outside collaborator flags, and SAML/SCIM SSO link statuses.',
-      rowsCount: bundle.entities.filter(
-        (e) => e.kind === 'identity' && includesOrganization(e.organizationId),
-      ).length,
+      rowsCount: entityCounts.identity,
       columns:
         'Org, Pseudonym, Membership Role, Outside Collaborator, SSO Status',
       generator: () => generateIdentitiesCsv(bundle, orgFilter),
