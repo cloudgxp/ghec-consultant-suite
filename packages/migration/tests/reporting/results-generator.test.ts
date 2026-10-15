@@ -810,3 +810,88 @@ test('formatOrgModuleDetailMarkdown and formatRepoModuleDetailMarkdown escape pi
   assert.ok(repoMd.includes('`REPO_VAR_\\|_PIPE`'));
   assert.ok(repoMd.includes('Updated \\| value'));
 });
+
+test('replaces pre-migration absence/drift planning reasons with post-migration outcome notes when succeeded and verified', () => {
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-notes',
+    executedAt: '2026-10-15T12:00:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: [
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'org-rulesets',
+        targetIdentifier: 'demogxp-mig2',
+        scopeLevel: 'organization',
+        status: 'complete',
+        durationMs: 200,
+        results: [
+          {
+            operationId: 'ruleset:skip-org:demogxp-mig2:demo-ruleset',
+            status: 'skipped',
+            resourceType: 'ruleset',
+            resourceName: 'demo-ruleset',
+            operationType: 'skip',
+            reason:
+              'Selected target repositories have not been migrated yet; deferring.',
+          },
+          {
+            operationId: 'ruleset:create-org:demogxp-mig2:demo-ruleset',
+            status: 'succeeded',
+            resourceType: 'ruleset',
+            resourceName: 'demo-ruleset',
+            operationType: 'create',
+            reason: 'Ruleset is missing on target.',
+          },
+          {
+            operationId: 'ruleset:noop-org:demogxp-mig2:demo-ruleset',
+            status: 'succeeded',
+            resourceType: 'ruleset',
+            resourceName: 'demo-ruleset',
+            operationType: 'noop',
+            reason: 'Ruleset configuration is identical on target.',
+          },
+        ],
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-notes',
+    verifiedAt: '2026-10-15T12:05:00Z',
+    scopeName: 'notes-scope',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    modules: [
+      {
+        moduleId: 'org-rulesets',
+        verified: true,
+        discrepancies: [],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 1,
+      unverifiedModuleCount: 0,
+      discrepancyCount: 0,
+    },
+  };
+
+  const results = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    executionMode: 'live',
+    executionReport,
+    verificationReport,
+  });
+
+  const orgRulesetsMd = results.files['organization/org-rulesets.md'] ?? '';
+  assert.ok(!orgRulesetsMd.includes('Ruleset is missing on target.'));
+  assert.ok(orgRulesetsMd.includes('Created and verified on target.'));
+  assert.equal(
+    results.manifest.summary.orgModulesSummary['org-rulesets']?.totalOperations,
+    1,
+  );
+});

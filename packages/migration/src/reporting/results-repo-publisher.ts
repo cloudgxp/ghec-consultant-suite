@@ -44,7 +44,7 @@ export class MigrationResultsRepoPublisher {
 
   constructor(options: ResultsRepoPublisherOptions) {
     this.targetOrg = options.targetOrg;
-    this.repoName = options.repoName ?? 'gei-migration-results';
+    this.repoName = options.repoName ?? 'migration-audit-results';
     this.targetClient = options.targetClient;
     this.targetWriteClient = options.targetWriteClient;
     this.dryRun = options.dryRun ?? false;

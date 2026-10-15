@@ -130,32 +130,58 @@ function inferDefaultResourceType(moduleId: string): string {
   return DEFAULT_RESOURCE_TYPE_BY_MODULE[moduleId] ?? moduleId;
 }
 
+function getCanonicalOperationDedupKey(op: OperationExecutionResult): string {
+  if (op.resourceType && op.resourceName) {
+    return `${(op.targetIdentifier ?? '').toLowerCase()}::${op.resourceType.toLowerCase()}::${op.resourceName.toLowerCase()}`;
+  }
+  return op.operationId.replace(
+    /:(create|update|noop|skip|warn)(-org|-repo)?:/i,
+    ':op$2:',
+  );
+}
+
 /**
- * Deduplicates OperationExecutionResult items by operationId across multiple runs
- * (e.g. pre-cohort, cohort, post-cohort reconcile, or remediation), ensuring
- * later 'succeeded' results supersede earlier 'skipped' or 'failed' results.
+ * Deduplicates OperationExecutionResult items by canonical resource key or operationId
+ * across multiple runs (e.g. pre-cohort, cohort, post-cohort reconcile, or remediation),
+ * ensuring 'succeeded' results supersede 'skipped' or 'failed' results, and preserving
+ * active 'create'/'update' operations over subsequent 'noop' reconciliation checks.
  */
 function deduplicateOperationResults(
   ops: readonly OperationExecutionResult[],
 ): OperationExecutionResult[] {
-  const byId = new Map<string, OperationExecutionResult>();
+  const byKey = new Map<string, OperationExecutionResult>();
   for (const op of ops) {
-    const existing = byId.get(op.operationId);
+    const key = getCanonicalOperationDedupKey(op);
+    const existing = byKey.get(key);
     if (!existing) {
-      byId.set(op.operationId, op);
+      byKey.set(key, op);
       continue;
     }
-    if (op.status === 'succeeded') {
-      byId.set(op.operationId, op);
-    } else if (existing.status === 'succeeded') {
+    if (op.status === 'succeeded' && existing.status !== 'succeeded') {
+      byKey.set(key, op);
       continue;
-    } else if (op.status === 'skipped' && existing.status === 'failed') {
-      byId.set(op.operationId, op);
+    }
+    if (existing.status === 'succeeded' && op.status !== 'succeeded') {
+      continue;
+    }
+    if (existing.status === 'succeeded' && op.status === 'succeeded') {
+      const existingAct =
+        existing.operationType === 'create' ||
+        existing.operationType === 'update';
+      const incomingNoop = op.operationType === 'noop';
+      if (existingAct && incomingNoop) {
+        continue;
+      }
+      byKey.set(key, op);
+      continue;
+    }
+    if (op.status === 'skipped' && existing.status === 'failed') {
+      byKey.set(key, op);
     } else {
-      byId.set(op.operationId, op);
+      byKey.set(key, op);
     }
   }
-  return Array.from(byId.values());
+  return Array.from(byKey.values());
 }
 
 /**
@@ -387,7 +413,30 @@ function buildGranularItemsForModule(params: {
     }
     const reason = op.reason ?? planned?.reason;
     if (reason && !op.error) {
-      noteParts.push(reason);
+      const isPreApplyAbsenceOrDriftReason =
+        op.status === 'succeeded' &&
+        !matchedDisc &&
+        (operationType === 'create' || operationType === 'update') &&
+        /\b(is missing|does not exist|differ(?:s)?|not found on target|missing in destination)\b/i.test(
+          reason,
+        );
+      if (isPreApplyAbsenceOrDriftReason) {
+        if (secretFlag) {
+          noteParts.push('[SEALED] Write-only secret placeholder');
+        } else {
+          noteParts.push(
+            operationType === 'create'
+              ? verificationStatus === 'verified'
+                ? 'Created and verified on target.'
+                : 'Created on target.'
+              : verificationStatus === 'verified'
+                ? 'Updated and verified on target.'
+                : 'Updated on target.',
+          );
+        }
+      } else {
+        noteParts.push(reason);
+      }
     }
     if (matchedDisc) {
       noteParts.push(
@@ -473,7 +522,7 @@ export function generateMigrationResults(
   const runId =
     options.runId ?? options.executionReport?.planId ?? `run-${Date.now()}`;
   const targetResultsRepo =
-    options.targetResultsRepo ?? 'gei-migration-results';
+    options.targetResultsRepo ?? 'migration-audit-results';
 
   // Build lookup structures from scope and plan
   const repoSourceToTarget = new Map<string, string>();

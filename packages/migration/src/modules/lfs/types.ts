@@ -1,6 +1,13 @@
 export interface LfsObject {
   readonly oid: string;
   readonly size: number;
+  readonly path?: string | undefined;
+}
+
+export interface LfsTrackedBlob {
+  readonly path: string;
+  readonly sha: string;
+  readonly size: number;
 }
 
 export interface LfsBatchAction {
@@ -37,6 +44,7 @@ export interface LfsMigrationData {
   readonly repo: string;
   readonly hasLfs: boolean;
   readonly objects: readonly LfsObject[];
+  readonly trackedBlobs?: readonly LfsTrackedBlob[] | undefined;
 }
 
 export interface LfsUploadPayload {
@@ -53,6 +61,8 @@ export interface LfsModuleOptions {
   readonly objects?: readonly LfsObject[] | undefined;
   readonly sourceLfsUrl?: string | undefined;
   readonly targetLfsUrl?: string | undefined;
+  readonly sourceToken?: string | undefined;
+  readonly targetToken?: string | undefined;
   readonly streamer?: LfsStreamerInterface | undefined;
 }
 

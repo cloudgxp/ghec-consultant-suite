@@ -32,7 +32,7 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
     assert.equal(parsed.executionReportPath, './scans/execution.json');
     assert.equal(parsed.verificationReportPath, './scans/verification.json');
     assert.equal(parsed.targetOrg, 'dest-org');
-    assert.equal(parsed.repoName, 'gei-migration-results');
+    assert.equal(parsed.repoName, 'migration-audit-results');
     assert.equal(parsed.outputDir, './scans/results-repo');
     assert.equal(parsed.dryRun, true);
     assert.equal(parsed.skipPush, false);

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { sanitizeDiagnostics } from '@ghec/github-client';
 import type {
   LfsBatchAction,
   LfsBatchResponse,
@@ -28,7 +29,12 @@ export class LfsStreamer implements LfsStreamerInterface {
     };
 
     if (token) {
-      headers.Authorization = `Bearer ${token}`;
+      if (token.startsWith('Basic ') || token.startsWith('Bearer ')) {
+        headers.Authorization = token;
+      } else {
+        const basic = Buffer.from(`x-access-token:${token}`).toString('base64');
+        headers.Authorization = `Basic ${basic}`;
+      }
     }
 
     const res = await fetch(url, {
@@ -46,7 +52,7 @@ export class LfsStreamer implements LfsStreamerInterface {
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       throw new Error(
-        `Git LFS Batch API error (${res.status} ${res.statusText}): ${errText}`,
+        `Git LFS Batch API error (${res.status} ${res.statusText}): ${sanitizeDiagnostics(errText)}`,
       );
     }
 

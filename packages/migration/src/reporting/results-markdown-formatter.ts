@@ -506,7 +506,18 @@ export function formatSuccessRepoMarkdown(
     lines.push('| `core-transfer` | ✅ Completed | Executed cleanly |');
   } else {
     for (const stage of record.stagesRun) {
-      lines.push(`| \`${stage}\` | ✅ Completed | Executed cleanly |`);
+      const modSummary = record.moduleSummaries?.[stage];
+      if (modSummary?.status === 'skipped') {
+        lines.push(
+          `| \`${stage}\` | ⏭️ Skipped | No applicable resources in source repository |`,
+        );
+      } else if (modSummary) {
+        lines.push(
+          `| \`${stage}\` | ✅ Completed | Executed cleanly (${modSummary.totalOperations} item${modSummary.totalOperations === 1 ? '' : 's'}) |`,
+        );
+      } else {
+        lines.push(`| \`${stage}\` | ✅ Completed | Executed cleanly |`);
+      }
     }
   }
 
