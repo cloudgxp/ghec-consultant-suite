@@ -1,0 +1,5305 @@
+
+> ghec-consulting-suite@0.1.0 check
+> npm run lint && npm run typecheck && npm run build:apps && npm run test:unit
+
+
+> ghec-consulting-suite@0.1.0 lint
+> eslint --cache . && prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> ghec-consulting-suite@0.1.0 typecheck
+> npm run build:packages && npm run typecheck:apps
+
+
+> ghec-consulting-suite@0.1.0 build:packages
+> npm run build -w @ghec/contracts && npm run build -w @ghec/analysis && npm run build -w @ghec/github-client && npm run build -w @ghec/discovery && npm run build -w @ghec/migration
+
+
+> @ghec/contracts@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> @ghec/analysis@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> @ghec/github-client@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> @ghec/discovery@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> @ghec/migration@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> ghec-consulting-suite@0.1.0 typecheck:apps
+> npm run typecheck -w ghec-consultant-cli && npm run typecheck -w @ghec/dashboard
+
+
+> ghec-consultant-cli@0.1.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+
+> @ghec/dashboard@0.1.0 typecheck
+> tsc --noEmit
+
+
+> ghec-consulting-suite@0.1.0 build:apps
+> npm run build -w ghec-consultant-cli && npm run build -w @ghec/dashboard
+
+
+> ghec-consultant-cli@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> @ghec/dashboard@0.1.0 build
+> npm run check:styles && tsc --noEmit && vite build && npm run check:bundle
+
+
+> @ghec/dashboard@0.1.0 check:styles
+> node scripts/check-styles.mjs
+
+✔ Primer Quality Gate passed: zero legacy styles, valid Primer imports, and pure token styling verified.
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 1274 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                             1.25 kB │ gzip:   0.46 kB
+dist/assets/dependency-map.worker-QiKHv8HA.js               2.73 kB
+dist/assets/importer.worker-B1s90JMR.js                   152.14 kB
+dist/assets/vendor-primer-CrhIXm8x.css                    193.54 kB │ gzip:  26.19 kB
+dist/assets/index-DDyjYtGp.css                            195.21 kB │ gzip:  33.46 kB
+dist/assets/rolldown-runtime-CbXtAM7H.js                    0.58 kB │ gzip:   0.36 kB
+dist/assets/formatters-CqD0Bcrg.js                          1.06 kB │ gzip:   0.55 kB
+dist/assets/scope-generator-CyQY2kos.js                     1.37 kB │ gzip:   0.67 kB
+dist/assets/supply-chain-C0hw287J.js                        2.49 kB │ gzip:   0.58 kB
+dist/assets/VirtualizedTable-BbI5ys_8.js                    2.53 kB │ gzip:   1.17 kB
+dist/assets/CodeOwnershipTab-Ck_XtBKi.js                    2.62 kB │ gzip:   1.18 kB
+dist/assets/ProjectsTab-vLNrCFCr.js                         2.73 kB │ gzip:   1.18 kB
+dist/assets/PortfolioTab-FIERtMeH.js                        4.67 kB │ gzip:   1.64 kB
+dist/assets/CollectorHealthTab-DKIPCa5a.js                  4.83 kB │ gzip:   1.70 kB
+dist/assets/MigrationReadinessTab-DeliiPL_.js               5.87 kB │ gzip:   2.02 kB
+dist/assets/RemediationTrackerTab-DOqE8ssA.js               6.02 kB │ gzip:   2.08 kB
+dist/assets/ModuleTriggerModal-B0272Ftx.js                  6.96 kB │ gzip:   2.24 kB
+dist/assets/ReleasesAndAssetsTab-BPOe3AFV.js                7.34 kB │ gzip:   2.72 kB
+dist/assets/VirtualizedTeamsAndIdentitiesTab-CCPxwe-x.js    7.49 kB │ gzip:   2.53 kB
+dist/assets/ExportCenterTab-BEg4tZT0.js                     7.60 kB │ gzip:   2.60 kB
+dist/assets/SecurityAndPoliciesTab-B8ecyIX5.js              7.72 kB │ gzip:   2.58 kB
+dist/assets/PackagesTab-Dxp07VKN.js                         7.91 kB │ gzip:   2.82 kB
+dist/assets/ActionsTab-L9RfUoc3.js                          8.26 kB │ gzip:   2.90 kB
+dist/assets/vendor-popover-Dg9hAyLp.js                      9.53 kB │ gzip:   3.19 kB
+dist/assets/SecretsAndVariablesTab-C6YiN1r5.js             10.84 kB │ gzip:   3.45 kB
+dist/assets/export-csv-CygZn8pW.js                         11.08 kB │ gzip:   3.38 kB
+dist/assets/MigrationControlPlaneTab-DZTNLk0S.js           11.36 kB │ gzip:   3.81 kB
+dist/assets/DependencyMapTab-d3RQNlSj.js                   14.04 kB │ gzip:   5.07 kB
+dist/assets/DesignSystemPreview-CXd9SzFS.js                15.00 kB │ gzip:   3.95 kB
+dist/assets/OverviewTab-Cazdm1dE.js                        15.84 kB │ gzip:   4.31 kB
+dist/assets/dist-KGURVt6Z.js                               19.41 kB │ gzip:   5.34 kB
+dist/assets/RepositoriesTab-3_B6NCXu.js                    22.91 kB │ gzip:   6.19 kB
+dist/assets/VerificationTab-DVuEctwz.js                    26.23 kB │ gzip:   6.61 kB
+dist/assets/LiveConsoleTab-BSlnenIE.js                     26.99 kB │ gzip:   7.42 kB
+dist/assets/purify.es-Bvo9QlJ8.js                          28.08 kB │ gzip:  11.08 kB
+dist/assets/StepSummaryViewer-Bp2xgFuG.js                  29.64 kB │ gzip:   6.55 kB
+dist/assets/vendor-octicons-Bn7s12db.js                    89.17 kB │ gzip:  24.70 kB
+dist/assets/dist-DiD3S3uu.js                              126.99 kB │ gzip:  34.86 kB
+dist/assets/index-DVqU1f_Y.js                             130.88 kB │ gzip:  24.17 kB
+dist/assets/index.es-DcQLC38t.js                          151.41 kB │ gzip:  48.90 kB
+dist/assets/html2canvas-BM5yyqGY.js                       199.49 kB │ gzip:  46.77 kB
+dist/assets/vendor-react-Bwi1OHeW.js                      206.88 kB │ gzip:  64.81 kB
+dist/assets/export-pdf-Clm2-cLl.js                        440.70 kB │ gzip: 142.95 kB
+dist/assets/vendor-primer-BmgGT4R7.js                     589.60 kB │ gzip: 126.29 kB
+
+✓ built in 823ms
+
+> @ghec/dashboard@0.1.0 check:bundle
+> node scripts/check-bundle-size.mjs
+
+Bundle budget: largest JS 575.8 KiB / 600.0 KiB; initial JS gzip 275.4 KiB / 280.0 KiB; initial CSS gzip 58.1 KiB / 80.0 KiB.
+✔ Dashboard bundle budgets passed.
+
+> ghec-consulting-suite@0.1.0 test:unit
+> node --import tsx --test --test-concurrency=8 packages/contracts/tests/*.test.ts packages/analysis/tests/*.test.ts packages/github-client/tests/*.test.ts packages/discovery/tests/*.test.ts 'packages/migration/tests/**/*.test.ts' apps/dashboard/tests/*.test.ts apps/cli/tests/*.test.ts
+
+TAP version 13
+# Subtest: actions collector extracts runner groups, self-hosted runners, workflow policy, and repo workflows
+ok 1 - actions collector extracts runner groups, self-hosted runners, workflow policy, and repo workflows
+  ---
+  duration_ms: 202.985181
+  type: 'test'
+  ...
+# Subtest: security collector observes code scanning, dependabot, and open alert counts
+ok 2 - security collector observes code scanning, dependabot, and open alert counts
+  ---
+  duration_ms: 61.388442
+  type: 'test'
+  ...
+# Subtest: integrations collector extracts org apps/hooks and repo deploy keys/hooks without secret leaks
+ok 3 - integrations collector extracts org apps/hooks and repo deploy keys/hooks without secret leaks
+  ---
+  duration_ms: 56.054214
+  type: 'test'
+  ...
+# Subtest: lfs collector inspects .gitattributes to set indicator detected vs not_detected honestly
+ok 4 - lfs collector inspects .gitattributes to set indicator detected vs not_detected honestly
+  ---
+  duration_ms: 68.014203
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator runs all advanced domain collectors and emits a fully valid bundle
+ok 5 - DiscoveryOrchestrator runs all advanced domain collectors and emits a fully valid bundle
+  ---
+  duration_ms: 255.596955
+  type: 'test'
+  ...
+# Subtest: Task 035: Agentic Automation & Remediation Integration
+    # Subtest: parses agent-review command options and rejects missing report
+    ok 1 - parses agent-review command options and rejects missing report
+      ---
+      duration_ms: 2.706695
+      type: 'test'
+      ...
+    # Subtest: generates structured remediation plan from verification discrepancies
+    ok 2 - generates structured remediation plan from verification discrepancies
+      ---
+      duration_ms: 1.229868
+      type: 'test'
+      ...
+    # Subtest: formats remediation markdown report with summary and script block
+    ok 3 - formats remediation markdown report with summary and script block
+      ---
+      duration_ms: 0.690087
+      type: 'test'
+      ...
+    # Subtest: executes agent-review command end-to-end and writes JSON and Markdown files
+    ok 4 - executes agent-review command end-to-end and writes JSON and Markdown files
+      ---
+      duration_ms: 8.704992
+      type: 'test'
+      ...
+    # Subtest: invokes agent-review via runCli entrypoint
+    ok 5 - invokes agent-review via runCli entrypoint
+      ---
+      duration_ms: 2.5832
+      type: 'test'
+      ...
+    # Subtest: generates fallback remediation commands for issues, pull-requests, repo-settings, and gei-repo metadata omissions
+    ok 6 - generates fallback remediation commands for issues, pull-requests, repo-settings, and gei-repo metadata omissions
+      ---
+      duration_ms: 0.562501
+      type: 'test'
+      ...
+    1..6
+ok 6 - Task 035: Agentic Automation & Remediation Integration
+  ---
+  duration_ms: 18.233323
+  type: 'suite'
+  ...
+# Subtest: OrgMetadataAggregator extracts organization profile
+ok 7 - OrgMetadataAggregator extracts organization profile
+  ---
+  duration_ms: 159.726653
+  type: 'test'
+  ...
+# Subtest: RepositoryDeepDiscoveryAggregator paginates and extracts repositories, policies, and assets
+ok 8 - RepositoryDeepDiscoveryAggregator paginates and extracts repositories, policies, and assets
+  ---
+  duration_ms: 45.327693
+  type: 'test'
+  ...
+# Subtest: TeamHierarchyAndAccessAggregator extracts hierarchy, membership, and repository permissions
+ok 9 - TeamHierarchyAndAccessAggregator extracts hierarchy, membership, and repository permissions
+  ---
+  duration_ms: 25.456401
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator seamlessly orchestrates discovery using GraphQL aggregators
+ok 10 - DiscoveryOrchestrator seamlessly orchestrates discovery using GraphQL aggregators
+  ---
+  duration_ms: 239.03833
+  type: 'test'
+  ...
+# Subtest: createGitHubAppJwt generates a valid RS256 JWT verifiable with public key
+ok 11 - createGitHubAppJwt generates a valid RS256 JWT verifiable with public key
+  ---
+  duration_ms: 12.256775
+  type: 'test'
+  ...
+# Subtest: parseDiscoveryOptions and loadConfig parse and resolve GitHub App CLI options and env vars
+ok 12 - parseDiscoveryOptions and loadConfig parse and resolve GitHub App CLI options and env vars
+  ---
+  duration_ms: 10.571485
+  type: 'test'
+  ...
+# Subtest: sanitizeDiagnostics redacts private keys, JWTs, and installation tokens
+ok 13 - sanitizeDiagnostics redacts private keys, JWTs, and installation tokens
+  ---
+  duration_ms: 3.287526
+  type: 'test'
+  ...
+# Subtest: sanitizeDiagnostics is resilient against polynomial ReDoS on repeated PEM markers
+ok 14 - sanitizeDiagnostics is resilient against polynomial ReDoS on repeated PEM markers
+  ---
+  duration_ms: 1.568364
+  type: 'test'
+  ...
+# Subtest: GitHubAppAuthProvider exchanges JWT for installation token and caches it
+ok 15 - GitHubAppAuthProvider exchanges JWT for installation token and caches it
+  ---
+  duration_ms: 40.913031
+  type: 'test'
+  ...
+# Subtest: GitHubAppAuthProvider automatically refreshes token when within 5 minutes of expiration
+ok 16 - GitHubAppAuthProvider automatically refreshes token when within 5 minutes of expiration
+  ---
+  duration_ms: 10.08077
+  type: 'test'
+  ...
+# Subtest: HttpGitHubReadAdapter seamlessly uses GitHubAppAuthProvider on requests
+ok 17 - HttpGitHubReadAdapter seamlessly uses GitHubAppAuthProvider on requests
+  ---
+  duration_ms: 47.214586
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator capability preflight check verifies probe and outputs executive plan
+ok 18 - DiscoveryOrchestrator capability preflight check verifies probe and outputs executive plan
+  ---
+  duration_ms: 118.780951
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator executeDryRun rejects invalid credentials with sanitized diagnostic error
+ok 19 - DiscoveryOrchestrator executeDryRun rejects invalid credentials with sanitized diagnostic error
+  ---
+  duration_ms: 19.220665
+  type: 'test'
+  ...
+# [rate-limit] REST quota critically low (50 remaining). Pausing execution for 2s until quota reset at 2026-10-15T01:55:21.711Z...
+# Subtest: AdaptiveRateLimiter enforces serial pacing when remaining points < 500
+ok 20 - AdaptiveRateLimiter enforces serial pacing when remaining points < 500
+  ---
+  duration_ms: 507.524225
+  type: 'test'
+  ...
+# [resume] Skipping completed module "orgs" for organization "test-org".
+# Subtest: AdaptiveRateLimiter pauses execution until resetAt when remaining points < 100
+ok 21 - AdaptiveRateLimiter pauses execution until resetAt when remaining points < 100
+  ---
+  duration_ms: 1272.686393
+  type: 'test'
+  ...
+# Subtest: CheckpointManager creates directory with 0700 permissions and writes atomically
+ok 22 - CheckpointManager creates directory with 0700 permissions and writes atomically
+  ---
+  duration_ms: 4.981009
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator resumes an interrupted scan, skips completed modules, and cleans up checkpoint
+ok 23 - DiscoveryOrchestrator resumes an interrupted scan, skips completed modules, and cleans up checkpoint
+  ---
+  duration_ms: 76.468443
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator rejects resume when target scope mismatches
+ok 24 - DiscoveryOrchestrator rejects resume when target scope mismatches
+  ---
+  duration_ms: 4.163038
+  type: 'test'
+  ...
+# Subtest: parseDiscoveryOptions correctly parses various --resume forms
+ok 25 - parseDiscoveryOptions correctly parses various --resume forms
+  ---
+  duration_ms: 0.650747
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator abort preserves checkpoint directory for resumption
+ok 26 - DiscoveryOrchestrator abort preserves checkpoint directory for resumption
+  ---
+  duration_ms: 2.175765
+  type: 'test'
+  ...
+# Subtest: all and selected modules resolve deterministic dependencies
+ok 27 - all and selected modules resolve deterministic dependencies
+  ---
+  duration_ms: 7.995266
+  type: 'test'
+  ...
+# Subtest: unsafe or ambiguous grammar fails
+ok 28 - unsafe or ambiguous grammar fails
+  ---
+  duration_ms: 5.425119
+  type: 'test'
+  ...
+# Subtest: all catalog modules are implemented
+ok 29 - all catalog modules are implemented
+  ---
+  duration_ms: 0.50011
+  type: 'test'
+  ...
+# Subtest: CLI dry-run prints preflight plan and writes no bundle
+ok 30 - CLI dry-run prints preflight plan and writes no bundle
+  ---
+  duration_ms: 13.506344
+  type: 'test'
+  ...
+# Subtest: CLI live run requires GHEC_TOKEN
+ok 31 - CLI live run requires GHEC_TOKEN
+  ---
+  duration_ms: 25.671889
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator runs full discovery with mock adapter and produces valid bundle
+ok 32 - DiscoveryOrchestrator runs full discovery with mock adapter and produces valid bundle
+  ---
+  duration_ms: 167.20999
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator handles error with continueOnError = true (exit 4 and partial bundle)
+ok 33 - DiscoveryOrchestrator handles error with continueOnError = true (exit 4 and partial bundle)
+  ---
+  duration_ms: 38.64291
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator fails immediately when continueOnError is false
+ok 34 - DiscoveryOrchestrator fails immediately when continueOnError is false
+  ---
+  duration_ms: 23.055401
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator aborts when AbortSignal triggers
+ok 35 - DiscoveryOrchestrator aborts when AbortSignal triggers
+  ---
+  duration_ms: 9.840591
+  type: 'test'
+  ...
+# Subtest: CLI end-to-end execution against mock HTTP server
+ok 36 - CLI end-to-end execution against mock HTTP server
+  ---
+  duration_ms: 2800.381377
+  type: 'test'
+  ...
+# Subtest: ghec-consultant-cli --help displays all subcommands
+ok 37 - ghec-consultant-cli --help displays all subcommands
+  ---
+  duration_ms: 0.63553
+  type: 'test'
+  ...
+# Subtest: subcommand --help displays dedicated usage instructions
+ok 38 - subcommand --help displays dedicated usage instructions
+  ---
+  duration_ms: 0.352944
+  type: 'test'
+  ...
+# Subtest: CLI option parsers for plan, migrate, and verify
+ok 39 - CLI option parsers for plan, migrate, and verify
+  ---
+  duration_ms: 1.368837
+  type: 'test'
+  ...
+# Subtest: CLI plan, migrate, and verify workflow end-to-end with mock adapter
+ok 40 - CLI plan, migrate, and verify workflow end-to-end with mock adapter
+  ---
+  duration_ms: 75.833206
+  type: 'test'
+  ...
+# Subtest: CLI plan command partitions scope with --split-matrix and outputs matrix JSON
+ok 41 - CLI plan command partitions scope with --split-matrix and outputs matrix JSON
+  ---
+  duration_ms: 26.342586
+  type: 'test'
+  ...
+# Subtest: CLI plan command partitions scope with --runner-capacity
+ok 42 - CLI plan command partitions scope with --runner-capacity
+  ---
+  duration_ms: 9.964404
+  type: 'test'
+  ...
+# Subtest: Task 036: Local Console Server & Ambient Auth Proxy
+    # Subtest: parseConsoleOptions
+        # Subtest: parses valid port, host, and --no-open flags
+        ok 1 - parses valid port, host, and --no-open flags
+          ---
+          duration_ms: 6.117092
+          type: 'test'
+          ...
+        # Subtest: defaults host to 127.0.0.1 and openBrowser to true
+        ok 2 - defaults host to 127.0.0.1 and openBrowser to true
+          ---
+          duration_ms: 0.313385
+          type: 'test'
+          ...
+        # Subtest: throws error on invalid port
+        ok 3 - throws error on invalid port
+          ---
+          duration_ms: 0.927104
+          type: 'test'
+          ...
+        1..3
+    ok 1 - parseConsoleOptions
+      ---
+      duration_ms: 8.327934
+      type: 'suite'
+      ...
+    # Subtest: auth-bridge: getAuthStatus
+        # Subtest: returns unauthenticated when token is absent
+        ok 1 - returns unauthenticated when token is absent
+          ---
+          duration_ms: 0.439988
+          type: 'test'
+          ...
+        # Subtest: returns authenticated with username when GitHub API call succeeds
+        ok 2 - returns authenticated with username when GitHub API call succeeds
+          ---
+          duration_ms: 61.210913
+          type: 'test'
+          ...
+        1..2
+    ok 2 - auth-bridge: getAuthStatus
+      ---
+      duration_ms: 70.024562
+      type: 'suite'
+      ...
+    # Subtest: Fastify Console Server & Proxy Routes
+        # Subtest: handles /api/auth/status endpoint
+        ok 1 - handles /api/auth/status endpoint
+          ---
+          duration_ms: 701.583011
+          type: 'test'
+          ...
+        # Subtest: handles workflow dispatch and run status proxying with ETag caching
+        ok 2 - handles workflow dispatch and run status proxying with ETag caching
+          ---
+          duration_ms: 49.553934
+          type: 'test'
+          ...
+        # Subtest: proxies workflow runs listing via GET /api/actions/workflows/:workflowId/runs
+        ok 3 - proxies workflow runs listing via GET /api/actions/workflows/:workflowId/runs
+          ---
+          duration_ms: 48.479744
+          type: 'test'
+          ...
+        # Subtest: downloads and unzips artifacts in Node memory without disk access
+        ok 4 - downloads and unzips artifacts in Node memory without disk access
+          ---
+          duration_ms: 56.78346
+          type: 'test'
+          ...
+        # Subtest: validates and handles /api/cli/preflight endpoint in-memory
+        ok 5 - validates and handles /api/cli/preflight endpoint in-memory
+          ---
+          duration_ms: 145.205203
+          type: 'test'
+          ...
+        # Subtest: manages SSE connections and broadcasts correctly
+        ok 6 - manages SSE connections and broadcasts correctly
+          ---
+          duration_ms: 0.508107
+          type: 'test'
+          ...
+        1..6
+    ok 3 - Fastify Console Server & Proxy Routes
+      ---
+      duration_ms: 1002.907073
+      type: 'suite'
+      ...
+    1..3
+ok 43 - Task 036: Local Console Server & Ambient Auth Proxy
+  ---
+  duration_ms: 1082.170666
+  type: 'suite'
+  ...
+# Subtest: CLI publisher accepts and streams specialized fixture with 0 loss
+ok 44 - CLI publisher accepts and streams specialized fixture with 0 loss
+  ---
+  duration_ms: 242.680695
+  type: 'test'
+  ...
+# Subtest: CLI publisher accepts and streams partial-denied fixture preserving 403 status
+ok 45 - CLI publisher accepts and streams partial-denied fixture preserving 403 status
+  ---
+  duration_ms: 31.18125
+  type: 'test'
+  ...
+# Subtest: identity pseudonymization is deterministic across specialized fixture entities
+ok 46 - identity pseudonymization is deterministic across specialized fixture entities
+  ---
+  duration_ms: 1.787792
+  type: 'test'
+  ...
+# Migration plan generated: /tmp/ghec-cli-e2e-gUnaCh/migration-plan.json
+# Plan ID: plan-1792029323458-e4e3b401
+# Scope: repository-variables-e2e
+# Operations: 1 create, 1 update, 0 noop, 0 skip
+# Migration finished with status: complete
+# Execution report saved: /tmp/ghec-cli-e2e-gUnaCh/execution.json
+# Modules executed: 2
+# Verification report saved: /tmp/ghec-cli-e2e-gUnaCh/verification.json
+# Verified modules: 2 / 2
+# Discrepancies found: 0
+# Migration finished with status: complete
+# Execution report saved: /tmp/ghec-cli-e2e-gUnaCh/live-execution.json
+# Modules executed: 1
+# Migration plan generated: /tmp/ghec-cli-e2e-gUnaCh/idempotent-plan.json
+# Plan ID: plan-1792029323952-73fabbf8
+# Scope: repository-variables-e2e
+# Operations: 0 create, 0 update, 1 noop, 0 skip
+# Migration finished with status: complete
+# Execution report saved: /tmp/ghec-cli-e2e-gUnaCh/idempotent-execution.json
+# Modules executed: 2
+# Migration finished with status: complete
+# Execution report saved: /tmp/ghec-cli-e2e-gUnaCh/idempotent-reexecution.json
+# Modules executed: 2
+# Subtest: CLI cached plan, apply, and verify use local HTTP clients without source reads
+ok 47 - CLI cached plan, apply, and verify use local HTTP clients without source reads
+  ---
+  duration_ms: 768.495017
+  type: 'test'
+  ...
+# Subtest: HttpGitHubReadAdapter.queryGraphQL executes queries and extracts cost and rate limit metrics
+ok 48 - HttpGitHubReadAdapter.queryGraphQL executes queries and extracts cost and rate limit metrics
+  ---
+  duration_ms: 171.063663
+  type: 'test'
+  ...
+# Subtest: HttpGitHubReadAdapter.queryGraphQL sanitizes GraphQL error array without leaking query variables
+ok 49 - HttpGitHubReadAdapter.queryGraphQL sanitizes GraphQL error array without leaking query variables
+  ---
+  duration_ms: 18.360916
+  type: 'test'
+  ...
+# Subtest: GraphQL collectors (repos, policies, teams) tag provenance with source = graphql
+ok 50 - GraphQL collectors (repos, policies, teams) tag provenance with source = graphql
+  ---
+  duration_ms: 109.806455
+  type: 'test'
+  ...
+# Subtest: REST fallback collectors (actions, actions-secrets, security, integrations) tag provenance source = rest and discard secrets
+ok 51 - REST fallback collectors (actions, actions-secrets, security, integrations) tag provenance source = rest and discard secrets
+  ---
+  duration_ms: 234.570603
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator produces bundle satisfying validateBundle with both GraphQL and REST collectors
+ok 52 - DiscoveryOrchestrator produces bundle satisfying validateBundle with both GraphQL and REST collectors
+  ---
+  duration_ms: 549.866212
+  type: 'test'
+  ...
+# Subtest: Enterprise scope GraphQL enumeration paginates correctly across multiple pages
+ok 53 - Enterprise scope GraphQL enumeration paginates correctly across multiple pages
+  ---
+  duration_ms: 80.808393
+  type: 'test'
+  ...
+# Subtest: Enterprise multi-org execution orchestrates DAG with strict boundary protection across organizations
+ok 54 - Enterprise multi-org execution orchestrates DAG with strict boundary protection across organizations
+  ---
+  duration_ms: 112.911689
+  type: 'test'
+  ...
+# Subtest: Enterprise scope tracks partial enumeration when organizations are inaccessible
+ok 55 - Enterprise scope tracks partial enumeration when organizations are inaccessible
+  ---
+  duration_ms: 67.469359
+  type: 'test'
+  ...
+# Subtest: Enterprise multi-org execution respects concurrency bounds (max 2 concurrent orgs)
+ok 56 - Enterprise multi-org execution respects concurrency bounds (max 2 concurrent orgs)
+  ---
+  duration_ms: 146.503933
+  type: 'test'
+  ...
+# ================================================================
+#  GHEC CONSULTANT CLI — PREFLIGHT PERMISSION AUDIT
+# ================================================================
+# Target Scope:       acme-corp
+# Token Model:        Classic Personal Access Token (PAT)
+# Granted Scopes:     repo
+# Module Permission Checks:
+#   ✖ orgs: FAILED
+#     ↳ Missing required Classic scope(s): admin:org
+#     ↳ Reason: Missing required Classic PAT scope(s): admin:org
+#     ↳ Required Roles: Organization Owner, Organization Member
+#   ✔ repos: PASSED
+#   ✔ security: PASSED
+# Preflight Verdict:
+#   ✖ 1 of 3 requested module(s) failed permission verification.
+#   ℹ Regenerate or edit your Classic PAT to include the following missing scopes: admin:org
+#   ℹ Alternatively, run with --continue-on-error to collect data from only the authorized modules.
+# ================================================================
+# ================================================================
+#  GHEC CONSULTANT CLI — PREFLIGHT PERMISSION AUDIT
+# ================================================================
+# Target Scope:       acme-corp
+# Token Model:        Classic Personal Access Token (PAT)
+# Granted Scopes:     read:org
+# Module Permission Checks:
+#   ✔ orgs: PASSED
+#   ✖ repos: FAILED
+#     ↳ Missing required Classic scope(s): repo
+#     ↳ Reason: Missing required Classic PAT scope(s): repo
+#     ↳ Required Roles: Repository Admin, Organization Member (with repo read)
+# Preflight Verdict:
+#   ✖ 1 of 2 requested module(s) failed permission verification.
+#   ℹ Regenerate or edit your Classic PAT to include the following missing scopes: repo
+#   ℹ Alternatively, run with --continue-on-error to collect data from only the authorized modules.
+# ================================================================
+# Subtest: hasClassicScope handles direct scopes and inheritance correctly
+ok 57 - hasClassicScope handles direct scopes and inheritance correctly
+  ---
+  duration_ms: 7.076455
+  type: 'test'
+  ...
+# Subtest: checkModuleClassicScopes validates each module correctly
+ok 58 - checkModuleClassicScopes validates each module correctly
+  ---
+  duration_ms: 1.358389
+  type: 'test'
+  ...
+# Subtest: PermissionChecker detects SAML SSO requirement and stops
+ok 59 - PermissionChecker detects SAML SSO requirement and stops
+  ---
+  duration_ms: 22.164451
+  type: 'test'
+  ...
+# Subtest: PermissionChecker identifies missing Classic PAT scopes for requested modules
+ok 60 - PermissionChecker identifies missing Classic PAT scopes for requested modules
+  ---
+  duration_ms: 1.105224
+  type: 'test'
+  ...
+# Subtest: PermissionChecker rejects Fine-Grained PAT on enterprise scope
+ok 61 - PermissionChecker rejects Fine-Grained PAT on enterprise scope
+  ---
+  duration_ms: 0.680654
+  type: 'test'
+  ...
+# Subtest: PermissionChecker evaluates GitHub App permissions map
+ok 62 - PermissionChecker evaluates GitHub App permissions map
+  ---
+  duration_ms: 0.823713
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator fails immediately when permissions are missing and continueOnError is false
+ok 63 - DiscoveryOrchestrator fails immediately when permissions are missing and continueOnError is false
+  ---
+  duration_ms: 16.999863
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator proceeds when continueOnError is true even if permissions are missing
+ok 64 - DiscoveryOrchestrator proceeds when continueOnError is true even if permissions are missing
+  ---
+  duration_ms: 95.428847
+  type: 'test'
+  ...
+# 📦 Migration Results Generated:
+#    - Output Directory: /tmp/pub-results-test-CjGWx2/results-output
+#    - Total Files:      4
+#    - Repositories:     2
+#    - Succeeded:        1
+#    - Failed:           1
+#    - Success Rate:     50%
+# 🚀 Results Repository:
+#    - Repository URL:   https://github.com/dest-org/gei-migration-results
+#    - Commit SHA:       commit-1
+#    - Execution Mode:   Live
+# 📦 Migration Results Generated:
+#    - Output Directory: /tmp/pub-cli-test-LhLeZe/cli-results
+#    - Total Files:      3
+#    - Repositories:     1
+#    - Succeeded:        1
+#    - Failed:           0
+#    - Success Rate:     100%
+# Subtest: TASK-035: CLI Publish Results Command and Workflow Integration
+    # Subtest: parses publish-results CLI arguments with accurate defaults
+    ok 1 - parses publish-results CLI arguments with accurate defaults
+      ---
+      duration_ms: 5.104335
+      type: 'test'
+      ...
+    # Subtest: generates files and publishes atomic commit via executePublishResultsCommand
+    ok 2 - generates files and publishes atomic commit via executePublishResultsCommand
+      ---
+      duration_ms: 44.667909
+      type: 'test'
+      ...
+    # Subtest: runs cleanly via runCli dispatcher with --skip-push
+    ok 3 - runs cleanly via runCli dispatcher with --skip-push
+      ---
+      duration_ms: 4.045191
+      type: 'test'
+      ...
+    1..3
+ok 65 - TASK-035: CLI Publish Results Command and Workflow Integration
+  ---
+  duration_ms: 55.324525
+  type: 'suite'
+  ...
+# Subtest: publishBundle streams 100,000 synthetic entities with memory remaining under 512 MB RSS
+ok 66 - publishBundle streams 100,000 synthetic entities with memory remaining under 512 MB RSS
+  ---
+  duration_ms: 6058.875141
+  type: 'test'
+  ...
+# Subtest: Streamed bundle output is valid JSON and validates against contracts validateBundle
+ok 67 - Streamed bundle output is valid JSON and validates against contracts validateBundle
+  ---
+  duration_ms: 67.83758
+  type: 'test'
+  ...
+# Subtest: publishBundle enforces non-clobber behavior and atomic temp rename
+ok 68 - publishBundle enforces non-clobber behavior and atomic temp rename
+  ---
+  duration_ms: 7.885248
+  type: 'test'
+  ...
+# Subtest: HMAC-SHA256 pseudonymizes user identities consistently with --salt across runs
+ok 69 - HMAC-SHA256 pseudonymizes user identities consistently with --salt across runs
+  ---
+  duration_ms: 0.766356
+  type: 'test'
+  ...
+# Subtest: Pre-publication security scanner catches and neutralizes secret patterns
+ok 70 - Pre-publication security scanner catches and neutralizes secret patterns
+  ---
+  duration_ms: 5.528451
+  type: 'test'
+  ...
+# Subtest: Secret redactor is resilient against polynomial ReDoS on repeated PEM markers
+ok 71 - Secret redactor is resilient against polynomial ReDoS on repeated PEM markers
+  ---
+  duration_ms: 1.443312
+  type: 'test'
+  ...
+# Subtest: DiscoveryOrchestrator applies salt pseudonymization and records saltDigest in configuration
+ok 72 - DiscoveryOrchestrator applies salt pseudonymization and records saltDigest in configuration
+  ---
+  duration_ms: 28.321597
+  type: 'test'
+  ...
+# Subtest: generateBundleFilename strips trailing Z and formats timestamp correctly
+ok 73 - generateBundleFilename strips trailing Z and formats timestamp correctly
+  ---
+  duration_ms: 0.290268
+  type: 'test'
+  ...
+# Subtest: isValidManifestCode accepts legitimate GitHub manifest temporary codes
+ok 74 - isValidManifestCode accepts legitimate GitHub manifest temporary codes
+  ---
+  duration_ms: 1.250501
+  type: 'test'
+  ...
+# Subtest: isValidManifestCode rejects invalid, empty, or malicious code strings
+ok 75 - isValidManifestCode rejects invalid, empty, or malicious code strings
+  ---
+  duration_ms: 0.20659
+  type: 'test'
+  ...
+# Subtest: buildConversionUrl builds properly formatted conversion endpoints for valid codes
+ok 76 - buildConversionUrl builds properly formatted conversion endpoints for valid codes
+  ---
+  duration_ms: 0.24161
+  type: 'test'
+  ...
+# Subtest: buildConversionUrl throws on invalid codes
+ok 77 - buildConversionUrl throws on invalid codes
+  ---
+  duration_ms: 6.354047
+  type: 'test'
+  ...
+# Subtest: Closed-Loop Autonomous Self-Healing Remediation (US2)
+    # Subtest: synthesizes actionable remediation plan from verification discrepancies
+    ok 1 - synthesizes actionable remediation plan from verification discrepancies
+      ---
+      duration_ms: 6.229518
+      type: 'test'
+      ...
+    # Subtest: produces empty plan script when report has zero discrepancies
+    ok 2 - produces empty plan script when report has zero discrepancies
+      ---
+      duration_ms: 0.260855
+      type: 'test'
+      ...
+    1..2
+ok 78 - Closed-Loop Autonomous Self-Healing Remediation (US2)
+  ---
+  duration_ms: 7.861553
+  type: 'suite'
+  ...
+# Subtest: Seed Catalog & Preset Resolution
+    # Subtest: contains exactly 32 distinct migration items in catalog
+    ok 1 - contains exactly 32 distinct migration items in catalog
+      ---
+      duration_ms: 1.286462
+      type: 'test'
+      ...
+    # Subtest: resolves preset "all" with scope "both" to all 32 items in dependency order
+    ok 2 - resolves preset "all" with scope "both" to all 32 items in dependency order
+      ---
+      duration_ms: 0.956554
+      type: 'test'
+      ...
+    # Subtest: filters by scopeLevel: organization
+    ok 3 - filters by scopeLevel: organization
+      ---
+      duration_ms: 20.587305
+      type: 'test'
+      ...
+    # Subtest: filters by scopeLevel: repository
+    ok 4 - filters by scopeLevel: repository
+      ---
+      duration_ms: 0.675896
+      type: 'test'
+      ...
+    # Subtest: resolves presets correctly with prerequisite dependencies
+    ok 5 - resolves presets correctly with prerequisite dependencies
+      ---
+      duration_ms: 3.129353
+      type: 'test'
+      ...
+    # Subtest: resolves custom comma-separated list of module IDs with dependency auto-expansion
+    ok 6 - resolves custom comma-separated list of module IDs with dependency auto-expansion
+      ---
+      duration_ms: 0.327827
+      type: 'test'
+      ...
+    # Subtest: handles aliases (e.g. webhooks, repo-settings)
+    ok 7 - handles aliases (e.g. webhooks, repo-settings)
+      ---
+      duration_ms: 0.291402
+      type: 'test'
+      ...
+    1..7
+ok 79 - Seed Catalog & Preset Resolution
+  ---
+  duration_ms: 29.547464
+  type: 'suite'
+  ...
+# Subtest: Seed Dry-Run Simulation & Permission Validation (US3)
+    # Subtest: guarantees zero mutating calls in dry-run mode and marks all actions as dry-run-*
+    ok 1 - guarantees zero mutating calls in dry-run mode and marks all actions as dry-run-*
+      ---
+      duration_ms: 96.998982
+      type: 'test'
+      ...
+    # Subtest: validateTokenPermissions
+        # Subtest: detects missing OAuth scopes and produces informative warnings
+        ok 1 - detects missing OAuth scopes and produces informative warnings
+          ---
+          duration_ms: 0.940755
+          type: 'test'
+          ...
+        # Subtest: returns error when organization authentication fails (401)
+        ok 2 - returns error when organization authentication fails (401)
+          ---
+          duration_ms: 0.891384
+          type: 'test'
+          ...
+        1..2
+    ok 2 - validateTokenPermissions
+      ---
+      duration_ms: 2.240047
+      type: 'suite'
+      ...
+    1..2
+ok 80 - Seed Dry-Run Simulation & Permission Validation (US3)
+  ---
+  duration_ms: 100.654265
+  type: 'suite'
+  ...
+# Subtest: Seed Demo Provisioning (US1)
+    # Subtest: auto-creates repository when missing and provisions items
+    ok 1 - auto-creates repository when missing and provisions items
+      ---
+      duration_ms: 179.291092
+      type: 'test'
+      ...
+    1..1
+ok 81 - Seed Demo Provisioning (US1)
+  ---
+  duration_ms: 180.629739
+  type: 'suite'
+  ...
+# Subtest: Seed Demo Security & Zero-Exposure (DEC-004)
+    # Subtest: encrypts secrets via libsodium sealed-box ensuring write-only confidentiality
+    ok 1 - encrypts secrets via libsodium sealed-box ensuring write-only confidentiality
+      ---
+      duration_ms: 63.416343
+      type: 'test'
+      ...
+    # Subtest: redacts tokens and credentials from diagnostic outputs and errors
+    ok 2 - redacts tokens and credentials from diagnostic outputs and errors
+      ---
+      duration_ms: 0.940787
+      type: 'test'
+      ...
+    # Subtest: redacts Authorization headers with bearer tokens
+    ok 3 - redacts Authorization headers with bearer tokens
+      ---
+      duration_ms: 0.384055
+      type: 'test'
+      ...
+    1..3
+ok 82 - Seed Demo Security & Zero-Exposure (DEC-004)
+  ---
+  duration_ms: 66.060602
+  type: 'suite'
+  ...
+# Subtest: Seed Scoped & Preset Filtering (US2)
+    # Subtest: parses --modules flag as contentType
+    ok 1 - parses --modules flag as contentType
+      ---
+      duration_ms: 9.3151
+      type: 'test'
+      ...
+    # Subtest: filters orchestrator execution to organization items only when scope is organization
+    ok 2 - filters orchestrator execution to organization items only when scope is organization
+      ---
+      duration_ms: 166.115299
+      type: 'test'
+      ...
+    # Subtest: filters orchestrator execution when specific preset is requested
+    ok 3 - filters orchestrator execution when specific preset is requested
+      ---
+      duration_ms: 9.541472
+      type: 'test'
+      ...
+    # Subtest: filters orchestrator execution when custom comma-separated list is requested
+    ok 4 - filters orchestrator execution when custom comma-separated list is requested
+      ---
+      duration_ms: 12.874719
+      type: 'test'
+      ...
+    1..4
+ok 83 - Seed Scoped & Preset Filtering (US2)
+  ---
+  duration_ms: 199.469666
+  type: 'suite'
+  ...
+# Subtest: Seed Summary & Auditability (US5)
+    # Subtest: formats comprehensive markdown summary table with parameters and metrics
+    ok 1 - formats comprehensive markdown summary table with parameters and metrics
+      ---
+      duration_ms: 1.257728
+      type: 'test'
+      ...
+    # Subtest: appends markdown summary to $GITHUB_STEP_SUMMARY when variable is present
+    ok 2 - appends markdown summary to $GITHUB_STEP_SUMMARY when variable is present
+      ---
+      duration_ms: 1.740761
+      type: 'test'
+      ...
+    1..2
+ok 84 - Seed Summary & Auditability (US5)
+  ---
+  duration_ms: 4.256165
+  type: 'suite'
+  ...
+# Subtest: Seed Teardown & Clean Baseline (US4)
+    # Subtest: executes cleanup in reverse topological order
+    ok 1 - executes cleanup in reverse topological order
+      ---
+      duration_ms: 2.172203
+      type: 'test'
+      ...
+    # Subtest: preserves non-demo repositories during cleanup
+    ok 2 - preserves non-demo repositories during cleanup
+      ---
+      duration_ms: 154.365888
+      type: 'test'
+      ...
+    1..2
+ok 85 - Seed Teardown & Clean Baseline (US4)
+  ---
+  duration_ms: 157.96291
+  type: 'suite'
+  ...
+# Subtest: Standalone Remediation Differential Assessment (US3)
+    # Subtest: computes accurate resolution diff between pre and post verification reports
+    ok 1 - computes accurate resolution diff between pre and post verification reports
+      ---
+      duration_ms: 6.208045
+      type: 'test'
+      ...
+    1..1
+ok 86 - Standalone Remediation Differential Assessment (US3)
+  ---
+  duration_ms: 7.368278
+  type: 'suite'
+  ...
+# Subtest: Sandbox Teardown Safety & Prefix Validation (US4)
+    # Subtest: accepts valid prefix filters (e.g. dummy-, demo-)
+    ok 1 - accepts valid prefix filters (e.g. dummy-, demo-)
+      ---
+      duration_ms: 2.947091
+      type: 'test'
+      ...
+    # Subtest: rejects short prefix filters (<3 characters)
+    ok 2 - rejects short prefix filters (<3 characters)
+      ---
+      duration_ms: 0.714907
+      type: 'test'
+      ...
+    # Subtest: rejects dangerous wildcard and generic filters (*, all, org, repo)
+    ok 3 - rejects dangerous wildcard and generic filters (*, all, org, repo)
+      ---
+      duration_ms: 0.448622
+      type: 'test'
+      ...
+    # Subtest: rejects live teardown without explicit confirmation flag
+    ok 4 - rejects live teardown without explicit confirmation flag
+      ---
+      duration_ms: 0.734908
+      type: 'test'
+      ...
+    # Subtest: executes in dry-run mode safely without requiring token or confirm flag
+    ok 5 - executes in dry-run mode safely without requiring token or confirm flag
+      ---
+      duration_ms: 0.585019
+      type: 'test'
+      ...
+    1..5
+ok 87 - Sandbox Teardown Safety & Prefix Validation (US4)
+  ---
+  duration_ms: 11.628699
+  type: 'suite'
+  ...
+# Subtest: normalizes v1 Actions summaries into workflow records
+ok 88 - normalizes v1 Actions summaries into workflow records
+  ---
+  duration_ms: 6.985713
+  type: 'test'
+  ...
+# Subtest: Actions operations export never contains secret inventory
+ok 89 - Actions operations export never contains secret inventory
+  ---
+  duration_ms: 2.846988
+  type: 'test'
+  ...
+# Subtest: runnersInventory correctly filters runner and runner-group entities
+ok 90 - runnersInventory correctly filters runner and runner-group entities
+  ---
+  duration_ms: 0.341298
+  type: 'test'
+  ...
+# Subtest: operationsInventory correctly filters cache and artifact entities
+ok 91 - operationsInventory correctly filters cache and artifact entities
+  ---
+  duration_ms: 0.255015
+  type: 'test'
+  ...
+# Subtest: environmentPolicyInventory correctly filters environment and policy entities
+ok 92 - environmentPolicyInventory correctly filters environment and policy entities
+  ---
+  duration_ms: 0.233391
+  type: 'test'
+  ...
+# Subtest: normalizes v1 actions-secret records into Actions metadata
+ok 93 - normalizes v1 actions-secret records into Actions metadata
+  ---
+  duration_ms: 1.250501
+  type: 'test'
+  ...
+# Subtest: configurationCoverage extracts configuration-coverage entities from the bundle
+ok 94 - configurationCoverage extracts configuration-coverage entities from the bundle
+  ---
+  duration_ms: 0.334691
+  type: 'test'
+  ...
+# Subtest: metadata CSV declares zero values and contains no value-bearing columns
+ok 95 - metadata CSV declares zero values and contains no value-bearing columns
+  ---
+  duration_ms: 0.926716
+  type: 'test'
+  ...
+# Subtest: freshness correctly classifies configuration records based on updatedAt
+ok 96 - freshness correctly classifies configuration records based on updatedAt
+  ---
+  duration_ms: 0.54542
+  type: 'test'
+  ...
+# Subtest: strict contract rejects secret value fields
+ok 97 - strict contract rejects secret value fields
+  ---
+  duration_ms: 0.49367
+  type: 'test'
+  ...
+# Subtest: diff engine classifies resolved, persistent, and new findings
+ok 98 - diff engine classifies resolved, persistent, and new findings
+  ---
+  duration_ms: 86.889085
+  type: 'test'
+  ...
+# Subtest: scope mismatch is rejected clearly
+ok 99 - scope mismatch is rejected clearly
+  ---
+  duration_ms: 7.28931
+  type: 'test'
+  ...
+# Subtest: remediation CSV neutralizes spreadsheet formulas
+ok 100 - remediation CSV neutralizes spreadsheet formulas
+  ---
+  duration_ms: 12.734426
+  type: 'test'
+  ...
+# Subtest: Task 031: Discovery Automation & Ingestion via Dashboard
+    # Subtest: importBundleJson
+        # Subtest: successfully validates and evaluates a valid discovery bundle in-memory
+        ok 1 - successfully validates and evaluates a valid discovery bundle in-memory
+          ---
+          duration_ms: 92.572029
+          type: 'test'
+          ...
+        # Subtest: rejects an invalid bundle object with clear error code and message
+        ok 2 - rejects an invalid bundle object with clear error code and message
+          ---
+          duration_ms: 0.478999
+          type: 'test'
+          ...
+        1..2
+    ok 1 - importBundleJson
+      ---
+      duration_ms: 100.964388
+      type: 'suite'
+      ...
+    # Subtest: Discovery Scan Dispatch & Ingestion Flow
+        # Subtest: simulates end-to-end dispatch, polling, artifact retrieval, and hydration
+        ok 1 - simulates end-to-end dispatch, polling, artifact retrieval, and hydration
+          ---
+          duration_ms: 74.741946
+          type: 'test'
+          ...
+        1..1
+    ok 2 - Discovery Scan Dispatch & Ingestion Flow
+      ---
+      duration_ms: 74.939285
+      type: 'suite'
+      ...
+    1..2
+ok 101 - Task 031: Discovery Automation & Ingestion via Dashboard
+  ---
+  duration_ms: 178.423457
+  type: 'suite'
+  ...
+# Subtest: PDF generators produce multi-page documents without network access
+ok 102 - PDF generators produce multi-page documents without network access
+  ---
+  duration_ms: 453.807685
+  type: 'test'
+  ...
+# Subtest: organization selection scopes every report evidence collection
+ok 103 - organization selection scopes every report evidence collection
+  ---
+  duration_ms: 94.355173
+  type: 'test'
+  ...
+# Subtest: sanitizeCsvField neutralizes formula injection
+ok 104 - sanitizeCsvField neutralizes formula injection
+  ---
+  duration_ms: 1.200617
+  type: 'test'
+  ...
+# Subtest: sanitizeCsvField quotes and escapes delimiters and quotes
+ok 105 - sanitizeCsvField quotes and escapes delimiters and quotes
+  ---
+  duration_ms: 0.194398
+  type: 'test'
+  ...
+# Subtest: sanitizeCsvField handles null and undefined safely
+ok 106 - sanitizeCsvField handles null and undefined safely
+  ---
+  duration_ms: 0.248221
+  type: 'test'
+  ...
+# Subtest: formatBytesMetric respects availability and formats observed values
+ok 107 - formatBytesMetric respects availability and formats observed values
+  ---
+  duration_ms: 7.64646
+  type: 'test'
+  ...
+# Subtest: formatCountMetric formats valid counts and handles unknown states
+ok 108 - formatCountMetric formats valid counts and handles unknown states
+  ---
+  duration_ms: 71.597691
+  type: 'test'
+  ...
+# Subtest: formatMinutesMetric handles observed minutes and fallbacks
+ok 109 - formatMinutesMetric handles observed minutes and fallbacks
+  ---
+  duration_ms: 0.420629
+  type: 'test'
+  ...
+# Subtest: formatBytes correctly scales and formats byte counts
+ok 110 - formatBytes correctly scales and formats byte counts
+  ---
+  duration_ms: 0.201644
+  type: 'test'
+  ...
+# Subtest: formatTimestamp safely formats ISO strings to human-readable UTC
+ok 111 - formatTimestamp safely formats ISO strings to human-readable UTC
+  ---
+  duration_ms: 3.250522
+  type: 'test'
+  ...
+# Subtest: formatDuration calculates time correctly between ISO timestamps
+ok 112 - formatDuration calculates time correctly between ISO timestamps
+  ---
+  duration_ms: 1.927299
+  type: 'test'
+  ...
+# Subtest: getSeverityBadgeClass maps severities to primer badge variants
+ok 113 - getSeverityBadgeClass maps severities to primer badge variants
+  ---
+  duration_ms: 0.203915
+  type: 'test'
+  ...
+# Subtest: getDimensionStatusBadgeClass maps statuses to primer badge variants
+ok 114 - getDimensionStatusBadgeClass maps statuses to primer badge variants
+  ---
+  duration_ms: 5.409865
+  type: 'test'
+  ...
+# Subtest: getCollectorStatusBadgeClass maps statuses to primer badge variants
+ok 115 - getCollectorStatusBadgeClass maps statuses to primer badge variants
+  ---
+  duration_ms: 0.359781
+  type: 'test'
+  ...
+# Subtest: resolveOrgName returns appropriate string for an organization ID
+ok 116 - resolveOrgName returns appropriate string for an organization ID
+  ---
+  duration_ms: 0.687419
+  type: 'test'
+  ...
+# Subtest: Task 040 (DASH-25): Live Execution Console & Resumption Manager
+    # Subtest: Linear Pipeline Stage Model
+        # Subtest: defines exactly the 7 canonical sequential stages in correct dependency order
+        ok 1 - defines exactly the 7 canonical sequential stages in correct dependency order
+          ---
+          duration_ms: 1.699486
+          type: 'test'
+          ...
+        # Subtest: merges runtime stage execution telemetry into canonical sequence
+        ok 2 - merges runtime stage execution telemetry into canonical sequence
+          ---
+          duration_ms: 0.351162
+          type: 'test'
+          ...
+        1..2
+    ok 1 - Linear Pipeline Stage Model
+      ---
+      duration_ms: 2.987177
+      type: 'suite'
+      ...
+    # Subtest: Parallel Matrix Cohort Telemetry Model
+        # Subtest: aggregates cohort operations and tracks progress percentages
+        ok 1 - aggregates cohort operations and tracks progress percentages
+          ---
+          duration_ms: 0.430824
+          type: 'test'
+          ...
+        1..1
+    ok 2 - Parallel Matrix Cohort Telemetry Model
+      ---
+      duration_ms: 0.610227
+      type: 'suite'
+      ...
+    # Subtest: Resumption & Control Request Dispatching
+        # Subtest: formats correct workflow dispatch payload for --resume latest
+        ok 1 - formats correct workflow dispatch payload for --resume latest
+          ---
+          duration_ms: 0.384784
+          type: 'test'
+          ...
+        # Subtest: formats cancel endpoint URL for active runs
+        ok 2 - formats cancel endpoint URL for active runs
+          ---
+          duration_ms: 0.304517
+          type: 'test'
+          ...
+        # Subtest: correctly auto-detects topology from run data
+        ok 3 - correctly auto-detects topology from run data
+          ---
+          duration_ms: 0.204054
+          type: 'test'
+          ...
+        1..3
+    ok 3 - Resumption & Control Request Dispatching
+      ---
+      duration_ms: 3.025486
+      type: 'suite'
+      ...
+    1..3
+ok 117 - Task 040 (DASH-25): Live Execution Console & Resumption Manager
+  ---
+  duration_ms: 7.617688
+  type: 'suite'
+  ...
+# Subtest: Task 032: Dashboard Migration Control Plane
+    # Subtest: correctly formats and dispatches a migration wave with runner capacity and scope
+    ok 1 - correctly formats and dispatches a migration wave with runner capacity and scope
+      ---
+      duration_ms: 95.777252
+      type: 'test'
+      ...
+    # Subtest: monitors live cohort matrix jobs and step telemetry
+    ok 2 - monitors live cohort matrix jobs and step telemetry
+      ---
+      duration_ms: 2.034197
+      type: 'test'
+      ...
+    # Subtest: cancels ongoing migration wave via cancel endpoint
+    ok 3 - cancels ongoing migration wave via cancel endpoint
+      ---
+      duration_ms: 10.313364
+      type: 'test'
+      ...
+    1..3
+ok 118 - Task 032: Dashboard Migration Control Plane
+  ---
+  duration_ms: 109.525586
+  type: 'suite'
+  ...
+# Subtest: Task 039 (DASH-24): Interactive Module Triggers Across Domain Views
+    # Subtest: Targeted Module Scope Generation
+        # Subtest: generates valid scope for Teams & Hierarchy trigger (modules: teams)
+        ok 1 - generates valid scope for Teams & Hierarchy trigger (modules: teams)
+          ---
+          duration_ms: 24.092387
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for Outside Collaborators trigger (modules: collaborators)
+        ok 2 - generates valid scope for Outside Collaborators trigger (modules: collaborators)
+          ---
+          duration_ms: 5.42658
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for EMU Mannequins trigger (modules: mannequins)
+        ok 3 - generates valid scope for EMU Mannequins trigger (modules: mannequins)
+          ---
+          duration_ms: 0.559904
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for Releases & Assets trigger (modules: releases)
+        ok 4 - generates valid scope for Releases & Assets trigger (modules: releases)
+          ---
+          duration_ms: 0.60007
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for Packages & GHCR trigger (modules: packages)
+        ok 5 - generates valid scope for Packages & GHCR trigger (modules: packages)
+          ---
+          duration_ms: 1.042962
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for Rulesets & Branch Protections (modules: rulesets, branch-protection)
+        ok 6 - generates valid scope for Rulesets & Branch Protections (modules: rulesets, branch-protection)
+          ---
+          duration_ms: 0.489364
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for Deploy Keys (modules: deploy-keys)
+        ok 7 - generates valid scope for Deploy Keys (modules: deploy-keys)
+          ---
+          duration_ms: 12.667644
+          type: 'test'
+          ...
+        # Subtest: generates valid scope for Secrets & Variables (all 4 configuration modules)
+        ok 8 - generates valid scope for Secrets & Variables (all 4 configuration modules)
+          ---
+          duration_ms: 0.502053
+          type: 'test'
+          ...
+        1..8
+    ok 1 - Targeted Module Scope Generation
+      ---
+      duration_ms: 49.750051
+      type: 'suite'
+      ...
+    # Subtest: Workflow Dispatch Payload Formatting
+        # Subtest: constructs correct GitHub Actions workflow dispatch request structure
+        ok 1 - constructs correct GitHub Actions workflow dispatch request structure
+          ---
+          duration_ms: 0.568479
+          type: 'test'
+          ...
+        # Subtest: toggles dry_run flag correctly for Live Apply mode
+        ok 2 - toggles dry_run flag correctly for Live Apply mode
+          ---
+          duration_ms: 0.377983
+          type: 'test'
+          ...
+        1..2
+    ok 2 - Workflow Dispatch Payload Formatting
+      ---
+      duration_ms: 1.151142
+      type: 'suite'
+      ...
+    1..2
+ok 119 - Task 039 (DASH-24): Interactive Module Triggers Across Domain Views
+  ---
+  duration_ms: 51.777
+  type: 'suite'
+  ...
+# Subtest: partial fixture preserves honest unknown metrics across Actions and Security
+ok 120 - partial fixture preserves honest unknown metrics across Actions and Security
+  ---
+  duration_ms: 1.366728
+  type: 'test'
+  ...
+# Subtest: workflowInventory handles denied run counts without inventing values
+ok 121 - workflowInventory handles denied run counts without inventing values
+  ---
+  duration_ms: 0.492922
+  type: 'test'
+  ...
+# Subtest: runnersInventory and operationsInventory return empty arrays when endpoints were denied
+ok 122 - runnersInventory and operationsInventory return empty arrays when endpoints were denied
+  ---
+  duration_ms: 0.402092
+  type: 'test'
+  ...
+# Subtest: configurationCoverage reflects HTTP 403 denied state
+ok 123 - configurationCoverage reflects HTTP 403 denied state
+  ---
+  duration_ms: 0.471377
+  type: 'test'
+  ...
+# Subtest: supply-chain inventory preserves unknown package size for denied metadata
+ok 124 - supply-chain inventory preserves unknown package size for denied metadata
+  ---
+  duration_ms: 0.392935
+  type: 'test'
+  ...
+# Subtest: CSV exports preserve unknown placeholders without fabricating zero
+ok 125 - CSV exports preserve unknown placeholders without fabricating zero
+  ---
+  duration_ms: 1.083198
+  type: 'test'
+  ...
+# Subtest: ownership contract rejects raw CODEOWNERS content and patterns
+ok 126 - ownership contract rejects raw CODEOWNERS content and patterns
+  ---
+  duration_ms: 28.712947
+  type: 'test'
+  ...
+# Subtest: repository GraphQL projection contains portfolio aggregates without blobs or bodies
+ok 127 - repository GraphQL projection contains portfolio aggregates without blobs or bodies
+  ---
+  duration_ms: 0.542873
+  type: 'test'
+  ...
+# Subtest: portfolio destinations are discoverable
+ok 128 - portfolio destinations are discoverable
+  ---
+  duration_ms: 0.297964
+  type: 'test'
+  ...
+# Subtest: Task 038: Dynamic Scope Builder & Preflight Readiness Gate
+    # Subtest: buildMigrationScope
+        # Subtest: generates a 100% schema-compliant MigrationScope for selected repositories
+        ok 1 - generates a 100% schema-compliant MigrationScope for selected repositories
+          ---
+          duration_ms: 42.762442
+          type: 'test'
+          ...
+        # Subtest: enforces specific target repository visibility override
+        ok 2 - enforces specific target repository visibility override
+          ---
+          duration_ms: 0.46055
+          type: 'test'
+          ...
+        # Subtest: handles releases skip strategy flag
+        ok 3 - handles releases skip strategy flag
+          ---
+          duration_ms: 0.746355
+          type: 'test'
+          ...
+        # Subtest: throws when target or source organization is empty
+        ok 4 - throws when target or source organization is empty
+          ---
+          duration_ms: 2.154018
+          type: 'test'
+          ...
+        # Subtest: generates granular per-repository options and repositoryOptions mapping
+        ok 5 - generates granular per-repository options and repositoryOptions mapping
+          ---
+          duration_ms: 8.915331
+          type: 'test'
+          ...
+        1..5
+    ok 1 - buildMigrationScope
+      ---
+      duration_ms: 66.160593
+      type: 'suite'
+      ...
+    1..1
+ok 129 - Task 038: Dynamic Scope Builder & Preflight Readiness Gate
+  ---
+  duration_ms: 66.83609
+  type: 'suite'
+  ...
+# Subtest: workflowInventory correctly projects native action-workflow entities
+ok 130 - workflowInventory correctly projects native action-workflow entities
+  ---
+  duration_ms: 5.582314
+  type: 'test'
+  ...
+# Subtest: runnersInventory extracts runner groups and specialized self-hosted runners
+ok 131 - runnersInventory extracts runner groups and specialized self-hosted runners
+  ---
+  duration_ms: 0.408358
+  type: 'test'
+  ...
+# Subtest: operationsInventory extracts caches and artifacts with byte metrics
+ok 132 - operationsInventory extracts caches and artifacts with byte metrics
+  ---
+  duration_ms: 0.294251
+  type: 'test'
+  ...
+# Subtest: environmentPolicyInventory extracts environment rules and token permissions
+ok 133 - environmentPolicyInventory extracts environment rules and token permissions
+  ---
+  duration_ms: 0.259968
+  type: 'test'
+  ...
+# Subtest: configurationInventory and coverage correctly handle native secrets and metadata
+ok 134 - configurationInventory and coverage correctly handle native secrets and metadata
+  ---
+  duration_ms: 0.653549
+  type: 'test'
+  ...
+# Subtest: package and release inventories project native supply chain entities
+ok 135 - package and release inventories project native supply chain entities
+  ---
+  duration_ms: 6.480354
+  type: 'test'
+  ...
+# Subtest: specialized CSV exports render native records and preserve audit boundaries
+ok 136 - specialized CSV exports render native records and preserve audit boundaries
+  ---
+  duration_ms: 1.490482
+  type: 'test'
+  ...
+# Subtest: Task 041 (DASH-26): Step Summary & Artifact Report Viewer
+    # Subtest: Canonical Modules Registry
+        # Subtest: defines the expected total modules across all three scopes
+        ok 1 - defines the expected total modules across all three scopes
+          ---
+          duration_ms: 1.01014
+          type: 'test'
+          ...
+        1..1
+    ok 1 - Canonical Modules Registry
+      ---
+      duration_ms: 1.945429
+      type: 'suite'
+      ...
+    # Subtest: Zero-Secret Diagnostic Sanitization
+        # Subtest: redacts classic personal access tokens (ghp_)
+        ok 1 - redacts classic personal access tokens (ghp_)
+          ---
+          duration_ms: 4.862884
+          type: 'test'
+          ...
+        # Subtest: redacts fine-grained personal access tokens (github_pat_)
+        ok 2 - redacts fine-grained personal access tokens (github_pat_)
+          ---
+          duration_ms: 0.50994
+          type: 'test'
+          ...
+        # Subtest: redacts Bearer authorization headers
+        ok 3 - redacts Bearer authorization headers
+          ---
+          duration_ms: 6.288635
+          type: 'test'
+          ...
+        # Subtest: preserves clean diagnostic messages without tokens
+        ok 4 - preserves clean diagnostic messages without tokens
+          ---
+          duration_ms: 0.177639
+          type: 'test'
+          ...
+        1..4
+    ok 2 - Zero-Secret Diagnostic Sanitization
+      ---
+      duration_ms: 12.197447
+      type: 'suite'
+      ...
+    # Subtest: Step Summary Markdown Parsing
+        # Subtest: extracts metadata key-value pairs accurately from markdown table
+        ok 1 - extracts metadata key-value pairs accurately from markdown table
+          ---
+          duration_ms: 1.285301
+          type: 'test'
+          ...
+        # Subtest: parses GitHub-style alert callouts with categories and bullet items
+        ok 2 - parses GitHub-style alert callouts with categories and bullet items
+          ---
+          duration_ms: 0.566052
+          type: 'test'
+          ...
+        1..2
+    ok 3 - Step Summary Markdown Parsing
+      ---
+      duration_ms: 2.239747
+      type: 'suite'
+      ...
+    # Subtest: Operations Breakdown Aggregation
+        # Subtest: aggregates creates, updates, and noops across multiple cohorts
+        ok 1 - aggregates creates, updates, and noops across multiple cohorts
+          ---
+          duration_ms: 0.655191
+          type: 'test'
+          ...
+        # Subtest: incorporates post-migration verification discrepancies into failure count
+        ok 2 - incorporates post-migration verification discrepancies into failure count
+          ---
+          duration_ms: 0.389172
+          type: 'test'
+          ...
+        1..2
+    ok 4 - Operations Breakdown Aggregation
+      ---
+      duration_ms: 1.382849
+      type: 'suite'
+      ...
+    1..4
+ok 137 - Task 041 (DASH-26): Step Summary & Artifact Report Viewer
+  ---
+  duration_ms: 18.815827
+  type: 'suite'
+  ...
+# Subtest: projects native packages and legacy v1 assets without inventing values
+ok 138 - projects native packages and legacy v1 assets without inventing values
+  ---
+  duration_ms: 12.893729
+  type: 'test'
+  ...
+# Subtest: filtered supply-chain exports retain evidence and unknown metrics
+ok 139 - filtered supply-chain exports retain evidence and unknown metrics
+  ---
+  duration_ms: 0.92122
+  type: 'test'
+  ...
+# Subtest: Task 042 (DASH-27): Teams, Outside Collaborators & EMU Identity Visualizer
+    # Subtest: buildTeamTree Hierarchy Builder
+        # Subtest: constructs a nested directed tree and computes accurate depths and counts
+        ok 1 - constructs a nested directed tree and computes accurate depths and counts
+          ---
+          duration_ms: 5.646359
+          type: 'test'
+          ...
+        # Subtest: treats teams with nonexistent parentTeamId as root nodes gracefully
+        ok 2 - treats teams with nonexistent parentTeamId as root nodes gracefully
+          ---
+          duration_ms: 0.431364
+          type: 'test'
+          ...
+        1..2
+    ok 1 - buildTeamTree Hierarchy Builder
+      ---
+      duration_ms: 7.004523
+      type: 'suite'
+      ...
+    # Subtest: filterTeamTree & Ancestor Auto-Expansion
+        # Subtest: filters matching child team and retains all its ancestor chain
+        ok 1 - filters matching child team and retains all its ancestor chain
+          ---
+          duration_ms: 2.285087
+          type: 'test'
+          ...
+        # Subtest: returns empty result when no teams match query
+        ok 2 - returns empty result when no teams match query
+          ---
+          duration_ms: 0.375178
+          type: 'test'
+          ...
+        1..2
+    ok 2 - filterTeamTree & Ancestor Auto-Expansion
+      ---
+      duration_ms: 10.292162
+      type: 'suite'
+      ...
+    # Subtest: EMU SAML Username Prediction
+        # Subtest: appends default _gxp suffix to source usernames
+        ok 1 - appends default _gxp suffix to source usernames
+          ---
+          duration_ms: 0.306582
+          type: 'test'
+          ...
+        # Subtest: handles custom suffix with or without leading underscore
+        ok 2 - handles custom suffix with or without leading underscore
+          ---
+          duration_ms: 0.229236
+          type: 'test'
+          ...
+        # Subtest: handles whitespace cleanly
+        ok 3 - handles whitespace cleanly
+          ---
+          duration_ms: 0.340633
+          type: 'test'
+          ...
+        1..3
+    ok 3 - EMU SAML Username Prediction
+      ---
+      duration_ms: 1.220415
+      type: 'suite'
+      ...
+    # Subtest: Outside Collaborator Grant Categorization
+        # Subtest: groups repository access grants accurately by permission tier
+        ok 1 - groups repository access grants accurately by permission tier
+          ---
+          duration_ms: 1.104894
+          type: 'test'
+          ...
+        1..1
+    ok 4 - Outside Collaborator Grant Categorization
+      ---
+      duration_ms: 7.396283
+      type: 'suite'
+      ...
+    # Subtest: Team Tree SVG Generation
+        # Subtest: generates valid SVG diagram string with correct structure
+        ok 1 - generates valid SVG diagram string with correct structure
+          ---
+          duration_ms: 1.013252
+          type: 'test'
+          ...
+        1..1
+    ok 5 - Team Tree SVG Generation
+      ---
+      duration_ms: 1.23009
+      type: 'suite'
+      ...
+    1..5
+ok 140 - Task 042 (DASH-27): Teams, Outside Collaborators & EMU Identity Visualizer
+  ---
+  duration_ms: 30.939798
+  type: 'suite'
+  ...
+# Subtest: Verification Diff & Remediation Engine (Task 043 / DASH-28)
+    # Subtest: categorizeDiscrepancySeverity
+        # Subtest: assigns critical severity to ruleset bypass actor drift and missing protection
+        ok 1 - assigns critical severity to ruleset bypass actor drift and missing protection
+          ---
+          duration_ms: 1.139708
+          type: 'test'
+          ...
+        # Subtest: assigns critical severity to deploy keys with unexpected write access
+        ok 2 - assigns critical severity to deploy keys with unexpected write access
+          ---
+          duration_ms: 5.59573
+          type: 'test'
+          ...
+        # Subtest: assigns high severity to missing LFS OIDs, missing collaborators, and unreclaimed mannequins
+        ok 3 - assigns high severity to missing LFS OIDs, missing collaborators, and unreclaimed mannequins
+          ---
+          duration_ms: 0.237623
+          type: 'test'
+          ...
+        # Subtest: assigns low severity to minor description or timestamp differences
+        ok 4 - assigns low severity to minor description or timestamp differences
+          ---
+          duration_ms: 0.158302
+          type: 'test'
+          ...
+        1..4
+    ok 1 - categorizeDiscrepancySeverity
+      ---
+      duration_ms: 8.458317
+      type: 'suite'
+      ...
+    # Subtest: formatValue and computeLineDiff
+        # Subtest: formats primitives and objects into formatted strings
+        ok 1 - formats primitives and objects into formatted strings
+          ---
+          duration_ms: 0.25353
+          type: 'test'
+          ...
+        # Subtest: computes single-line and multi-line line diffs
+        ok 2 - computes single-line and multi-line line diffs
+          ---
+          duration_ms: 1.136458
+          type: 'test'
+          ...
+        1..2
+    ok 2 - formatValue and computeLineDiff
+      ---
+      duration_ms: 1.669684
+      type: 'suite'
+      ...
+    # Subtest: generateCliRemediationCommand
+        # Subtest: generates correct command and rationale for deploy-keys
+        ok 1 - generates correct command and rationale for deploy-keys
+          ---
+          duration_ms: 0.629081
+          type: 'test'
+          ...
+        # Subtest: generates correct command for releases, LFS, rulesets, and mannequins
+        ok 2 - generates correct command for releases, LFS, rulesets, and mannequins
+          ---
+          duration_ms: 0.279916
+          type: 'test'
+          ...
+        1..2
+    ok 3 - generateCliRemediationCommand
+      ---
+      duration_ms: 1.40269
+      type: 'suite'
+      ...
+    # Subtest: classifyReportDiscrepancies & computeVerificationStats
+        # Subtest: classifies clean report with zero discrepancies and 100% compliance
+        ok 1 - classifies clean report with zero discrepancies and 100% compliance
+          ---
+          duration_ms: 0.811223
+          type: 'test'
+          ...
+        # Subtest: classifies discrepant report with 6 discrepancies across 6 modules
+        ok 2 - classifies discrepant report with 6 discrepancies across 6 modules
+          ---
+          duration_ms: 0.818005
+          type: 'test'
+          ...
+        1..2
+    ok 4 - classifyReportDiscrepancies & computeVerificationStats
+      ---
+      duration_ms: 1.832646
+      type: 'suite'
+      ...
+    # Subtest: generateVerificationCsv & generateRemediationScopeJson
+        # Subtest: generates CSV audit text with proper columns and rows
+        ok 1 - generates CSV audit text with proper columns and rows
+          ---
+          duration_ms: 0.634121
+          type: 'test'
+          ...
+        # Subtest: generates targeted remediation scope JSON containing only affected modules
+        ok 2 - generates targeted remediation scope JSON containing only affected modules
+          ---
+          duration_ms: 0.574752
+          type: 'test'
+          ...
+        1..2
+    ok 5 - generateVerificationCsv & generateRemediationScopeJson
+      ---
+      duration_ms: 1.371509
+      type: 'suite'
+      ...
+    1..5
+ok 141 - Verification Diff & Remediation Engine (Task 043 / DASH-28)
+  ---
+  duration_ms: 16.151455
+  type: 'suite'
+  ...
+# Subtest: custom repository thresholds change finding severity
+ok 142 - custom repository thresholds change finding severity
+  ---
+  duration_ms: 7.243064
+  type: 'test'
+  ...
+# Subtest: LFS strictness controls unmeasured storage severity
+ok 143 - LFS strictness controls unmeasured storage severity
+  ---
+  duration_ms: 1.458967
+  type: 'test'
+  ...
+# Subtest: built-in profiles are complete and thresholds remain valid
+ok 144 - built-in profiles are complete and thresholds remain valid
+  ---
+  duration_ms: 15.944646
+  type: 'test'
+  ...
+# Subtest: direct, reverse, and bounded transitive traversal is deterministic and cycle-safe
+ok 145 - direct, reverse, and bounded transitive traversal is deterministic and cycle-safe
+  ---
+  duration_ms: 36.529945
+  type: 'test'
+  ...
+# Subtest: indexes 10,000 nodes and 100,000 edges within the worker budget
+ok 146 - indexes 10,000 nodes and 100,000 edges within the worker budget
+  ---
+  duration_ms: 555.026117
+  type: 'test'
+  ...
+# Subtest: strong and weak components identify cycles and disconnected nodes
+ok 147 - strong and weak components identify cycles and disconnected nodes
+  ---
+  duration_ms: 5.18734
+  type: 'test'
+  ...
+# Subtest: insights distinguish orphan, low-confidence, external boundary, and explain cohorts
+ok 148 - insights distinguish orphan, low-confidence, external boundary, and explain cohorts
+  ---
+  duration_ms: 1.085268
+  type: 'test'
+  ...
+# Subtest: evaluateBundle on organization fixture produces expected insights
+ok 149 - evaluateBundle on organization fixture produces expected insights
+  ---
+  duration_ms: 8.623091
+  type: 'test'
+  ...
+# Subtest: evaluateBundle on enterprise fixture detects failed security collector and partial enumeration
+ok 150 - evaluateBundle on enterprise fixture detects failed security collector and partial enumeration
+  ---
+  duration_ms: 4.12925
+  type: 'test'
+  ...
+# Subtest: rules are pure and deterministic
+ok 151 - rules are pure and deterministic
+  ---
+  duration_ms: 2.411064
+  type: 'test'
+  ...
+# Subtest: boundary reconciliation matrix covers all 42 platform resource profiles
+ok 152 - boundary reconciliation matrix covers all 42 platform resource profiles
+  ---
+  duration_ms: 1.916701
+  type: 'test'
+  ...
+# Subtest: boundary matrix identifies native GEI support accurately
+ok 153 - boundary matrix identifies native GEI support accurately
+  ---
+  duration_ms: 0.276426
+  type: 'test'
+  ...
+# Subtest: boundary matrix identifies API rehydration requirement accurately
+ok 154 - boundary matrix identifies API rehydration requirement accurately
+  ---
+  duration_ms: 0.17211
+  type: 'test'
+  ...
+# Subtest: classic branch protection captures all 7 omitted settings per DEC-009
+ok 155 - classic branch protection captures all 7 omitted settings per DEC-009
+  ---
+  duration_ms: 0.465202
+  type: 'test'
+  ...
+# Subtest: webhooks boundary profile specifies disabled state and vault secret rehydration per DEC-014
+ok 156 - webhooks boundary profile specifies disabled state and vault secret rehydration per DEC-014
+  ---
+  duration_ms: 0.163425
+  type: 'test'
+  ...
+# Subtest: releases boundary distinguishes standard vs oversized >10 GiB per DEC-010
+ok 157 - releases boundary distinguishes standard vs oversized >10 GiB per DEC-010
+  ---
+  duration_ms: 0.139012
+  type: 'test'
+  ...
+# Subtest: git LFS boundary confirms stream mirror-push strategy per DEC-011
+ok 158 - git LFS boundary confirms stream mirror-push strategy per DEC-011
+  ---
+  duration_ms: 0.248874
+  type: 'test'
+  ...
+# Subtest: all synthetic fixtures validate
+ok 159 - all synthetic fixtures validate
+  ---
+  duration_ms: 87.241566
+  type: 'test'
+  ...
+# Subtest: specialized fixture covers newly emitted entity kinds
+ok 160 - specialized fixture covers newly emitted entity kinds
+  ---
+  duration_ms: 0.821265
+  type: 'test'
+  ...
+# Subtest: partial-denied fixture models HTTP 403 permission failures and honest unknown metrics
+ok 161 - partial-denied fixture models HTTP 403 permission failures and honest unknown metrics
+  ---
+  duration_ms: 0.594089
+  type: 'test'
+  ...
+# Subtest: unsupported versions are rejected explicitly without reflecting input
+ok 162 - unsupported versions are rejected explicitly without reflecting input
+  ---
+  duration_ms: 0.608257
+  type: 'test'
+  ...
+# Subtest: required fields and forbidden secret payloads are rejected
+ok 163 - required fields and forbidden secret payloads are rejected
+  ---
+  duration_ms: 2.71104
+  type: 'test'
+  ...
+# Subtest: unknown metrics cannot silently become zero
+ok 164 - unknown metrics cannot silently become zero
+  ---
+  duration_ms: 8.203153
+  type: 'test'
+  ...
+# Subtest: organization boundaries, references, and summary cannot drift
+ok 165 - organization boundaries, references, and summary cannot drift
+  ---
+  duration_ms: 43.815509
+  type: 'test'
+  ...
+# Subtest: cross-organization repository access is rejected
+ok 166 - cross-organization repository access is rejected
+  ---
+  duration_ms: 1.54004
+  type: 'test'
+  ...
+# Subtest: gap ledger inventory contains exactly 42 platform resources
+ok 167 - gap ledger inventory contains exactly 42 platform resources
+  ---
+  duration_ms: 9.345095
+  type: 'test'
+  ...
+# Subtest: every docsRef in gap ledger catalog points to a real documentation file
+ok 168 - every docsRef in gap ledger catalog points to a real documentation file
+  ---
+  duration_ms: 0.736278
+  type: 'test'
+  ...
+# Subtest: generateGapLedgerManifest computes accurate summary and passes validation
+ok 169 - generateGapLedgerManifest computes accurate summary and passes validation
+  ---
+  duration_ms: 39.863907
+  type: 'test'
+  ...
+# Subtest: all EMU constraints declare non-empty description and actionable mitigation
+ok 170 - all EMU constraints declare non-empty description and actionable mitigation
+  ---
+  duration_ms: 0.398361
+  type: 'test'
+  ...
+# Subtest: roadmap wave ordering validates sequential wave numbers
+ok 171 - roadmap wave ordering validates sequential wave numbers
+  ---
+  duration_ms: 0.185736
+  type: 'test'
+  ...
+# Subtest: gap ledger validates conforming synthetic manifest
+ok 172 - gap ledger validates conforming synthetic manifest
+  ---
+  duration_ms: 25.818136
+  type: 'test'
+  ...
+# Subtest: gap ledger rejects invalid manifest with malformed enums and mismatched summary
+ok 173 - gap ledger rejects invalid manifest with malformed enums and mismatched summary
+  ---
+  duration_ms: 1.95346
+  type: 'test'
+  ...
+# Subtest: gap ledger rejects duplicate resource IDs
+ok 174 - gap ledger rejects duplicate resource IDs
+  ---
+  duration_ms: 0.745497
+  type: 'test'
+  ...
+# Subtest: module blueprint validates conforming 4-stage lifecycle specification
+ok 175 - module blueprint validates conforming 4-stage lifecycle specification
+  ---
+  duration_ms: 7.242546
+  type: 'test'
+  ...
+# Subtest: capability gap entry validates compliant secret handling and rejects plaintext secrets
+ok 176 - capability gap entry validates compliant secret handling and rejects plaintext secrets
+  ---
+  duration_ms: 0.537073
+  type: 'test'
+  ...
+# Subtest: collector manifests and validation suite pass completely offline
+ok 177 - collector manifests and validation suite pass completely offline
+  ---
+  duration_ms: 5712.88271
+  type: 'test'
+  ...
+# Subtest: manifest files and schemas exist with valid JSON
+ok 178 - manifest files and schemas exist with valid JSON
+  ---
+  duration_ms: 604.113049
+  type: 'test'
+  ...
+# Subtest: graphql query catalog comprehensively accounts for all 237 planned collectors without omissions or overlaps
+ok 179 - graphql query catalog comprehensively accounts for all 237 planned collectors without omissions or overlaps
+  ---
+  duration_ms: 158.869418
+  type: 'test'
+  ...
+# Subtest: advanced domain reconciliation resolves all 10 unresolved billing endpoints and defines LFS strategy
+ok 180 - advanced domain reconciliation resolves all 10 unresolved billing endpoints and defines LFS strategy
+  ---
+  duration_ms: 1.041239
+  type: 'test'
+  ...
+# Subtest: automated api probe and schema drift verification suite runs offline and generates conformant report
+ok 181 - automated api probe and schema drift verification suite runs offline and generates conformant report
+  ---
+  duration_ms: 1544.166443
+  type: 'test'
+  ...
+# Subtest: migration plan accepts a strict immutable operation plan
+ok 182 - migration plan accepts a strict immutable operation plan
+  ---
+  duration_ms: 13.154436
+  type: 'test'
+  ...
+# Subtest: migration plan rejects version drift, unknown fields, and mismatched summaries
+ok 183 - migration plan rejects version drift, unknown fields, and mismatched summaries
+  ---
+  duration_ms: 1.587762
+  type: 'test'
+  ...
+# Subtest: migration scope accepts a version-locked, tenant-consistent scope
+ok 184 - migration scope accepts a version-locked, tenant-consistent scope
+  ---
+  duration_ms: 18.425079
+  type: 'test'
+  ...
+# Subtest: migration scope rejects unknown fields, incorrect versions, and cross-tenant repositories
+ok 185 - migration scope rejects unknown fields, incorrect versions, and cross-tenant repositories
+  ---
+  duration_ms: 1.246271
+  type: 'test'
+  ...
+# Subtest: migration scope accepts granular repositoryOptions mapping and per-repository options
+ok 186 - migration scope accepts granular repositoryOptions mapping and per-repository options
+  ---
+  duration_ms: 1.591552
+  type: 'test'
+  ...
+# Subtest: migration scope rejects invalid repository options
+ok 187 - migration scope rejects invalid repository options
+  ---
+  duration_ms: 4.834396
+  type: 'test'
+  ...
+# Subtest: migration scope accepts gitTransferStrategy options (auto, gei, mirror-push)
+ok 188 - migration scope accepts gitTransferStrategy options (auto, gei, mirror-push)
+  ---
+  duration_ms: 1.612177
+  type: 'test'
+  ...
+# Subtest: Orchestrator Contracts Validation
+    # Subtest: SlicerMatrix
+        # Subtest: accepts valid slicer matrix output
+        ok 1 - accepts valid slicer matrix output
+          ---
+          duration_ms: 16.729559
+          type: 'test'
+          ...
+        # Subtest: rejects invalid schemaVersion or empty runnerLabels
+        ok 2 - rejects invalid schemaVersion or empty runnerLabels
+          ---
+          duration_ms: 2.192197
+          type: 'test'
+          ...
+        1..2
+    ok 1 - SlicerMatrix
+      ---
+      duration_ms: 23.782859
+      type: 'suite'
+      ...
+    # Subtest: CheckpointState
+        # Subtest: accepts valid checkpoint state
+        ok 1 - accepts valid checkpoint state
+          ---
+          duration_ms: 7.84046
+          type: 'test'
+          ...
+        # Subtest: rejects invalid stage or status
+        ok 2 - rejects invalid stage or status
+          ---
+          duration_ms: 0.642132
+          type: 'test'
+          ...
+        1..2
+    ok 2 - CheckpointState
+      ---
+      duration_ms: 8.802415
+      type: 'suite'
+      ...
+    # Subtest: RemediationExecution
+        # Subtest: accepts valid remediation execution outcome
+        ok 1 - accepts valid remediation execution outcome
+          ---
+          duration_ms: 14.197286
+          type: 'test'
+          ...
+        # Subtest: rejects round < 1
+        ok 2 - rejects round < 1
+          ---
+          duration_ms: 0.625346
+          type: 'test'
+          ...
+        1..2
+    ok 3 - RemediationExecution
+      ---
+      duration_ms: 15.210727
+      type: 'suite'
+      ...
+    # Subtest: TeardownManifest
+        # Subtest: accepts valid teardown manifest
+        ok 1 - accepts valid teardown manifest
+          ---
+          duration_ms: 5.720598
+          type: 'test'
+          ...
+        # Subtest: rejects prefix filter shorter than 3 characters
+        ok 2 - rejects prefix filter shorter than 3 characters
+          ---
+          duration_ms: 0.462324
+          type: 'test'
+          ...
+        1..2
+    ok 4 - TeardownManifest
+      ---
+      duration_ms: 6.471393
+      type: 'suite'
+      ...
+    1..4
+ok 189 - Orchestrator Contracts Validation
+  ---
+  duration_ms: 55.280608
+  type: 'suite'
+  ...
+# Subtest: preflight report accepts measured repository and destination assessments
+ok 190 - preflight report accepts measured repository and destination assessments
+  ---
+  duration_ms: 15.525817
+  type: 'test'
+  ...
+# Subtest: preflight report rejects malformed metrics and duplicate assessments
+ok 191 - preflight report rejects malformed metrics and duplicate assessments
+  ---
+  duration_ms: 1.539604
+  type: 'test'
+  ...
+# Subtest: valid migration results manifest is accepted
+ok 192 - valid migration results manifest is accepted
+  ---
+  duration_ms: 22.371742
+  type: 'test'
+  ...
+# Subtest: manifest rejects invalid schema version
+ok 193 - manifest rejects invalid schema version
+  ---
+  duration_ms: 0.971119
+  type: 'test'
+  ...
+# Subtest: manifest rejects mismatched repository counts
+ok 194 - manifest rejects mismatched repository counts
+  ---
+  duration_ms: 0.628496
+  type: 'test'
+  ...
+# Subtest: manifest rejects inconsistent succeeded and failed counts
+ok 195 - manifest rejects inconsistent succeeded and failed counts
+  ---
+  duration_ms: 4.626559
+  type: 'test'
+  ...
+# Subtest: manifest rejects mismatched successRatePercent
+ok 196 - manifest rejects mismatched successRatePercent
+  ---
+  duration_ms: 1.21759
+  type: 'test'
+  ...
+# Subtest: manifest rejects duplicate target repositories
+ok 197 - manifest rejects duplicate target repositories
+  ---
+  duration_ms: 0.608095
+  type: 'test'
+  ...
+# Subtest: succeeded repository record rejects failure fields and non-zero discrepancies
+ok 198 - succeeded repository record rejects failure fields and non-zero discrepancies
+  ---
+  duration_ms: 5.868226
+  type: 'test'
+  ...
+# Subtest: failed repository record requires failureReason and failure/ relative path
+ok 199 - failed repository record requires failureReason and failure/ relative path
+  ---
+  duration_ms: 0.546629
+  type: 'test'
+  ...
+# Subtest: handles 100% success and 0 repositories edge cases
+ok 200 - handles 100% success and 0 repositories edge cases
+  ---
+  duration_ms: 0.675507
+  type: 'test'
+  ...
+# Subtest: Seed Contracts Validation
+    # Subtest: SeedDispatchRequest
+        # Subtest: accepts valid dispatch request with defaults
+        ok 1 - accepts valid dispatch request with defaults
+          ---
+          duration_ms: 12.368945
+          type: 'test'
+          ...
+        # Subtest: accepts fully specified dispatch request
+        ok 2 - accepts fully specified dispatch request
+          ---
+          duration_ms: 8.816444
+          type: 'test'
+          ...
+        # Subtest: rejects invalid organization names
+        ok 3 - rejects invalid organization names
+          ---
+          duration_ms: 1.682336
+          type: 'test'
+          ...
+        # Subtest: rejects invalid scopeLevel
+        ok 4 - rejects invalid scopeLevel
+          ---
+          duration_ms: 0.684928
+          type: 'test'
+          ...
+        1..4
+    ok 1 - SeedDispatchRequest
+      ---
+      duration_ms: 24.574647
+      type: 'suite'
+      ...
+    # Subtest: SeedManifest
+        # Subtest: accepts valid manifest with items
+        ok 1 - accepts valid manifest with items
+          ---
+          duration_ms: 10.254249
+          type: 'test'
+          ...
+        # Subtest: rejects manifest with invalid schema version
+        ok 2 - rejects manifest with invalid schema version
+          ---
+          duration_ms: 0.417055
+          type: 'test'
+          ...
+        1..2
+    ok 2 - SeedManifest
+      ---
+      duration_ms: 10.969399
+      type: 'suite'
+      ...
+    # Subtest: SeedExecutionSummary
+        # Subtest: accepts valid execution summary
+        ok 1 - accepts valid execution summary
+          ---
+          duration_ms: 13.14713
+          type: 'test'
+          ...
+        # Subtest: rejects summary with negative duration
+        ok 2 - rejects summary with negative duration
+          ---
+          duration_ms: 0.688378
+          type: 'test'
+          ...
+        1..2
+    ok 3 - SeedExecutionSummary
+      ---
+      duration_ms: 14.097476
+      type: 'suite'
+      ...
+    1..3
+ok 201 - Seed Contracts Validation
+  ---
+  duration_ms: 50.493766
+  type: 'suite'
+  ...
+# Subtest: execution, mannequin, custom-property, and verification artifacts validate
+ok 202 - execution, mannequin, custom-property, and verification artifacts validate
+  ---
+  duration_ms: 48.568584
+  type: 'test'
+  ...
+# Subtest: migration result artifacts reject malformed and inconsistent fields
+ok 203 - migration result artifacts reject malformed and inconsistent fields
+  ---
+  duration_ms: 0.957867
+  type: 'test'
+  ...
+# Subtest: the current release contract is frozen at v1.0.0
+ok 204 - the current release contract is frozen at v1.0.0
+  ---
+  duration_ms: 153.649765
+  type: 'test'
+  ...
+# Subtest: v2 remains incompatible until an exact reader is registered
+ok 205 - v2 remains incompatible until an exact reader is registered
+  ---
+  duration_ms: 0.519648
+  type: 'test'
+  ...
+# Subtest: users collector inventories org members and outside collaborators with outsideCollaborator flag
+ok 206 - users collector inventories org members and outside collaborators with outsideCollaborator flag
+  ---
+  duration_ms: 2.253005
+  type: 'test'
+  ...
+# Subtest: Task 037: GitHub Actions Client Service Adapter
+    # Subtest: unpackArtifactZipBuffer
+        # Subtest: correctly unpacks JSON files from an in-memory ZIP buffer
+        ok 1 - correctly unpacks JSON files from an in-memory ZIP buffer
+          ---
+          duration_ms: 6.953136
+          type: 'test'
+          ...
+        1..1
+    ok 1 - unpackArtifactZipBuffer
+      ---
+      duration_ms: 7.898816
+      type: 'suite'
+      ...
+    # Subtest: Workflow Dispatches
+        # Subtest: dispatches migration-execute-wave.yml and resolves the run ID
+        ok 1 - dispatches migration-execute-wave.yml and resolves the run ID
+          ---
+          duration_ms: 42.834817
+          type: 'test'
+          ...
+        # Subtest: dispatches test-migration-dispatch.yml and resolves the run ID
+        ok 2 - dispatches test-migration-dispatch.yml and resolves the run ID
+          ---
+          duration_ms: 0.943666
+          type: 'test'
+          ...
+        # Subtest: dispatches migration-resume.yml with checkpoint ID
+        ok 3 - dispatches migration-resume.yml with checkpoint ID
+          ---
+          duration_ms: 0.888025
+          type: 'test'
+          ...
+        1..3
+    ok 2 - Workflow Dispatches
+      ---
+      duration_ms: 45.053158
+      type: 'suite'
+      ...
+    # Subtest: Run & Job Polling and Cancellation
+        # Subtest: polls run status with ETag and supports 304 Not Modified
+        ok 1 - polls run status with ETag and supports 304 Not Modified
+          ---
+          duration_ms: 1.081303
+          type: 'test'
+          ...
+        # Subtest: parses jobs and identifies matrix cohorts
+        ok 2 - parses jobs and identifies matrix cohorts
+          ---
+          duration_ms: 1.320594
+          type: 'test'
+          ...
+        # Subtest: cancels a running workflow
+        ok 3 - cancels a running workflow
+          ---
+          duration_ms: 0.62409
+          type: 'test'
+          ...
+        1..3
+    ok 3 - Run & Job Polling and Cancellation
+      ---
+      duration_ms: 3.539113
+      type: 'suite'
+      ...
+    # Subtest: Artifact Download & In-Memory Decompression
+        # Subtest: downloads artifacts, follows redirect, and unpacks reports
+        ok 1 - downloads artifacts, follows redirect, and unpacks reports
+          ---
+          duration_ms: 3.741834
+          type: 'test'
+          ...
+        1..1
+    ok 4 - Artifact Download & In-Memory Decompression
+      ---
+      duration_ms: 3.943227
+      type: 'suite'
+      ...
+    1..4
+ok 207 - Task 037: GitHub Actions Client Service Adapter
+  ---
+  duration_ms: 61.323898
+  type: 'suite'
+  ...
+# Subtest: creates an RS256 GitHub App JWT using native crypto
+ok 208 - creates an RS256 GitHub App JWT using native crypto
+  ---
+  duration_ms: 5.432378
+  type: 'test'
+  ...
+# Subtest: caches a healthy installation token and refreshes one expiring within five minutes
+ok 209 - caches a healthy installation token and refreshes one expiring within five minutes
+  ---
+  duration_ms: 124.446612
+  type: 'test'
+  ...
+# Subtest: sanitizes credentials from GitHub App authentication failures
+ok 210 - sanitizes credentials from GitHub App authentication failures
+  ---
+  duration_ms: 6.869493
+  type: 'test'
+  ...
+# Subtest: rejects shared source and target credentials
+ok 211 - rejects shared source and target credentials
+  ---
+  duration_ms: 13.721482
+  type: 'test'
+  ...
+# Subtest: permits shared credentials when allowSameCredential is set or env var is present
+ok 212 - permits shared credentials when allowSameCredential is set or env var is present
+  ---
+  duration_ms: 2.507409
+  type: 'test'
+  ...
+# Subtest: builds isolated tenant clients and never permits writes through the source client
+ok 213 - builds isolated tenant clients and never permits writes through the source client
+  ---
+  duration_ms: 151.486057
+  type: 'test'
+  ...
+# Subtest: tracks GraphQL points and REST requests independently
+ok 214 - tracks GraphQL points and REST requests independently
+  ---
+  duration_ms: 2.110562
+  type: 'test'
+  ...
+# [rate-limit] REST quota critically low (50 remaining). Pausing execution for 2s until quota reset at 2026-10-15T01:55:33.242Z...
+# Subtest: paces constrained requests and critically pauses until quota reset
+ok 215 - paces constrained requests and critically pauses until quota reset
+  ---
+  duration_ms: 1523.420099
+  type: 'test'
+  ...
+# Subtest: keeps tenant quotas isolated without cross-talk
+ok 216 - keeps tenant quotas isolated without cross-talk
+  ---
+  duration_ms: 0.423631
+  type: 'test'
+  ...
+# Subtest: rejects unverified REST operations and GraphQL mutations before network access
+ok 217 - rejects unverified REST operations and GraphQL mutations before network access
+  ---
+  duration_ms: 4.613561
+  type: 'test'
+  ...
+# Subtest: uses GET for REST reads and returns non-retry HTTP errors without loops
+ok 218 - uses GET for REST reads and returns non-retry HTTP errors without loops
+  ---
+  duration_ms: 113.7646
+  type: 'test'
+  ...
+# Subtest: retries transient 429 and 503 responses before succeeding
+ok 219 - retries transient 429 and 503 responses before succeeding
+  ---
+  duration_ms: 2045.566948
+  type: 'test'
+  ...
+# Subtest: Security & Diagnostic Scrubbing (DEC-004)
+    # Subtest: redacts classic and GitHub personal access tokens
+    ok 1 - redacts classic and GitHub personal access tokens
+      ---
+      duration_ms: 1.528515
+      type: 'test'
+      ...
+    # Subtest: redacts URL-embedded access tokens
+    ok 2 - redacts URL-embedded access tokens
+      ---
+      duration_ms: 0.334352
+      type: 'test'
+      ...
+    # Subtest: redacts Authorization bearer and token headers
+    ok 3 - redacts Authorization bearer and token headers
+      ---
+      duration_ms: 0.339839
+      type: 'test'
+      ...
+    # Subtest: redacts private keys and JSON Web Tokens
+    ok 4 - redacts private keys and JSON Web Tokens
+      ---
+      duration_ms: 3.426071
+      type: 'test'
+      ...
+    1..4
+ok 220 - Security & Diagnostic Scrubbing (DEC-004)
+  ---
+  duration_ms: 7.791403
+  type: 'suite'
+  ...
+# Subtest: Migration Advisory & Non-Migrated Items Planner
+    # Subtest: sanitizeCsvCell
+        # Subtest: neutralizes formula injection characters
+        ok 1 - neutralizes formula injection characters
+          ---
+          duration_ms: 1.18447
+          type: 'test'
+          ...
+        # Subtest: quotes and escapes fields with commas and double quotes
+        ok 2 - quotes and escapes fields with commas and double quotes
+          ---
+          duration_ms: 6.775176
+          type: 'test'
+          ...
+        # Subtest: handles null and undefined safely
+        ok 3 - handles null and undefined safely
+          ---
+          duration_ms: 0.217144
+          type: 'test'
+          ...
+        1..3
+    ok 1 - sanitizeCsvCell
+      ---
+      duration_ms: 9.181365
+      type: 'suite'
+      ...
+    # Subtest: GitHubAppsAdvisoryPlanner
+        # Subtest: discovers installed GitHub Apps and emits sanitized CSV
+        ok 1 - discovers installed GitHub Apps and emits sanitized CSV
+          ---
+          duration_ms: 1.38274
+          type: 'test'
+          ...
+        1..1
+    ok 2 - GitHubAppsAdvisoryPlanner
+      ---
+      duration_ms: 1.553273
+      type: 'suite'
+      ...
+    # Subtest: PackagesCutoverPlanner
+        # Subtest: discovers packages and generates cutover commands for all ecosystems
+        ok 1 - discovers packages and generates cutover commands for all ecosystems
+          ---
+          duration_ms: 1.416273
+          type: 'test'
+          ...
+        1..1
+    ok 3 - PackagesCutoverPlanner
+      ---
+      duration_ms: 1.549299
+      type: 'suite'
+      ...
+    # Subtest: SelfHostedRunnersPlanner
+        # Subtest: discovers runner groups and runners, emitting registration spec
+        ok 1 - discovers runner groups and runners, emitting registration spec
+          ---
+          duration_ms: 9.753562
+          type: 'test'
+          ...
+        1..1
+    ok 4 - SelfHostedRunnersPlanner
+      ---
+      duration_ms: 10.0068
+      type: 'suite'
+      ...
+    # Subtest: UnsupportedItemsAuditor
+        # Subtest: audits non-migrated categories and detects severed fork relationships
+        ok 1 - audits non-migrated categories and detects severed fork relationships
+          ---
+          duration_ms: 0.771411
+          type: 'test'
+          ...
+        1..1
+    ok 5 - UnsupportedItemsAuditor
+      ---
+      duration_ms: 0.906237
+      type: 'suite'
+      ...
+    # Subtest: MigrationAdvisoryPlanner (End-to-End)
+        # Subtest: executes in offline mode using a DiscoveryBundle and writes artifacts to disk
+        ok 1 - executes in offline mode using a DiscoveryBundle and writes artifacts to disk
+          ---
+          duration_ms: 75.551115
+          type: 'test'
+          ...
+        1..1
+    ok 6 - MigrationAdvisoryPlanner (End-to-End)
+      ---
+      duration_ms: 75.773267
+      type: 'suite'
+      ...
+    1..6
+ok 221 - Migration Advisory & Non-Migrated Items Planner
+  ---
+  duration_ms: 100.235847
+  type: 'suite'
+  ...
+# Subtest: creates a protected, atomically persisted checkpoint manifest
+ok 222 - creates a protected, atomically persisted checkpoint manifest
+  ---
+  duration_ms: 24.388444
+  type: 'test'
+  ...
+# Subtest: tracks all seven stages and module execution results for resumption
+ok 223 - tracks all seven stages and module execution results for resumption
+  ---
+  duration_ms: 20.136487
+  type: 'test'
+  ...
+# Subtest: preserves a complete manifest when a stale temporary file remains after interruption
+ok 224 - preserves a complete manifest when a stale temporary file remains after interruption
+  ---
+  duration_ms: 1.01719
+  type: 'test'
+  ...
+# Subtest: locates the latest checkpoint and cleans up only its matching run
+ok 225 - locates the latest checkpoint and cleans up only its matching run
+  ---
+  duration_ms: 14.457118
+  type: 'test'
+  ...
+# Subtest: Checkpoint Resumption State Detection & Module Skipping (US5)
+    # Subtest: detects completed stages and skips already finished modules on resumption
+    ok 1 - detects completed stages and skips already finished modules on resumption
+      ---
+      duration_ms: 9.819122
+      type: 'test'
+      ...
+    1..1
+ok 226 - Checkpoint Resumption State Detection & Module Skipping (US5)
+  ---
+  duration_ms: 10.9384
+  type: 'suite'
+  ...
+# Subtest: every registered migration module is represented in the gap ledger catalog
+ok 227 - every registered migration module is represented in the gap ledger catalog
+  ---
+  duration_ms: 7.067253
+  type: 'test'
+  ...
+# Subtest: every implemented resource in gap ledger corresponds to a registered module
+ok 228 - every implemented resource in gap ledger corresponds to a registered module
+  ---
+  duration_ms: 0.594901
+  type: 'test'
+  ...
+# Subtest: all proposed module blueprints conform to ModuleDecompositionBlueprint contract
+ok 229 - all proposed module blueprints conform to ModuleDecompositionBlueprint contract
+  ---
+  duration_ms: 9.529005
+  type: 'test'
+  ...
+# Subtest: every blueprint validates successfully against Zod contract
+ok 230 - every blueprint validates successfully against Zod contract
+  ---
+  duration_ms: 61.615278
+  type: 'test'
+  ...
+# Subtest: Wave 1 governance blueprints have valid foundation dependencies
+ok 231 - Wave 1 governance blueprints have valid foundation dependencies
+  ---
+  duration_ms: 10.831877
+  type: 'test'
+  ...
+# Subtest: Wave 2 infrastructure blueprints cleanly depend on Wave 1 and base settings
+ok 232 - Wave 2 infrastructure blueprints cleanly depend on Wave 1 and base settings
+  ---
+  duration_ms: 0.76016
+  type: 'test'
+  ...
+# Subtest: Wave 3 collaboration blueprints depend only on established org/repo foundation
+ok 233 - Wave 3 collaboration blueprints depend only on established org/repo foundation
+  ---
+  duration_ms: 1.283715
+  type: 'test'
+  ...
+# Subtest: no blueprint contains circular self-dependencies
+ok 234 - no blueprint contains circular self-dependencies
+  ---
+  duration_ms: 0.622915
+  type: 'test'
+  ...
+# Subtest: ModuleRegistry resolves execution plan for Wave 1 modules in topological order
+ok 235 - ModuleRegistry resolves execution plan for Wave 1 modules in topological order
+  ---
+  duration_ms: 7.948402
+  type: 'test'
+  ...
+# Subtest: ModuleRegistry resolves execution plan for Wave 2 modules in topological order
+ok 236 - ModuleRegistry resolves execution plan for Wave 2 modules in topological order
+  ---
+  duration_ms: 1.114463
+  type: 'test'
+  ...
+# Subtest: ModuleRegistry resolves execution plan for Wave 3 modules in topological order
+ok 237 - ModuleRegistry resolves execution plan for Wave 3 modules in topological order
+  ---
+  duration_ms: 1.395318
+  type: 'test'
+  ...
+# Subtest: Topological Dependency Resolution (DAG)
+    # Subtest: orders modules so dependencies execute first
+    ok 1 - orders modules so dependencies execute first
+      ---
+      duration_ms: 7.137997
+      type: 'test'
+      ...
+    # Subtest: orders deep dependency chains correctly
+    ok 2 - orders deep dependency chains correctly
+      ---
+      duration_ms: 3.264365
+      type: 'test'
+      ...
+    # Subtest: detects simple cycles (A -> B -> A)
+    ok 3 - detects simple cycles (A -> B -> A)
+      ---
+      duration_ms: 1.885209
+      type: 'test'
+      ...
+    # Subtest: detects self-referential cycles (A -> A)
+    ok 4 - detects self-referential cycles (A -> A)
+      ---
+      duration_ms: 0.54924
+      type: 'test'
+      ...
+    # Subtest: detects complex cycles (A -> B -> C -> A)
+    ok 5 - detects complex cycles (A -> B -> C -> A)
+      ---
+      duration_ms: 0.512023
+      type: 'test'
+      ...
+    # Subtest: throws MissingDependencyError when required dependency is missing from registry
+    ok 6 - throws MissingDependencyError when required dependency is missing from registry
+      ---
+      duration_ms: 4.888937
+      type: 'test'
+      ...
+    # Subtest: throws MissingDependencyError when autoIncludeDependencies is false and dep is not selected
+    ok 7 - throws MissingDependencyError when autoIncludeDependencies is false and dep is not selected
+      ---
+      duration_ms: 0.636488
+      type: 'test'
+      ...
+    # Subtest: handles diamond dependency graphs cleanly without duplicates
+    ok 8 - handles diamond dependency graphs cleanly without duplicates
+      ---
+      duration_ms: 7.467672
+      type: 'test'
+      ...
+    1..8
+ok 238 - Topological Dependency Resolution (DAG)
+  ---
+  duration_ms: 34.61709
+  type: 'suite'
+  ...
+# Subtest: builds GEI commands with secure environment credentials and release safeguards
+ok 239 - builds GEI commands with secure environment credentials and release safeguards
+  ---
+  duration_ms: 24.711608
+  type: 'test'
+  ...
+# Subtest: rejects non-zero GEI results without leaking credentials
+ok 240 - rejects non-zero GEI results without leaking credentials
+  ---
+  duration_ms: 9.9154
+  type: 'test'
+  ...
+# Subtest: validates the gh CLI and GEI extension before execution
+ok 241 - validates the gh CLI and GEI extension before execution
+  ---
+  duration_ms: 1.290585
+  type: 'test'
+  ...
+# Subtest: polls migration state with capped backoff until success
+ok 242 - polls migration state with capped backoff until success
+  ---
+  duration_ms: 18.99246
+  type: 'test'
+  ...
+# Subtest: rejects malformed migration identifiers before spawning
+ok 243 - rejects malformed migration identifiers before spawning
+  ---
+  duration_ms: 0.628386
+  type: 'test'
+  ...
+# Subtest: downloads GEI logs promptly and extracts warnings
+ok 244 - downloads GEI logs promptly and extracts warnings
+  ---
+  duration_ms: 16.606656
+  type: 'test'
+  ...
+# Subtest: issues abort with endpoint options and propagates GEI failures
+ok 245 - issues abort with endpoint options and propagates GEI failures
+  ---
+  duration_ms: 1.012992
+  type: 'test'
+  ...
+# Subtest: recognizes standard migration log warning text
+ok 246 - recognizes standard migration log warning text
+  ---
+  duration_ms: 0.214601
+  type: 'test'
+  ...
+# Subtest: detects metadata overflow and classifies all metadata categories as failed
+ok 247 - detects metadata overflow and classifies all metadata categories as failed
+  ---
+  duration_ms: 1.067753
+  type: 'test'
+  ...
+# Subtest: detects review thread corruption and flags pull-requests category
+ok 248 - detects review thread corruption and flags pull-requests category
+  ---
+  duration_ms: 0.62073
+  type: 'test'
+  ...
+# Subtest: redacts sensitive tokens in log warning diagnostics (DEC-004)
+ok 249 - redacts sensitive tokens in log warning diagnostics (DEC-004)
+  ---
+  duration_ms: 0.192062
+  type: 'test'
+  ...
+# Subtest: mirrors, fetches, repoints, pushes, verifies, and checkpoints LFS objects
+ok 250 - mirrors, fetches, repoints, pushes, verifies, and checkpoints LFS objects
+  ---
+  duration_ms: 38.242126
+  type: 'test'
+  ...
+# Subtest: skips repositories without LFS and rejects pre-GEI execution
+ok 251 - skips repositories without LFS and rejects pre-GEI execution
+  ---
+  duration_ms: 3.457535
+  type: 'test'
+  ...
+# Subtest: blocks an LFS transfer when target storage is insufficient
+ok 252 - blocks an LFS transfer when target storage is insufficient
+  ---
+  duration_ms: 0.465451
+  type: 'test'
+  ...
+# Subtest: GitLfsClient parameter validation rejects option injection and malicious characters
+ok 253 - GitLfsClient parameter validation rejects option injection and malicious characters
+  ---
+  duration_ms: 33.822201
+  type: 'test'
+  ...
+# Subtest: GitLfsMigrationStrategy execute with dryRun: true simulates transfer without network writes
+ok 254 - GitLfsMigrationStrategy execute with dryRun: true simulates transfer without network writes
+  ---
+  duration_ms: 2.41717
+  type: 'test'
+  ...
+# Subtest: GitMirrorPushExecutor
+    # Subtest: executes bare clone and mirror push with secure environment headers and redacts tokens
+    ok 1 - executes bare clone and mirror push with secure environment headers and redacts tokens
+      ---
+      duration_ms: 446.96245
+      type: 'test'
+      ...
+    # Subtest: creates target repository if it does not exist
+    ok 2 - creates target repository if it does not exist
+      ---
+      duration_ms: 6.348148
+      type: 'test'
+      ...
+    # Subtest: redacts tokens on clone failure and cleans up scratch directory
+    ok 3 - redacts tokens on clone failure and cleans up scratch directory
+      ---
+      duration_ms: 5.371579
+      type: 'test'
+      ...
+    # Subtest: checks runner scratch disk space headroom and rejects insufficient disk
+    ok 4 - checks runner scratch disk space headroom and rejects insufficient disk
+      ---
+      duration_ms: 1.91747
+      type: 'test'
+      ...
+    1..4
+ok 255 - GitMirrorPushExecutor
+  ---
+  duration_ms: 463.305109
+  type: 'suite'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - discover extracts permissions and selected-actions allowlist
+ok 256 - ActionsPoliciesMigrationModule - discover extracts permissions and selected-actions allowlist
+  ---
+  duration_ms: 2.909366
+  type: 'test'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - plan generates operations when permissions differ
+ok 257 - ActionsPoliciesMigrationModule - plan generates operations when permissions differ
+  ---
+  duration_ms: 5.60505
+  type: 'test'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - plan generates noop when permissions match
+ok 258 - ActionsPoliciesMigrationModule - plan generates noop when permissions match
+  ---
+  duration_ms: 0.311381
+  type: 'test'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - apply dry-run produces zero write mutations
+ok 259 - ActionsPoliciesMigrationModule - apply dry-run produces zero write mutations
+  ---
+  duration_ms: 0.68018
+  type: 'test'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - apply live executes PUT mutations for general and selected actions
+ok 260 - ActionsPoliciesMigrationModule - apply live executes PUT mutations for general and selected actions
+  ---
+  duration_ms: 0.50657
+  type: 'test'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - verify succeeds when destination matches planned configuration
+ok 261 - ActionsPoliciesMigrationModule - verify succeeds when destination matches planned configuration
+  ---
+  duration_ms: 0.570228
+  type: 'test'
+  ...
+# Subtest: ActionsPoliciesMigrationModule - verify detects discrepancy when destination differs
+ok 262 - ActionsPoliciesMigrationModule - verify detects discrepancy when destination differs
+  ---
+  duration_ms: 0.473768
+  type: 'test'
+  ...
+# Subtest: ActionsRunnersMigrationModule
+    # Subtest: instantiates and provides valid metadata
+    ok 1 - instantiates and provides valid metadata
+      ---
+      duration_ms: 2.033727
+      type: 'test'
+      ...
+    # Subtest: discover correctly queries and extracts runner groups
+    ok 2 - discover correctly queries and extracts runner groups
+      ---
+      duration_ms: 8.356022
+      type: 'test'
+      ...
+    # Subtest: discover throws wrapped error on read failure
+    ok 3 - discover throws wrapped error on read failure
+      ---
+      duration_ms: 0.844263
+      type: 'test'
+      ...
+    # Subtest: plan generates create, update, and noop operations with EMU policy enforcement
+    ok 4 - plan generates create, update, and noop operations with EMU policy enforcement
+      ---
+      duration_ms: 23.870631
+      type: 'test'
+      ...
+    # Subtest: apply executes mutations in live mode and honors dryRun
+    ok 5 - apply executes mutations in live mode and honors dryRun
+      ---
+      duration_ms: 0.866402
+      type: 'test'
+      ...
+    # Subtest: verify reports verified=true when all runner groups match
+    ok 6 - verify reports verified=true when all runner groups match
+      ---
+      duration_ms: 0.609979
+      type: 'test'
+      ...
+    # Subtest: verify reports discrepancies for missing runner group and property mismatches
+    ok 7 - verify reports discrepancies for missing runner group and property mismatches
+      ---
+      duration_ms: 0.560918
+      type: 'test'
+      ...
+    1..7
+ok 263 - ActionsRunnersMigrationModule
+  ---
+  duration_ms: 38.828809
+  type: 'suite'
+  ...
+# Subtest: AppsInventoryMigrationModule
+    # Subtest: instantiates and provides valid metadata
+    ok 1 - instantiates and provides valid metadata
+      ---
+      duration_ms: 2.067835
+      type: 'test'
+      ...
+    # Subtest: discover queries REST endpoint and parses installations
+    ok 2 - discover queries REST endpoint and parses installations
+      ---
+      duration_ms: 16.979315
+      type: 'test'
+      ...
+    # Subtest: discover handles error properly with descriptive cause
+    ok 3 - discover handles error properly with descriptive cause
+      ---
+      duration_ms: 0.878552
+      type: 'test'
+      ...
+    # Subtest: plan generates reinstallation advisories, perms warnings, and noops
+    ok 4 - plan generates reinstallation advisories, perms warnings, and noops
+      ---
+      duration_ms: 0.964652
+      type: 'test'
+      ...
+    # Subtest: apply logs advisories and returns success in advisory mode
+    ok 5 - apply logs advisories and returns success in advisory mode
+      ---
+      duration_ms: 0.496417
+      type: 'test'
+      ...
+    # Subtest: verify reports verified=true when all apps are installed with matching permissions
+    ok 6 - verify reports verified=true when all apps are installed with matching permissions
+      ---
+      duration_ms: 0.573314
+      type: 'test'
+      ...
+    # Subtest: verify reports discrepancies for missing apps and permission mismatches
+    ok 7 - verify reports discrepancies for missing apps and permission mismatches
+      ---
+      duration_ms: 18.956971
+      type: 'test'
+      ...
+    1..7
+ok 264 - AppsInventoryMigrationModule
+  ---
+  duration_ms: 42.750578
+  type: 'suite'
+  ...
+# Subtest: AutolinksMigrationModule - discover correctly extracts autolinks
+ok 265 - AutolinksMigrationModule - discover correctly extracts autolinks
+  ---
+  duration_ms: 6.076168
+  type: 'test'
+  ...
+# Subtest: AutolinksMigrationModule - plan generates create operation for missing autolink
+ok 266 - AutolinksMigrationModule - plan generates create operation for missing autolink
+  ---
+  duration_ms: 0.598663
+  type: 'test'
+  ...
+# Subtest: AutolinksMigrationModule - plan generates noop when autolink already matches target
+ok 267 - AutolinksMigrationModule - plan generates noop when autolink already matches target
+  ---
+  duration_ms: 0.349611
+  type: 'test'
+  ...
+# Subtest: AutolinksMigrationModule - apply dry-run produces zero write mutations
+ok 268 - AutolinksMigrationModule - apply dry-run produces zero write mutations
+  ---
+  duration_ms: 4.577593
+  type: 'test'
+  ...
+# Subtest: AutolinksMigrationModule - apply live executes POST /repos/{owner}/{repo}/autolinks
+ok 269 - AutolinksMigrationModule - apply live executes POST /repos/{owner}/{repo}/autolinks
+  ---
+  duration_ms: 1.293987
+  type: 'test'
+  ...
+# Subtest: AutolinksMigrationModule - verify succeeds when destination autolinks match expected
+ok 270 - AutolinksMigrationModule - verify succeeds when destination autolinks match expected
+  ---
+  duration_ms: 0.438969
+  type: 'test'
+  ...
+# Subtest: AutolinksMigrationModule - verify detects discrepancy when autolink is missing or mismatched
+ok 271 - AutolinksMigrationModule - verify detects discrepancy when autolink is missing or mismatched
+  ---
+  duration_ms: 0.463839
+  type: 'test'
+  ...
+# Subtest: computeBranchProtectionReconciliation detects all 7 GEI-omitted properties
+ok 272 - computeBranchProtectionReconciliation detects all 7 GEI-omitted properties
+  ---
+  duration_ms: 2.657199
+  type: 'test'
+  ...
+# Subtest: convertBranchProtectionToRuleset produces conformant ruleset format
+ok 273 - convertBranchProtectionToRuleset produces conformant ruleset format
+  ---
+  duration_ms: 8.668622
+  type: 'test'
+  ...
+# Subtest: BranchProtectionReconciliationModule lifecycle: discover, plan, apply, verify
+ok 274 - BranchProtectionReconciliationModule lifecycle: discover, plan, apply, verify
+  ---
+  duration_ms: 1.982819
+  type: 'test'
+  ...
+# Subtest: CollaboratorsMigrationModule registers in ModuleRegistry with id collaborators and gei-repo dependency
+ok 275 - CollaboratorsMigrationModule registers in ModuleRegistry with id collaborators and gei-repo dependency
+  ---
+  duration_ms: 2.992011
+  type: 'test'
+  ...
+# Subtest: CollaboratorsMigrationModule discover reads direct collaborators and maps permissions
+ok 276 - CollaboratorsMigrationModule discover reads direct collaborators and maps permissions
+  ---
+  duration_ms: 1.02124
+  type: 'test'
+  ...
+# Subtest: CollaboratorsMigrationModule plan maps usernames using EMU suffix and diffs operations
+ok 277 - CollaboratorsMigrationModule plan maps usernames using EMU suffix and diffs operations
+  ---
+  duration_ms: 0.85673
+  type: 'test'
+  ...
+# Subtest: CollaboratorsMigrationModule apply simulates dry-run and executes live mutations
+ok 278 - CollaboratorsMigrationModule apply simulates dry-run and executes live mutations
+  ---
+  duration_ms: 0.87432
+  type: 'test'
+  ...
+# Subtest: CollaboratorsMigrationModule apply handles HTTP 404 and 422 gracefully
+ok 279 - CollaboratorsMigrationModule apply handles HTTP 404 and 422 gracefully
+  ---
+  duration_ms: 8.570639
+  type: 'test'
+  ...
+# Subtest: CollaboratorsMigrationModule verify reports discrepancies for missing collaborators and permission mismatches
+ok 280 - CollaboratorsMigrationModule verify reports discrepancies for missing collaborators and permission mismatches
+  ---
+  duration_ms: 0.595082
+  type: 'test'
+  ...
+# Subtest: Custom Properties Migration Modules (Task 026)
+    # Subtest: OrgCustomPropertiesMigrationModule
+        # Subtest: discovers custom property schemas from source organization
+        ok 1 - discovers custom property schemas from source organization
+          ---
+          duration_ms: 1.839051
+          type: 'test'
+          ...
+        # Subtest: plans create and noop operations based on target schema state
+        ok 2 - plans create and noop operations based on target schema state
+          ---
+          duration_ms: 16.852688
+          type: 'test'
+          ...
+        # Subtest: discovers custom property schemas from direct array response
+        ok 3 - discovers custom property schemas from direct array response
+          ---
+          duration_ms: 0.300892
+          type: 'test'
+          ...
+        # Subtest: applies schema mutations via PUT against target organization with snake_case payload
+        ok 4 - applies schema mutations via PUT against target organization with snake_case payload
+          ---
+          duration_ms: 1.359605
+          type: 'test'
+          ...
+        # Subtest: verifies custom property schemas against planned state
+        ok 5 - verifies custom property schemas against planned state
+          ---
+          duration_ms: 2.497693
+          type: 'test'
+          ...
+        1..5
+    ok 1 - OrgCustomPropertiesMigrationModule
+      ---
+      duration_ms: 24.161118
+      type: 'suite'
+      ...
+    # Subtest: RepoCustomPropertiesMigrationModule
+        # Subtest: discovers custom property values from source repository
+        ok 1 - discovers custom property values from source repository
+          ---
+          duration_ms: 0.700548
+          type: 'test'
+          ...
+        # Subtest: discovers custom property values from direct array response
+        ok 2 - discovers custom property values from direct array response
+          ---
+          duration_ms: 0.278372
+          type: 'test'
+          ...
+        # Subtest: plans batch update operation for modified custom property values
+        ok 3 - plans batch update operation for modified custom property values
+          ---
+          duration_ms: 0.750676
+          type: 'test'
+          ...
+        # Subtest: applies batch repository property values via PATCH against organization
+        ok 4 - applies batch repository property values via PATCH against organization
+          ---
+          duration_ms: 0.608186
+          type: 'test'
+          ...
+        # Subtest: verifies repository custom property values against planned state
+        ok 5 - verifies repository custom property values against planned state
+          ---
+          duration_ms: 0.540833
+          type: 'test'
+          ...
+        1..5
+    ok 2 - RepoCustomPropertiesMigrationModule
+      ---
+      duration_ms: 3.531894
+      type: 'suite'
+      ...
+    # Subtest: Registry Integration
+        # Subtest: registers both modules in default ModuleRegistry with expected dependencies
+        ok 1 - registers both modules in default ModuleRegistry with expected dependencies
+          ---
+          duration_ms: 1.155213
+          type: 'test'
+          ...
+        1..1
+    ok 3 - Registry Integration
+      ---
+      duration_ms: 1.27719
+      type: 'suite'
+      ...
+    1..3
+ok 281 - Custom Properties Migration Modules (Task 026)
+  ---
+  duration_ms: 29.819464
+  type: 'suite'
+  ...
+# Subtest: CustomRolesMigrationModule metadata and registry integration
+ok 282 - CustomRolesMigrationModule metadata and registry integration
+  ---
+  duration_ms: 6.972037
+  type: 'test'
+  ...
+# Subtest: CustomRolesMigrationModule discover parses repo and org roles accurately
+ok 283 - CustomRolesMigrationModule discover parses repo and org roles accurately
+  ---
+  duration_ms: 1.301332
+  type: 'test'
+  ...
+# Subtest: CustomRolesMigrationModule plan computes create, update, and noop operations
+ok 284 - CustomRolesMigrationModule plan computes create, update, and noop operations
+  ---
+  duration_ms: 5.411885
+  type: 'test'
+  ...
+# Subtest: CustomRolesMigrationModule apply executes dry-run and real mutations
+ok 285 - CustomRolesMigrationModule apply executes dry-run and real mutations
+  ---
+  duration_ms: 0.867666
+  type: 'test'
+  ...
+# Subtest: CustomRolesMigrationModule verify detects missing roles and mismatches
+ok 286 - CustomRolesMigrationModule verify detects missing roles and mismatches
+  ---
+  duration_ms: 8.674027
+  type: 'test'
+  ...
+# Subtest: DeployKeysMigrationModule registers in ModuleRegistry with id deploy-keys and gei-repo dependency
+ok 287 - DeployKeysMigrationModule registers in ModuleRegistry with id deploy-keys and gei-repo dependency
+  ---
+  duration_ms: 11.643014
+  type: 'test'
+  ...
+# Subtest: SSH Key normalization and comparison handles whitespace, comments, and fingerprints
+ok 288 - SSH Key normalization and comparison handles whitespace, comments, and fingerprints
+  ---
+  duration_ms: 1.291268
+  type: 'test'
+  ...
+# Subtest: DeployKeysMigrationModule discover reads deploy keys via sourceClient
+ok 289 - DeployKeysMigrationModule discover reads deploy keys via sourceClient
+  ---
+  duration_ms: 1.110527
+  type: 'test'
+  ...
+# Subtest: DeployKeysMigrationModule plan detects missing keys, matching keys, and title collisions
+ok 290 - DeployKeysMigrationModule plan detects missing keys, matching keys, and title collisions
+  ---
+  duration_ms: 1.194833
+  type: 'test'
+  ...
+# Subtest: DeployKeysMigrationModule apply executes dryRun without mutations and live mutations
+ok 291 - DeployKeysMigrationModule apply executes dryRun without mutations and live mutations
+  ---
+  duration_ms: 8.405667
+  type: 'test'
+  ...
+# Subtest: DeployKeysMigrationModule verify detects missing keys and read-only mismatches
+ok 292 - DeployKeysMigrationModule verify detects missing keys and read-only mismatches
+  ---
+  duration_ms: 0.86715
+  type: 'test'
+  ...
+# Subtest: DiscussionsMigrationModule
+    # Subtest: instantiates and provides valid metadata
+    ok 1 - instantiates and provides valid metadata
+      ---
+      duration_ms: 1.994155
+      type: 'test'
+      ...
+    # Subtest: discover queries GraphQL and parses categories and discussions
+    ok 2 - discover queries GraphQL and parses categories and discussions
+      ---
+      duration_ms: 1.002269
+      type: 'test'
+      ...
+    # Subtest: discover handles GraphQL failure with descriptive error
+    ok 3 - discover handles GraphQL failure with descriptive error
+      ---
+      duration_ms: 4.391201
+      type: 'test'
+      ...
+    # Subtest: plan generates create and noop operations with author attribution header
+    ok 4 - plan generates create and noop operations with author attribution header
+      ---
+      duration_ms: 1.002731
+      type: 'test'
+      ...
+    # Subtest: apply executes GraphQL mutation and honors dryRun
+    ok 5 - apply executes GraphQL mutation and honors dryRun
+      ---
+      duration_ms: 0.802138
+      type: 'test'
+      ...
+    # Subtest: verify reports verified=true when all discussions match
+    ok 6 - verify reports verified=true when all discussions match
+      ---
+      duration_ms: 0.527507
+      type: 'test'
+      ...
+    # Subtest: verify reports discrepancies when expected discussions are missing
+    ok 7 - verify reports discrepancies when expected discussions are missing
+      ---
+      duration_ms: 0.470728
+      type: 'test'
+      ...
+    1..7
+ok 293 - DiscussionsMigrationModule
+  ---
+  duration_ms: 14.102539
+  type: 'suite'
+  ...
+# Subtest: EnvironmentsMigrationModule
+    # Subtest: registers in ModuleRegistry and preserves topological execution dependencies
+    ok 1 - registers in ModuleRegistry and preserves topological execution dependencies
+      ---
+      duration_ms: 3.219239
+      type: 'test'
+      ...
+    # Subtest: discovers environments, protection rules, variables, and secrets in live mode
+    ok 2 - discovers environments, protection rules, variables, and secrets in live mode
+      ---
+      duration_ms: 9.287799
+      type: 'test'
+      ...
+    # Subtest: discovers environments from cached DiscoveryBundle without network calls
+    ok 3 - discovers environments from cached DiscoveryBundle without network calls
+      ---
+      duration_ms: 0.608914
+      type: 'test'
+      ...
+    # Subtest: plans create, update, noop operations and applies EMU reviewer mapping
+    ok 4 - plans create, update, noop operations and applies EMU reviewer mapping
+      ---
+      duration_ms: 1.333049
+      type: 'test'
+      ...
+    # Subtest: warns when reviewer cannot be mapped to EMU identity
+    ok 5 - warns when reviewer cannot be mapped to EMU identity
+      ---
+      duration_ms: 0.339697
+      type: 'test'
+      ...
+    # Subtest: applies plan in dry-run mode without issuing mutations
+    ok 6 - applies plan in dry-run mode without issuing mutations
+      ---
+      duration_ms: 6.680653
+      type: 'test'
+      ...
+    # Subtest: applies environment creation, variable creation, and sealed-box secret encryption
+    ok 7 - applies environment creation, variable creation, and sealed-box secret encryption
+      ---
+      duration_ms: 55.89583
+      type: 'test'
+      ...
+    # Subtest: verifies target compliance and detects missing environments, variables, and secrets
+    ok 8 - verifies target compliance and detects missing environments, variables, and secrets
+      ---
+      duration_ms: 1.285464
+      type: 'test'
+      ...
+    1..8
+ok 294 - EnvironmentsMigrationModule
+  ---
+  duration_ms: 82.921423
+  type: 'suite'
+  ...
+# Subtest: GeiRepoMigrationModule
+    # Subtest: identifies target repository existence in discover()
+    ok 1 - identifies target repository existence in discover()
+      ---
+      duration_ms: 8.177067
+      type: 'test'
+      ...
+    # Subtest: emits deterministic plan() offline without network calls
+    ok 2 - emits deterministic plan() offline without network calls
+      ---
+      duration_ms: 1.138487
+      type: 'test'
+      ...
+    # Subtest: fails live apply() fast if source credentials have blockers
+    ok 3 - fails live apply() fast if source credentials have blockers
+      ---
+      duration_ms: 8.528603
+      type: 'test'
+      ...
+    # Subtest: passes granular per-repository options to GEI command runner
+    ok 4 - passes granular per-repository options to GEI command runner
+      ---
+      duration_ms: 3.210291
+      type: 'test'
+      ...
+    # Subtest: detects metadata overflow in GEI stdout and records partial status and failed categories
+    ok 5 - detects metadata overflow in GEI stdout and records partial status and failed categories
+      ---
+      duration_ms: 18.537359
+      type: 'test'
+      ...
+    # Subtest: detects PR review thread errors via target Migration Log issue fallback
+    ok 6 - detects PR review thread errors via target Migration Log issue fallback
+      ---
+      duration_ms: 1.435659
+      type: 'test'
+      ...
+    # Subtest: verify() passes when source and target metadata are in parity
+    ok 7 - verify() passes when source and target metadata are in parity
+      ---
+      duration_ms: 9.77208
+      type: 'test'
+      ...
+    # Subtest: verify() detects deep metadata omissions and settings drift
+    ok 8 - verify() detects deep metadata omissions and settings drift
+      ---
+      duration_ms: 1.083711
+      type: 'test'
+      ...
+    # Subtest: automatically activates mirror-push strategy when repository size > 40 GiB
+    ok 9 - automatically activates mirror-push strategy when repository size > 40 GiB
+      ---
+      duration_ms: 1.459505
+      type: 'test'
+      ...
+    # Subtest: automatically falls back to mirror-push when GEI fails with backend archive generation limit
+    ok 10 - automatically falls back to mirror-push when GEI fails with backend archive generation limit
+      ---
+      duration_ms: 15.124398
+      type: 'test'
+      ...
+    # Subtest: executes mirror-push directly when explicitly specified in repository options
+    ok 11 - executes mirror-push directly when explicitly specified in repository options
+      ---
+      duration_ms: 15.706363
+      type: 'test'
+      ...
+    1..11
+ok 295 - GeiRepoMigrationModule
+  ---
+  duration_ms: 91.931511
+  type: 'suite'
+  ...
+# Subtest: IpAllowListsMigrationModule
+    # Subtest: instantiates and provides valid metadata
+    ok 1 - instantiates and provides valid metadata
+      ---
+      duration_ms: 14.164503
+      type: 'test'
+      ...
+    # Subtest: discover queries GraphQL and parses IP allow list entries
+    ok 2 - discover queries GraphQL and parses IP allow list entries
+      ---
+      duration_ms: 1.087836
+      type: 'test'
+      ...
+    # Subtest: discover handles error properly with descriptive cause
+    ok 3 - discover handles error properly with descriptive cause
+      ---
+      duration_ms: 0.773294
+      type: 'test'
+      ...
+    # Subtest: plan generates create, update, and noop operations with warning
+    ok 4 - plan generates create, update, and noop operations with warning
+      ---
+      duration_ms: 3.915944
+      type: 'test'
+      ...
+    # Subtest: apply executes GraphQL mutations and honors dryRun
+    ok 5 - apply executes GraphQL mutations and honors dryRun
+      ---
+      duration_ms: 0.824445
+      type: 'test'
+      ...
+    # Subtest: verify reports verified=true when all CIDR entries match
+    ok 6 - verify reports verified=true when all CIDR entries match
+      ---
+      duration_ms: 0.521781
+      type: 'test'
+      ...
+    # Subtest: verify reports discrepancies on missing entries or isActive mismatch
+    ok 7 - verify reports discrepancies on missing entries or isActive mismatch
+      ---
+      duration_ms: 0.529235
+      type: 'test'
+      ...
+    1..7
+ok 296 - IpAllowListsMigrationModule
+  ---
+  duration_ms: 23.616268
+  type: 'suite'
+  ...
+# Subtest: IssuesMigrationModule registers in ModuleRegistry with id issues and gei-repo dependency
+ok 297 - IssuesMigrationModule registers in ModuleRegistry with id issues and gei-repo dependency
+  ---
+  duration_ms: 3.104587
+  type: 'test'
+  ...
+# Subtest: IssuesMigrationModule discover collects milestones, labels, and issues (filtering PRs)
+ok 298 - IssuesMigrationModule discover collects milestones, labels, and issues (filtering PRs)
+  ---
+  duration_ms: 1.406746
+  type: 'test'
+  ...
+# Subtest: IssuesMigrationModule plan diffs target state and plans creations vs noops
+ok 299 - IssuesMigrationModule plan diffs target state and plans creations vs noops
+  ---
+  duration_ms: 1.030283
+  type: 'test'
+  ...
+# Subtest: IssuesMigrationModule apply executes dryRun without mutations
+ok 300 - IssuesMigrationModule apply executes dryRun without mutations
+  ---
+  duration_ms: 4.967073
+  type: 'test'
+  ...
+# Subtest: IssuesMigrationModule apply live mode creates labels, milestones, and imports issues
+ok 301 - IssuesMigrationModule apply live mode creates labels, milestones, and imports issues
+  ---
+  duration_ms: 0.849626
+  type: 'test'
+  ...
+# Subtest: executeIssueImport falls back to standard REST API when preview API is unsupported (HTTP 415)
+ok 302 - executeIssueImport falls back to standard REST API when preview API is unsupported (HTTP 415)
+  ---
+  duration_ms: 0.357998
+  type: 'test'
+  ...
+# Subtest: IssuesMigrationModule verify detects missing resources and reports discrepancies
+ok 303 - IssuesMigrationModule verify detects missing resources and reports discrepancies
+  ---
+  duration_ms: 0.749123
+  type: 'test'
+  ...
+# Subtest: LfsMigrationModule registers in ModuleRegistry with id lfs and gei-repo dependency
+ok 304 - LfsMigrationModule registers in ModuleRegistry with id lfs and gei-repo dependency
+  ---
+  duration_ms: 7.672464
+  type: 'test'
+  ...
+# Subtest: LfsMigrationModule discover detects LFS from .gitattributes
+ok 305 - LfsMigrationModule discover detects LFS from .gitattributes
+  ---
+  duration_ms: 0.576575
+  type: 'test'
+  ...
+# Subtest: LfsMigrationModule plan diffs objects via Batch API handshake
+ok 306 - LfsMigrationModule plan diffs objects via Batch API handshake
+  ---
+  duration_ms: 21.653296
+  type: 'test'
+  ...
+# Subtest: LfsMigrationModule apply executes dryRun without mutations and live streaming transfers
+ok 307 - LfsMigrationModule apply executes dryRun without mutations and live streaming transfers
+  ---
+  duration_ms: 1.367842
+  type: 'test'
+  ...
+# Subtest: LfsMigrationModule verify audits target LFS availability and reports discrepancies
+ok 308 - LfsMigrationModule verify audits target LFS availability and reports discrepancies
+  ---
+  duration_ms: 0.668226
+  type: 'test'
+  ...
+# Subtest: OrgSecretsMigrationModule
+    # Subtest: discovers all three secret domains and organization visibility modes
+    ok 1 - discovers all three secret domains and organization visibility modes
+      ---
+      duration_ms: 3.342368
+      type: 'test'
+      ...
+    # Subtest: maps selected source IDs and diffs target secret scopes
+    ok 2 - maps selected source IDs and diffs target secret scopes
+      ---
+      duration_ms: 1.030884
+      type: 'test'
+      ...
+    # Subtest: encrypts a blank placeholder with the target organization public key
+    ok 3 - encrypts a blank placeholder with the target organization public key
+      ---
+      duration_ms: 70.747801
+      type: 'test'
+      ...
+    1..3
+ok 309 - OrgSecretsMigrationModule
+  ---
+  duration_ms: 104.641449
+  type: 'suite'
+  ...
+# Subtest: OrgSettingsMigrationModule - discover correctly extracts and parses source org settings
+ok 310 - OrgSettingsMigrationModule - discover correctly extracts and parses source org settings
+  ---
+  duration_ms: 2.364592
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - plan generates update operation for modified settings
+ok 311 - OrgSettingsMigrationModule - plan generates update operation for modified settings
+  ---
+  duration_ms: 0.624791
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - plan enforces EMU public repo constraint with warning and clamp
+ok 312 - OrgSettingsMigrationModule - plan enforces EMU public repo constraint with warning and clamp
+  ---
+  duration_ms: 0.479365
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - plan generates noop when settings match
+ok 313 - OrgSettingsMigrationModule - plan generates noop when settings match
+  ---
+  duration_ms: 0.502017
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - apply dry-run produces zero write mutations
+ok 314 - OrgSettingsMigrationModule - apply dry-run produces zero write mutations
+  ---
+  duration_ms: 0.496395
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - apply live sends PATCH /orgs/{org}
+ok 315 - OrgSettingsMigrationModule - apply live sends PATCH /orgs/{org}
+  ---
+  duration_ms: 1.174601
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - verify succeeds when destination matches expected settings
+ok 316 - OrgSettingsMigrationModule - verify succeeds when destination matches expected settings
+  ---
+  duration_ms: 0.520117
+  type: 'test'
+  ...
+# Subtest: OrgSettingsMigrationModule - verify detects discrepancy when destination setting differs
+ok 317 - OrgSettingsMigrationModule - verify detects discrepancy when destination setting differs
+  ---
+  duration_ms: 0.459552
+  type: 'test'
+  ...
+# Subtest: OrgVariablesMigrationModule
+    # Subtest: discovers all visibility modes and selected source repository IDs
+    ok 1 - discovers all visibility modes and selected source repository IDs
+      ---
+      duration_ms: 7.071505
+      type: 'test'
+      ...
+    # Subtest: maps selected repository IDs to target IDs and plans create, update, and noop
+    ok 2 - maps selected repository IDs to target IDs and plans create, update, and noop
+      ---
+      duration_ms: 5.299256
+      type: 'test'
+      ...
+    # Subtest: warns instead of sending a source repository ID to the target
+    ok 3 - warns instead of sending a source repository ID to the target
+      ---
+      duration_ms: 0.541996
+      type: 'test'
+      ...
+    # Subtest: uses POST and PATCH for planned target mutations
+    ok 4 - uses POST and PATCH for planned target mutations
+      ---
+      duration_ms: 0.613223
+      type: 'test'
+      ...
+    1..4
+ok 318 - OrgVariablesMigrationModule
+  ---
+  duration_ms: 15.103562
+  type: 'suite'
+  ...
+# Subtest: PackagesMigrationModule registers in ModuleRegistry with id packages and dependencies
+ok 319 - PackagesMigrationModule registers in ModuleRegistry with id packages and dependencies
+  ---
+  duration_ms: 5.450923
+  type: 'test'
+  ...
+# Subtest: PackagesMigrationModule discover queries packages and version metadata
+ok 320 - PackagesMigrationModule discover queries packages and version metadata
+  ---
+  duration_ms: 1.204825
+  type: 'test'
+  ...
+# Subtest: PackagesMigrationModule plan diffs versions and tags
+ok 321 - PackagesMigrationModule plan diffs versions and tags
+  ---
+  duration_ms: 0.986939
+  type: 'test'
+  ...
+# Subtest: PackagesMigrationModule apply executes dryRun without mutations and live replications
+ok 322 - PackagesMigrationModule apply executes dryRun without mutations and live replications
+  ---
+  duration_ms: 1.113153
+  type: 'test'
+  ...
+# Subtest: PackagesMigrationModule verify detects missing package versions
+ok 323 - PackagesMigrationModule verify detects missing package versions
+  ---
+  duration_ms: 0.873538
+  type: 'test'
+  ...
+# Subtest: ProjectsV2MigrationModule
+    # Subtest: instantiates and provides valid metadata
+    ok 1 - instantiates and provides valid metadata
+      ---
+      duration_ms: 2.126935
+      type: 'test'
+      ...
+    # Subtest: discover queries GraphQL and parses projects and fields
+    ok 2 - discover queries GraphQL and parses projects and fields
+      ---
+      duration_ms: 1.235961
+      type: 'test'
+      ...
+    # Subtest: discover handles GraphQL failure with descriptive error
+    ok 3 - discover handles GraphQL failure with descriptive error
+      ---
+      duration_ms: 0.970499
+      type: 'test'
+      ...
+    # Subtest: plan generates create operations when destination has no projects
+    ok 4 - plan generates create operations when destination has no projects
+      ---
+      duration_ms: 0.933605
+      type: 'test'
+      ...
+    # Subtest: plan generates noop when destination already has matching project and fields
+    ok 5 - plan generates noop when destination already has matching project and fields
+      ---
+      duration_ms: 0.621357
+      type: 'test'
+      ...
+    # Subtest: apply honors dryRun and does not call mutations
+    ok 6 - apply honors dryRun and does not call mutations
+      ---
+      duration_ms: 26.497778
+      type: 'test'
+      ...
+    # Subtest: apply executes mutations in live mode and links field to created project
+    ok 7 - apply executes mutations in live mode and links field to created project
+      ---
+      duration_ms: 0.83574
+      type: 'test'
+      ...
+    # Subtest: verify reports verified=true when all expected projects and fields exist
+    ok 8 - verify reports verified=true when all expected projects and fields exist
+      ---
+      duration_ms: 0.714399
+      type: 'test'
+      ...
+    # Subtest: verify reports discrepancies when expected projects or fields are missing
+    ok 9 - verify reports discrepancies when expected projects or fields are missing
+      ---
+      duration_ms: 0.576383
+      type: 'test'
+      ...
+    1..9
+ok 324 - ProjectsV2MigrationModule
+  ---
+  duration_ms: 51.75168
+  type: 'suite'
+  ...
+# Subtest: PullRequestsMigrationModule registers in ModuleRegistry with id pull-requests and gei-repo dependency
+ok 325 - PullRequestsMigrationModule registers in ModuleRegistry with id pull-requests and gei-repo dependency
+  ---
+  duration_ms: 11.299512
+  type: 'test'
+  ...
+# Subtest: generateHistoricalPrMarkdown produces compliant markdown table
+ok 326 - generateHistoricalPrMarkdown produces compliant markdown table
+  ---
+  duration_ms: 0.356667
+  type: 'test'
+  ...
+# Subtest: PullRequestsMigrationModule discover classifies open vs closed PRs and attaches comments
+ok 327 - PullRequestsMigrationModule discover classifies open vs closed PRs and attaches comments
+  ---
+  duration_ms: 1.227658
+  type: 'test'
+  ...
+# Subtest: PullRequestsMigrationModule plan schedules open PR recreation and closed PR archival
+ok 328 - PullRequestsMigrationModule plan schedules open PR recreation and closed PR archival
+  ---
+  duration_ms: 6.745166
+  type: 'test'
+  ...
+# Subtest: PullRequestsMigrationModule apply executes dryRun without calling write client
+ok 329 - PullRequestsMigrationModule apply executes dryRun without calling write client
+  ---
+  duration_ms: 0.573234
+  type: 'test'
+  ...
+# Subtest: PullRequestsMigrationModule apply live recreates open PR and creates archive issue
+ok 330 - PullRequestsMigrationModule apply live recreates open PR and creates archive issue
+  ---
+  duration_ms: 0.821423
+  type: 'test'
+  ...
+# Subtest: PullRequestsMigrationModule verify emits discrepancies for missing PRs and archive
+ok 331 - PullRequestsMigrationModule verify emits discrepancies for missing PRs and archive
+  ---
+  duration_ms: 0.740465
+  type: 'test'
+  ...
+# Subtest: ReleasesMigrationModule registers in ModuleRegistry with id releases and gei-repo dependency
+ok 332 - ReleasesMigrationModule registers in ModuleRegistry with id releases and gei-repo dependency
+  ---
+  duration_ms: 35.612546
+  type: 'test'
+  ...
+# Subtest: ReleasesMigrationModule discover reads releases and assets
+ok 333 - ReleasesMigrationModule discover reads releases and assets
+  ---
+  duration_ms: 4.986679
+  type: 'test'
+  ...
+# Subtest: ReleasesMigrationModule plan detects missing releases and assets
+ok 334 - ReleasesMigrationModule plan detects missing releases and assets
+  ---
+  duration_ms: 1.04943
+  type: 'test'
+  ...
+# Subtest: ReleasesMigrationModule apply with dryRun: true executes without mutations
+ok 335 - ReleasesMigrationModule apply with dryRun: true executes without mutations
+  ---
+  duration_ms: 0.730181
+  type: 'test'
+  ...
+# Subtest: ReleasesMigrationModule verify detects missing releases and asset mismatches
+ok 336 - ReleasesMigrationModule verify detects missing releases and asset mismatches
+  ---
+  duration_ms: 0.766054
+  type: 'test'
+  ...
+# Subtest: RepoSecretsMigrationModule
+    # Subtest: discovers Actions, Dependabot, and Codespaces secret names without values
+    ok 1 - discovers Actions, Dependabot, and Codespaces secret names without values
+      ---
+      duration_ms: 7.825989
+      type: 'test'
+      ...
+    # Subtest: plans creates for missing names and noops for names already present
+    ok 2 - plans creates for missing names and noops for names already present
+      ---
+      duration_ms: 0.823617
+      type: 'test'
+      ...
+    # Subtest: encrypts a blank placeholder with the target public key and never sends plaintext
+    ok 3 - encrypts a blank placeholder with the target public key and never sends plaintext
+      ---
+      duration_ms: 88.85452
+      type: 'test'
+      ...
+    # Subtest: reports target secret names missing during verification
+    ok 4 - reports target secret names missing during verification
+      ---
+      duration_ms: 0.806399
+      type: 'test'
+      ...
+    # Subtest: uses a client vault value only during apply
+    ok 5 - uses a client vault value only during apply
+      ---
+      duration_ms: 2.00237
+      type: 'test'
+      ...
+    1..5
+ok 337 - RepoSecretsMigrationModule
+  ---
+  duration_ms: 101.996711
+  type: 'suite'
+  ...
+# Subtest: RepoSettingsMigrationModule (Task 025)
+    # Subtest: Helper functions
+        # Subtest: normalizes visibility correctly
+        ok 1 - normalizes visibility correctly
+          ---
+          duration_ms: 1.179434
+          type: 'test'
+          ...
+        # Subtest: respects visibilityOverride when provided
+        ok 2 - respects visibilityOverride when provided
+          ---
+          duration_ms: 0.264888
+          type: 'test'
+          ...
+        # Subtest: diffs repo settings and detects changes
+        ok 3 - diffs repo settings and detects changes
+          ---
+          duration_ms: 0.465043
+          type: 'test'
+          ...
+        # Subtest: returns hasChanges: false when settings match
+        ok 4 - returns hasChanges: false when settings match
+          ---
+          duration_ms: 0.17971
+          type: 'test'
+          ...
+        1..4
+    ok 1 - Helper functions
+      ---
+      duration_ms: 12.194046
+      type: 'suite'
+      ...
+    # Subtest: Discovery
+        # Subtest: discovers settings via live GitHub REST API
+        ok 1 - discovers settings via live GitHub REST API
+          ---
+          duration_ms: 1.100583
+          type: 'test'
+          ...
+        # Subtest: discovers settings from cached DiscoveryBundle
+        ok 2 - discovers settings from cached DiscoveryBundle
+          ---
+          duration_ms: 0.413773
+          type: 'test'
+          ...
+        1..2
+    ok 2 - Discovery
+      ---
+      duration_ms: 1.724702
+      type: 'suite'
+      ...
+    # Subtest: Planning
+        # Subtest: emits update operation when target visibility or PR settings differ
+        ok 1 - emits update operation when target visibility or PR settings differ
+          ---
+          duration_ms: 0.622853
+          type: 'test'
+          ...
+        # Subtest: emits noop operation when target already matches desired settings
+        ok 2 - emits noop operation when target already matches desired settings
+          ---
+          duration_ms: 5.164416
+          type: 'test'
+          ...
+        1..2
+    ok 3 - Planning
+      ---
+      duration_ms: 6.0936
+      type: 'suite'
+      ...
+    # Subtest: Application & Execution
+        # Subtest: applies PATCH mutation to target repository
+        ok 1 - applies PATCH mutation to target repository
+          ---
+          duration_ms: 1.640489
+          type: 'test'
+          ...
+        # Subtest: handles dry-run mode without sending network requests
+        ok 2 - handles dry-run mode without sending network requests
+          ---
+          duration_ms: 0.447759
+          type: 'test'
+          ...
+        # Subtest: gracefully falls back to internal visibility when enterprise policy disallows public
+        ok 3 - gracefully falls back to internal visibility when enterprise policy disallows public
+          ---
+          duration_ms: 5.203225
+          type: 'test'
+          ...
+        1..3
+    ok 4 - Application & Execution
+      ---
+      duration_ms: 7.561938
+      type: 'suite'
+      ...
+    # Subtest: Verification
+        # Subtest: verifies target settings match planned state
+        ok 1 - verifies target settings match planned state
+          ---
+          duration_ms: 0.672177
+          type: 'test'
+          ...
+        # Subtest: reports discrepancies when target settings differ from plan
+        ok 2 - reports discrepancies when target settings differ from plan
+          ---
+          duration_ms: 0.511419
+          type: 'test'
+          ...
+        # Subtest: reports discrepancies when feature flags or core metadata drift
+        ok 3 - reports discrepancies when feature flags or core metadata drift
+          ---
+          duration_ms: 0.421773
+          type: 'test'
+          ...
+        1..3
+    ok 5 - Verification
+      ---
+      duration_ms: 1.834372
+      type: 'suite'
+      ...
+    # Subtest: Feature flags & metadata reconciliation (Task 027)
+        # Subtest: diffRepositoryFeatures diffs feature toggles and core metadata accurately
+        ok 1 - diffRepositoryFeatures diffs feature toggles and core metadata accurately
+          ---
+          duration_ms: 0.294868
+          type: 'test'
+          ...
+        # Subtest: plans update operation when feature flags or core metadata drift
+        ok 2 - plans update operation when feature flags or core metadata drift
+          ---
+          duration_ms: 0.322454
+          type: 'test'
+          ...
+        # Subtest: applies feature flags and metadata in PATCH mutation
+        ok 3 - applies feature flags and metadata in PATCH mutation
+          ---
+          duration_ms: 0.24037
+          type: 'test'
+          ...
+        1..3
+    ok 6 - Feature flags & metadata reconciliation (Task 027)
+      ---
+      duration_ms: 1.001888
+      type: 'suite'
+      ...
+    # Subtest: Registry Integration
+        # Subtest: is registered in default ModuleRegistry with gei-repo dependency
+        ok 1 - is registered in default ModuleRegistry with gei-repo dependency
+          ---
+          duration_ms: 9.278703
+          type: 'test'
+          ...
+        1..1
+    ok 7 - Registry Integration
+      ---
+      duration_ms: 9.397095
+      type: 'suite'
+      ...
+    1..7
+ok 338 - RepoSettingsMigrationModule (Task 025)
+  ---
+  duration_ms: 42.181011
+  type: 'suite'
+  ...
+# Subtest: RepoVariablesMigrationModule
+    # Subtest: registers cleanly in ModuleRegistry
+    ok 1 - registers cleanly in ModuleRegistry
+      ---
+      duration_ms: 1.307782
+      type: 'test'
+      ...
+    # Subtest: discover
+        # Subtest: discovers variables from source repository in live mode
+        ok 1 - discovers variables from source repository in live mode
+          ---
+          duration_ms: 7.715168
+          type: 'test'
+          ...
+        # Subtest: throws error when sourceRepo is missing in context
+        ok 2 - throws error when sourceRepo is missing in context
+          ---
+          duration_ms: 0.902028
+          type: 'test'
+          ...
+        1..2
+    ok 2 - discover
+      ---
+      duration_ms: 9.10161
+      type: 'suite'
+      ...
+    # Subtest: plan
+        # Subtest: diffs source against target and generates create, update, and noop operations
+        ok 1 - diffs source against target and generates create, update, and noop operations
+          ---
+          duration_ms: 18.216485
+          type: 'test'
+          ...
+        1..1
+    ok 3 - plan
+      ---
+      duration_ms: 18.388559
+      type: 'suite'
+      ...
+    # Subtest: apply
+        # Subtest: executes POST for create and PATCH for update, skipping write requests on noop
+        ok 1 - executes POST for create and PATCH for update, skipping write requests on noop
+          ---
+          duration_ms: 12.116764
+          type: 'test'
+          ...
+        # Subtest: simulates operations without mutation requests when dryRun is true
+        ok 2 - simulates operations without mutation requests when dryRun is true
+          ---
+          duration_ms: 8.614115
+          type: 'test'
+          ...
+        1..2
+    ok 4 - apply
+      ---
+      duration_ms: 21.259833
+      type: 'suite'
+      ...
+    # Subtest: verify
+        # Subtest: verifies target variables when actual matches planned expected values
+        ok 1 - verifies target variables when actual matches planned expected values
+          ---
+          duration_ms: 1.43948
+          type: 'test'
+          ...
+        # Subtest: reports discrepancies when target variable is missing or value differs
+        ok 2 - reports discrepancies when target variable is missing or value differs
+          ---
+          duration_ms: 1.103718
+          type: 'test'
+          ...
+        1..2
+    ok 5 - verify
+      ---
+      duration_ms: 2.97685
+      type: 'suite'
+      ...
+    1..5
+ok 339 - RepoVariablesMigrationModule
+  ---
+  duration_ms: 64.400646
+  type: 'suite'
+  ...
+# Subtest: RulesetsMigrationModule registers cleanly in ModuleRegistry
+ok 340 - RulesetsMigrationModule registers cleanly in ModuleRegistry
+  ---
+  duration_ms: 1.507751
+  type: 'test'
+  ...
+# Subtest: RulesetsMigrationModule discovers rulesets in live mode
+ok 341 - RulesetsMigrationModule discovers rulesets in live mode
+  ---
+  duration_ms: 1.027323
+  type: 'test'
+  ...
+# Subtest: RulesetsMigrationModule plans create, update, noop, and skip operations
+ok 342 - RulesetsMigrationModule plans create, update, noop, and skip operations
+  ---
+  duration_ms: 54.636899
+  type: 'test'
+  ...
+# Subtest: RulesetsMigrationModule apply executes POST and PUT mutations and skips noop
+ok 343 - RulesetsMigrationModule apply executes POST and PUT mutations and skips noop
+  ---
+  duration_ms: 0.867915
+  type: 'test'
+  ...
+# Subtest: RulesetsMigrationModule verify detects matching configuration and discrepancies
+ok 344 - RulesetsMigrationModule verify detects matching configuration and discrepancies
+  ---
+  duration_ms: 8.948383
+  type: 'test'
+  ...
+# Subtest: IdentityMappingEngine: transformations, dictionary overrides, and status tracking
+ok 345 - IdentityMappingEngine: transformations, dictionary overrides, and status tracking
+  ---
+  duration_ms: 1.861974
+  type: 'test'
+  ...
+# Subtest: sortTeamsTopologically: guarantees parent teams appear before child teams
+ok 346 - sortTeamsTopologically: guarantees parent teams appear before child teams
+  ---
+  duration_ms: 0.627786
+  type: 'test'
+  ...
+# Subtest: IdP Group Sync Blueprint and CSV Sanitization
+ok 347 - IdP Group Sync Blueprint and CSV Sanitization
+  ---
+  duration_ms: 0.628111
+  type: 'test'
+  ...
+# Subtest: deriveTeamRepoPermission maps roles and permission objects accurately
+ok 348 - deriveTeamRepoPermission maps roles and permission objects accurately
+  ---
+  duration_ms: 0.36038
+  type: 'test'
+  ...
+# Subtest: TeamsMigrationModule lifecycle: discover, plan, apply, verify
+ok 349 - TeamsMigrationModule lifecycle: discover, plan, apply, verify
+  ---
+  duration_ms: 28.373737
+  type: 'test'
+  ...
+# Subtest: TeamsMigrationModule: preserves and migrates custom repository roles on teams
+ok 350 - TeamsMigrationModule: preserves and migrates custom repository roles on teams
+  ---
+  duration_ms: 1.247597
+  type: 'test'
+  ...
+# Subtest: TeamsMigrationModule: migrates team organization roles (Security Manager & Custom Org Roles)
+ok 351 - TeamsMigrationModule: migrates team organization roles (Security Manager & Custom Org Roles)
+  ---
+  duration_ms: 1.944305
+  type: 'test'
+  ...
+# Subtest: TeamsMigrationModule: migrates non-IdP team memberships with EMU identity mapping
+ok 352 - TeamsMigrationModule: migrates non-IdP team memberships with EMU identity mapping
+  ---
+  duration_ms: 1.265777
+  type: 'test'
+  ...
+# Subtest: patches a GEI-disabled matching webhook instead of creating a duplicate (direct array response)
+ok 353 - patches a GEI-disabled matching webhook instead of creating a duplicate (direct array response)
+  ---
+  duration_ms: 2.796998
+  type: 'test'
+  ...
+# Subtest: creates a new webhook with name: web when target is missing the hook
+ok 354 - creates a new webhook with name: web when target is missing the hook
+  ---
+  duration_ms: 12.746343
+  type: 'test'
+  ...
+# Subtest: emits warning when webhook has secret but secretProvider is omitted
+ok 355 - emits warning when webhook has secret but secretProvider is omitted
+  ---
+  duration_ms: 0.706772
+  type: 'test'
+  ...
+# Subtest: does not re-enable a webhook disabled on the source
+ok 356 - does not re-enable a webhook disabled on the source
+  ---
+  duration_ms: 0.35404
+  type: 'test'
+  ...
+# Subtest: verify detects missing and mismatched target webhooks
+ok 357 - verify detects missing and mismatched target webhooks
+  ---
+  duration_ms: 0.559475
+  type: 'test'
+  ...
+# Subtest: MigrationOrchestrator executes pre-approved plan in dry-run mode
+ok 358 - MigrationOrchestrator executes pre-approved plan in dry-run mode
+  ---
+  duration_ms: 64.189436
+  type: 'test'
+  ...
+# Subtest: MigrationOrchestrator executes live mutations via TargetWriteClient
+ok 359 - MigrationOrchestrator executes live mutations via TargetWriteClient
+  ---
+  duration_ms: 1.210436
+  type: 'test'
+  ...
+# Subtest: MigrationOrchestrator throws if live migration lacks TargetWriteClient
+ok 360 - MigrationOrchestrator throws if live migration lacks TargetWriteClient
+  ---
+  duration_ms: 13.324506
+  type: 'test'
+  ...
+# Subtest: MigrationOrchestrator generates plan from scope on-the-fly and applies
+ok 361 - MigrationOrchestrator generates plan from scope on-the-fly and applies
+  ---
+  duration_ms: 62.543446
+  type: 'test'
+  ...
+# Subtest: VerificationOrchestrator verifies target state and generates report
+ok 362 - VerificationOrchestrator verifies target state and generates report
+  ---
+  duration_ms: 8.512268
+  type: 'test'
+  ...
+# Subtest: VerificationOrchestrator reports discrepancies and non-zero exit code when state differs
+ok 363 - VerificationOrchestrator reports discrepancies and non-zero exit code when state differs
+  ---
+  duration_ms: 1.769998
+  type: 'test'
+  ...
+# Subtest: HttpTargetWriteClient performs HTTP mutations
+ok 364 - HttpTargetWriteClient performs HTTP mutations
+  ---
+  duration_ms: 113.764766
+  type: 'test'
+  ...
+# Subtest: HttpTargetWriteClient normalizes trailing slashes on baseUrl
+ok 365 - HttpTargetWriteClient normalizes trailing slashes on baseUrl
+  ---
+  duration_ms: 16.467239
+  type: 'test'
+  ...
+# Subtest: MigrationOrchestrator passes modulesFilter to MigrationPlanner
+ok 366 - MigrationOrchestrator passes modulesFilter to MigrationPlanner
+  ---
+  duration_ms: 25.764153
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline executes all 7 stages sequentially
+ok 367 - RepositoryMigrationPipeline executes all 7 stages sequentially
+  ---
+  duration_ms: 141.0132
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline triggers --skip-releases and LargeReleasesStrategy when releases exceed 10 GiB
+ok 368 - RepositoryMigrationPipeline triggers --skip-releases and LargeReleasesStrategy when releases exceed 10 GiB
+  ---
+  duration_ms: 50.93277
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline triggers Git LFS strategy when repo uses LFS
+ok 369 - RepositoryMigrationPipeline triggers Git LFS strategy when repo uses LFS
+  ---
+  duration_ms: 44.649485
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline halts on GEI failure and contains error without applying subsequent stages
+ok 370 - RepositoryMigrationPipeline halts on GEI failure and contains error without applying subsequent stages
+  ---
+  duration_ms: 14.690619
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline checkpoint resumption skips completed stages
+ok 371 - RepositoryMigrationPipeline checkpoint resumption skips completed stages
+  ---
+  duration_ms: 19.580944
+  type: 'test'
+  ...
+# Subtest: MigrationOrchestrator throttles repository pipelines to configured concurrency limit
+ok 372 - MigrationOrchestrator throttles repository pipelines to configured concurrency limit
+  ---
+  duration_ms: 230.501
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline Stage 6 resolves and executes repo-settings and decouples org-level mannequins
+ok 373 - RepositoryMigrationPipeline Stage 6 resolves and executes repo-settings and decouples org-level mannequins
+  ---
+  duration_ms: 24.991417
+  type: 'test'
+  ...
+# Subtest: RepositoryMigrationPipeline automatically routes >40 GiB repository to Git mirror-push in Stage 3
+ok 374 - RepositoryMigrationPipeline automatically routes >40 GiB repository to Git mirror-push in Stage 3
+  ---
+  duration_ms: 34.363331
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer partitions independent repositories into balanced cohorts
+ok 375 - ScopeMatrixSlicer partitions independent repositories into balanced cohorts
+  ---
+  duration_ms: 23.692992
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer keeps strongly connected cycles together in the same cohort
+ok 376 - ScopeMatrixSlicer keeps strongly connected cycles together in the same cohort
+  ---
+  duration_ms: 42.763212
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer handles oversized cycles without breaking atomic dependency boundaries
+ok 377 - ScopeMatrixSlicer handles oversized cycles without breaking atomic dependency boundaries
+  ---
+  duration_ms: 0.73868
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer generates conformant GitHub Actions matrix payload
+ok 378 - ScopeMatrixSlicer generates conformant GitHub Actions matrix payload
+  ---
+  duration_ms: 0.556243
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer.aggregateCohortResults consolidates parallel cohort outcomes
+ok 379 - ScopeMatrixSlicer.aggregateCohortResults consolidates parallel cohort outcomes
+  ---
+  duration_ms: 0.50309
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer.aggregateCohortResults reports complete when all cohorts succeed
+ok 380 - ScopeMatrixSlicer.aggregateCohortResults reports complete when all cohorts succeed
+  ---
+  duration_ms: 8.317298
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer generates exactly 1 sequential cohort when runnerCapacity is 1
+ok 381 - ScopeMatrixSlicer generates exactly 1 sequential cohort when runnerCapacity is 1
+  ---
+  duration_ms: 0.539647
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer dynamically fans out to up to N cohorts when runnerCapacity is N
+ok 382 - ScopeMatrixSlicer dynamically fans out to up to N cohorts when runnerCapacity is N
+  ---
+  duration_ms: 0.319458
+  type: 'test'
+  ...
+# Subtest: ScopeMatrixSlicer cleanly handles more runners than repositories
+ok 383 - ScopeMatrixSlicer cleanly handles more runners than repositories
+  ---
+  duration_ms: 0.543346
+  type: 'test'
+  ...
+# Subtest: calculateEntityDiff
+    # Subtest: creates planned operation for new resource (source exists, target absent)
+    ok 1 - creates planned operation for new resource (source exists, target absent)
+      ---
+      duration_ms: 2.014771
+      type: 'test'
+      ...
+    # Subtest: creates noop planned operation when target matches source
+    ok 2 - creates noop planned operation when target matches source
+      ---
+      duration_ms: 0.24382
+      type: 'test'
+      ...
+    # Subtest: creates update planned operation when target differs from source and overwrite allowed
+    ok 3 - creates update planned operation when target differs from source and overwrite allowed
+      ---
+      duration_ms: 0.307279
+      type: 'test'
+      ...
+    # Subtest: creates skip planned operation when target differs from source and canOverwrite is false
+    ok 4 - creates skip planned operation when target differs from source and canOverwrite is false
+      ---
+      duration_ms: 0.173125
+      type: 'test'
+      ...
+    1..4
+ok 384 - calculateEntityDiff
+  ---
+  duration_ms: 4.167759
+  type: 'suite'
+  ...
+# Subtest: MigrationPlanner
+    # Subtest: generates a strictly validated MigrationPlan in live mode
+    ok 1 - generates a strictly validated MigrationPlan in live mode
+      ---
+      duration_ms: 27.208163
+      type: 'test'
+      ...
+    # Subtest: uses cached discovery bundle without source network calls
+    ok 2 - uses cached discovery bundle without source network calls
+      ---
+      duration_ms: 116.70019
+      type: 'test'
+      ...
+    # Subtest: writes migration plan atomically to disk with non-clobber protection
+    ok 3 - writes migration plan atomically to disk with non-clobber protection
+      ---
+      duration_ms: 10.605448
+      type: 'test'
+      ...
+    1..3
+ok 385 - MigrationPlanner
+  ---
+  duration_ms: 155.139613
+  type: 'suite'
+  ...
+# Subtest: rewriteTeamReferences replaces source organization and team slugs
+ok 386 - rewriteTeamReferences replaces source organization and team slugs
+  ---
+  duration_ms: 9.142889
+  type: 'test'
+  ...
+# Subtest: rewriteTeamReferences returns hasChanges: false when no source team references exist
+ok 387 - rewriteTeamReferences returns hasChanges: false when no source team references exist
+  ---
+  duration_ms: 0.235772
+  type: 'test'
+  ...
+# Subtest: scanCodeownersCandidates discovers static files and directory templates
+ok 388 - scanCodeownersCandidates discovers static files and directory templates
+  ---
+  duration_ms: 1.61431
+  type: 'test'
+  ...
+# Subtest: applyFileRepair commits directly to default branch when permitted
+ok 389 - applyFileRepair commits directly to default branch when permitted
+  ---
+  duration_ms: 0.553785
+  type: 'test'
+  ...
+# Subtest: applyFileRepair falls back to pull request when direct commit fails under auto mode
+ok 390 - applyFileRepair falls back to pull request when direct commit fails under auto mode
+  ---
+  duration_ms: 0.753751
+  type: 'test'
+  ...
+# Subtest: CodeownersRepairModule full lifecycle (discover, plan, apply, verify)
+ok 391 - CodeownersRepairModule full lifecycle (discover, plan, apply, verify)
+  ---
+  duration_ms: 2.984506
+  type: 'test'
+  ...
+# Subtest: Mannequin Reclamation & Attribution Engine (Task 027)
+    # Subtest: parseMannequinCsv & serializeMannequinCsv
+        # Subtest: parses standard GEI mannequin CSV output
+        ok 1 - parses standard GEI mannequin CSV output
+          ---
+          duration_ms: 2.416569
+          type: 'test'
+          ...
+        # Subtest: handles quoted fields, whitespace, and alternate header casing
+        ok 2 - handles quoted fields, whitespace, and alternate header casing
+          ---
+          duration_ms: 0.326069
+          type: 'test'
+          ...
+        # Subtest: throws on invalid header missing required columns
+        ok 3 - throws on invalid header missing required columns
+          ---
+          duration_ms: 0.626528
+          type: 'test'
+          ...
+        # Subtest: serializes records to RFC 4180 compliant CSV
+        ok 4 - serializes records to RFC 4180 compliant CSV
+          ---
+          duration_ms: 4.3828
+          type: 'test'
+          ...
+        1..4
+    ok 1 - parseMannequinCsv & serializeMannequinCsv
+      ---
+      duration_ms: 8.962551
+      type: 'suite'
+      ...
+    # Subtest: Identity Mapping & Command Execution
+        # Subtest: translates mannequin users using suffix and dictionary mappings
+        ok 1 - translates mannequin users using suffix and dictionary mappings
+          ---
+          duration_ms: 67.140416
+          type: 'test'
+          ...
+        # Subtest: omits --skip-invitation in non-EMU environments and tracks invited status
+        ok 2 - omits --skip-invitation in non-EMU environments and tracks invited status
+          ---
+          duration_ms: 3.848205
+          type: 'test'
+          ...
+        # Subtest: flags unmapped contributors when manual strategy lacks explicit mapping
+        ok 3 - flags unmapped contributors when manual strategy lacks explicit mapping
+          ---
+          duration_ms: 13.418361
+          type: 'test'
+          ...
+        # Subtest: exportMannequinInventory and executeMannequinReclamation execute commands as expected
+        ok 4 - exportMannequinInventory and executeMannequinReclamation execute commands as expected
+          ---
+          duration_ms: 13.537396
+          type: 'test'
+          ...
+        1..4
+    ok 2 - Identity Mapping & Command Execution
+      ---
+      duration_ms: 98.712321
+      type: 'suite'
+      ...
+    # Subtest: Full Module Lifecycle (discover, plan, apply, verify)
+        # Subtest: registers in ModuleRegistry and executes 4-stage lifecycle
+        ok 1 - registers in ModuleRegistry and executes 4-stage lifecycle
+          ---
+          duration_ms: 10.076871
+          type: 'test'
+          ...
+        # Subtest: reports discrepancies during verify when unmapped mannequins exist
+        ok 2 - reports discrepancies during verify when unmapped mannequins exist
+          ---
+          duration_ms: 0.679321
+          type: 'test'
+          ...
+        1..2
+    ok 3 - Full Module Lifecycle (discover, plan, apply, verify)
+      ---
+      duration_ms: 10.980091
+      type: 'suite'
+      ...
+    1..3
+ok 392 - Mannequin Reclamation & Attribution Engine (Task 027)
+  ---
+  duration_ms: 138.50251
+  type: 'suite'
+  ...
+# Subtest: diffSecuritySettings plans feature enabling and handles GHAS license boundary
+ok 393 - diffSecuritySettings plans feature enabling and handles GHAS license boundary
+  ---
+  duration_ms: 1.643075
+  type: 'test'
+  ...
+# Subtest: matchAlertRemediations matches open target alerts to source resolved alerts
+ok 394 - matchAlertRemediations matches open target alerts to source resolved alerts
+  ---
+  duration_ms: 0.557617
+  type: 'test'
+  ...
+# Subtest: GhasSecurityMigrationModule full lifecycle (discover, plan, apply, verify)
+ok 395 - GhasSecurityMigrationModule full lifecycle (discover, plan, apply, verify)
+  ---
+  duration_ms: 6.288826
+  type: 'test'
+  ...
+# Subtest: SourceCredentialInspector
+    # Subtest: passes cleanly for classic PAT with repo and admin:org on admin user
+    ok 1 - passes cleanly for classic PAT with repo and admin:org on admin user
+      ---
+      duration_ms: 1.908144
+      type: 'test'
+      ...
+    # Subtest: fails with blocker if repo scope is missing
+    ok 2 - fails with blocker if repo scope is missing
+      ---
+      duration_ms: 0.507749
+      type: 'test'
+      ...
+    # Subtest: fails with blocker if admin:org and read:org are missing
+    ok 3 - fails with blocker if admin:org and read:org are missing
+      ---
+      duration_ms: 0.260784
+      type: 'test'
+      ...
+    # Subtest: fails with blocker when fine-grained PAT is detected (no oauthScopes)
+    ok 4 - fails with blocker when fine-grained PAT is detected (no oauthScopes)
+      ---
+      duration_ms: 0.326299
+      type: 'test'
+      ...
+    # Subtest: fails with blocker when SAML SSO authorization is required
+    ok 5 - fails with blocker when SAML SSO authorization is required
+      ---
+      duration_ms: 0.322545
+      type: 'test'
+      ...
+    # Subtest: warns operator with migrator role grant instructions when user is not admin
+    ok 6 - warns operator with migrator role grant instructions when user is not admin
+      ---
+      duration_ms: 0.243761
+      type: 'test'
+      ...
+    # Subtest: integrates into PreflightEvaluator and blocks all repositories if credentials fail
+    ok 7 - integrates into PreflightEvaluator and blocks all repositories if credentials fail
+      ---
+      duration_ms: 30.02163
+      type: 'test'
+      ...
+    1..7
+ok 396 - SourceCredentialInspector
+  ---
+  duration_ms: 47.220907
+  type: 'suite'
+  ...
+# Subtest: Preflight Engine
+    # Subtest: isRepositoryMigrationsExemptBypass
+        # Subtest: returns true when bypass actor is "Repository migrations" with mode "exempt"
+        ok 1 - returns true when bypass actor is "Repository migrations" with mode "exempt"
+          ---
+          duration_ms: 1.085819
+          type: 'test'
+          ...
+        # Subtest: returns false when bypass mode is "always" or "always_allow" (DEC-012)
+        ok 2 - returns false when bypass mode is "always" or "always_allow" (DEC-012)
+          ---
+          duration_ms: 0.312651
+          type: 'test'
+          ...
+        # Subtest: returns false for other actors even in exempt mode
+        ok 3 - returns false for other actors even in exempt mode
+          ---
+          duration_ms: 0.157418
+          type: 'test'
+          ...
+        1..3
+    ok 1 - isRepositoryMigrationsExemptBypass
+      ---
+      duration_ms: 2.724063
+      type: 'suite'
+      ...
+    # Subtest: SourceRepositoryInspector
+        # Subtest: classifies normal repository within all limits as "ready"
+        ok 1 - classifies normal repository within all limits as "ready"
+          ---
+          duration_ms: 5.589623
+          type: 'test'
+          ...
+        # Subtest: classifies repository with LFS as "ready-with-follow-up"
+        ok 2 - classifies repository with LFS as "ready-with-follow-up"
+          ---
+          duration_ms: 0.611662
+          type: 'test'
+          ...
+        # Subtest: classifies repository with releases > 10 GiB as "requires-special-strategy"
+        ok 3 - classifies repository with releases > 10 GiB as "requires-special-strategy"
+          ---
+          duration_ms: 0.511798
+          type: 'test'
+          ...
+        # Subtest: classifies repository exceeding 2 GiB commit limit as "blocked"
+        ok 4 - classifies repository exceeding 2 GiB commit limit as "blocked"
+          ---
+          duration_ms: 0.420205
+          type: 'test'
+          ...
+        1..4
+    ok 2 - SourceRepositoryInspector
+      ---
+      duration_ms: 7.706861
+      type: 'suite'
+      ...
+    # Subtest: DestinationBlockerInspector
+        # Subtest: passes when active rulesets have Repository migrations in Exempt mode
+        ok 1 - passes when active rulesets have Repository migrations in Exempt mode
+          ---
+          duration_ms: 0.815799
+          type: 'test'
+          ...
+        # Subtest: fails when active ruleset has Repository migrations in always_allow mode
+        ok 2 - fails when active ruleset has Repository migrations in always_allow mode
+          ---
+          duration_ms: 0.557845
+          type: 'test'
+          ...
+        # Subtest: detects existing target repositories as name conflicts
+        ok 3 - detects existing target repositories as name conflicts
+          ---
+          duration_ms: 1.389624
+          type: 'test'
+          ...
+        1..3
+    ok 3 - DestinationBlockerInspector
+      ---
+      duration_ms: 11.140697
+      type: 'suite'
+      ...
+    # Subtest: PreflightEvaluator (End-to-End)
+        # Subtest: produces a fully valid MigrationPreflightReport classifying 4 tiers
+        ok 1 - produces a fully valid MigrationPreflightReport classifying 4 tiers
+          ---
+          duration_ms: 29.392982
+          type: 'test'
+          ...
+        # Subtest: blocks all repositories if destination ruleset bypass is missing or not exempt
+        ok 2 - blocks all repositories if destination ruleset bypass is missing or not exempt
+          ---
+          duration_ms: 21.685801
+          type: 'test'
+          ...
+        1..2
+    ok 4 - PreflightEvaluator (End-to-End)
+      ---
+      duration_ms: 51.413864
+      type: 'suite'
+      ...
+    1..4
+ok 397 - Preflight Engine
+  ---
+  duration_ms: 90.176925
+  type: 'suite'
+  ...
+# Subtest: git-sizer parsing and sizing limits
+    # Subtest: formatBytes
+        # Subtest: formats bytes, KiB, MiB, and GiB correctly
+        ok 1 - formats bytes, KiB, MiB, and GiB correctly
+          ---
+          duration_ms: 0.941273
+          type: 'test'
+          ...
+        1..1
+    ok 1 - formatBytes
+      ---
+      duration_ms: 1.91966
+      type: 'suite'
+      ...
+    # Subtest: parseGitSizerOutput
+        # Subtest: parses standard snake_case git-sizer JSON output
+        ok 1 - parses standard snake_case git-sizer JSON output
+          ---
+          duration_ms: 0.645174
+          type: 'test'
+          ...
+        # Subtest: parses camelCase and alternative key naming in object format
+        ok 2 - parses camelCase and alternative key naming in object format
+          ---
+          duration_ms: 0.185093
+          type: 'test'
+          ...
+        # Subtest: defaults missing or negative fields safely to 0
+        ok 3 - defaults missing or negative fields safely to 0
+          ---
+          duration_ms: 0.177057
+          type: 'test'
+          ...
+        # Subtest: throws descriptive error on malformed JSON string
+        ok 4 - throws descriptive error on malformed JSON string
+          ---
+          duration_ms: 0.551002
+          type: 'test'
+          ...
+        1..4
+    ok 2 - parseGitSizerOutput
+      ---
+      duration_ms: 2.011012
+      type: 'suite'
+      ...
+    # Subtest: evaluateSizingLimits
+        # Subtest: passes repositories well within platform limits
+        ok 1 - passes repositories well within platform limits
+          ---
+          duration_ms: 0.40079
+          type: 'test'
+          ...
+        # Subtest: blocks repositories exceeding the 40 GiB repository Git size limit
+        ok 2 - blocks repositories exceeding the 40 GiB repository Git size limit
+          ---
+          duration_ms: 0.534993
+          type: 'test'
+          ...
+        # Subtest: blocks repositories exceeding the 2 GiB commit size limit
+        ok 3 - blocks repositories exceeding the 2 GiB commit size limit
+          ---
+          duration_ms: 0.223363
+          type: 'test'
+          ...
+        # Subtest: blocks repositories exceeding the 400 MiB migration file size limit
+        ok 4 - blocks repositories exceeding the 400 MiB migration file size limit
+          ---
+          duration_ms: 0.482194
+          type: 'test'
+          ...
+        # Subtest: warns when file is between 100 MiB and 400 MiB (allowed in GEI, needs LFS post-migration)
+        ok 5 - warns when file is between 100 MiB and 400 MiB (allowed in GEI, needs LFS post-migration)
+          ---
+          duration_ms: 0.456294
+          type: 'test'
+          ...
+        # Subtest: blocks repositories with Git reference names exceeding 255 bytes
+        ok 6 - blocks repositories with Git reference names exceeding 255 bytes
+          ---
+          duration_ms: 0.194056
+          type: 'test'
+          ...
+        1..6
+    ok 3 - evaluateSizingLimits
+      ---
+      duration_ms: 18.763457
+      type: 'suite'
+      ...
+    1..3
+ok 398 - git-sizer parsing and sizing limits
+  ---
+  duration_ms: 39.766986
+  type: 'suite'
+  ...
+# Subtest: ModuleRegistry
+    # Subtest: registers and retrieves modules by id
+    ok 1 - registers and retrieves modules by id
+      ---
+      duration_ms: 1.638769
+      type: 'test'
+      ...
+    # Subtest: rejects duplicate module registration
+    ok 2 - rejects duplicate module registration
+      ---
+      duration_ms: 0.326362
+      type: 'test'
+      ...
+    # Subtest: rejects invalid module ids
+    ok 3 - rejects invalid module ids
+      ---
+      duration_ms: 0.200012
+      type: 'test'
+      ...
+    # Subtest: getAll returns all registered modules
+    ok 4 - getAll returns all registered modules
+      ---
+      duration_ms: 1.055197
+      type: 'test'
+      ...
+    1..4
+ok 399 - ModuleRegistry
+  ---
+  duration_ms: 7.773221
+  type: 'suite'
+  ...
+# Subtest: recreates releases oldest-first and streams assets without buffering
+ok 400 - recreates releases oldest-first and streams assets without buffering
+  ---
+  duration_ms: 54.026164
+  type: 'test'
+  ...
+# Subtest: requires a GEI run that deliberately skipped releases
+ok 401 - requires a GEI run that deliberately skipped releases
+  ---
+  duration_ms: 0.9486
+  type: 'test'
+  ...
+# Subtest: LargeReleasesMigrationStrategy execute with dryRun: true calculates diff metrics and calls neither recreate nor uploadAsset
+ok 402 - LargeReleasesMigrationStrategy execute with dryRun: true calculates diff metrics and calls neither recreate nor uploadAsset
+  ---
+  duration_ms: 0.545555
+  type: 'test'
+  ...
+# Subtest: formatResultsReadmeMarkdown produces clean executive overview with markdown tables
+ok 403 - formatResultsReadmeMarkdown produces clean executive overview with markdown tables
+  ---
+  duration_ms: 2.265653
+  type: 'test'
+  ...
+# Subtest: formatSuccessRepoMarkdown formats clean success documentation
+ok 404 - formatSuccessRepoMarkdown formats clean success documentation
+  ---
+  duration_ms: 0.518746
+  type: 'test'
+  ...
+# Subtest: formatFailureRepoMarkdown formats caution alert and diagnostic runbook
+ok 405 - formatFailureRepoMarkdown formats caution alert and diagnostic runbook
+  ---
+  duration_ms: 8.830104
+  type: 'test'
+  ...
+# Subtest: generateMigrationResults creates in-memory file tree for all successful repositories
+ok 406 - generateMigrationResults creates in-memory file tree for all successful repositories
+  ---
+  duration_ms: 34.704612
+  type: 'test'
+  ...
+# Subtest: generateMigrationResults creates failure documentation when verification finds discrepancies
+ok 407 - generateMigrationResults creates failure documentation when verification finds discrepancies
+  ---
+  duration_ms: 1.370532
+  type: 'test'
+  ...
+# Subtest: writeResultsToDirectory persists files to temporary directory
+ok 408 - writeResultsToDirectory persists files to temporary directory
+  ---
+  duration_ms: 1.986808
+  type: 'test'
+  ...
+# Subtest: creates repo when missing and publishes complete atomic commit tree
+ok 409 - creates repo when missing and publishes complete atomic commit tree
+  ---
+  duration_ms: 18.161766
+  type: 'test'
+  ...
+# Subtest: updates existing repo without re-creating repository
+ok 410 - updates existing repo without re-creating repository
+  ---
+  duration_ms: 0.710485
+  type: 'test'
+  ...
+# Subtest: dry-run mode produces zero write mutations
+ok 411 - dry-run mode produces zero write mutations
+  ---
+  duration_ms: 0.488934
+  type: 'test'
+  ...
+# Subtest: defensively handles errors and redacts tokens from exception messages
+ok 412 - defensively handles errors and redacts tokens from exception messages
+  ---
+  duration_ms: 12.24473
+  type: 'test'
+  ...
+# Subtest: Reporting & Step Summary Subsystem
+    # Subtest: sanitizeFormula
+        # Subtest: neutralizes formula injection triggers (=, +, -, @, \\t, \\r)
+        ok 1 - neutralizes formula injection triggers (=, +, -, @, \\t, \\r)
+          ---
+          duration_ms: 1.026398
+          type: 'test'
+          ...
+        # Subtest: leaves safe strings untouched
+        ok 2 - leaves safe strings untouched
+          ---
+          duration_ms: 0.352577
+          type: 'test'
+          ...
+        1..2
+    ok 1 - sanitizeFormula
+      ---
+      duration_ms: 2.312549
+      type: 'suite'
+      ...
+    # Subtest: formatStepSummaryMarkdown
+        # Subtest: formats a comprehensive Markdown summary across all stages
+        ok 1 - formats a comprehensive Markdown summary across all stages
+          ---
+          duration_ms: 1.006147
+          type: 'test'
+          ...
+        # Subtest: renders alert boxes for errors and discrepancies
+        ok 2 - renders alert boxes for errors and discrepancies
+          ---
+          duration_ms: 0.282119
+          type: 'test'
+          ...
+        1..2
+    ok 2 - formatStepSummaryMarkdown
+      ---
+      duration_ms: 1.559738
+      type: 'suite'
+      ...
+    # Subtest: appendStepSummary
+        # Subtest: appends Markdown content to specified file path
+        ok 1 - appends Markdown content to specified file path
+          ---
+          duration_ms: 1.368699
+          type: 'test'
+          ...
+        # Subtest: returns false when no file path is provided and env var is absent
+        ok 2 - returns false when no file path is provided and env var is absent
+          ---
+          duration_ms: 0.228787
+          type: 'test'
+          ...
+        1..2
+    ok 3 - appendStepSummary
+      ---
+      duration_ms: 2.258724
+      type: 'suite'
+      ...
+    # Subtest: buildSummaryFromExecutionReport
+        # Subtest: constructs MigrationRunSummary from raw ExecutionReport
+        ok 1 - constructs MigrationRunSummary from raw ExecutionReport
+          ---
+          duration_ms: 0.91659
+          type: 'test'
+          ...
+        # Subtest: extracts failedMetadataCategories and recommendations into summary
+        ok 2 - extracts failedMetadataCategories and recommendations into summary
+          ---
+          duration_ms: 1.145907
+          type: 'test'
+          ...
+        1..2
+    ok 4 - buildSummaryFromExecutionReport
+      ---
+      duration_ms: 2.388284
+      type: 'suite'
+      ...
+    # Subtest: buildSummaryFromVerification
+        # Subtest: constructs MigrationRunSummary from VerificationReport
+        ok 1 - constructs MigrationRunSummary from VerificationReport
+          ---
+          duration_ms: 0.436037
+          type: 'test'
+          ...
+        1..1
+    ok 5 - buildSummaryFromVerification
+      ---
+      duration_ms: 0.714779
+      type: 'suite'
+      ...
+    # Subtest: writeJsonSummaryFile & readJsonSummaryFile
+        # Subtest: writes and reads JSON summary file accurately
+        ok 1 - writes and reads JSON summary file accurately
+          ---
+          duration_ms: 1.08822
+          type: 'test'
+          ...
+        1..1
+    ok 6 - writeJsonSummaryFile & readJsonSummaryFile
+      ---
+      duration_ms: 1.192831
+      type: 'suite'
+      ...
+    1..6
+ok 413 - Reporting & Step Summary Subsystem
+  ---
+  duration_ms: 11.511649
+  type: 'suite'
+  ...
+# Subtest: Scope Generator (scripts/generate-scope.mjs)
+    # Subtest: parses various repository URL formats correctly
+    ok 1 - parses various repository URL formats correctly
+      ---
+      duration_ms: 2.655492
+      type: 'test'
+      ...
+    # Subtest: generates a valid migration scope from an explicit repository list
+    ok 2 - generates a valid migration scope from an explicit repository list
+      ---
+      duration_ms: 7.669112
+      type: 'test'
+      ...
+    # Subtest: generates a valid scope from a file containing repository URLs (and infers source org)
+    ok 3 - generates a valid scope from a file containing repository URLs (and infers source org)
+      ---
+      duration_ms: 2.869691
+      type: 'test'
+      ...
+    # Subtest: supports scaling to several hundred repository URLs in a file
+    ok 4 - supports scaling to several hundred repository URLs in a file
+      ---
+      duration_ms: 49.834649
+      type: 'test'
+      ...
+    # Subtest: rejects repository URLs that do not match expected source organization
+    ok 5 - rejects repository URLs that do not match expected source organization
+      ---
+      duration_ms: 3.327457
+      type: 'test'
+      ...
+    # Subtest: supports target repository prefix and suffix
+    ok 6 - supports target repository prefix and suffix
+      ---
+      duration_ms: 0.654325
+      type: 'test'
+      ...
+    # Subtest: generates org-only scope when orgOnly is true
+    ok 7 - generates org-only scope when orgOnly is true
+      ---
+      duration_ms: 0.87693
+      type: 'test'
+      ...
+    # Subtest: throws an error if source or target is missing
+    ok 8 - throws an error if source or target is missing
+      ---
+      duration_ms: 0.529399
+      type: 'test'
+      ...
+    # Subtest: throws an error if no repositories are provided and orgOnly is false
+    ok 9 - throws an error if no repositories are provided and orgOnly is false
+      ---
+      duration_ms: 0.459809
+      type: 'test'
+      ...
+    1..9
+ok 414 - Scope Generator (scripts/generate-scope.mjs)
+  ---
+  duration_ms: 71.168429
+  type: 'suite'
+  ...
+# Subtest: Scratch Disk Headroom Verification (DEC-004 & Scale Adaptation)
+    # Subtest: calculates required bytes using 1.5x safety multiplier and returns sufficient on available disk
+    ok 1 - calculates required bytes using 1.5x safety multiplier and returns sufficient on available disk
+      ---
+      duration_ms: 2.244924
+      type: 'test'
+      ...
+    # Subtest: rejects execution and returns sufficient=false when required space exceeds available disk
+    ok 2 - rejects execution and returns sufficient=false when required space exceeds available disk
+      ---
+      duration_ms: 1.014316
+      type: 'test'
+      ...
+    1..2
+ok 415 - Scratch Disk Headroom Verification (DEC-004 & Scale Adaptation)
+  ---
+  duration_ms: 4.56013
+  type: 'suite'
+  ...
+# Subtest: Scale-Adaptive Repository Sizing & Strategy Classification
+    # Subtest: classifies standard repository (<10 GiB) to standard GEI on ubuntu-latest
+    ok 1 - classifies standard repository (<10 GiB) to standard GEI on ubuntu-latest
+      ---
+      duration_ms: 1.975456
+      type: 'test'
+      ...
+    # Subtest: classifies large release repo (>10 GiB releases) to GEI with skip-releases and fallback streamer
+    ok 2 - classifies large release repo (>10 GiB releases) to GEI with skip-releases and fallback streamer
+      ---
+      duration_ms: 0.239633
+      type: 'test'
+      ...
+    # Subtest: classifies Git LFS repo to dual-remote streamer
+    ok 3 - classifies Git LFS repo to dual-remote streamer
+      ---
+      duration_ms: 0.179606
+      type: 'test'
+      ...
+    # Subtest: classifies massive repo (>40 GiB) to GEI bypass, mirror-push, and high-disk runners
+    ok 4 - classifies massive repo (>40 GiB) to GEI bypass, mirror-push, and high-disk runners
+      ---
+      duration_ms: 0.342756
+      type: 'test'
+      ...
+    # Subtest: partitions multiple repositories into scale-adaptive cohorts
+    ok 5 - partitions multiple repositories into scale-adaptive cohorts
+      ---
+      duration_ms: 0.967824
+      type: 'test'
+      ...
+    1..5
+ok 416 - Scale-Adaptive Repository Sizing & Strategy Classification
+  ---
+  duration_ms: 5.173417
+  type: 'suite'
+  ...
+1..416
+# tests 701
+# suites 126
+# pass 701
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 31918.516925

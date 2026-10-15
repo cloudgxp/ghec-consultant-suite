@@ -21,115 +21,109 @@ export const EnterpriseMatrix: React.FC<Props> = ({
 }) => {
   const [sortKey, setSortKey] = useState<SortKey>('blockers');
   const [descending, setDescending] = useState(true);
+  // ⚡ Bolt: Optimize metric aggregation by tracking values in a single pass O(N)
+  // instead of redundant sequential array operations like `.filter().length` in render.
+  const rawRows = useMemo(() => {
+    return bundle.organizations.map((organization) => {
+      let repositories = 0;
+      let privateRepos = 0;
+      let internalRepos = 0;
+      let publicRepos = 0;
+      let storage = 0;
+      let lfs = false;
+      let workflows = 0;
+      let selfHosted = 0;
+      let knownSecurityCount = 0;
+      let enabledSecurityCount = 0;
+      let linked = 0;
+      let unlinked = 0;
+      let highFindings = 0;
+      let mediumFindings = 0;
+      let blockers = 0;
+
+      for (const entity of bundle.entities) {
+        if (entity.organizationId !== organization.id) continue;
+
+        if (entity.kind === 'repository') {
+          repositories++;
+          if (entity.visibility === 'private') privateRepos++;
+          else if (entity.visibility === 'internal') internalRepos++;
+          else if (entity.visibility === 'public') publicRepos++;
+
+          if (entity.size.availability === 'observed') {
+            storage += entity.size.value ?? 0;
+          }
+        } else if (entity.kind === 'actions') {
+          if (entity.workflowCount.availability === 'observed') {
+            workflows += entity.workflowCount.value ?? 0;
+          }
+          if (entity.runnerTypes.includes('self-hosted')) {
+            selfHosted++;
+          }
+        } else if (entity.kind === 'security') {
+          if (
+            entity.codeScanning !== 'unknown' ||
+            entity.dependabot !== 'unknown'
+          ) {
+            knownSecurityCount++;
+            if (entity.codeScanning === 'enabled') enabledSecurityCount++;
+            if (entity.dependabot === 'enabled') enabledSecurityCount++;
+          }
+        } else if (entity.kind === 'identity') {
+          if (entity.ssoStatus === 'linked') linked++;
+          else if (entity.ssoStatus === 'unlinked') unlinked++;
+        } else if (entity.kind === 'lfs' && entity.indicator === 'detected') {
+          lfs = true;
+        }
+      }
+
+      for (const finding of insights.findings) {
+        if (finding.organizationId !== organization.id) continue;
+        if (finding.severity === 'high') {
+          highFindings++;
+          blockers++;
+        } else if (finding.severity === 'medium') {
+          mediumFindings++;
+          blockers++;
+        }
+      }
+
+      const denominator = knownSecurityCount * 2;
+      return {
+        id: organization.id,
+        name: resolveOrgName(bundle, organization.id),
+        login: organization.login,
+        repositories,
+        private: privateRepos,
+        internal: internalRepos,
+        public: publicRepos,
+        storage,
+        lfs,
+        high: highFindings,
+        medium: mediumFindings,
+        blockers,
+        workflows,
+        selfHosted,
+        security: denominator ? (enabledSecurityCount / denominator) * 100 : -1,
+        linked,
+        unlinked,
+      };
+    });
+  }, [bundle, insights]);
+
+  // ⚡ Bolt: Decouple sorting into its own memoized block to prevent recalculating aggregations
   const rows = useMemo(
     () =>
-      bundle.organizations
-        .map((organization) => {
-          const entities = bundle.entities.filter(
-            (entity) => entity.organizationId === organization.id,
-          );
-          const repositories = entities.filter(
-            (entity) => entity.kind === 'repository',
-          );
-          const actions = entities.filter(
-            (entity) => entity.kind === 'actions',
-          );
-          const security = entities.filter(
-            (entity) => entity.kind === 'security',
-          );
-          const identities = entities.filter(
-            (entity) => entity.kind === 'identity',
-          );
-          const findings = insights.findings.filter(
-            (finding) => finding.organizationId === organization.id,
-          );
-          const knownSecurity = security.filter(
-            (item) =>
-              item.kind === 'security' &&
-              (item.codeScanning !== 'unknown' ||
-                item.dependabot !== 'unknown'),
-          );
-          const enabledSecurity = knownSecurity.reduce(
-            (count, item) =>
-              count +
-              (item.kind === 'security' && item.codeScanning === 'enabled'
-                ? 1
-                : 0) +
-              (item.kind === 'security' && item.dependabot === 'enabled'
-                ? 1
-                : 0),
-            0,
-          );
-          const denominator = knownSecurity.length * 2;
-          return {
-            id: organization.id,
-            name: resolveOrgName(bundle, organization.id),
-            login: organization.login,
-            repositories: repositories.length,
-            private: repositories.filter(
-              (item) =>
-                item.kind === 'repository' && item.visibility === 'private',
-            ).length,
-            internal: repositories.filter(
-              (item) =>
-                item.kind === 'repository' && item.visibility === 'internal',
-            ).length,
-            public: repositories.filter(
-              (item) =>
-                item.kind === 'repository' && item.visibility === 'public',
-            ).length,
-            storage: repositories.reduce(
-              (sum, item) =>
-                sum +
-                (item.kind === 'repository' &&
-                item.size.availability === 'observed'
-                  ? (item.size.value ?? 0)
-                  : 0),
-              0,
-            ),
-            lfs: entities.some(
-              (item) => item.kind === 'lfs' && item.indicator === 'detected',
-            ),
-            high: findings.filter((item) => item.severity === 'high').length,
-            medium: findings.filter((item) => item.severity === 'medium')
-              .length,
-            blockers: findings.filter(
-              (item) => item.severity === 'high' || item.severity === 'medium',
-            ).length,
-            workflows: actions.reduce(
-              (sum, item) =>
-                sum +
-                (item.kind === 'actions' &&
-                item.workflowCount.availability === 'observed'
-                  ? (item.workflowCount.value ?? 0)
-                  : 0),
-              0,
-            ),
-            selfHosted: actions.filter(
-              (item) =>
-                item.kind === 'actions' &&
-                item.runnerTypes.includes('self-hosted'),
-            ).length,
-            security: denominator ? (enabledSecurity / denominator) * 100 : -1,
-            linked: identities.filter(
-              (item) => item.kind === 'identity' && item.ssoStatus === 'linked',
-            ).length,
-            unlinked: identities.filter(
-              (item) =>
-                item.kind === 'identity' && item.ssoStatus === 'unlinked',
-            ).length,
-          };
-        })
-        .sort((a, b) => {
-          const av = sortKey === 'name' ? a.name : a[sortKey];
-          const bv = sortKey === 'name' ? b.name : b[sortKey];
-          const result =
-            typeof av === 'string' && typeof bv === 'string'
-              ? av.localeCompare(bv)
-              : Number(av) - Number(bv);
-          return descending ? -result : result;
-        }),
-    [bundle, insights, sortKey, descending],
+      [...rawRows].sort((a, b) => {
+        const av = sortKey === 'name' ? a.name : a[sortKey];
+        const bv = sortKey === 'name' ? b.name : b[sortKey];
+        const result =
+          typeof av === 'string' && typeof bv === 'string'
+            ? av.localeCompare(bv)
+            : Number(av) - Number(bv);
+        return descending ? -result : result;
+      }),
+    [rawRows, sortKey, descending],
   );
   const sort = (key: SortKey) => {
     if (sortKey === key) setDescending((value) => !value);
