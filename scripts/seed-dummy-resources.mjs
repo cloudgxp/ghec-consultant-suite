@@ -280,6 +280,107 @@ async function ensureOrgWebhook() {
   }
 }
 
+async function ensureOrgRuleset() {
+  const rulesetName = 'Org-Default-Branch-Policy';
+  console.log(
+    `  + Checking organization ruleset '${rulesetName}' in ${org}...`,
+  );
+  const check = await ghRequest(`/orgs/${org}/rulesets`);
+  if (check.ok && Array.isArray(check.data)) {
+    const exists = check.data.some((r) => r.name === rulesetName);
+    if (exists) {
+      console.log(`  ✓ Org ruleset '${rulesetName}' already exists.`);
+      return;
+    }
+  }
+  const create = await ghRequest(`/orgs/${org}/rulesets`, 'POST', {
+    name: rulesetName,
+    target: 'branch',
+    enforcement: 'active',
+    conditions: {
+      ref_name: {
+        include: ['~DEFAULT_BRANCH'],
+        exclude: [],
+      },
+      repository_name: {
+        include: ['~ALL'],
+        exclude: [],
+      },
+    },
+    rules: [
+      { type: 'deletion' },
+      { type: 'non_fast_forward' },
+      { type: 'required_linear_history' },
+    ],
+    bypass_actors: [
+      {
+        actor_id: 1,
+        actor_type: 'OrganizationAdmin',
+        bypass_mode: 'always',
+      },
+    ],
+  });
+  if (create.ok) {
+    console.log(`  ✓ Created organization ruleset '${rulesetName}'.`);
+  } else {
+    console.warn(
+      `  ! Could not create org ruleset '${rulesetName}': HTTP ${create.status}`,
+    );
+  }
+}
+
+async function ensureRepoRuleset(repo) {
+  const rulesetName = 'Main-Branch-Governance-Ruleset';
+  console.log(`  + Checking repository ruleset '${rulesetName}' on ${repo}...`);
+  const check = await ghRequest(`/repos/${org}/${repo}/rulesets`);
+  if (check.ok && Array.isArray(check.data)) {
+    const exists = check.data.some((r) => r.name === rulesetName);
+    if (exists) {
+      console.log(
+        `  ✓ Repository ruleset '${rulesetName}' already exists on ${repo}.`,
+      );
+      return;
+    }
+  }
+  const create = await ghRequest(`/repos/${org}/${repo}/rulesets`, 'POST', {
+    name: rulesetName,
+    target: 'branch',
+    enforcement: 'active',
+    conditions: {
+      ref_name: {
+        include: ['~DEFAULT_BRANCH'],
+        exclude: [],
+      },
+    },
+    rules: [
+      { type: 'deletion' },
+      { type: 'non_fast_forward' },
+      {
+        type: 'pull_request',
+        parameters: {
+          required_approving_review_count: 1,
+          dismiss_stale_reviews_on_push: true,
+          require_last_push_approval: false,
+        },
+      },
+    ],
+    bypass_actors: [
+      {
+        actor_id: 5,
+        actor_type: 'RepositoryRole',
+        bypass_mode: 'always',
+      },
+    ],
+  });
+  if (create.ok) {
+    console.log(`  ✓ Created repository ruleset '${rulesetName}' on ${repo}.`);
+  } else {
+    console.warn(
+      `  ! Could not create repository ruleset '${rulesetName}' on ${repo}: HTTP ${create.status}`,
+    );
+  }
+}
+
 async function main() {
   console.log(`=======================================================`);
   console.log(`🚀 Provisioning Dummy Migration Resources in: ${org}`);
@@ -302,6 +403,7 @@ async function main() {
   await ensureOrgCustomProperties();
   await ensureTeams();
   await ensureOrgWebhook();
+  await ensureOrgRuleset();
 
   // 2. Repository 1: dummy-repo-public
   await ensureRepo('dummy-repo-public', false);
@@ -320,6 +422,7 @@ async function main() {
   await ensureRepoVariable('dummy-repo-public', 'APP_ENV', 'staging');
   await ensureRepoVariable('dummy-repo-public', 'LOG_LEVEL', 'debug');
   await ensureEnvironment('dummy-repo-public', 'production');
+  await ensureRepoRuleset('dummy-repo-public');
 
   // 3. Repository 2: dummy-repo-private-lfs
   await ensureRepo('dummy-repo-private-lfs', true);
@@ -341,6 +444,7 @@ async function main() {
     'SYNTHETIC_LFS_BINARY_PAYLOAD_TEST_DATA_0123456789',
     'Add sample binary asset',
   );
+  await ensureRepoRuleset('dummy-repo-private-lfs');
 
   console.log(`\n=======================================================`);
   console.log(`✅ Provisioning sequence completed for: ${org}`);

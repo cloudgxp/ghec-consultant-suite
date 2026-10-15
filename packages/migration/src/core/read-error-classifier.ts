@@ -75,12 +75,50 @@ export function isExpectedFeatureAbsentError(error: unknown): boolean {
     msg.includes('404') ||
     msg.includes('410') ||
     msg.includes('disabled') ||
-    msg.includes('not enabled')
+    msg.includes('not enabled') ||
+    msg.includes('not available') ||
+    msg.includes('not supported')
   ) {
     return true;
   }
 
   return false;
+}
+
+/**
+ * Throws an Error with `.status` if a `readSingle` response has an HTTP status >= 400.
+ */
+export function assertReadResponseOk(
+  res: { readonly status?: number | undefined } | undefined,
+  contextLabel: string,
+): void {
+  if (res && typeof res.status === 'number' && res.status >= 400) {
+    const error = new Error(`HTTP ${res.status} querying ${contextLabel}`);
+    (error as unknown as { status: number }).status = res.status;
+    throw error;
+  }
+}
+
+/**
+ * Throws an Error with `.status` (if extractable) if a `fetchAll` response terminated with `complete: false` due to an HTTP error.
+ */
+export function assertFetchAllOk(
+  res:
+    | {
+        readonly complete?: boolean | undefined;
+        readonly reason?: string | undefined;
+      }
+    | undefined,
+  contextLabel: string,
+): void {
+  if (res && res.complete === false && res.reason) {
+    const status = extractErrorHttpStatus(res.reason);
+    const error = new Error(`${res.reason} querying ${contextLabel}`);
+    if (status !== undefined) {
+      (error as unknown as { status: number }).status = status;
+    }
+    throw error;
+  }
 }
 
 /**

@@ -14,6 +14,7 @@ import type {
   VerificationDiscrepancy,
 } from '../../core/types.js';
 import {
+  assertFetchAllOk,
   formatSanitizedReadError,
   isExpectedFeatureAbsentError,
 } from '../../core/read-error-classifier.js';
@@ -144,13 +145,26 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         },
         ctx.signal,
       );
+      assertFetchAllOk(
+        mRes,
+        `/repos/${ctx.scope.sourceOrg}/${repo}/milestones`,
+      );
       if (mRes?.items) {
         milestones = mRes.items.map(mapApiMilestone);
       }
     } catch (err: unknown) {
-      ctx.logger.warn?.(
-        `Failed to fetch milestones for ${ctx.scope.sourceOrg}/${repo}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn?.(
+          `Milestones not available for ${ctx.scope.sourceOrg}/${repo}: ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to fetch milestones for ${ctx.scope.sourceOrg}/${repo}`,
+          err,
+        );
+        ctx.logger.error?.(msg);
+        throw new Error(msg, { cause: err });
+      }
     }
 
     let labels: MigrationLabel[] = [];
@@ -166,13 +180,23 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         },
         ctx.signal,
       );
+      assertFetchAllOk(lRes, `/repos/${ctx.scope.sourceOrg}/${repo}/labels`);
       if (lRes?.items) {
         labels = lRes.items.map(mapApiLabel);
       }
     } catch (err: unknown) {
-      ctx.logger.warn?.(
-        `Failed to fetch labels for ${ctx.scope.sourceOrg}/${repo}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn?.(
+          `Labels not available for ${ctx.scope.sourceOrg}/${repo}: ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to fetch labels for ${ctx.scope.sourceOrg}/${repo}`,
+          err,
+        );
+        ctx.logger.error?.(msg);
+        throw new Error(msg, { cause: err });
+      }
     }
 
     let rawIssues: RawApiIssue[] = [];
@@ -188,13 +212,23 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         },
         ctx.signal,
       );
+      assertFetchAllOk(iRes, `/repos/${ctx.scope.sourceOrg}/${repo}/issues`);
       if (iRes?.items) {
         rawIssues = iRes.items.filter((i) => !i.pull_request);
       }
     } catch (err: unknown) {
-      ctx.logger.warn?.(
-        `Failed to fetch issues for ${ctx.scope.sourceOrg}/${repo}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn?.(
+          `Issues not available for ${ctx.scope.sourceOrg}/${repo}: ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to fetch issues for ${ctx.scope.sourceOrg}/${repo}`,
+          err,
+        );
+        ctx.logger.error?.(msg);
+        throw new Error(msg, { cause: err });
+      }
     }
 
     // Fetch comments for issues that have comments

@@ -629,6 +629,107 @@ export const appsInventoryProvisioner: ItemProvisioner = {
   },
 };
 
+export const orgRulesetsProvisioner: ItemProvisioner = {
+  id: 'org-rulesets',
+  async provision(ctx: ItemProvisionContext): Promise<ProvisionResult> {
+    const org = ctx.organization;
+    const rulesetName = `${ctx.prefix}Org-Default-Branch-Ruleset`;
+    if (ctx.dryRun) {
+      return {
+        action: 'dry-run-create',
+        resourceIdentifier: rulesetName,
+        details: 'Would create organization repository ruleset',
+      };
+    }
+    const list = await ctx.client.request<Array<{ id: number; name: string }>>(
+      `/orgs/${org}/rulesets`,
+    );
+    if (!list.ok && (list.status === 403 || list.status === 404)) {
+      return {
+        action: 'skipped',
+        resourceIdentifier: rulesetName,
+        warning: 'Enterprise plan required for organization rulesets; skipped.',
+      };
+    }
+    const existing = Array.isArray(list.data)
+      ? list.data.find((r) => r.name === rulesetName)
+      : undefined;
+    if (existing) {
+      return {
+        action: 'updated',
+        resourceIdentifier: rulesetName,
+        details: `Organization ruleset already exists (ID: ${existing.id})`,
+      };
+    }
+    const create = await ctx.client.request(`/orgs/${org}/rulesets`, {
+      method: 'POST',
+      body: {
+        name: rulesetName,
+        target: 'branch',
+        enforcement: 'active',
+        conditions: {
+          ref_name: {
+            include: ['~DEFAULT_BRANCH'],
+            exclude: [],
+          },
+          repository_name: {
+            include: ['~ALL'],
+            exclude: [],
+          },
+        },
+        rules: [
+          { type: 'deletion' },
+          { type: 'non_fast_forward' },
+          { type: 'required_linear_history' },
+        ],
+        bypass_actors: [
+          {
+            actor_id: 1,
+            actor_type: 'OrganizationAdmin',
+            bypass_mode: 'always',
+          },
+        ],
+      },
+    });
+    if (!create.ok) {
+      if (create.status === 403 || create.status === 404) {
+        return {
+          action: 'skipped',
+          resourceIdentifier: rulesetName,
+          warning:
+            'Enterprise plan required for organization rulesets; skipped.',
+        };
+      }
+      return {
+        action: 'failed',
+        resourceIdentifier: rulesetName,
+        error: `Failed to create organization ruleset: status ${create.status}`,
+      };
+    }
+    return {
+      action: 'created',
+      resourceIdentifier: rulesetName,
+      details:
+        'Created organization ruleset targeting default branches across all repositories',
+    };
+  },
+  async cleanup(ctx: ItemProvisionContext): Promise<void> {
+    const org = ctx.organization;
+    const rulesetName = `${ctx.prefix}Org-Default-Branch-Ruleset`;
+    const list = await ctx.client.request<Array<{ id: number; name: string }>>(
+      `/orgs/${org}/rulesets`,
+    );
+    const existing = Array.isArray(list.data)
+      ? list.data.find((r) => r.name === rulesetName)
+      : undefined;
+    if (existing) {
+      await ctx.client.request(`/orgs/${org}/rulesets/${existing.id}`, {
+        method: 'DELETE',
+      });
+    }
+  },
+};
+
 export const postMigrationMannequinsProvisioner: ItemProvisioner = {
   id: 'post-migration-mannequins',
   async provision(ctx: ItemProvisionContext): Promise<ProvisionResult> {
@@ -656,6 +757,7 @@ export const ALL_ORG_PROVISIONERS: ItemProvisioner[] = [
   orgVariablesProvisioner,
   orgSecretsProvisioner,
   orgCustomPropertiesProvisioner,
+  orgRulesetsProvisioner,
   teamsProvisioner,
   customRolesProvisioner,
   ipAllowListsProvisioner,

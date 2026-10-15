@@ -10,6 +10,8 @@ export const ALL_ORGANIZATION_MODULES = [
   'packages',
   'custom-roles',
   'org-settings',
+  'org-rulesets',
+  'org-webhooks',
   'actions-policies',
   'actions-runners',
   'ip-allow-lists',

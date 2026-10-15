@@ -291,11 +291,18 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
     }
   }
 
-  async readPage<T>(
+  private async executeRestRead(
     operation: ReadOperation,
     cursor: string | null,
     signal: AbortSignal,
-  ): Promise<ReadPage<T>> {
+  ): Promise<{
+    body: unknown;
+    nextCursor: string | null;
+    observedAt: string;
+    remainingRequests: number | null;
+    resetAt: string | null;
+    status: number;
+  }> {
     assertVerifiedReadOnly(operation);
     if (signal.aborted) {
       throw signal.reason ?? new Error('Aborted');
@@ -351,11 +358,9 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
           : null;
       const links = parseLinkHeader(linkHeader);
       const nextCursor = links.next ?? null;
-      const body = response.data;
-      const items = Array.isArray(body) ? (body as T[]) : [body as T];
 
       return {
-        items,
+        body: response.data,
         nextCursor,
         observedAt,
         remainingRequests,
@@ -393,7 +398,7 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
         );
 
         return {
-          items: [],
+          body: undefined,
           nextCursor: null,
           observedAt,
           remainingRequests,
@@ -407,15 +412,37 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
     }
   }
 
+  async readPage<T>(
+    operation: ReadOperation,
+    cursor: string | null,
+    signal: AbortSignal,
+  ): Promise<ReadPage<T>> {
+    const res = await this.executeRestRead(operation, cursor, signal);
+    const items =
+      res.status >= 400 || res.body === undefined
+        ? []
+        : Array.isArray(res.body)
+          ? (res.body as T[])
+          : [res.body as T];
+    return {
+      items,
+      nextCursor: res.nextCursor,
+      observedAt: res.observedAt,
+      remainingRequests: res.remainingRequests,
+      resetAt: res.resetAt,
+      status: res.status,
+    };
+  }
+
   async readSingle<T>(
     operation: ReadOperation,
     signal: AbortSignal,
   ): Promise<{ data: T; observedAt: string; status: number }> {
-    const page = await this.readPage<T>(operation, null, signal);
+    const res = await this.executeRestRead(operation, null, signal);
     return {
-      data: page.items[0] as T,
-      observedAt: page.observedAt,
-      status: page.status,
+      data: (res.status < 400 ? res.body : undefined) as T,
+      observedAt: res.observedAt,
+      status: res.status,
     };
   }
 
