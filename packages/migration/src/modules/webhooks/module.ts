@@ -58,8 +58,9 @@ function extractHooks(data: unknown): readonly RawWebhook[] {
 }
 
 export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
-  readonly id = 'webhooks';
-  readonly displayName = 'Organization & Repository Webhooks Reconciliation';
+  readonly id: string = 'webhooks';
+  readonly displayName: string =
+    'Organization & Repository Webhooks Reconciliation';
   readonly scopeLevel: MigrationScopeLevel = 'repository';
   readonly dependencies: readonly string[] = ['gei-repo'];
   private readonly secretProvider: WebhooksModuleOptions['secretProvider'];
@@ -80,6 +81,13 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       },
       ctx.signal,
     );
+    if (response.status >= 400) {
+      const error = new Error(
+        `HTTP ${response.status} querying webhooks at ${pathFor(ctx)}`,
+      );
+      (error as unknown as { status: number }).status = response.status;
+      throw error;
+    }
     return {
       level: ctx.scope.level,
       hooks: extractHooks(response.data).flatMap((hook) => {
@@ -101,7 +109,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
         },
         ctx.signal,
       );
-      rawHooks = extractHooks(response.data);
+      rawHooks = response.status < 400 ? extractHooks(response.data) : [];
     } catch {
       rawHooks = [];
     }
@@ -110,6 +118,10 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       return parsed ? [parsed] : [];
     });
     const warnings: string[] = [];
+    const targetKey =
+      ctx.scope.level === 'organization'
+        ? ctx.scope.targetOrg
+        : `${ctx.scope.targetOrg}/${ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? ''}`;
     const operations: PlannedOperation[] = source.hooks.map((hook) => {
       const existing = target.find((candidate) => hooksMatch(hook, candidate));
       let operation: 'create' | 'update' | 'noop';
@@ -129,7 +141,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
           `Webhook "${hook.url}" has a source secret but no replacement secret provider.`,
         );
       return {
-        id: `webhooks:${ctx.scope.targetOrg}:${hook.url}`,
+        id: `${this.id}:${targetKey}:${hook.url}`,
         resourceType: 'webhook',
         resourceName: hook.url,
         operation,
@@ -253,4 +265,12 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       discrepancies,
     };
   }
+}
+
+export class OrgWebhooksMigrationModule extends WebhooksMigrationModule {
+  override readonly id: string = 'org-webhooks';
+  override readonly displayName: string =
+    'Organization Webhooks Reconciliation';
+  override readonly scopeLevel: MigrationScopeLevel = 'organization';
+  override readonly dependencies: readonly string[] = [];
 }

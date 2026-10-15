@@ -7,8 +7,27 @@ export interface RulesetRefConditions {
   readonly exclude?: readonly string[] | undefined;
 }
 
+export interface RulesetRepositoryNameConditions {
+  readonly include?: readonly string[] | undefined;
+  readonly exclude?: readonly string[] | undefined;
+  readonly protected?: boolean | undefined;
+}
+
+export interface RulesetRepositoryIdConditions {
+  readonly repository_ids?: readonly number[] | undefined;
+}
+
+export interface RulesetRepositoryPropertyConditions {
+  readonly include?: ReadonlyArray<Record<string, unknown>> | undefined;
+  readonly exclude?: ReadonlyArray<Record<string, unknown>> | undefined;
+}
+
 export interface RulesetConditions {
   readonly ref_name?: RulesetRefConditions | undefined;
+  readonly repository_name?: RulesetRepositoryNameConditions | undefined;
+  readonly repository_id?: RulesetRepositoryIdConditions | undefined;
+  readonly repository_property?:
+    RulesetRepositoryPropertyConditions | undefined;
 }
 
 export interface PullRequestRuleParameters {

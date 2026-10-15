@@ -8,6 +8,11 @@ import {
   type VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  assertReadResponseOk,
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -102,6 +107,7 @@ export class CustomRolesMigrationModule implements MigrationModule<CustomRolesMi
         },
         ctx.signal,
       );
+      assertReadResponseOk(res, `/orgs/${sourceOrg}/custom-repository-roles`);
 
       const rawRoles = parseRawCustomRepoRoles(res.data);
       for (const raw of rawRoles) {
@@ -115,9 +121,18 @@ export class CustomRolesMigrationModule implements MigrationModule<CustomRolesMi
         });
       }
     } catch (err: unknown) {
-      ctx.logger?.warn?.(
-        `Failed to discover custom repository roles for '${sourceOrg}': ${String(err)}`,
-      );
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger?.warn?.(
+          `Custom repository roles not available for '${sourceOrg}': ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to discover custom repository roles for '${sourceOrg}'`,
+          err,
+        );
+        ctx.logger?.error?.(msg);
+        throw new Error(msg, { cause: err });
+      }
     }
 
     // 2. Discover Custom Organization Roles
@@ -132,6 +147,7 @@ export class CustomRolesMigrationModule implements MigrationModule<CustomRolesMi
         },
         ctx.signal,
       );
+      assertReadResponseOk(res, `/orgs/${sourceOrg}/organization-roles`);
 
       const rawRoles = parseRawCustomOrgRoles(res.data);
       for (const raw of rawRoles) {
@@ -144,9 +160,18 @@ export class CustomRolesMigrationModule implements MigrationModule<CustomRolesMi
         });
       }
     } catch (err: unknown) {
-      ctx.logger?.warn?.(
-        `Failed to discover custom organization roles for '${sourceOrg}': ${String(err)}`,
-      );
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger?.warn?.(
+          `Custom organization roles not available for '${sourceOrg}': ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to discover custom organization roles for '${sourceOrg}'`,
+          err,
+        );
+        ctx.logger?.error?.(msg);
+        throw new Error(msg, { cause: err });
+      }
     }
 
     return {

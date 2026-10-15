@@ -151,7 +151,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
       'references/github-docs/content/organizations/managing-organization-settings/creating-rulesets-for-repositories-in-your-organization.md',
     mechanism: 'rest_rehydration',
     status: 'implemented',
-    existingModuleId: 'rulesets',
+    existingModuleId: 'org-rulesets',
     secretHandling: 'none',
     emuConstraints: [],
     notes:
@@ -255,7 +255,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
       'references/github-docs/content/migrations/using-github-enterprise-importer/migrating-between-github-products/about-migrations-between-github-products.md',
     mechanism: 'rest_rehydration',
     status: 'implemented',
-    existingModuleId: 'webhooks',
+    existingModuleId: 'org-webhooks',
     secretHandling: 'vault_hook',
     emuConstraints: [],
     notes:

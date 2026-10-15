@@ -6,8 +6,8 @@ import {
 } from '../src/commands/seeder/catalog.js';
 
 describe('Seed Catalog & Preset Resolution', () => {
-  it('contains exactly 32 distinct migration items in catalog', () => {
-    assert.equal(SEED_CATALOG_ITEMS.length, 32);
+  it('contains exactly 33 distinct migration items in catalog', () => {
+    assert.equal(SEED_CATALOG_ITEMS.length, 33);
 
     const orgItems = SEED_CATALOG_ITEMS.filter(
       (i) => i.scopeLevel === 'organization',
@@ -16,13 +16,13 @@ describe('Seed Catalog & Preset Resolution', () => {
       (i) => i.scopeLevel === 'repository',
     );
 
-    assert.equal(orgItems.length, 13, 'Expected 13 organization-level items');
+    assert.equal(orgItems.length, 14, 'Expected 14 organization-level items');
     assert.equal(repoItems.length, 19, 'Expected 19 repository-level items');
   });
 
-  it('resolves preset "all" with scope "both" to all 32 items in dependency order', () => {
+  it('resolves preset "all" with scope "both" to all 33 items in dependency order', () => {
     const resolved = resolveSeederItems('both', 'all');
-    assert.equal(resolved.length, 32);
+    assert.equal(resolved.length, 33);
 
     // Verify dependencies are sequenced properly: gei-repo before rulesets
     const geiIdx = resolved.findIndex((i) => i.id === 'gei-repo');
@@ -37,7 +37,7 @@ describe('Seed Catalog & Preset Resolution', () => {
 
   it('filters by scopeLevel: organization', () => {
     const resolved = resolveSeederItems('organization', 'all');
-    assert.equal(resolved.length, 13);
+    assert.equal(resolved.length, 14);
     assert.ok(resolved.every((i) => i.scopeLevel === 'organization'));
   });
 
@@ -51,10 +51,11 @@ describe('Seed Catalog & Preset Resolution', () => {
     const governance = resolveSeederItems('both', 'core-governance');
     assert.equal(governance.length, 8);
 
-    // actions-and-security includes 10 preset items + gei-repo dependency = 11
+    // actions-and-security includes 11 preset items + gei-repo dependency = 12
     const actionsSecurity = resolveSeederItems('both', 'actions-and-security');
-    assert.equal(actionsSecurity.length, 11);
+    assert.equal(actionsSecurity.length, 12);
     assert.ok(actionsSecurity.some((i) => i.id === 'gei-repo'));
+    assert.ok(actionsSecurity.some((i) => i.id === 'org-rulesets'));
 
     // collaboration includes 7 preset items + gei-repo & teams dependencies = 9
     const collaboration = resolveSeederItems('both', 'collaboration');

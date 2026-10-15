@@ -8,7 +8,12 @@ import {
   type PlannedOperation,
   type VerificationDiscrepancy,
 } from '@ghec/contracts';
+import type { GitHubReadAdapter } from '@ghec/github-client';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -43,8 +48,8 @@ interface RawRulesetItem {
 }
 
 export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
-  readonly id = 'rulesets';
-  readonly displayName = 'Repository & Organization Rulesets';
+  readonly id: string = 'rulesets';
+  readonly displayName: string = 'Repository & Organization Rulesets';
   readonly scopeLevel: MigrationScopeLevel = 'repository';
   readonly dependencies: readonly string[] = ['gei-repo'];
 
@@ -55,7 +60,7 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
     const isRepo = ctx.scope.level === 'repository';
     const repo = ctx.scope.sourceRepo;
 
-    // 1. Cached discovery bundle mode
+    // 1. Cached discovery bundle mode (only if full ruleset definitions are present for the matching scope)
     if (
       cachedData &&
       typeof cachedData === 'object' &&
@@ -66,9 +71,28 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
 
       for (const entity of bundle.entities) {
         if (entity.kind === 'policy' && entity.policyKind === 'ruleset') {
-          const raw = ((entity as Record<string, unknown>)['rawPayload'] ??
-            entity) as Record<string, unknown>;
-          if (raw && typeof raw === 'object' && 'name' in raw) {
+          const entityRepoId = entity.repositoryId;
+          const matchesScope = isRepo
+            ? Boolean(
+                repo &&
+                typeof entityRepoId === 'string' &&
+                (entityRepoId === repo || entityRepoId.endsWith(`:${repo}`)),
+              )
+            : !entityRepoId;
+
+          if (!matchesScope) {
+            continue;
+          }
+
+          const raw = (entity as Record<string, unknown>)['rawPayload'] as
+            Record<string, unknown> | undefined;
+          if (
+            raw &&
+            typeof raw === 'object' &&
+            'name' in raw &&
+            'target' in raw &&
+            ('rules' in raw || 'conditions' in raw)
+          ) {
             rulesets.push(
               this.normalizeRuleset(raw as unknown as RawRulesetItem),
             );
@@ -81,33 +105,29 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
       }
     }
 
-    // 2. Live API mode
-    const path = isRepo
-      ? `/repos/${ctx.scope.sourceOrg}/${repo}/rulesets`
-      : `/orgs/${ctx.scope.sourceOrg}/rulesets`;
-
+    // 2. Live API mode (with detail hydration for each ruleset)
     try {
-      const res = await ctx.sourceClient.readSingle<RawRulesetItem[]>(
-        {
-          id: `rest.rulesets.list-${ctx.scope.level}`,
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path,
-          pathParams: isRepo
-            ? { owner: ctx.scope.sourceOrg, repo: repo! }
-            : { org: ctx.scope.sourceOrg },
-        },
-        ctx.signal,
+      const rulesets = await this.fetchRulesetsWithDetails(
+        ctx.sourceClient,
+        ctx,
+        ctx.scope.sourceOrg,
+        repo,
+        'list',
       );
-
-      const items = Array.isArray(res.data) ? res.data : [];
-      const rulesets = items.map((item) => this.normalizeRuleset(item));
       return { rulesets };
-    } catch (err) {
-      ctx.logger.warn(
-        `Failed to list rulesets for ${ctx.scope.level}: ${err instanceof Error ? err.message : String(err)}`,
+    } catch (err: unknown) {
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn(
+          `Rulesets not available for ${ctx.scope.level}: ${formatSanitizedReadError(err)}`,
+        );
+        return { rulesets: [] };
+      }
+      const msg = formatSanitizedReadError(
+        `Failed to list rulesets for ${ctx.scope.level}`,
+        err,
       );
-      return { rulesets: [] };
+      ctx.logger.error(msg);
+      throw new Error(msg, { cause: err });
     }
   }
 
@@ -121,34 +141,29 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
       ? `${ctx.scope.targetOrg}/${targetRepo}`
       : ctx.scope.targetOrg;
 
-    // Query destination rulesets
-    const targetRulesets: GitHubRuleset[] = [];
-    const path = isRepo
-      ? `/repos/${ctx.scope.targetOrg}/${targetRepo}/rulesets`
-      : `/orgs/${ctx.scope.targetOrg}/rulesets`;
-
+    // Query destination rulesets (with detail hydration)
+    let targetRulesets: GitHubRuleset[] = [];
     try {
-      const res = await ctx.targetClient.readSingle<RawRulesetItem[]>(
-        {
-          id: `rest.rulesets.list-target-${ctx.scope.level}`,
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path,
-          pathParams: isRepo
-            ? { owner: ctx.scope.targetOrg, repo: targetRepo }
-            : { org: ctx.scope.targetOrg },
-        },
-        ctx.signal,
+      targetRulesets = await this.fetchRulesetsWithDetails(
+        ctx.targetClient,
+        ctx,
+        ctx.scope.targetOrg,
+        targetRepo,
+        'list-target',
       );
-      if (Array.isArray(res.data)) {
-        for (const item of res.data) {
-          targetRulesets.push(this.normalizeRuleset(item));
-        }
+    } catch (err: unknown) {
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn(
+          `Could not query target rulesets: ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to query target rulesets for ${targetIdentifier}`,
+          err,
+        );
+        ctx.logger.error(msg);
+        throw new Error(msg, { cause: err });
       }
-    } catch (err) {
-      ctx.logger.warn(
-        `Could not query target rulesets: ${err instanceof Error ? err.message : String(err)}`,
-      );
     }
 
     const targetMapByName = new Map<string, GitHubRuleset>();
@@ -346,39 +361,26 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
     ctx: MigrationContext,
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
-    const isRepo = ctx.scope.level === 'repository';
     const targetRepo = ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? '';
     const discrepancies: VerificationDiscrepancy[] = [];
 
-    const path = isRepo
-      ? `/repos/${ctx.scope.targetOrg}/${targetRepo}/rulesets`
-      : `/orgs/${ctx.scope.targetOrg}/rulesets`;
-
     const targetMapByName = new Map<string, GitHubRuleset>();
     try {
-      const res = await ctx.targetClient.readSingle<RawRulesetItem[]>(
-        {
-          id: `rest.rulesets.verify-${ctx.scope.level}`,
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path,
-          pathParams: isRepo
-            ? { owner: ctx.scope.targetOrg, repo: targetRepo }
-            : { org: ctx.scope.targetOrg },
-        },
-        ctx.signal,
+      const targetRulesets = await this.fetchRulesetsWithDetails(
+        ctx.targetClient,
+        ctx,
+        ctx.scope.targetOrg,
+        targetRepo,
+        'verify',
       );
-      if (Array.isArray(res.data)) {
-        for (const item of res.data) {
-          const r = this.normalizeRuleset(item);
-          targetMapByName.set(r.name, r);
-        }
+      for (const r of targetRulesets) {
+        targetMapByName.set(r.name, r);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       discrepancies.push({
         resourceName: 'rulesets-query',
         expected: 'HTTP 200 list of rulesets',
-        actual: err instanceof Error ? err.message : String(err),
+        actual: formatSanitizedReadError(err),
         message: 'Failed to query target rulesets during verification.',
       });
       return {
@@ -419,6 +421,95 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
     };
   }
 
+  private async fetchRulesetsWithDetails(
+    client: GitHubReadAdapter,
+    ctx: MigrationContext,
+    org: string,
+    repo: string | undefined,
+    opIdPrefix: string,
+  ): Promise<GitHubRuleset[]> {
+    const isRepo = ctx.scope.level === 'repository';
+    const listPath = isRepo
+      ? `/repos/${org}/${repo}/rulesets`
+      : `/orgs/${org}/rulesets`;
+
+    const res = await client.readSingle<RawRulesetItem[]>(
+      {
+        id: `rest.rulesets.${opIdPrefix}-${ctx.scope.level}`,
+        transport: 'rest',
+        verifiedReadOnly: true,
+        path: listPath,
+        pathParams: isRepo ? { owner: org, repo: repo! } : { org },
+      },
+      ctx.signal,
+    );
+
+    if (res.status >= 400) {
+      const error = new Error(
+        `HTTP ${res.status} querying rulesets at ${listPath}`,
+      );
+      (error as unknown as { status: number }).status = res.status;
+      throw error;
+    }
+
+    const items = Array.isArray(res.data) ? res.data : [];
+    const hydrated: GitHubRuleset[] = [];
+
+    for (const item of items) {
+      // Do not hydrate inherited organization rulesets when operating at repository scope
+      if (isRepo && item.source_type === 'Organization') {
+        hydrated.push(this.normalizeRuleset(item));
+        continue;
+      }
+
+      if (
+        item.id !== undefined &&
+        (item.rules === undefined || item.conditions === undefined)
+      ) {
+        const detailPath = isRepo
+          ? `/repos/${org}/${repo}/rulesets/${item.id}`
+          : `/orgs/${org}/rulesets/${item.id}`;
+        try {
+          const detailRes = await client.readSingle<RawRulesetItem>(
+            {
+              id: `rest.rulesets.get-${ctx.scope.level}`,
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: detailPath,
+              pathParams: isRepo
+                ? { owner: org, repo: repo!, ruleset_id: String(item.id) }
+                : { org, ruleset_id: String(item.id) },
+            },
+            ctx.signal,
+          );
+          if (
+            detailRes.status < 400 &&
+            detailRes.data &&
+            typeof detailRes.data === 'object' &&
+            !Array.isArray(detailRes.data) &&
+            'name' in detailRes.data
+          ) {
+            hydrated.push(
+              this.normalizeRuleset({
+                ...item,
+                ...detailRes.data,
+              }),
+            );
+            continue;
+          }
+        } catch (err: unknown) {
+          if (!isExpectedFeatureAbsentError(err)) {
+            throw err;
+          }
+        }
+      }
+
+      hydrated.push(this.normalizeRuleset(item));
+    }
+
+    return hydrated;
+  }
+
   private normalizeRuleset(raw: RawRulesetItem): GitHubRuleset {
     const ruleset: GitHubRuleset = {
       name: raw.name,
@@ -439,4 +530,11 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
     };
     return ruleset;
   }
+}
+
+export class OrgRulesetsMigrationModule extends RulesetsMigrationModule {
+  override readonly id: string = 'org-rulesets';
+  override readonly displayName: string = 'Organization-Level Rulesets';
+  override readonly scopeLevel: MigrationScopeLevel = 'organization';
+  override readonly dependencies: readonly string[] = ['teams', 'custom-roles'];
 }

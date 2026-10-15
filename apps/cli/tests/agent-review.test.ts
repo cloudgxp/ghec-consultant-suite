@@ -498,4 +498,50 @@ describe('Task 035: Agentic Automation & Remediation Integration', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('surfaces module verification warnings and generates org-level remediation for org-rulesets without --repos flag', () => {
+    const reportWithOrgRulesets = {
+      ...sampleReport,
+      modules: [
+        {
+          moduleId: 'org-rulesets',
+          verified: false,
+          warnings: [
+            '[corp-target-emu] Bypass actor ID 42 could not be mapped.',
+          ],
+          discrepancies: [
+            {
+              resourceName: 'org-default-branch-policy',
+              expected: 'active ruleset',
+              actual: 'missing',
+              message:
+                'Ruleset "org-default-branch-policy" is missing on target.',
+            },
+          ],
+        },
+      ],
+      summary: {
+        verifiedModuleCount: 0,
+        unverifiedModuleCount: 1,
+        discrepancyCount: 1,
+      },
+    };
+
+    const plan = generateRemediationPlan(reportWithOrgRulesets);
+    assert.equal(plan.actionableCount, 1);
+    assert.equal(plan.actions[0]?.moduleId, 'org-rulesets');
+    assert.equal(plan.actions[0]?.category, 'security-and-policies');
+    assert.equal(
+      plan.actions[0]?.command,
+      'ghec-consultant-cli migrate --modules "org-rulesets" --scope "./scopes/test-wave-scope.json"',
+    );
+    assert.doesNotMatch(plan.script, /--repos/);
+    assert.ok(
+      plan.warnings?.some((w) =>
+        w.includes(
+          'Module "org-rulesets" warning: [corp-target-emu] Bypass actor ID 42 could not be mapped.',
+        ),
+      ),
+    );
+  });
 });

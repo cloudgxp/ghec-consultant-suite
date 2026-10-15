@@ -252,3 +252,42 @@ test('verify detects missing and mismatched target webhooks', async () => {
   assert.equal(verifyResult.discrepancies.length, 1);
   assert.equal(verifyResult.discrepancies[0]?.actual, 'missing');
 });
+
+test('OrgWebhooksMigrationModule executes at organization scope level', async () => {
+  const { OrgWebhooksMigrationModule } = await import('../../src/index.js');
+  const orgMod = new OrgWebhooksMigrationModule();
+  assert.equal(orgMod.id, 'org-webhooks');
+  assert.equal(orgMod.scopeLevel, 'organization');
+  assert.deepEqual(orgMod.dependencies, []);
+
+  const hook = {
+    id: 21,
+    active: true,
+    events: ['repository'],
+    config: {
+      url: 'https://org.example.test/webhook',
+      content_type: 'json',
+      insecure_ssl: '0',
+    },
+  };
+  const ctx: MigrationContext = {
+    runId: 'test-org-wh',
+    scope: {
+      level: 'organization',
+      sourceOrg: 'source-org',
+      targetOrg: 'target-org',
+    },
+    sourceClient: client([hook], true),
+    targetClient: client([hook], true),
+    signal: new AbortController().signal,
+    dryRun: true,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+  const plan = await orgMod.plan(ctx, await orgMod.discover(ctx));
+  assert.equal(plan.moduleId, 'org-webhooks');
+  assert.equal(plan.scopeLevel, 'organization');
+  assert.equal(plan.targetIdentifier, 'target-org');
+  assert.equal(plan.operations.length, 1);
+  assert.equal(plan.operations[0]?.operation, 'noop');
+});

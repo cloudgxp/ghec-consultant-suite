@@ -11,6 +11,7 @@ import type {
   VerificationDiscrepancy,
 } from '../../core/types.js';
 import {
+  assertFetchAllOk,
   formatSanitizedReadError,
   isExpectedFeatureAbsentError,
 } from '../../core/read-error-classifier.js';
@@ -109,10 +110,17 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
           },
           ctx.signal,
         );
+        assertFetchAllOk(
+          pullsRes,
+          `GET /repos/${ctx.scope.sourceOrg}/${repo}/pulls`,
+        );
         if (pullsRes?.items) {
           rawPulls = [...pullsRes.items];
         }
       } catch (err: unknown) {
+        if (!isExpectedFeatureAbsentError(err)) {
+          throw err;
+        }
         ctx.logger.warn?.(
           `Failed to fetch pull requests for ${ctx.scope.sourceOrg}/${repo}: ${err instanceof Error ? err.message : String(err)}`,
         );

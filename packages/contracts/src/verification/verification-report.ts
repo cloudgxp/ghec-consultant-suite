@@ -21,6 +21,7 @@ export const ModuleVerificationResultSchema = z
     moduleId: MigrationModuleIdSchema,
     verified: z.boolean(),
     discrepancies: z.array(VerificationDiscrepancySchema),
+    warnings: z.array(z.string().trim().min(1).max(2048)).optional(),
   })
   .strict()
   .superRefine((result, ctx) => {

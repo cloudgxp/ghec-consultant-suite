@@ -239,6 +239,7 @@ function getCategoryForModule(moduleId: string): RemediationCategory {
   }
   if (
     moduleId === 'rulesets' ||
+    moduleId === 'org-rulesets' ||
     moduleId === 'branch-protection' ||
     moduleId === 'code-scanning' ||
     moduleId === 'dependabot-Security' ||
@@ -269,6 +270,7 @@ function getCategoryForModule(moduleId: string): RemediationCategory {
   }
   if (
     moduleId === 'webhooks' ||
+    moduleId === 'org-webhooks' ||
     moduleId === 'deploy-keys' ||
     moduleId === 'autolinks' ||
     moduleId === 'apps-inventory' ||
@@ -490,6 +492,13 @@ export function generateRemediationPlan(
   };
 
   for (const moduleResult of report.modules) {
+    for (const modWarning of moduleResult.warnings ?? []) {
+      const formattedWarning = `Module "${moduleResult.moduleId}" warning: ${sanitizeDiagnostics(modWarning)}`;
+      if (!warnings.includes(formattedWarning)) {
+        warnings.push(formattedWarning);
+      }
+    }
+
     if (moduleResult.verified && moduleResult.discrepancies.length === 0) {
       continue;
     }
@@ -515,7 +524,7 @@ export function generateRemediationPlan(
             modId,
           ),
         );
-      } else if (modId === 'webhooks') {
+      } else if (modId === 'webhooks' || modId === 'org-webhooks') {
         actions.push(
           withExecutionAttribution(
             {
@@ -524,7 +533,7 @@ export function generateRemediationPlan(
               moduleId: modId,
               resourceName: disc.resourceName,
               description: `Webhook configuration or activation discrepancy on "${disc.resourceName}": ${sanitizedDiscMessage}`,
-              command: `ghec-consultant-cli migrate --modules webhooks --scope "./scopes/${report.scopeName}.json"`,
+              command: `ghec-consultant-cli migrate --modules ${modId} --scope "./scopes/${report.scopeName}.json"`,
               severity: 'medium',
             },
             modId,
@@ -549,7 +558,11 @@ export function generateRemediationPlan(
             modId,
           ),
         );
-      } else if (modId === 'rulesets' || modId === 'branch-protection') {
+      } else if (
+        modId === 'rulesets' ||
+        modId === 'org-rulesets' ||
+        modId === 'branch-protection'
+      ) {
         actions.push(
           withExecutionAttribution(
             {
@@ -818,6 +831,8 @@ export function generateRemediationPlan(
     'org-variables',
     'org-secrets',
     'org-custom-properties',
+    'org-rulesets',
+    'org-webhooks',
     'teams',
     'post-migration-mannequins',
     'packages',

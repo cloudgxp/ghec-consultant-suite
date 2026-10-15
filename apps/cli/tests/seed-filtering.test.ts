@@ -54,8 +54,9 @@ describe('Seed Scoped & Preset Filtering (US2)', () => {
       { client, logger: () => {} },
     );
 
-    assert.equal(summary.counts.total, 13);
+    assert.equal(summary.counts.total, 14);
     assert.ok(summary.items.every((i) => i.scope === 'organization'));
+    assert.ok(summary.items.some((i) => i.itemId === 'org-rulesets'));
     assert.ok(!summary.items.some((i) => i.itemId === 'gei-repo'));
     assert.ok(!summary.items.some((i) => i.itemId === 'rulesets'));
   });

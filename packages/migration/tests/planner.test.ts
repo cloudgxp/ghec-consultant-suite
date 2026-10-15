@@ -347,4 +347,69 @@ describe('MigrationPlanner', () => {
       }
     }
   });
+
+  it('rethrows unexpected discover() read errors in plan mode and records [VERIFY_READ_ERROR] in verificationMode', async () => {
+    const { OrgRulesetsMigrationModule } =
+      await import('../src/modules/rulesets/module.js');
+    const registry = new ModuleRegistry();
+    registry.register(createTestModule('teams', 'organization', []));
+    registry.register(createTestModule('custom-roles', 'organization', []));
+    registry.register(new OrgRulesetsMigrationModule());
+
+    const failingReadAdapter: GitHubReadAdapter = {
+      ...createMockAdapter({ calls: [] }),
+      async readSingle() {
+        return {
+          data: undefined as never,
+          observedAt: new Date().toISOString(),
+          status: 403,
+        };
+      },
+    };
+
+    const orgRulesetScope: MigrationScope = {
+      version: '1.0.0',
+      name: 'org-ruleset-err-scope',
+      organizations: [
+        {
+          source: 'source-org',
+          target: 'target-org',
+          modules: ['org-rulesets'],
+        },
+      ],
+      repositories: [],
+    };
+
+    const normalPlanner = new MigrationPlanner({
+      scope: orgRulesetScope,
+      registry,
+      sourceClient: failingReadAdapter,
+      targetClient: createMockAdapter({ calls: [] }),
+      verificationMode: false,
+      modules: ['org-rulesets'],
+    });
+
+    await assert.rejects(
+      () => normalPlanner.generatePlan(),
+      /HTTP 403 querying rulesets at \/orgs\/source-org\/rulesets/,
+    );
+
+    const verifyPlanner = new MigrationPlanner({
+      scope: orgRulesetScope,
+      registry,
+      sourceClient: failingReadAdapter,
+      targetClient: createMockAdapter({ calls: [] }),
+      verificationMode: true,
+      modules: ['org-rulesets'],
+    });
+
+    const plan = await verifyPlanner.generatePlan();
+    const orgRulesetMod = plan.modules.find(
+      (m) => m.moduleId === 'org-rulesets',
+    );
+    assert.ok(orgRulesetMod);
+    assert.ok(
+      orgRulesetMod.warnings.some((w) => w.startsWith('[VERIFY_READ_ERROR]')),
+    );
+  });
 });

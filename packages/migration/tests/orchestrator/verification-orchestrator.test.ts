@@ -229,4 +229,140 @@ describe('VerificationOrchestrator fail-closed behavior', () => {
       !modEntry.discrepancies[0]?.message.includes('ghp_superSecret999'),
     );
   });
+
+  it('propagates RulesetsMigrationModule HTTP 403 discover() error as read_error discrepancy and preserves plan warnings', async () => {
+    const { RulesetsMigrationModule } =
+      await import('../../src/modules/rulesets/module.js');
+    const registry = new ModuleRegistry();
+    for (const [depId, depScope] of [
+      ['gei-repo', 'repository'],
+      ['teams', 'organization'],
+    ] as const) {
+      registry.register({
+        id: depId,
+        displayName: depId,
+        scopeLevel: depScope,
+        dependencies: [],
+        async discover() {
+          return {};
+        },
+        async plan(ctx) {
+          return {
+            moduleId: depId,
+            scopeLevel: depScope,
+            targetIdentifier: ctx.scope.targetOrg,
+            operations: [],
+            warnings: [],
+          };
+        },
+        async apply() {
+          return {
+            moduleId: depId,
+            status: 'complete',
+            durationMs: 1,
+            results: [],
+          };
+        },
+        async verify() {
+          return { moduleId: depId, verified: true, discrepancies: [] };
+        },
+      });
+    }
+    registry.register(new RulesetsMigrationModule());
+
+    const forbiddenSourceAdapter: GitHubReadAdapter = {
+      ...createStubAdapter(),
+      async readSingle() {
+        return {
+          data: undefined as never,
+          observedAt: new Date().toISOString(),
+          status: 403,
+        };
+      },
+    };
+
+    const scope: MigrationScope = {
+      schemaVersion: MIGRATION_SCHEMA_VERSION,
+      name: 'test-scope-rulesets-403',
+      organizations: [],
+      repositories: [
+        {
+          sourceOrg: 'source-org',
+          sourceRepo: 'app-repo',
+          targetOrg: 'target-org',
+          targetRepo: 'app-repo',
+          useGei: false,
+          modules: ['rulesets'],
+        },
+      ],
+    };
+
+    const planner = new MigrationPlanner({
+      scope,
+      registry,
+      sourceClient: forbiddenSourceAdapter,
+      targetClient: createStubAdapter(),
+      verificationMode: true,
+      modules: ['rulesets'],
+      runId: 'plan-rulesets-403',
+    });
+
+    const plan = await planner.generatePlan();
+    const rulesetPlan = plan.modules.find((m) => m.moduleId === 'rulesets');
+    assert.ok(rulesetPlan);
+    assert.ok(
+      rulesetPlan.warnings.some((w) => w.startsWith('[VERIFY_READ_ERROR]')),
+      'Expected [VERIFY_READ_ERROR] warning when rulesets discover() receives HTTP 403',
+    );
+
+    // Inject an additional non-read-error warning to verify warning preservation
+    const planWithExtraWarning = {
+      ...plan,
+      modules: plan.modules.map((m) =>
+        m.moduleId === 'rulesets'
+          ? {
+              ...m,
+              warnings: [
+                ...m.warnings,
+                'Bypass actor ID 99 could not be mapped to target org.',
+              ],
+            }
+          : m,
+      ),
+    };
+
+    const loggedWarnings: string[] = [];
+    const orchestrator = new VerificationOrchestrator({
+      plan: planWithExtraWarning,
+      scope,
+      registry,
+      sourceClient: forbiddenSourceAdapter,
+      targetClient: createStubAdapter(),
+      runId: 'verify-rulesets-403',
+      logger: {
+        info: () => {},
+        warn: (msg) => loggedWarnings.push(msg),
+        error: () => {},
+      },
+    });
+
+    const { report, exitCode } = await orchestrator.run();
+    assert.equal(exitCode, 1);
+    const modEntry = report.modules.find((m) => m.moduleId === 'rulesets');
+    assert.ok(modEntry);
+    assert.equal(modEntry.verified, false);
+    assert.ok(modEntry.discrepancies.some((d) => d.actual === 'read_error'));
+    assert.ok(
+      modEntry.warnings?.some((w) =>
+        w.includes('Bypass actor ID 99 could not be mapped'),
+      ),
+      'Expected module verification result to preserve plan warnings',
+    );
+    assert.ok(
+      loggedWarnings.some((w) =>
+        w.includes('Bypass actor ID 99 could not be mapped'),
+      ),
+      'Expected VerificationOrchestrator to log non-read-error plan warnings',
+    );
+  });
 });

@@ -5,7 +5,7 @@ import type {
 } from '@ghec/contracts';
 
 export const SEED_CATALOG_ITEMS: readonly SeedItemDefinition[] = [
-  // Organization-level (13 items)
+  // Organization-level (14 items)
   {
     id: 'org-settings',
     name: 'Organization Settings & Policies',
@@ -65,6 +65,16 @@ export const SEED_CATALOG_ITEMS: readonly SeedItemDefinition[] = [
     enterpriseOnly: true,
     description:
       'Custom property schema definitions across string, select, and boolean types',
+  },
+  {
+    id: 'org-rulesets',
+    name: 'Organization Repository Rulesets',
+    scopeLevel: 'organization',
+    category: 'actions-and-security',
+    dependencies: [],
+    enterpriseOnly: true,
+    description:
+      'Organization-wide branch and tag governance rulesets with repository targeting conditions',
   },
   {
     id: 'teams',
@@ -336,6 +346,7 @@ export const PRESET_MAPPINGS: Record<
     'actions-runners',
     'org-variables',
     'org-secrets',
+    'org-rulesets',
     'repo-variables',
     'repo-secrets',
     'environments',

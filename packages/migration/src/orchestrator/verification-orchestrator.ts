@@ -69,7 +69,11 @@ export class VerificationOrchestrator {
 
     const aggregatedByModuleId = new Map<
       string,
-      { verified: boolean; discrepancies: VerificationDiscrepancy[] }
+      {
+        verified: boolean;
+        discrepancies: VerificationDiscrepancy[];
+        warnings: string[];
+      }
     >();
 
     for (const modulePlan of this.plan.modules) {
@@ -95,9 +99,19 @@ export class VerificationOrchestrator {
         `Verifying module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}"`,
       );
 
-      const planReadErrorWarnings = (modulePlan.warnings ?? []).filter((w) =>
+      const allPlanWarnings = modulePlan.warnings ?? [];
+      const planReadErrorWarnings = allPlanWarnings.filter((w) =>
         w.startsWith(VERIFY_READ_ERROR_PREFIX),
       );
+      const nonReadErrorWarnings = allPlanWarnings.filter(
+        (w) => !w.startsWith(VERIFY_READ_ERROR_PREFIX),
+      );
+
+      for (const w of nonReadErrorWarnings) {
+        this.logger.warn(
+          `Plan warning for module "${modulePlan.moduleId}" on "${modulePlan.targetIdentifier}": ${w}`,
+        );
+      }
 
       let res: ModuleVerificationResult;
       try {
@@ -142,8 +156,17 @@ export class VerificationOrchestrator {
 
       let existing = aggregatedByModuleId.get(modulePlan.moduleId);
       if (!existing) {
-        existing = { verified: true, discrepancies: [] };
+        existing = { verified: true, discrepancies: [], warnings: [] };
         aggregatedByModuleId.set(modulePlan.moduleId, existing);
+      }
+
+      for (const w of allPlanWarnings) {
+        const prefixedWarning = modulePlan.targetIdentifier
+          ? `[${modulePlan.targetIdentifier}] ${w}`
+          : w;
+        if (!existing.warnings.includes(prefixedWarning)) {
+          existing.warnings.push(prefixedWarning);
+        }
       }
 
       if (!res.verified) {
@@ -185,6 +208,7 @@ export class VerificationOrchestrator {
         moduleId: moduleId as ModuleVerificationResult['moduleId'],
         verified: isVerified,
         discrepancies: agg.discrepancies,
+        ...(agg.warnings.length > 0 ? { warnings: agg.warnings } : {}),
       });
     }
 

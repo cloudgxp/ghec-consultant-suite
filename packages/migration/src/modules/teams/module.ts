@@ -9,6 +9,11 @@ import {
   type VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  assertFetchAllOk,
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -297,6 +302,7 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
         },
         ctx.signal,
       );
+      assertFetchAllOk(teamsRes, `/orgs/${sourceOrg}/teams`);
 
       for (const raw of teamsRes.items) {
         teamSlugMap[raw.slug] = raw.slug;
@@ -391,10 +397,19 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           isIdpManaged: !isNonIdp,
         });
       }
-    } catch (err) {
-      ctx.logger.warn?.(
-        `Failed to list teams for ${sourceOrg}: ${String(err)}`,
-      );
+    } catch (err: unknown) {
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn?.(
+          `Teams not available for ${sourceOrg}: ${formatSanitizedReadError(err)}`,
+        );
+      } else {
+        const msg = formatSanitizedReadError(
+          `Failed to list teams for ${sourceOrg}`,
+          err,
+        );
+        ctx.logger.error?.(msg);
+        throw new Error(msg, { cause: err });
+      }
     }
 
     // Read default repository permission

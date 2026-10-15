@@ -295,6 +295,12 @@ export class MigrationOrchestrator {
           };
         }
 
+        for (const w of effectiveModulePlan.warnings ?? []) {
+          this.logger.warn(
+            `Plan warning for module "${modulePlan.moduleId}" on "${modulePlan.targetIdentifier}": ${w}`,
+          );
+        }
+
         this.logger.info(
           `Executing module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}"`,
         );
