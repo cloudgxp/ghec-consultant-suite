@@ -203,7 +203,7 @@ export class MigrationResultsRepoPublisher {
       const entries = Object.entries(files);
 
       if (entries.length > 20) {
-        let currentBaseTree = parentCommitSha;
+        let currentBaseTree: string | undefined;
         const chunkSize = 100;
         for (let i = 0; i < entries.length; i += chunkSize) {
           const chunk = entries.slice(i, i + chunkSize);
@@ -279,14 +279,9 @@ export class MigrationResultsRepoPublisher {
           method: 'POST',
           path: '/repos/{owner}/{repo}/git/trees',
           pathParams: { owner: this.targetOrg, repo: this.repoName },
-          body: parentCommitSha
-            ? {
-                base_tree: parentCommitSha,
-                tree: treeEntries,
-              }
-            : {
-                tree: treeEntries,
-              },
+          body: {
+            tree: treeEntries,
+          },
         };
 
         const treeRes = await this.targetWriteClient.mutate<{ sha: string }>(

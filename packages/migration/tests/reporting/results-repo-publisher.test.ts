@@ -257,3 +257,85 @@ test('defensively handles errors and redacts tokens from exception messages', as
     },
   );
 });
+
+test('starts from clean root tree on batch 1 and chains base_tree on subsequent batches', async () => {
+  const treeMutations: TargetWriteOperation[] = [];
+  const commitMutations: TargetWriteOperation[] = [];
+
+  const mockTargetClient: GitHubReadAdapter = {
+    queryGraphQL: async () => {
+      throw new Error('Not implemented');
+    },
+    readPage: async () => {
+      throw new Error('Not implemented');
+    },
+    fetchAll: async () => {
+      throw new Error('Not implemented');
+    },
+    readSingle: async <T>(op: ReadOperation) => {
+      if (op.path === '/repos/{owner}/{repo}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: { name: 'migration-audit-results' } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/git/ref/heads/{branch}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: { object: { sha: 'prior-commit-sha-111' } } as unknown as T,
+        };
+      }
+      throw new Error(`Unexpected path: ${op.path}`);
+    },
+  };
+
+  let treeIdx = 1;
+  const mockTargetWriteClient: TargetWriteClient = {
+    mutate: async <T>(operation: TargetWriteOperation) => {
+      if (operation.path === '/repos/{owner}/{repo}/git/trees') {
+        treeMutations.push(operation);
+        return {
+          status: 201,
+          data: { sha: `batch-tree-sha-${treeIdx++}` } as unknown as T,
+        };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/commits') {
+        commitMutations.push(operation);
+        return {
+          status: 201,
+          data: { sha: 'clean-commit-sha-222' } as unknown as T,
+        };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/refs/heads/{branch}') {
+        return { status: 200, data: {} as unknown as T };
+      }
+      throw new Error(`Unexpected mutation: ${operation.path}`);
+    },
+  };
+
+  const publisher = new MigrationResultsRepoPublisher({
+    targetOrg: 'demogxp-mig2',
+    repoName: 'migration-audit-results',
+    targetClient: mockTargetClient,
+    targetWriteClient: mockTargetWriteClient,
+  });
+
+  const files: Record<string, string> = {};
+  for (let i = 1; i <= 125; i++) {
+    files[`repositories/repo-${i}/gei-repo.md`] = `# File ${i}`;
+  }
+
+  const result = await publisher.publish(files);
+  assert.equal(result.commitSha, 'clean-commit-sha-222');
+  assert.equal(treeMutations.length, 2);
+
+  const firstTreeBody = treeMutations[0]?.body as Record<string, unknown>;
+  const secondTreeBody = treeMutations[1]?.body as Record<string, unknown>;
+  assert.equal(firstTreeBody.base_tree, undefined);
+  assert.equal(secondTreeBody.base_tree, 'batch-tree-sha-1');
+
+  const commitBody = commitMutations[0]?.body as Record<string, unknown>;
+  assert.deepEqual(commitBody.parents, ['prior-commit-sha-111']);
+});
