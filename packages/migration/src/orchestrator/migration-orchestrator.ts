@@ -446,21 +446,31 @@ export class MigrationOrchestrator {
       const sourceOrg = repoMapping?.sourceOrg ?? targetOrg!;
       const sourceRepo = repoMapping?.sourceRepo ?? targetRepo!;
       const repoKey = `${sourceOrg}/${sourceRepo}`;
-      const repoOptions =
+      const baseRepoOptions =
         repoMapping?.options ??
         this.scope?.repositoryOptions?.[repoKey] ??
         this.scope?.repositoryOptions?.[sourceRepo] ??
         (repoMapping?.skipReleases !== undefined ||
         repoMapping?.lfsStrategy !== undefined ||
         repoMapping?.targetRepoVisibility !== undefined ||
-        repoMapping?.gitTransferStrategy !== undefined
+        repoMapping?.gitTransferStrategy !== undefined ||
+        repoMapping?.mirrorPushMode !== undefined
           ? {
               skipReleases: repoMapping.skipReleases,
               lfsStrategy: repoMapping.lfsStrategy,
               targetRepoVisibility: repoMapping.targetRepoVisibility,
               gitTransferStrategy: repoMapping.gitTransferStrategy,
+              mirrorPushMode: repoMapping.mirrorPushMode,
             }
           : undefined);
+      const effectiveMirrorPushMode =
+        baseRepoOptions?.mirrorPushMode ??
+        repoMapping?.mirrorPushMode ??
+        this.scope?.mirrorPushMode;
+      const repoOptions =
+        effectiveMirrorPushMode !== undefined
+          ? { ...baseRepoOptions, mirrorPushMode: effectiveMirrorPushMode }
+          : baseRepoOptions;
 
       const matchingOrg = this.scope?.organizations.find(
         (o) => o.target === targetOrg,

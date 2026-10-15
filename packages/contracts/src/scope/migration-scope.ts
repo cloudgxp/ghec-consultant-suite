@@ -22,6 +22,10 @@ export const GitTransferStrategySchema = z.enum(['auto', 'gei', 'mirror-push']);
 
 export type GitTransferStrategy = z.infer<typeof GitTransferStrategySchema>;
 
+export const MirrorPushModeSchema = z.enum(['fast-snapshot', 'full-history']);
+
+export type MirrorPushMode = z.infer<typeof MirrorPushModeSchema>;
+
 export const RepositoryOptionsSchema = z
   .object({
     skipReleases: z.boolean().optional(),
@@ -31,6 +35,7 @@ export const RepositoryOptionsSchema = z
     timeoutSeconds: z.number().int().positive().optional(),
     lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
     gitTransferStrategy: GitTransferStrategySchema.optional(),
+    mirrorPushMode: MirrorPushModeSchema.optional(),
     targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
   })
   .strict();
@@ -49,6 +54,7 @@ export const RepositoryMappingSchema = z
     skipDiskCheck: z.boolean().optional(),
     lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
     gitTransferStrategy: GitTransferStrategySchema.optional(),
+    mirrorPushMode: MirrorPushModeSchema.optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
     options: RepositoryOptionsSchema.optional(),
   })
@@ -82,6 +88,7 @@ export const MigrationScopeSchema = z
     version: z.literal(MIGRATION_SCHEMA_VERSION),
     name: NonEmptyStringSchema,
     targetType: TargetTenantTypeSchema.optional(),
+    mirrorPushMode: MirrorPushModeSchema.optional(),
     enterprise: z
       .object({
         sourceSlug: NonEmptyStringSchema,

@@ -62,6 +62,7 @@ Configuration Options:
   --lfs-strategy <strategy>    LFS migration strategy: 'dual-remote-stream' or 'skip' (default: 'dual-remote-stream')
   --use-gei <true|false>       Whether to use GitHub Enterprise Importer (default: true)
   --skip-releases              Skip release asset migration fallback (default: false)
+  --mirror-push-mode <mode>    Mirror-push mode for >2 GiB / >40 GiB repos: 'fast-snapshot' (default) or 'full-history'
   --target-type <ghec|emu>     Target tenant type: 'ghec' (standard GHEC) or 'emu' (GHEC-EMU)
   --emu-shortcode <shortcode>  Admin-defined EMU shortcode/suffix (e.g. '_acme' or 'acme')
   --identity-strategy <strat>  Identity mapping strategy: 'emu-saml', 'manual', 'pass-through'
@@ -268,6 +269,7 @@ export async function generateScope(options) {
     lfsStrategy = 'dual-remote-stream',
     useGei = true,
     skipReleases = false,
+    mirrorPushMode,
     targetType,
     emuShortcode,
     identityStrategy,
@@ -417,6 +419,12 @@ export async function generateScope(options) {
     if (targetVisibility) {
       mapping.targetRepoVisibility = targetVisibility;
     }
+    if (
+      mirrorPushMode === 'fast-snapshot' ||
+      mirrorPushMode === 'full-history'
+    ) {
+      mapping.mirrorPushMode = mirrorPushMode;
+    }
 
     return mapping;
   });
@@ -426,6 +434,9 @@ export async function generateScope(options) {
     version: MIGRATION_SCHEMA_VERSION,
     name: resolvedName,
     ...(resolvedTargetType ? { targetType: resolvedTargetType } : {}),
+    ...(mirrorPushMode === 'fast-snapshot' || mirrorPushMode === 'full-history'
+      ? { mirrorPushMode }
+      : {}),
     organizations: [orgMapping],
     repositories: repositoryMappings,
     identityMapping: {
@@ -487,6 +498,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         'lfs-strategy': { type: 'string', default: 'dual-remote-stream' },
         'use-gei': { type: 'string', default: 'true' },
         'skip-releases': { type: 'boolean', default: false },
+        'mirror-push-mode': { type: 'string' },
         'target-type': { type: 'string' },
         'emu-shortcode': { type: 'string' },
         'identity-strategy': { type: 'string' },
@@ -541,6 +553,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       lfsStrategy: values['lfs-strategy'],
       useGei,
       skipReleases: values['skip-releases'],
+      mirrorPushMode: values['mirror-push-mode'],
       targetType: values['target-type'],
       emuShortcode: values['emu-shortcode'],
       identityStrategy: values['identity-strategy'],

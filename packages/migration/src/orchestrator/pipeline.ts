@@ -305,6 +305,10 @@ export class RepositoryMigrationPipeline {
                   ? { targetToken: this.options.targetToken }
                   : {}),
                 estimatedSizeBytes: assessment?.gitSizeBytes,
+                mirrorPushMode:
+                  repoOptions?.mirrorPushMode ??
+                  repoMapping.mirrorPushMode ??
+                  this.options.scope?.mirrorPushMode,
                 skipDiskCheck: repoOptions?.skipDiskCheck,
                 targetClient: this.options.targetClient,
                 targetWriteClient: this.options.targetWriteClient,
@@ -388,6 +392,10 @@ export class RepositoryMigrationPipeline {
                       ? { targetToken: this.options.targetToken }
                       : {}),
                     estimatedSizeBytes: assessment?.gitSizeBytes,
+                    mirrorPushMode:
+                      repoOptions?.mirrorPushMode ??
+                      repoMapping.mirrorPushMode ??
+                      this.options.scope?.mirrorPushMode,
                     skipDiskCheck: repoOptions?.skipDiskCheck,
                     targetClient: this.options.targetClient,
                     targetWriteClient: this.options.targetWriteClient,

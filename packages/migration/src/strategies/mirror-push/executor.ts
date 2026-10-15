@@ -232,7 +232,9 @@ export class GitMirrorPushExecutor {
         cloneArgs.push('--config-env=http.extraHeader=GHEC_SOURCE_AUTH');
       }
 
+      const mirrorPushMode = request.mirrorPushMode ?? 'fast-snapshot';
       const useShallowPackGuard =
+        mirrorPushMode === 'fast-snapshot' &&
         estimatedSizeBytes !== undefined &&
         estimatedSizeBytes > 2 * 1024 * 1024 * 1024;
 
@@ -421,29 +423,115 @@ export class GitMirrorPushExecutor {
         if (
           errOut.includes('HTTP 500') ||
           errOut.includes('unexpected disconnect') ||
-          errOut.includes('remote end hung up')
+          errOut.includes('remote end hung up') ||
+          errOut.includes('exceeds maximum allowed size')
         ) {
-          const fallbackPushArgs: string[] = [];
-          if (targetToken) {
-            fallbackPushArgs.push(
-              '--config-env=http.extraHeader=GHEC_TARGET_AUTH',
-            );
-          }
-          fallbackPushArgs.push(
-            'push',
-            '--all',
-            '--',
-            `https://github.com/${targetOrg}/${targetRepo}.git`,
-          );
-          pushResult = await this.runner('git', fallbackPushArgs, {
+          const remoteUrl = `https://github.com/${targetOrg}/${targetRepo}.git`;
+          const authPrefix = targetToken
+            ? ['--config-env=http.extraHeader=GHEC_TARGET_AUTH']
+            : [];
+
+          // Step 1: Windowed commit-range push for default branch if history is deep
+          const symRefRes = await this.runner('git', ['symbolic-ref', 'HEAD'], {
             cwd: scratchDir,
-            environment: pushEnv,
             secrets: secretsToRedact,
             signal,
             timeoutMs,
           });
+          const branchRef = symRefRes.stdout.trim() || 'refs/heads/main';
+          const revListRes = await this.runner(
+            'git',
+            ['rev-list', '--reverse', branchRef],
+            {
+              cwd: scratchDir,
+              secrets: secretsToRedact,
+              signal,
+              timeoutMs,
+            },
+          );
+          if (revListRes.exitCode === 0) {
+            const commits = revListRes.stdout
+              .split(/\r?\n/)
+              .map((line) => line.trim())
+              .filter((line) => /^[0-9a-f]{40}$/i.test(line));
+            const windowSize = 25000;
+            for (
+              let idx = windowSize - 1;
+              idx < commits.length - 1;
+              idx += windowSize
+            ) {
+              const sha = commits[idx];
+              if (!sha) continue;
+              const stepPush = await this.runner(
+                'git',
+                [...authPrefix, 'push', '--', remoteUrl, `${sha}:${branchRef}`],
+                {
+                  cwd: scratchDir,
+                  environment: pushEnv,
+                  secrets: secretsToRedact,
+                  signal,
+                  timeoutMs,
+                },
+              );
+              combinedStdout += `\n${stepPush.stdout}`;
+              combinedStderr += `\n${stepPush.stderr}`;
+            }
+          }
+
+          // Step 2: Push all branches
+          pushResult = await this.runner(
+            'git',
+            [...authPrefix, 'push', '--all', '--', remoteUrl],
+            {
+              cwd: scratchDir,
+              environment: pushEnv,
+              secrets: secretsToRedact,
+              signal,
+              timeoutMs,
+            },
+          );
           combinedStdout += `\n${pushResult.stdout}`;
           combinedStderr += `\n${pushResult.stderr}`;
+
+          // Step 3: Push tags in batches of 500 when full-history mode is requested
+          if (
+            pushResult.exitCode === 0 &&
+            request.mirrorPushMode === 'full-history'
+          ) {
+            const tagListRes = await this.runner(
+              'git',
+              ['for-each-ref', '--format=%(refname)', 'refs/tags'],
+              {
+                cwd: scratchDir,
+                secrets: secretsToRedact,
+                signal,
+                timeoutMs,
+              },
+            );
+            if (tagListRes.exitCode === 0) {
+              const tagRefs = tagListRes.stdout
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line.startsWith('refs/tags/'));
+              const tagBatchSize = 500;
+              for (let i = 0; i < tagRefs.length; i += tagBatchSize) {
+                const batch = tagRefs.slice(i, i + tagBatchSize);
+                const tagPush = await this.runner(
+                  'git',
+                  [...authPrefix, 'push', '--', remoteUrl, ...batch],
+                  {
+                    cwd: scratchDir,
+                    environment: pushEnv,
+                    secrets: secretsToRedact,
+                    signal,
+                    timeoutMs,
+                  },
+                );
+                combinedStdout += `\n${tagPush.stdout}`;
+                combinedStderr += `\n${tagPush.stderr}`;
+              }
+            }
+          }
         }
       }
 

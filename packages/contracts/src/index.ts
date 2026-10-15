@@ -942,11 +942,15 @@ export {
   RepositoryMappingSchema,
   RepositoryOptionsSchema,
   GitTransferStrategySchema,
+  MirrorPushModeSchema,
+  TargetTenantTypeSchema,
   TeamManagementSchema,
   validateMigrationScope,
   type MigrationScope,
   type RepositoryOptions,
   type GitTransferStrategy,
+  type MirrorPushMode,
+  type TargetTenantType,
   type TeamManagement,
 } from './scope/migration-scope.js';
 export {

@@ -52,6 +52,7 @@ export interface MigrateCommandOptions {
   readonly targetToken?: string | undefined;
   readonly publishResults?: boolean | undefined;
   readonly checkpointDir?: string | undefined;
+  readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
 }
 
 export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
@@ -88,11 +89,23 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       'source-token': { type: 'string' },
       'target-token': { type: 'string' },
       'publish-results': { type: 'boolean', default: false },
+      'mirror-push-mode': { type: 'string' },
     },
   });
 
   if (!values.plan && !values.scope) {
     throw new Error('Either --plan <file> or --scope <file> is required.');
+  }
+
+  const rawMirrorPushMode = values['mirror-push-mode'];
+  if (
+    rawMirrorPushMode !== undefined &&
+    rawMirrorPushMode !== 'fast-snapshot' &&
+    rawMirrorPushMode !== 'full-history'
+  ) {
+    throw new Error(
+      `Invalid --mirror-push-mode "${rawMirrorPushMode}". Expected "fast-snapshot" or "full-history".`,
+    );
   }
 
   const parsedSelection = parseModuleSelectionFlags(
@@ -130,6 +143,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     sourceToken: values['source-token'],
     targetToken: values['target-token'],
     publishResults: values['publish-results'] ?? false,
+    mirrorPushMode: rawMirrorPushMode,
   };
 }
 
@@ -194,6 +208,19 @@ export async function executeMigrateCommand(
               ) ||
               repoFilterSet.has(`${r.targetOrg}/${r.targetRepo}`.toLowerCase()),
           ),
+        };
+      }
+      if (options.mirrorPushMode) {
+        scope = {
+          ...scope,
+          mirrorPushMode: options.mirrorPushMode,
+          repositories: scope.repositories.map((r) => ({
+            ...r,
+            mirrorPushMode: options.mirrorPushMode,
+            options: r.options
+              ? { ...r.options, mirrorPushMode: options.mirrorPushMode }
+              : undefined,
+          })),
         };
       }
     } catch (err) {

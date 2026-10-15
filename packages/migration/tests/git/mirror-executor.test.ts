@@ -203,4 +203,87 @@ describe('GitMirrorPushExecutor', () => {
     assert.equal(typeof check.freeBytes, 'number');
     assert.equal(check.sufficient, true);
   });
+
+  it('defaults to fast-snapshot shallow clone for repositories > 2 GiB', async () => {
+    const executedArgs: (readonly string[])[] = [];
+    const mockRunner: GitCommandRunner = async (_cmd, args) => {
+      executedArgs.push(args);
+      return { exitCode: 0, stdout: 'ok', stderr: '' };
+    };
+
+    const executor = new GitMirrorPushExecutor(mockRunner);
+    await executor.execute({
+      sourceOrg: 'src-org',
+      sourceRepo: 'chromium',
+      targetOrg: 'tgt-org',
+      targetRepo: 'chromium',
+      estimatedSizeBytes: 55 * 1024 * 1024 * 1024,
+      skipDiskCheck: true,
+    });
+
+    assert.equal(executedArgs.length, 2);
+    assert.equal(executedArgs[0]?.includes('--depth'), true);
+    assert.equal(executedArgs[0]?.includes('--single-branch'), true);
+    assert.equal(executedArgs[1]?.includes('--all'), true);
+  });
+
+  it('uses full clone and windowed commit + tag batch fallback when mirrorPushMode is full-history', async () => {
+    const executedArgs: (readonly string[])[] = [];
+    const mockRunner: GitCommandRunner = async (_cmd, args) => {
+      executedArgs.push(args);
+      if (args.includes('--mirror')) {
+        return {
+          exitCode: 1,
+          stdout: '',
+          stderr:
+            'error: RPC failed; HTTP 500 curl 22 The requested URL returned error: 500',
+        };
+      }
+      if (args.includes('symbolic-ref')) {
+        return { exitCode: 0, stdout: 'refs/heads/main\n', stderr: '' };
+      }
+      if (args.includes('rev-list')) {
+        return {
+          exitCode: 0,
+          stdout: `${'a'.repeat(40)}\n${'b'.repeat(40)}\n`,
+          stderr: '',
+        };
+      }
+      if (args.includes('for-each-ref')) {
+        return {
+          exitCode: 0,
+          stdout: 'refs/tags/v1.0.0\nrefs/tags/v1.1.0\n',
+          stderr: '',
+        };
+      }
+      return { exitCode: 0, stdout: 'ok', stderr: '' };
+    };
+
+    const executor = new GitMirrorPushExecutor(mockRunner);
+    await executor.execute({
+      sourceOrg: 'src-org',
+      sourceRepo: 'chromium',
+      targetOrg: 'tgt-org',
+      targetRepo: 'chromium',
+      estimatedSizeBytes: 55 * 1024 * 1024 * 1024,
+      mirrorPushMode: 'full-history',
+      skipDiskCheck: true,
+    });
+
+    // 1. Full clone (no --depth)
+    assert.equal(executedArgs[0]?.includes('--depth'), false);
+    // 2. Initial push --mirror
+    assert.equal(executedArgs[1]?.includes('--mirror'), true);
+    // 3. Fallback push --all + batched tag push
+    assert.equal(
+      executedArgs.some((a) => a.includes('--all')),
+      true,
+    );
+    assert.equal(
+      executedArgs.some(
+        (a) => a.includes('refs/tags/v1.0.0') && a.includes('refs/tags/v1.1.0'),
+      ),
+      true,
+    );
+  });
 });

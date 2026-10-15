@@ -84,6 +84,14 @@ on:
         required: false
         type: boolean
         default: false
+      mirror_push_mode:
+        description: 'Mirror-push mode for massive (>2 GiB / >40 GiB) repos ("fast-snapshot" default vs "full-history")'
+        required: false
+        type: choice
+        options:
+          - 'fast-snapshot'
+          - 'full-history'
+        default: 'fast-snapshot'
       commit_to_branch:
         description: 'Commit and push the generated scope file to this branch'
         required: false
@@ -117,6 +125,7 @@ jobs:
             "--target" "${{ inputs.target_org }}"
             "--target-type" "${{ inputs.target_type || 'ghec' }}"
             "--lfs-strategy" "${{ inputs.lfs_strategy }}"
+            "--mirror-push-mode" "${{ inputs.mirror_push_mode || 'fast-snapshot' }}"
           )
 
           if [ -n "${{ inputs.emu_shortcode }}" ]; then

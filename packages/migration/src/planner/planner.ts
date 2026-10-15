@@ -202,10 +202,18 @@ export class MigrationPlanner {
     // 2. Process Repository-level Scopes
     for (const repoMapping of this.scope.repositories) {
       const repoKey = `${repoMapping.sourceOrg}/${repoMapping.sourceRepo}`;
-      const repoOptions =
+      const baseRepoOptions =
         repoMapping.options ??
         this.scope.repositoryOptions?.[repoKey] ??
         this.scope.repositoryOptions?.[repoMapping.sourceRepo];
+      const effectiveMirrorPushMode =
+        baseRepoOptions?.mirrorPushMode ??
+        repoMapping.mirrorPushMode ??
+        this.scope.mirrorPushMode;
+      const repoOptions =
+        effectiveMirrorPushMode !== undefined
+          ? { ...baseRepoOptions, mirrorPushMode: effectiveMirrorPushMode }
+          : baseRepoOptions;
       const matchingOrg = this.scope.organizations.find(
         (o) => o.target === repoMapping.targetOrg,
       );
