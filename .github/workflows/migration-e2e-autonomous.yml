@@ -823,10 +823,6 @@ jobs:
             if [ -f ./scans/post-cohort-reconcile-report.json ]; then
               EXEC_REPORTS="${EXEC_REPORTS},./scans/post-cohort-reconcile-report.json"
             fi
-            TARGET_ORG=$(jq -r '.organizations[0].target // .repositories[0].targetOrg // empty' "$INPUT_SCOPE")
-            if [ -n "$TARGET_ORG" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
-              GH_TOKEN="$GHEC_TARGET_TOKEN" gh api -X DELETE "repos/${TARGET_ORG}/gei-migration-results" >/dev/null 2>&1 || true
-            fi
             echo "Publishing 3-tier migration audit results repository (migration-audit-results) to target organization..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
               --scope "$INPUT_SCOPE" \
