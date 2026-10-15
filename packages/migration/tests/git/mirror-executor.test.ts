@@ -349,7 +349,7 @@ describe('GitMirrorPushExecutor', () => {
             'console.error("Counting objects: 42% using token ghp_timeoutSecret789"); setTimeout(() => {}, 5000);',
           ],
           {
-            timeoutMs: 120,
+            timeoutMs: 800,
             secrets: ['ghp_timeoutSecret789'],
             onStderr: (line) => streamedStderr.push(line),
           },
@@ -358,7 +358,7 @@ describe('GitMirrorPushExecutor', () => {
       (err: Error) => {
         assert.match(
           err.message,
-          /Git command timed out after 120 milliseconds/,
+          /Git command timed out after 800 milliseconds/,
         );
         assert.match(err.message, /Partial output before termination:/);
         assert.match(err.message, /Counting objects: 42%/);

@@ -1,12 +1,18 @@
-name: Migration Plan on Scope PR
+name: Migration Plan on Scope
 
 on:
-  pull_request:
-    paths:
-      - 'scopes/**.json'
-      - 'scopes/**.yml'
-      - 'scopes/**.yaml'
-      - '!scopes/test-**'
+  workflow_dispatch:
+    inputs:
+      scope_path:
+        description: 'Path to migration scope JSON file (or leave empty to plan all non-test scopes in scopes/)'
+        required: false
+        default: 'scopes/demogxp-wave.json'
+        type: string
+      pr_number:
+        description: 'Optional pull request number to post the planning summary comment to'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -14,7 +20,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: migration-plan-${{ github.ref }}
+  group: migration-plan-${{ github.ref }}-${{ inputs.scope_path }}
   cancel-in-progress: true
 
 jobs:
@@ -24,31 +30,37 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
 
-      - name: Identify Changed Scope Files
+      - name: Identify Target Scope Files
         id: find-scopes
         shell: bash
+        env:
+          INPUT_SCOPE_PATH: ${{ inputs.scope_path }}
         run: |
-          # Find added or modified files in scopes/, excluding test fixtures
-          CHANGED=$(git diff --name-only --diff-filter=d -r HEAD~1 HEAD -- 'scopes/*.json' 'scopes/**/*.json' ':!scopes/test-*' || true)
-          if [ -z "$CHANGED" ]; then
-            echo "No JSON scope files changed."
+          if [ -n "$INPUT_SCOPE_PATH" ]; then
+            if [ ! -f "$INPUT_SCOPE_PATH" ]; then
+              echo "::error::Specified scope file not found: $INPUT_SCOPE_PATH"
+              exit 1
+            fi
+            TARGETS="$INPUT_SCOPE_PATH"
+          else
+            TARGETS=$(find scopes -maxdepth 2 -name '*.json' ! -name 'test-*' | sort || true)
+          fi
+          if [ -z "$TARGETS" ]; then
+            echo "No JSON scope files found."
             echo "has_scopes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "Changed scopes:"
-          echo "$CHANGED"
+          echo "Target scopes:"
+          echo "$TARGETS"
           echo "has_scopes=true" >> "$GITHUB_OUTPUT"
-          # Convert newline list to JSON array
-          JSON_ARRAY=$(echo "$CHANGED" | jq -R . | jq -s -c .)
+          JSON_ARRAY=$(echo "$TARGETS" | jq -R . | jq -s -c .)
           echo "scopes_json=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
 
-      - name: Execute Migration Planning for Changed Scopes
+      - name: Execute Migration Planning for Target Scopes
         if: ${{ steps.find-scopes.outputs.has_scopes == 'true' }}
         id: plan
         shell: bash
@@ -56,11 +68,11 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           SCOPES_JSON: ${{ steps.find-scopes.outputs.scopes_json }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           mkdir -p ./scans ./reports
-          COMMENT_BODY="# 📋 Migration Planning Summary for PR #${PR_NUMBER}\n\n"
-          COMMENT_BODY+="Automated pre-migration plan execution completed for modified scopes.\n\n"
+          COMMENT_BODY="# 📋 Migration Planning Summary\n\n"
+          COMMENT_BODY+="Automated pre-migration plan execution completed for target scopes.\n\n"
 
           echo "$SCOPES_JSON" | jq -r '.[]' | while read -r SCOPE_FILE; do
             if [ ! -f "$SCOPE_FILE" ]; then
@@ -122,31 +134,38 @@ jobs:
         if: ${{ steps.find-scopes.outputs.has_scopes == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: migration-plans-pr-${{ github.event.pull_request.number }}
+          name: migration-plans-${{ github.run_id }}
           path: ./scans/*-plan.json
           retention-days: 14
 
       - name: Post or Update PR Comment
-        if: ${{ steps.find-scopes.outputs.has_scopes == 'true' && hashFiles('./reports/pr-comment.md') != '' }}
+        if: ${{ steps.find-scopes.outputs.has_scopes == 'true' && inputs.pr_number != '' && hashFiles('./reports/pr-comment.md') != '' }}
         uses: actions/github-script@v7
+        env:
+          TARGET_PR_NUMBER: ${{ inputs.pr_number }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
+            const prNumber = Number.parseInt(process.env.TARGET_PR_NUMBER || '', 10);
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              core.info('No valid PR number provided; skipping PR comment.');
+              return;
+            }
             const commentBody = fs.readFileSync('./reports/pr-comment.md', 'utf8');
             const header = '## 📋 Migration Planning Summary';
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: prNumber,
             });
 
             const botComment = comments.find(comment =>
               comment.user.type === 'Bot' && comment.body.includes(header)
             );
 
-            const fullBody = `${header}\n\n${commentBody}\n\n*Generated by GHEC Consultant Suite automated PR preflight.*`;
+            const fullBody = `${header}\n\n${commentBody}\n\n*Generated by GHEC Consultant Suite automated preflight.*`;
 
             if (botComment) {
               await github.rest.issues.updateComment({
@@ -159,7 +178,8 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: prNumber,
                 body: fullBody
               });
             }
+
