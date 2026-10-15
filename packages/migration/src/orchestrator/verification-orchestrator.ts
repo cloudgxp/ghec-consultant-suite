@@ -14,6 +14,10 @@ import {
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
+import {
+  VERIFY_READ_ERROR_PREFIX,
+  formatSanitizedReadError,
+} from '../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeTarget,
@@ -90,7 +94,51 @@ export class VerificationOrchestrator {
       this.logger.info(
         `Verifying module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}"`,
       );
-      const res = await mod.verify(ctx, modulePlan);
+
+      const planReadErrorWarnings = (modulePlan.warnings ?? []).filter((w) =>
+        w.startsWith(VERIFY_READ_ERROR_PREFIX),
+      );
+
+      let res: ModuleVerificationResult;
+      try {
+        res = await mod.verify(ctx, modulePlan);
+      } catch (err: unknown) {
+        if (this.signal.aborted) {
+          throw this.signal.reason ?? err;
+        }
+        const sanitizedMsg = formatSanitizedReadError(
+          `verify() for module "${modulePlan.moduleId}" on "${modulePlan.targetIdentifier}"`,
+          err,
+        );
+        this.logger.error(sanitizedMsg);
+        res = {
+          moduleId: modulePlan.moduleId,
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: modulePlan.targetIdentifier || modulePlan.moduleId,
+              expected: 'verifiable source and target state',
+              actual: 'read_error',
+              message: sanitizedMsg,
+            },
+          ],
+        };
+      }
+
+      if (planReadErrorWarnings.length > 0) {
+        const readErrorDiscrepancies: VerificationDiscrepancy[] =
+          planReadErrorWarnings.map((w) => ({
+            resourceName: modulePlan.targetIdentifier || modulePlan.moduleId,
+            expected: 'verifiable source and target state',
+            actual: 'read_error',
+            message: w,
+          }));
+        res = {
+          ...res,
+          verified: false,
+          discrepancies: [...readErrorDiscrepancies, ...res.discrepancies],
+        };
+      }
 
       let existing = aggregatedByModuleId.get(modulePlan.moduleId);
       if (!existing) {
@@ -102,7 +150,23 @@ export class VerificationOrchestrator {
         existing.verified = false;
       }
       for (const disc of res.discrepancies) {
-        existing.discrepancies.push(disc);
+        const repoName =
+          scopeTarget.level === 'repository'
+            ? scopeTarget.targetRepo
+            : undefined;
+        const shouldPrefix =
+          Boolean(repoName) &&
+          disc.resourceName !== repoName &&
+          !disc.resourceName.startsWith(`${repoName}:`) &&
+          !disc.resourceName.startsWith(`${scopeTarget.targetOrg}/${repoName}`);
+        existing.discrepancies.push(
+          shouldPrefix
+            ? {
+                ...disc,
+                resourceName: `${repoName}:${disc.resourceName}`,
+              }
+            : disc,
+        );
       }
     }
 
@@ -174,22 +238,72 @@ export class VerificationOrchestrator {
       const repoMapping = this.scope?.repositories.find(
         (r) => r.targetOrg === targetOrg && r.targetRepo === targetRepo,
       );
+      const sourceOrg = repoMapping?.sourceOrg ?? targetOrg!;
+      const sourceRepo = repoMapping?.sourceRepo ?? targetRepo!;
+      const repoKey = `${sourceOrg}/${sourceRepo}`;
+      const baseRepoOptions =
+        repoMapping?.options ??
+        this.scope?.repositoryOptions?.[repoKey] ??
+        this.scope?.repositoryOptions?.[sourceRepo] ??
+        (repoMapping?.skipReleases !== undefined ||
+        repoMapping?.lfsStrategy !== undefined ||
+        repoMapping?.targetRepoVisibility !== undefined ||
+        repoMapping?.gitTransferStrategy !== undefined ||
+        repoMapping?.mirrorPushMode !== undefined
+          ? {
+              skipReleases: repoMapping.skipReleases,
+              lfsStrategy: repoMapping.lfsStrategy,
+              targetRepoVisibility: repoMapping.targetRepoVisibility,
+              gitTransferStrategy: repoMapping.gitTransferStrategy,
+              mirrorPushMode: repoMapping.mirrorPushMode,
+            }
+          : undefined);
+      const effectiveMirrorPushMode =
+        baseRepoOptions?.mirrorPushMode ??
+        repoMapping?.mirrorPushMode ??
+        this.scope?.mirrorPushMode;
+      const repoOptions =
+        effectiveMirrorPushMode !== undefined
+          ? { ...baseRepoOptions, mirrorPushMode: effectiveMirrorPushMode }
+          : baseRepoOptions;
+
+      const matchingOrg = this.scope?.organizations.find(
+        (o) => o.target === targetOrg,
+      );
+      const effectiveTargetType =
+        matchingOrg?.targetType ??
+        this.scope?.targetType ??
+        (this.scope?.identityMapping?.strategy === 'pass-through'
+          ? 'ghec'
+          : 'emu');
+
       return {
         level: 'repository',
-        sourceOrg: repoMapping?.sourceOrg ?? targetOrg!,
+        sourceOrg,
         targetOrg: targetOrg!,
-        sourceRepo: repoMapping?.sourceRepo ?? targetRepo!,
+        sourceRepo,
         targetRepo: targetRepo!,
+        targetType: effectiveTargetType,
+        identityMapping: this.scope?.identityMapping,
+        options: repoOptions,
       };
     }
 
     const orgMapping = this.scope?.organizations.find(
       (o) => o.target === targetId,
     );
+    const effectiveTargetType =
+      orgMapping?.targetType ??
+      this.scope?.targetType ??
+      (this.scope?.identityMapping?.strategy === 'pass-through'
+        ? 'ghec'
+        : 'emu');
     return {
       level: 'organization',
       sourceOrg: orgMapping?.source ?? targetId,
       targetOrg: targetId,
+      targetType: effectiveTargetType,
+      identityMapping: this.scope?.identityMapping,
     };
   }
 }

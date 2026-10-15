@@ -10,6 +10,13 @@ export const PROJECT_BUILTIN_FIELD_NAMES = new Set([
   'reviewers',
   'repository',
   'milestone',
+  'closed',
+  'created',
+  'updated',
+  'parent issue',
+  'sub-issues progress',
+  'tracks',
+  'tracked by',
 ]);
 
 export interface ProjectV2SingleSelectOption {

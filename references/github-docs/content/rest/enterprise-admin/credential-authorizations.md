@@ -11,3 +11,251 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Grant credential authorizations for enterprise organizations
+
+`POST /enterprises/{enterprise}/credential-authorizations`
+
+Authorizes an existing user credential for selected organizations in an enterprise. Currently supports personal access tokens (classic)
+and user-owned SSH authentication keys.
+The authenticated GitHub App must be owned by the enterprise or an organization in the enterprise. The credential
+owner must be a member of every selected organization, and the enterprise must be configured with
+an enterprise-level SSO provider.
+
+Credential authorizations remain active if the GitHub App is uninstalled or loses permission. They
+remain active until explicitly revoked, the credential is revoked or deleted, or the credential
+owner loses organization membership.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `credential_id` | `integer or string` | Yes | The token ID of the personal access token (classic) to authorize. |
+| `credential_type` | `string` | Yes | The type of credential to authorize. |
+| `organizations` | `array of strings` | Yes | Organization slugs within the enterprise. A maximum of 50 organizations can be specified. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Credential authorizations were granted. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `409` | Conflict. Returned when credential authorizations are being modified by another request. |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Revoke enterprise-delegated credential authorizations
+
+`DELETE /enterprises/{enterprise}/credential-authorizations`
+
+Queues revocation of every active organization credential authorization created through enterprise
+delegation for the enterprise. Credential authorizations created through SAML or other flows are not affected.
+
+The authenticated GitHub App must be owned by the enterprise or one of its organizations,
+installed on the enterprise, and have the `enterprise_credentials:write` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `integration_id` | query | `integer` | No | The database ID of a GitHub App currently owned by the enterprise or one of its organizations, or a formerly owned GitHub App with delegation history for the enterprise. When provided, only credential authorizations delegated by that App are revoked. When omitted, all enterprise-delegated credential authorizations for the enterprise are revoked. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Delegated credential authorization revocation was queued. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Revoke all credential authorizations for an enterprise
+
+`POST /enterprises/{enterprise}/credential-authorizations/revoke-all`
+
+Revokes all credential authorizations for all organizations within the enterprise.
+This includes any guest, outside, or repository collaborators.
+
+For Enterprise Managed User (EMU) enterprises, you can optionally also destroy all
+credentials (PATs v1, PATs v2, and SSH keys) owned by enterprise members by setting
+the `revoke_credentials` parameter to `true`.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint, that token may also be
+revoked or destroyed as part of this operation.
+
+The authenticated user must be an enterprise owner or have the `write_enterprise_credentials` permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `revoke_credentials` | `boolean` | No | Whether to also destroy the actual credentials (PATs and SSH keys) owned by enterprise members. This option is only available for Enterprise Managed User (EMU) enterprises. When set to `true`, all PATs (v1 and v2) and SSH keys owned by enterprise members will be destroyed in addition to the credential authorizations. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation error - The `revoke_credentials` option is only available for EMU enterprises |
+
+## Revoke a single credential type for an enterprise
+
+`POST /enterprises/{enterprise}/credential-authorizations/revoke-credential-type`
+
+Revokes a single credential type (for example, classic personal access tokens)
+across all organizations within the enterprise. This removes the sign-in
+authorizations for that credential type for every member of the enterprise.
+
+For Enterprise Managed User (EMU) enterprises, you can optionally also destroy the
+actual credentials of that type owned by enterprise members by setting the
+`revoke_credentials` parameter to `true`.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint, that token may also be
+revoked or destroyed as part of this operation.
+
+The authenticated user must be an enterprise owner or have the `write_enterprise_credentials` permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `credential_type` | `string` | Yes | The type of credential to revoke across the enterprise. |
+| `revoke_credentials` | `boolean` | No | Whether to also destroy the actual credentials of this type owned by enterprise members. This option is only available for Enterprise Managed User (EMU) enterprises. When set to `true`, all credentials of the given type owned by enterprise members will be destroyed in addition to the credential authorizations. Note that `oauth_app_token` credentials cannot be destroyed; for that type only the credential authorizations are revoked. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation error - The `credential_type` is missing or invalid, or `revoke_credentials` is not available for this enterprise |
+
+## Revoke credential authorizations for a user in an enterprise
+
+`POST /enterprises/{enterprise}/credential-authorizations/{username}/revoke`
+
+Revokes all credential authorizations for a single user within the enterprise.
+This includes any credential authorizations the user has across all organizations
+in the enterprise.
+
+For Enterprise Managed User (EMU) enterprises, you can optionally also destroy all
+credentials (PATs v1, PATs v2, and SSH keys) owned by the user by setting
+the `revoke_credentials` parameter to `true`.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint and target yourself, that
+token may also be revoked or destroyed as part of this operation.
+
+The authenticated user must be an enterprise owner or have the `write_enterprise_credentials` permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `revoke_credentials` | `boolean` | No | Whether to also destroy the actual credentials (PATs and SSH keys) owned by the user. This option is only available for Enterprise Managed User (EMU) enterprises. When set to `true`, all PATs (v1 and v2) and SSH keys owned by the user will be destroyed in addition to the credential authorizations. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation error - The target user cannot be revoked, or `revoke_credentials` is not available for this enterprise |
+
+## Revoke a single credential type for a user in an enterprise
+
+`POST /enterprises/{enterprise}/credential-authorizations/{username}/revoke-credential-type`
+
+Revokes a single credential type (for example, classic personal access tokens)
+for a single user within the enterprise. This removes the sign-in authorizations
+for that credential type across all organizations in the enterprise for the user.
+
+For Enterprise Managed User (EMU) enterprises, you can optionally also destroy the
+actual credential of that type owned by the user by setting the `revoke_credentials`
+parameter to `true`.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint and target yourself, that
+token may also be revoked or destroyed as part of this operation.
+
+The authenticated user must be an enterprise owner or have the `write_enterprise_credentials` permission to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `credential_type` | `string` | Yes | The type of credential to revoke for the user. |
+| `revoke_credentials` | `boolean` | No | Whether to also destroy the actual credential of this type owned by the user. This option is only available for Enterprise Managed User (EMU) enterprises. When set to `true`, the credential of the given type owned by the user will be destroyed in addition to the credential authorizations. Note that `oauth_app_token` credentials cannot be destroyed; for that type only the credential authorizations are revoked. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation error - The `credential_type` is missing or invalid, the target user cannot be revoked, or `revoke_credentials` is not available for this enterprise |

@@ -13,6 +13,10 @@ import type {
   PlannedOperation,
   VerificationDiscrepancy,
 } from '../../core/types.js';
+import {
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import { executeIssueImport } from './issue-importer.js';
 import type {
   IssueImportPayload,
@@ -413,6 +417,32 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
 
     const results: OperationExecutionResult[] = [];
     const milestoneNumberMap = new Map<number, number>();
+    const existingTargetIssueTitles = new Set<string>();
+
+    if (!ctx.dryRun) {
+      try {
+        const tiRes = await ctx.targetClient.fetchAll<RawApiIssue>(
+          {
+            id: 'rest.issues.listIssuesApplyCheck',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/issues',
+            pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+            queryParams: { state: 'all', filter: 'all', per_page: 100 },
+          },
+          ctx.signal,
+        );
+        if (tiRes?.items) {
+          for (const item of tiRes.items) {
+            if (!item.pull_request && item.title) {
+              existingTargetIssueTitles.add(item.title.toLowerCase());
+            }
+          }
+        }
+      } catch {
+        // Non-fatal if target issues cannot be listed before apply
+      }
+    }
 
     for (const op of plan.operations) {
       if (ctx.signal.aborted) {
@@ -562,6 +592,19 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
           }
         } else if (op.resourceType === 'issue' && op.operation === 'create') {
           const importPayload = op.payload as IssueImportPayload;
+          if (
+            existingTargetIssueTitles.has(
+              importPayload.issue.title.toLowerCase(),
+            )
+          ) {
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: 200,
+              completedAt: new Date().toISOString(),
+            });
+            continue;
+          }
           const remappedPayload: IssueImportPayload = {
             ...importPayload,
             issue: {
@@ -643,6 +686,14 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
     ctx: MigrationContext,
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
+    if (!plan.operations.some((op) => op.operation === 'create')) {
+      return {
+        moduleId: this.id,
+        verified: true,
+        discrepancies: [],
+      };
+    }
+
     const targetRepo = ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? '';
     const discrepancies: VerificationDiscrepancy[] = [];
 
@@ -663,8 +714,18 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         ctx.signal,
       );
       if (lRes?.items) targetLabels = [...lRes.items];
-    } catch {
-      // In offline harness or if repo is not found
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/labels`,
+          expected: 'readable target labels',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target labels (/repos/${ctx.scope.targetOrg}/${targetRepo}/labels)`,
+            err,
+          ),
+        });
+      }
     }
 
     try {
@@ -680,8 +741,18 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         ctx.signal,
       );
       if (mRes?.items) targetMilestones = [...mRes.items];
-    } catch {
-      // In offline harness or if repo is not found
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/milestones`,
+          expected: 'readable target milestones',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target milestones (/repos/${ctx.scope.targetOrg}/${targetRepo}/milestones)`,
+            err,
+          ),
+        });
+      }
     }
 
     try {
@@ -699,8 +770,18 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
       if (iRes?.items) {
         targetIssues = iRes.items.filter((i) => !i.pull_request);
       }
-    } catch {
-      // In offline harness or if repo is not found
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/issues`,
+          expected: 'readable target issues',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target issues (/repos/${ctx.scope.targetOrg}/${targetRepo}/issues)`,
+            err,
+          ),
+        });
+      }
     }
 
     const targetLabelNames = new Set(

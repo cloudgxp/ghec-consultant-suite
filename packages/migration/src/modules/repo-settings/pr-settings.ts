@@ -226,6 +226,7 @@ export function diffRepoSettings(
   }
 
   if (
+    desiredPr.allowSquashMerge !== false &&
     desiredPr.squashMergeCommitTitle !== undefined &&
     desiredPr.squashMergeCommitTitle !== targetPr.squashMergeCommitTitle
   ) {
@@ -236,6 +237,7 @@ export function diffRepoSettings(
   }
 
   if (
+    desiredPr.allowSquashMerge !== false &&
     desiredPr.squashMergeCommitMessage !== undefined &&
     desiredPr.squashMergeCommitMessage !== targetPr.squashMergeCommitMessage
   ) {
@@ -247,6 +249,7 @@ export function diffRepoSettings(
   }
 
   if (
+    desiredPr.allowMergeCommit !== false &&
     desiredPr.mergeCommitTitle !== undefined &&
     desiredPr.mergeCommitTitle !== targetPr.mergeCommitTitle
   ) {
@@ -257,6 +260,7 @@ export function diffRepoSettings(
   }
 
   if (
+    desiredPr.allowMergeCommit !== false &&
     desiredPr.mergeCommitMessage !== undefined &&
     desiredPr.mergeCommitMessage !== targetPr.mergeCommitMessage
   ) {

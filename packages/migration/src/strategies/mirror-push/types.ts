@@ -16,6 +16,8 @@ export type GitCommandRunner = (
     readonly secrets?: readonly string[] | undefined;
     readonly signal?: AbortSignal | undefined;
     readonly timeoutMs?: number | undefined;
+    readonly onStdout?: ((line: string) => void) | undefined;
+    readonly onStderr?: ((line: string) => void) | undefined;
   },
 ) => Promise<GitCommandResult>;
 
@@ -35,6 +37,7 @@ export interface MirrorPushRequest {
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;
   readonly estimatedSizeBytes?: number | undefined;
+  readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
   readonly skipDiskCheck?: boolean | undefined;
   readonly scratchDir?: string | undefined;
   readonly timeoutMs?: number | undefined;

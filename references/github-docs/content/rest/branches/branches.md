@@ -15,3 +15,140 @@ category:
 
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List branches
+
+`GET /repos/{owner}/{repo}/branches`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `protected` | query | `boolean` | No | Setting to `true` returns only branches protected by branch protections or rulesets. When set to `false`, only unprotected branches are returned. Omitting this parameter returns all branches. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Get a branch
+
+`GET /repos/{owner}/{repo}/branches/{branch}`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `branch` | path | `string` | Yes | The name of the branch. Cannot contain wildcard characters. To use wildcard characters in branch names, use [the GraphQL API](https://docs.github.com/enterprise-cloud@latest/graphql). |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `301` | Moved permanently |
+| `404` | Resource not found |
+
+## Rename a branch
+
+`POST /repos/{owner}/{repo}/branches/{branch}/rename`
+
+Renames a branch in a repository.
+
+Note
+
+Although the API responds immediately, the branch rename process might take some extra time to complete in the background. You won't be able to push to the old branch name while the rename process is in progress. For more information, see "[Renaming a branch](https://docs.github.com/enterprise-cloud@latest/github/administering-a-repository/renaming-a-branch)".
+
+The authenticated user must have push access to the branch. If the branch is the default branch, the authenticated user must also have admin or owner permissions.
+
+In order to rename the default branch, fine-grained access tokens also need the `administration:write` repository permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `branch` | path | `string` | Yes | The name of the branch. Cannot contain wildcard characters. To use wildcard characters in branch names, use [the GraphQL API](https://docs.github.com/enterprise-cloud@latest/graphql). |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `new_name` | `string` | Yes | The new name of the branch. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Sync a fork branch with the upstream repository
+
+`POST /repos/{owner}/{repo}/merge-upstream`
+
+Sync a branch of a forked repository to keep it up-to-date with the upstream repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `branch` | `string` | Yes | The name of the branch which should be updated to match upstream. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | The branch has been successfully synced with the upstream repository |
+| `409` | The branch could not be synced because of a merge conflict |
+| `422` | The branch could not be synced for some other reason |
+
+## Merge a branch
+
+`POST /repos/{owner}/{repo}/merges`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `base` | `string` | Yes | The name of the base branch that the head will be merged into. |
+| `head` | `string` | Yes | The head to merge. This can be a branch name or a commit SHA1. |
+| `commit_message` | `string` | No | Commit message to use for the merge commit. If omitted, a default message will be used. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Successful Response (The resulting merge commit) |
+| `204` | Response when already merged |
+| `403` | Forbidden |
+| `404` | Not Found when the base or head does not exist |
+| `409` | Conflict when there is a merge conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |

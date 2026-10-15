@@ -27,7 +27,7 @@ export const GET_ORG_IP_ALLOW_LIST_QUERY = `
         nodes {
           id
           name
-          cidr
+          allowListValue
           isActive
         }
       }
@@ -41,7 +41,7 @@ export const CREATE_IP_ALLOW_LIST_ENTRY_MUTATION = `
       ipAllowListEntry {
         id
         name
-        cidr
+        allowListValue
         isActive
       }
     }
@@ -54,7 +54,7 @@ export const UPDATE_IP_ALLOW_LIST_ENTRY_MUTATION = `
       ipAllowListEntry {
         id
         name
-        cidr
+        allowListValue
         isActive
       }
     }
@@ -74,11 +74,12 @@ function parseEntries(res?: RawGraphQLIpAllowListResponse | null | undefined): {
 
   const entries: IpAllowListEntry[] = [];
   for (const node of nodes) {
-    if (node && typeof node.cidr === 'string') {
+    const rawCidr = node?.allowListValue ?? node?.cidr;
+    if (node && typeof rawCidr === 'string') {
       entries.push({
         id: typeof node.id === 'string' ? node.id : undefined,
         name: typeof node.name === 'string' ? node.name : undefined,
-        cidr: node.cidr.trim(),
+        cidr: rawCidr.trim(),
         isActive: node.isActive ?? true,
       });
     }
@@ -116,6 +117,19 @@ export class IpAllowListsMigrationModule implements MigrationModule<IpAllowLists
       };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      if (
+        message.includes('INSUFFICIENT_SCOPES') ||
+        message.includes('FORBIDDEN') ||
+        message.includes('requires one of the following scopes')
+      ) {
+        ctx.logger.warn(
+          `[ip-allow-lists] Skipping source IP allow list discovery for ${sourceOrg} due to token scope permissions: ${message}`,
+        );
+        return {
+          organization: sourceOrg,
+          entries: [],
+        };
+      }
       throw new Error(
         `Failed to discover IP allow list entries for ${sourceOrg}: ${message}`,
         { cause: err },
@@ -291,7 +305,7 @@ export class IpAllowListsMigrationModule implements MigrationModule<IpAllowLists
       try {
         if (op.operation === 'create') {
           const input: Record<string, unknown> = {
-            cidr: payload?.cidr ?? op.resourceName,
+            allowListValue: payload?.cidr ?? op.resourceName,
             isActive: payload?.isActive ?? true,
           };
           if (payload?.ownerId) {
@@ -320,7 +334,7 @@ export class IpAllowListsMigrationModule implements MigrationModule<IpAllowLists
         } else if (op.operation === 'update') {
           const input: Record<string, unknown> = {
             ipAllowListEntryId: payload?.ipAllowListEntryId,
-            cidr: payload?.cidr ?? op.resourceName,
+            allowListValue: payload?.cidr ?? op.resourceName,
             isActive: payload?.isActive ?? true,
           };
           if (payload?.name) {
@@ -391,6 +405,14 @@ export class IpAllowListsMigrationModule implements MigrationModule<IpAllowLists
   ): Promise<ModuleVerificationResult> {
     const targetOrg = ctx.scope.targetOrg;
     const discrepancies: VerificationDiscrepancy[] = [];
+
+    if (plan.operations.length === 0) {
+      return {
+        moduleId: this.id,
+        verified: true,
+        discrepancies: [],
+      };
+    }
 
     let targetEntries: IpAllowListEntry[];
     try {

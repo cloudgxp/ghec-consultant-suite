@@ -10,8 +10,11 @@ import {
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   createDefaultModuleRegistry,
+  MigrationCheckpointManager,
   MigrationOrchestrator,
+  parseModuleSelectionFlags,
   type MigrationExecutionReport,
+  type StructuredLogger,
   type TargetWriteClient,
   writeMigrationExecutionReportFile,
   buildSummaryFromExecutionReport,
@@ -25,6 +28,7 @@ import {
 import {
   createMigrationClientsFromConfig,
   loadDualConfig,
+  sanitizeDiagnostics,
   type CliDualConfigOptions,
 } from '../config/index.js';
 
@@ -33,6 +37,8 @@ export interface MigrateCommandOptions {
   readonly scopePath?: string | undefined;
   readonly inputPath?: string | undefined;
   readonly modules?: readonly string[] | undefined;
+  readonly excludeModules?: readonly string[] | undefined;
+  readonly repos?: readonly string[] | undefined;
   readonly resume?: string | undefined;
   readonly continueOnError: boolean;
   readonly dryRun: boolean;
@@ -45,6 +51,8 @@ export interface MigrateCommandOptions {
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;
   readonly publishResults?: boolean | undefined;
+  readonly checkpointDir?: string | undefined;
+  readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
 }
 
 export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
@@ -66,7 +74,10 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       scope: { type: 'string' },
       input: { type: 'string' },
       modules: { type: 'string' },
+      'exclude-modules': { type: 'string' },
+      repos: { type: 'string' },
       resume: { type: 'string' },
+      'checkpoint-dir': { type: 'string' },
       'continue-on-error': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
       output: { type: 'string', default: './scans/migration-execution.json' },
@@ -78,6 +89,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       'source-token': { type: 'string' },
       'target-token': { type: 'string' },
       'publish-results': { type: 'boolean', default: false },
+      'mirror-push-mode': { type: 'string' },
     },
   });
 
@@ -85,20 +97,41 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     throw new Error('Either --plan <file> or --scope <file> is required.');
   }
 
-  const modules =
-    values.modules && values.modules.toLowerCase() !== 'all'
-      ? values.modules
-          .split(',')
-          .map((m) => m.trim())
-          .filter(Boolean)
-      : undefined;
+  const rawMirrorPushMode = values['mirror-push-mode'];
+  if (
+    rawMirrorPushMode !== undefined &&
+    rawMirrorPushMode !== 'fast-snapshot' &&
+    rawMirrorPushMode !== 'full-history'
+  ) {
+    throw new Error(
+      `Invalid --mirror-push-mode "${rawMirrorPushMode}". Expected "fast-snapshot" or "full-history".`,
+    );
+  }
+
+  const parsedSelection = parseModuleSelectionFlags(
+    values.modules,
+    values['exclude-modules'],
+  );
+
+  const parsedRepos = values.repos
+    ? values.repos
+        .split(',')
+        .map((r) => r.trim())
+        .filter(Boolean)
+    : undefined;
 
   return {
     planPath: values.plan,
     scopePath: values.scope,
     inputPath: values.input,
-    modules,
+    modules: parsedSelection.modules,
+    excludeModules:
+      parsedSelection.excludeModules.length > 0
+        ? parsedSelection.excludeModules
+        : undefined,
+    repos: parsedRepos && parsedRepos.length > 0 ? parsedRepos : undefined,
     resume: values.resume,
+    checkpointDir: values['checkpoint-dir'],
     continueOnError: values['continue-on-error'] ?? false,
     dryRun: values['dry-run'] ?? false,
     outputPath: values.output || './scans/migration-execution.json',
@@ -110,6 +143,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     sourceToken: values['source-token'],
     targetToken: values['target-token'],
     publishResults: values['publish-results'] ?? false,
+    mirrorPushMode: rawMirrorPushMode,
   };
 }
 
@@ -159,6 +193,36 @@ export async function executeMigrateCommand(
         );
       }
       scope = scopeValidation.data;
+      if (options.repos && options.repos.length > 0) {
+        const repoFilterSet = new Set(
+          options.repos.map((r) => r.toLowerCase()),
+        );
+        scope = {
+          ...scope,
+          repositories: scope.repositories.filter(
+            (r) =>
+              repoFilterSet.has(r.sourceRepo.toLowerCase()) ||
+              repoFilterSet.has(r.targetRepo.toLowerCase()) ||
+              repoFilterSet.has(
+                `${r.sourceOrg}/${r.sourceRepo}`.toLowerCase(),
+              ) ||
+              repoFilterSet.has(`${r.targetOrg}/${r.targetRepo}`.toLowerCase()),
+          ),
+        };
+      }
+      if (options.mirrorPushMode) {
+        scope = {
+          ...scope,
+          mirrorPushMode: options.mirrorPushMode,
+          repositories: scope.repositories.map((r) => ({
+            ...r,
+            mirrorPushMode: options.mirrorPushMode,
+            options: r.options
+              ? { ...r.options, mirrorPushMode: options.mirrorPushMode }
+              : undefined,
+          })),
+        };
+      }
     } catch (err) {
       throw new Error(
         `Failed to read scope file "${options.scopePath}": ${err instanceof Error ? err.message : String(err)}`,
@@ -223,6 +287,44 @@ export async function executeMigrateCommand(
 
   const registry = createDefaultModuleRegistry();
 
+  const logger: StructuredLogger = {
+    debug: (msg, meta) => {
+      if (options.verbose) {
+        const suffix = meta
+          ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+          : '';
+        console.log(`[DEBUG] ${sanitizeDiagnostics(msg)}${suffix}`);
+      }
+    },
+    info: (msg, meta) => {
+      if (options.verbose) {
+        const suffix = meta
+          ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+          : '';
+        console.log(`[INFO] ${sanitizeDiagnostics(msg)}${suffix}`);
+      }
+    },
+    warn: (msg, meta) => {
+      const suffix = meta
+        ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+        : '';
+      console.warn(`[WARN] ${sanitizeDiagnostics(msg)}${suffix}`);
+    },
+    error: (msg, meta) => {
+      const suffix = meta
+        ? ` ${sanitizeDiagnostics(JSON.stringify(meta))}`
+        : '';
+      console.error(`[ERROR] ${sanitizeDiagnostics(msg)}${suffix}`);
+    },
+  };
+
+  const checkpointManager =
+    options.checkpointDir && scope
+      ? new MigrationCheckpointManager(`migrate-${Date.now()}`, scope, {
+          rootDirectory: options.checkpointDir,
+        })
+      : undefined;
+
   const orchestrator = new MigrationOrchestrator({
     registry,
     sourceClient,
@@ -232,10 +334,13 @@ export async function executeMigrateCommand(
     targetToken,
     plan,
     scope,
+    checkpointManager,
     cachedDiscoveryBundle: cachedBundle,
     modules: options.modules,
+    excludeModules: options.excludeModules,
     dryRun: options.dryRun,
     continueOnError: options.continueOnError,
+    logger,
     signal,
   });
 
@@ -273,6 +378,7 @@ export async function executeMigrateCommand(
       executionMode: options.dryRun ? 'dry-run' : 'live',
       executionReport: report,
       scope,
+      plan,
     });
     writeResultsToDirectory(generated, resultsRepoDir);
 

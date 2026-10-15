@@ -14,3 +14,120 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List issue fields for an organization
+
+`GET /orgs/{org}/issue-fields`
+
+Lists all issue fields for an organization. OAuth app tokens and personal access tokens (classic) need the read:org scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Create issue field for an organization
+
+`POST /orgs/{org}/issue-fields`
+
+Creates a new issue field for an organization.
+
+You can find out more about issue fields in [Managing issue fields in an organization](https://docs.github.com/enterprise-cloud@latest/issues/tracking-your-work-with-issues/using-issues/managing-issue-fields-in-an-organization).
+
+To use this endpoint, the authenticated user must be an administrator for the organization. OAuth app tokens and
+personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the issue field. |
+| `description` | `string or null` | No | Description of the issue field. |
+| `data_type` | `string` | Yes | The data type of the issue field. |
+| `visibility` | `string` | No | The visibility of the issue field. Can be `organization_members_only` (visible only within the organization) or `all` (visible to all users who can see issues). Only used when the visibility settings feature is enabled. Defaults to `organization_members_only`. |
+| `options` | `array of objects or null` | No | Options for select fields. Required when data_type is 'single_select' or 'multi_select'. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Update issue field for an organization
+
+`PATCH /orgs/{org}/issue-fields/{issue_field_id}`
+
+Updates an issue field for an organization.
+
+You can find out more about issue fields in [Managing issue fields in an organization](https://docs.github.com/enterprise-cloud@latest/issues/tracking-your-work-with-issues/using-issues/managing-issue-fields-in-an-organization).
+
+To use this endpoint, the authenticated user must be an administrator for the organization. OAuth app tokens and
+personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `issue_field_id` | path | `integer` | Yes | The unique identifier of the issue field. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Name of the issue field. |
+| `description` | `string or null` | No | Description of the issue field. |
+| `visibility` | `string` | No | The visibility of the issue field. Can be `organization_members_only` (visible only within the organization) or `all` (visible to all users who can see issues). Only used when the visibility settings feature is enabled. |
+| `options` | `array of objects` | No | Options for select fields. Only applicable when updating single_select or multi_select fields. When provided, this array replaces the entire existing set of options rather than adding to or updating individual options. To retain or update an existing option, include it in the array with its `id`. Options sent without an `id` are treated as new options and may cause existing options to be deleted and recreated. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete issue field for an organization
+
+`DELETE /orgs/{org}/issue-fields/{issue_field_id}`
+
+Deletes an issue field for an organization.
+
+You can find out more about issue fields in [Managing issue fields in an organization](https://docs.github.com/enterprise-cloud@latest/issues/tracking-your-work-with-issues/using-issues/managing-issue-fields-in-an-organization).
+
+To use this endpoint, the authenticated user must be an administrator for the organization. OAuth app tokens and
+personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `issue_field_id` | path | `integer` | Yes | The unique identifier of the issue field. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

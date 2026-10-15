@@ -13,3 +13,141 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get all deployment protection rules for an environment
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules`
+
+Gets all custom deployment protection rules that are enabled for an environment. Anyone with read access to the repository can use this endpoint. For more information about environments, see "[Using environments for deployment](https://docs.github.com/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)."
+
+For more information about the app that is providing this custom deployment rule, see the [documentation for the `GET /apps/{app_slug}` endpoint](https://docs.github.com/enterprise-cloud@latest/rest/apps/apps#get-an-app).
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | List of deployment protection rules |
+
+## Create a custom deployment protection rule on an environment
+
+`POST /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules`
+
+Enable a custom deployment protection rule for an environment.
+
+The authenticated user must have admin or owner permissions to the repository to use this endpoint.
+
+For more information about the app that is providing this custom deployment rule, see the [documentation for the `GET /apps/{app_slug}` endpoint](https://docs.github.com/enterprise-cloud@latest/rest/apps/apps#get-an-app), as well as the [guide to creating custom deployment protection rules](https://docs.github.com/enterprise-cloud@latest/actions/managing-workflow-runs-and-deployments/managing-deployments/creating-custom-deployment-protection-rules).
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `integration_id` | `integer` | No | The ID of the custom app that will be enabled on the environment. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | The enabled custom deployment protection rule |
+
+## List custom deployment rule integrations available for an environment
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps`
+
+Gets all custom deployment protection rule integrations that are available for an environment.
+
+The authenticated user must have admin or owner permissions to the repository to use this endpoint.
+
+For more information about environments, see "[Using environments for deployment](https://docs.github.com/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)."
+
+For more information about the app that is providing this custom deployment rule, see "[GET an app](https://docs.github.com/enterprise-cloud@latest/rest/apps/apps#get-an-app)".
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | A list of custom deployment rule integrations available for this environment. |
+
+## Get a custom deployment protection rule
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}`
+
+Gets an enabled custom deployment protection rule for an environment. Anyone with read access to the repository can use this endpoint. For more information about environments, see "[Using environments for deployment](https://docs.github.com/enterprise-cloud@latest/actions/deployment/targeting-different-environments/using-environments-for-deployment)."
+
+For more information about the app that is providing this custom deployment rule, see [`GET /apps/{app_slug}`](https://docs.github.com/enterprise-cloud@latest/rest/apps/apps#get-an-app).
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `protection_rule_id` | path | `integer` | Yes | The unique identifier of the protection rule. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Disable a custom protection rule for an environment
+
+`DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}`
+
+Disables a custom deployment protection rule for an environment.
+
+The authenticated user must have admin or owner permissions to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `protection_rule_id` | path | `integer` | Yes | The unique identifier of the protection rule. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

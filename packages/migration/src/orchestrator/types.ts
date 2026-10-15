@@ -58,6 +58,7 @@ export interface MigrationOrchestratorOptions {
   readonly plan?: MigrationPlan | undefined;
   readonly cachedDiscoveryBundle?: DiscoveryBundle | unknown | undefined;
   readonly modules?: readonly string[] | undefined;
+  readonly excludeModules?: readonly string[] | undefined;
   readonly concurrency?: number | undefined;
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;

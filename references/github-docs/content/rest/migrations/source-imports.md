@@ -97,3 +97,296 @@ The following diagram provides a more detailed example:
 ```
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get an import status
+
+`GET /repos/{owner}/{repo}/import`
+
+View the progress of an import.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+Import status
+
+This section includes details about the possible values of the `status` field of the Import Progress response.
+
+An import that does not have errors will progress through these steps:
+
+`detecting` - the "detection" step of the import is in progress because the request did not include a `vcs` parameter. The import is identifying the type of source control present at the URL.
+
+`importing` - the "raw" step of the import is in progress. This is where commit data is fetched from the original repository. The import progress response will include `commit_count` (the total number of raw commits that will be imported) and `percent` (0 - 100, the current progress through the import).
+
+`mapping` - the "rewrite" step of the import is in progress. This is where SVN branches are converted to Git branches, and where author updates are applied. The import progress response does not include progress information.
+
+`pushing` - the "push" step of the import is in progress. This is where the importer updates the repository on GitHub Enterprise Cloud. The import progress response will include `push_percent`, which is the percent value reported by `git push` when it is "Writing objects".
+
+`complete` - the import is complete, and the repository is ready on GitHub Enterprise Cloud.
+
+If there are problems, you will see one of these in the `status` field:
+
+`auth_failed` - the import requires authentication in order to connect to the original repository. To update authentication for the import, please see the [Update an import](https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports#update-an-import) section.
+
+`error` - the import encountered an error. The import progress response will include the `failed_step` and an error message. Contact [GitHub Enterprise Cloud Support](https://support.github.com/contact?tags=dotcom-rest-api) for more information.
+
+`detection_needs_auth` - the importer requires authentication for the originating repository to continue detection. To update authentication for the import, please see the [Update an import](https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports#update-an-import) section.
+
+`detection_found_nothing` - the importer didn't recognize any source control at the URL. To resolve, [Cancel the import](https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports#cancel-an-import) and [retry](https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports#start-an-import) with the correct URL.
+
+`detection_found_multiple` - the importer found several projects or repositories at the provided URL. When this is the case, the Import Progress response will also include a `project_choices` field with the possible project choices as values. To update project choice, please see the [Update an import](https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports#update-an-import) section.
+
+The project_choices field
+
+When multiple projects are found at the provided URL, the response hash will include a `project_choices` field, the value of which is an array of hashes each representing a project choice. The exact key/value pairs of the project hashes will differ depending on the version control type.
+
+Git LFS related fields
+
+This section includes details about Git LFS related fields that may be present in the Import Progress response.
+
+`use_lfs` - describes whether the import has been opted in or out of using Git LFS. The value can be `opt_in`, `opt_out`, or `undecided` if no action has been taken.
+
+`has_large_files` - the boolean value describing whether files larger than 100MB were found during the `importing` step.
+
+`large_files_size` - the total size in gigabytes of files larger than 100MB found in the originating repository.
+
+`large_files_count` - the total number of files larger than 100MB found in the originating repository. To see a list of these files, make a "Get Large Files" request.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `503` | Unavailable due to service under maintenance. |
+
+## Start an import
+
+`PUT /repos/{owner}/{repo}/import`
+
+Start a source import to a GitHub Enterprise Cloud repository using GitHub Enterprise Cloud Importer.
+Importing into a GitHub Enterprise Cloud repository with GitHub Actions enabled is not supported and will
+return a status `422 Unprocessable Entity` response.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `vcs_url` | `string` | Yes | The URL of the originating repository. |
+| `vcs` | `string` | No | The originating VCS type. Without this parameter, the import job will take additional time to detect the VCS type before beginning the import. This detection step will be reflected in the response. |
+| `vcs_username` | `string` | No | If authentication is required, the username to provide to `vcs_url`. |
+| `vcs_password` | `string` | No | If authentication is required, the password to provide to `vcs_url`. |
+| `tfvc_project` | `string` | No | For a tfvc import, the name of the project that is being imported. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `503` | Unavailable due to service under maintenance. |
+
+## Update an import
+
+`PATCH /repos/{owner}/{repo}/import`
+
+An import can be updated with credentials or a project choice by passing in the appropriate parameters in this API
+request. If no parameters are provided, the import will be restarted.
+
+Some servers (e.g. TFS servers) can have several projects at a single URL. In those cases the import progress will
+have the status `detection_found_multiple` and the Import Progress response will include a `project_choices` array.
+You can select the project to import by providing one of the objects in the `project_choices` array in the update request.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `vcs_username` | `string` | No | The username to provide to the originating repository. |
+| `vcs_password` | `string` | No | The password to provide to the originating repository. |
+| `vcs` | `string` | No | The type of version control system you are migrating from. |
+| `tfvc_project` | `string` | No | For a tfvc import, the name of the project that is being imported. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `503` | Unavailable due to service under maintenance. |
+
+## Cancel an import
+
+`DELETE /repos/{owner}/{repo}/import`
+
+Stop an import for a repository.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `503` | Unavailable due to service under maintenance. |
+
+## Get commit authors
+
+`GET /repos/{owner}/{repo}/import/authors`
+
+Each type of source control system represents authors in a different way. For example, a Git commit author has a display name and an email address, but a Subversion commit author just has a username. The GitHub Enterprise Cloud Importer will make the author information valid, but the author might not be correct. For example, it will change the bare Subversion username `hubot` into something like `hubot &#x3C;hubot@12341234-abab-fefe-8787-fedcba987654>`.
+
+This endpoint and the [Map a commit author](https://docs.github.com/enterprise-cloud@latest/rest/migrations/source-imports#map-a-commit-author) endpoint allow you to provide correct Git author information.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `since` | query | `integer` | No | A user ID. Only return users with an ID greater than this ID. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `503` | Unavailable due to service under maintenance. |
+
+## Map a commit author
+
+`PATCH /repos/{owner}/{repo}/import/authors/{author_id}`
+
+Update an author's identity for the import. Your application can continue updating authors any time before you push
+new commits to the repository.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `author_id` | path | `integer` | Yes |  |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `email` | `string` | No | The new Git author email. |
+| `name` | `string` | No | The new Git author name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `503` | Unavailable due to service under maintenance. |
+
+## Get large files
+
+`GET /repos/{owner}/{repo}/import/large_files`
+
+List files larger than 100MB found during the import
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `503` | Unavailable due to service under maintenance. |
+
+## Update Git LFS preference
+
+`PATCH /repos/{owner}/{repo}/import/lfs`
+
+You can import repositories from Subversion, Mercurial, and TFS that include files larger than 100MB. This ability
+is powered by [Git LFS](https://git-lfs.com).
+
+You can learn more about our LFS feature and working with large files on our help
+site.
+
+Warning
+
+Endpoint closing down notice: Due to very low levels of usage and available alternatives, this endpoint is closing down and will no longer be available from 00:00 UTC on April 12, 2024. For more details and alternatives, see the [changelog](https://gh.io/source-imports-api-deprecation).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `use_lfs` | `string` | Yes | Whether to store large files during the import. `opt_in` means large files will be stored using Git LFS. `opt_out` means large files will be removed during the import. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `503` | Unavailable due to service under maintenance. |

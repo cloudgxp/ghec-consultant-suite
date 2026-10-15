@@ -11,3 +11,131 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List enterprise token inventory
+
+`GET /enterprises/{enterprise}/credentials`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed on October 2, 2026. Please migrate to the asynchronous export: use "[Create an enterprise token inventory export](https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/token-inventory#create-an-enterprise-token-inventory-export)", which accepts the same filters in its request body, to start a CSV export, then "[Get an enterprise token inventory export](https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/token-inventory#get-an-enterprise-token-inventory-export)" to download it. For more information, see the [changelog](https://github.blog/changelog/2026-09-21-github-enterprise-adds-credential-inventory-exports/).
+
+Lists an enterprise's credential inventory: both credentials currently authorized to access the enterprise and credentials owned by enterprise members that have no current enterprise authorization. Covers personal access tokens (classic and fine-grained), OAuth App and GitHub App user tokens, SSH keys, GitHub App installations, and federated credentials, assembled on demand from the canonical sources. Results are paginated with an opaque cursor via the `Link` header; there is no total count.
+
+You must be an enterprise owner (or hold a role with the "View enterprise credentials" permission) to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `after` | query | `string` | No | A cursor, as given in the `Link` header, for the next page of results. |
+| `token_types` | query | `string` | No | A comma-separated list of credential types to filter by. |
+| `authorization_state` | query | `string` | No | Filter by enterprise-access status. |
+| `owner` | query | `string` | No | Filter to credentials owned by this user, given as a login. |
+| `organization` | query | `string` | No | Filter to credentials authorized to this organization in the enterprise, given as a login. |
+| `application` | query | `string` | No | Filter to credentials for this application, given as a GitHub App slug or an OAuth App client id. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed |
+
+## Create an enterprise token inventory export
+
+`POST /enterprises/{enterprise}/credentials/exports`
+
+Starts an asynchronous CSV export of the enterprise token inventory and returns an opaque export id to poll. Limited to a small number of exports per enterprise per day.
+
+The generated file is UTF-8 CSV with a header row, using RFC 4180 field quoting and escaping and LF (`\n`) line endings. Timestamps are ISO-8601 in UTC (for example, `2026-09-15T12:00:00Z`). An empty cell means the value is null or unknown, never `false`. Multi-value cells join their entries with `; ` — this includes `scopes` and `permissions`, where each permission is encoded as a `resource:action` pair (for example, `contents:write; issues:read`). The file has one row per (credential, authorizing organization); the credential columns repeat while `organization_id` and `organization` vary, and a credential with no organization grant appears once with empty organization columns. `authorization_count` is the credential's total number of organization authorizations across the enterprise, plus one when `enterprise_authorized` is true, independent of any filters applied to the export. `credential_id` is a raw source-table id that can collide across credential types, so it is unique only together with `credential_type`, and only for the types that populate it (classic and fine-grained PATs, OAuth and GitHub App user tokens); SSH keys are keyed by `fingerprint`, while GitHub App installations and federated JTIs have no unique per-row column. `owner_type` (`user`, `oauth_application`, or `github_app`) disambiguates the id space of `owner_id`. `expiry_status` is `expires`, `never`, or `unknown` — `unknown` marks a credential whose expiration could not be determined, so a blank `expires_at` is never mistaken for one that never expires.
+
+You must be an enterprise owner (or hold a role with the "View enterprise credentials" permission) to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `token_types` | `array of strings` | No | The credential types to include. |
+| `authorization_state` | `string` | No | Filter by enterprise-access status. |
+| `owner` | `string` | No | Filter to credentials owned by this user, given as a login. |
+| `organization` | `string` | No | Filter to credentials authorized to this organization in the enterprise, given as a login. |
+| `application` | `string` | No | Filter to credentials for this application, given as a GitHub App slug or an OAuth App client id. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `404` | Resource not found |
+| `422` | Validation failed |
+| `429` | Too many requests |
+| `500` | Internal error, for example the export job could not be enqueued. |
+
+## Get an enterprise token inventory export
+
+`GET /enterprises/{enterprise}/credentials/exports/{export_id}`
+
+Returns the status of an enterprise token inventory export. Once the export is ready this redirects to a short-lived URL to download the CSV.
+
+You must be an enterprise owner (or hold a role with the "View enterprise credentials" permission) to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `export_id` | path | `string` | Yes | The opaque id of the export, as returned when it was created. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `302` | The export is ready; redirects to a short-lived download URL. |
+| `404` | Resource not found |
+
+## Get an enterprise token inventory item
+
+`GET /enterprises/{enterprise}/credentials/{inventory_id}`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed on October 2, 2026. Please migrate to the asynchronous export: use "[Create an enterprise token inventory export](https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/token-inventory#create-an-enterprise-token-inventory-export)" to start a CSV export, optionally scoped with filters such as `owner` or `application`, then "[Get an enterprise token inventory export](https://docs.github.com/enterprise-cloud@latest/rest/enterprise-admin/token-inventory#get-an-enterprise-token-inventory-export)" to download it. For more information, see the [changelog](https://github.blog/changelog/2026-09-21-github-enterprise-adds-credential-inventory-exports/).
+
+Returns a single credential from the enterprise token inventory. Use the opaque `inventory_id` returned by the list endpoint for the same enterprise.
+
+You must be an enterprise owner (or hold a role with the "View enterprise credentials" permission) to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `inventory_id` | path | `string` | Yes | The opaque inventory_id returned by the list endpoint for this enterprise. Pass it unchanged. Its value can differ for the same credential between responses. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |

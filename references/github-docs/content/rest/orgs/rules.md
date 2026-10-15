@@ -16,3 +16,183 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get all organization repository rulesets
+
+`GET /orgs/{org}/rulesets`
+
+Get all the repository rulesets for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `targets` | query | `string` | No | A comma-separated list of rule targets to filter by. If provided, only rulesets that apply to the specified targets will be returned. For example, `branch,tag,push`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Create an organization repository ruleset
+
+`POST /orgs/{org}/rulesets`
+
+Create a repository ruleset for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the ruleset. |
+| `target` | `string` | No | The target of the ruleset |
+| `enforcement` | `string` | Yes | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `bypass_actors` | `array of objects` | No | The actors that can bypass the rules in this ruleset |
+| `conditions` | `object` | No | Conditions for an organization ruleset. The branch and tag rulesets conditions object should contain both `repository_name` and `ref_name` properties, or both `repository_id` and `ref_name` properties, or both `repository_property` and `ref_name` properties. The push rulesets conditions object does not require the `ref_name` property. For repository policy rulesets, the conditions object should only contain the `repository_name`, the `repository_id`, or the `repository_property`. |
+| `rules` | `array of objects` | No | An array of rules within the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Get an organization repository ruleset
+
+`GET /orgs/{org}/rulesets/{ruleset_id}`
+
+Get a repository ruleset for an organization.
+
+Note: To prevent leaking sensitive information, the `bypass_actors` property is only returned if the user
+making the API request has write access to the ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Update an organization repository ruleset
+
+`PUT /orgs/{org}/rulesets/{ruleset_id}`
+
+Update a ruleset for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the ruleset. |
+| `target` | `string` | No | The target of the ruleset |
+| `enforcement` | `string` | No | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `bypass_actors` | `array of objects` | No | The actors that can bypass the rules in this ruleset |
+| `conditions` | `object` | No | Conditions for an organization ruleset. The branch and tag rulesets conditions object should contain both `repository_name` and `ref_name` properties, or both `repository_id` and `ref_name` properties, or both `repository_property` and `ref_name` properties. The push rulesets conditions object does not require the `ref_name` property. For repository policy rulesets, the conditions object should only contain the `repository_name`, the `repository_id`, or the `repository_property`. |
+| `rules` | `array of objects` | No | An array of rules within the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Delete an organization repository ruleset
+
+`DELETE /orgs/{org}/rulesets/{ruleset_id}`
+
+Delete a ruleset for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get organization ruleset history
+
+`GET /orgs/{org}/rulesets/{ruleset_id}/history`
+
+Get the history of an organization ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get organization ruleset version
+
+`GET /orgs/{org}/rulesets/{ruleset_id}/history/{version_id}`
+
+Get a version of an organization ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+| `version_id` | path | `integer` | Yes | The ID of the version |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |

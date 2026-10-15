@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghec-consultant-suite.local/schemas/remediation-plan-v1.contract.json",
+  "title": "ExecutionAwareRemediationPlan",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "planId",
+    "generatedAt",
+    "reportId",
+    "sourceOrg",
+    "targetOrg",
+    "totalDiscrepancies",
+    "actionableCount",
+    "actions",
+    "script"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "planId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reportId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceOrg": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetOrg": {
+      "type": "string",
+      "minLength": 1
+    },
+    "totalDiscrepancies": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unverifiedExecutionFailures": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "actionableCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "moduleId",
+          "resourceName",
+          "description",
+          "command",
+          "severity"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "category": {
+            "type": "string",
+            "enum": [
+              "secrets-and-variables",
+              "security-and-policies",
+              "assets-and-storage",
+              "identity-and-access",
+              "webhooks-and-integrations",
+              "metadata-and-content",
+              "general"
+            ]
+          },
+          "moduleId": { "type": "string", "minLength": 1 },
+          "resourceName": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "command": { "type": "string", "minLength": 1 },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "executionError": { "type": "string" },
+          "synthesizedFromExecution": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "script": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

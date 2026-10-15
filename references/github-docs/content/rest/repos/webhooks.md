@@ -22,3 +22,305 @@ category:
 Repository webhooks allow your server to receive HTTP `POST` payloads whenever certain events happen in a repository. For more information, see [AUTOTITLE](/webhooks).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List repository webhooks
+
+`GET /repos/{owner}/{repo}/hooks`
+
+Lists webhooks for a repository. `last response` may return null if there have not been any deliveries within 30 days.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Create a repository webhook
+
+`POST /repos/{owner}/{repo}/hooks`
+
+Repositories can have multiple webhooks installed. Each webhook should have a unique `config`. Multiple webhooks can
+share the same `config` as long as those webhooks do not have any `events` that overlap.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Use `web` to create a webhook. Default: `web`. This parameter only accepts the value `web`. |
+| `config` | `object` | No | Key/value pairs to provide settings for this webhook. |
+| `events` | `array of strings` | No | Determines what [events](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads) the hook is triggered for. |
+| `active` | `boolean` | No | Determines if notifications are sent when the webhook is triggered. Set to `true` to send notifications. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a repository webhook
+
+`GET /repos/{owner}/{repo}/hooks/{hook_id}`
+
+Returns a webhook configured in a repository. To get only the webhook `config` properties, see "[Get a webhook configuration for a repository](/rest/webhooks/repo-config#get-a-webhook-configuration-for-a-repository)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update a repository webhook
+
+`PATCH /repos/{owner}/{repo}/hooks/{hook_id}`
+
+Updates a webhook configured in a repository. If you previously had a `secret` set, you must provide the same `secret` or set a new `secret` or the secret will be removed. If you are only updating individual webhook `config` properties, use "[Update a webhook configuration for a repository](/rest/webhooks/repo-config#update-a-webhook-configuration-for-a-repository)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `config` | `object` | No | Configuration object of the webhook |
+| `events` | `array of strings` | No | Determines what [events](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads) the hook is triggered for. This replaces the entire array of events. |
+| `add_events` | `array of strings` | No | Determines a list of events to be added to the list of events that the Hook triggers for. |
+| `remove_events` | `array of strings` | No | Determines a list of events to be removed from the list of events that the Hook triggers for. |
+| `active` | `boolean` | No | Determines if notifications are sent when the webhook is triggered. Set to `true` to send notifications. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a repository webhook
+
+`DELETE /repos/{owner}/{repo}/hooks/{hook_id}`
+
+Delete a webhook for an organization.
+
+The authenticated user must be a repository owner, or have admin access in the repository, to delete the webhook.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+
+## Get a webhook configuration for a repository
+
+`GET /repos/{owner}/{repo}/hooks/{hook_id}/config`
+
+Returns the webhook configuration for a repository. To get more information about the webhook, including the `active` state and `events`, use "[Get a repository webhook](/rest/webhooks/repos#get-a-repository-webhook)."
+
+OAuth app tokens and personal access tokens (classic) need the `read:repo_hook` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a webhook configuration for a repository
+
+`PATCH /repos/{owner}/{repo}/hooks/{hook_id}/config`
+
+Updates the webhook configuration for a repository. To update more information about the webhook, including the `active` state and `events`, use "[Update a repository webhook](/rest/webhooks/repos#update-a-repository-webhook)."
+
+OAuth app tokens and personal access tokens (classic) need the `write:repo_hook` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `url` | `string` | No | The URL to which the payloads will be delivered. |
+| `content_type` | `string` | No | The media type used to serialize the payloads. Supported values include `json` and `form`. The default is `form`. |
+| `secret` | `string` | No | If provided, the `secret` will be used as the `key` to generate the HMAC hex digest value for [delivery signature headers](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads/#delivery-headers). |
+| `insecure_ssl` | `string or number` | No | Determines whether the SSL certificate of the host for `url` will be verified when delivering payloads. Supported values include `0` (verification is performed) and `1` (verification is not performed). The default is `0`. We strongly recommend not setting this to `1` as you are subject to man-in-the-middle and other attacks. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List deliveries for a repository webhook
+
+`GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries`
+
+Returns a list of webhook deliveries for a webhook configured in a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `cursor` | query | `string` | No | Used for pagination: the starting delivery from which the page of deliveries is fetched. Refer to the `link` header for the next and previous page cursors. |
+| `status` | query | `string` | No | Returns webhook deliveries filtered by delivery outcome classification based on `status_code` range. A `status` of `success` returns deliveries with a `status_code` in the 200-399 range (inclusive). A `status` of `failure` returns deliveries with a `status_code` in the 400-599 range (inclusive). |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Bad Request |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a delivery for a repository webhook
+
+`GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}`
+
+Returns a delivery for a webhook configured in a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+| `delivery_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Bad Request |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Redeliver a delivery for a repository webhook
+
+`POST /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}/attempts`
+
+Redeliver a webhook delivery for a webhook configured in a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+| `delivery_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `400` | Bad Request |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Ping a repository webhook
+
+`POST /repos/{owner}/{repo}/hooks/{hook_id}/pings`
+
+This will trigger a [ping event](https://docs.github.com/enterprise-cloud@latest/webhooks/#ping-event) to be sent to the hook.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+
+## Test the push repository webhook
+
+`POST /repos/{owner}/{repo}/hooks/{hook_id}/tests`
+
+This will trigger the hook with the latest push to the current repository if the hook is subscribed to `push` events. If the hook is not subscribed to `push` events, the server will respond with 204 but no test POST will be generated.
+
+Note
+
+Previously `/repos/:owner/:repo/hooks/:hook_id/test`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `hook_id` | path | `integer` | Yes | The unique identifier of the hook. You can find this value in the `X-GitHub-Hook-ID` header of a webhook delivery. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |

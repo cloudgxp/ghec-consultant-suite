@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   MIGRATION_SCHEMA_VERSION,
+  MigrationModuleIdSchema,
   NonEmptyStringSchema,
   NonNegativeIntegerSchema,
   TimestampSchema,
@@ -13,7 +14,30 @@ export const OrgModuleResultSummarySchema = z
     succeededOperations: NonNegativeIntegerSchema,
     failedOperations: NonNegativeIntegerSchema,
     skippedOperations: NonNegativeIntegerSchema.default(0),
+    discrepancyCount: NonNegativeIntegerSchema.optional(),
     durationMs: NonNegativeIntegerSchema.optional(),
+    relativeFilePath: NonEmptyStringSchema.refine(
+      (p) => p.startsWith('organization/') && p.endsWith('.md'),
+      'Organization module relativeFilePath must start with "organization/" and end with ".md".',
+    ).optional(),
+    error: z.string().trim().min(1).max(2048).optional(),
+  })
+  .strict();
+
+export const RepoModuleResultSummarySchema = z
+  .object({
+    moduleId: MigrationModuleIdSchema,
+    status: z.enum(['complete', 'partial', 'failed', 'skipped']),
+    totalOperations: NonNegativeIntegerSchema,
+    succeededOperations: NonNegativeIntegerSchema,
+    failedOperations: NonNegativeIntegerSchema,
+    skippedOperations: NonNegativeIntegerSchema.default(0),
+    discrepancyCount: NonNegativeIntegerSchema.default(0),
+    durationMs: NonNegativeIntegerSchema.optional(),
+    relativeFilePath: NonEmptyStringSchema.refine(
+      (p) => p.startsWith('repositories/') && p.endsWith('.md'),
+      'Repository module relativeFilePath must start with "repositories/" and end with ".md".',
+    ),
     error: z.string().trim().min(1).max(2048).optional(),
   })
   .strict();
@@ -44,6 +68,9 @@ export const RepositoryMigrationRecordSchema = z
     failedMetadataCategories: z.array(z.string().trim().min(1)).optional(),
     warnings: z.array(z.string().trim()),
     remediationCommands: z.array(z.string().trim()).optional(),
+    moduleSummaries: z
+      .record(z.string(), RepoModuleResultSummarySchema)
+      .optional(),
   })
   .strict()
   .superRefine((record, ctx) => {
@@ -203,6 +230,9 @@ export const MigrationResultsManifestSchema = z
 
 export type OrgModuleResultSummary = z.infer<
   typeof OrgModuleResultSummarySchema
+>;
+export type RepoModuleResultSummary = z.infer<
+  typeof RepoModuleResultSummarySchema
 >;
 export type MigrationResultsSummary = z.infer<
   typeof MigrationResultsSummarySchema

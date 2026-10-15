@@ -159,7 +159,8 @@ jobs:
             --runner-capacity "${{ inputs.runner_capacity }}" \
             --split-matrix "${{ inputs.batch_size }}" \
             --output-matrix ./scans/migration-matrix.json \
-            --output ./scans/migration-plan.json
+            --output ./scans/migration-plan.json \
+            --verbose
 
           if [ ! -f ./scans/migration-matrix.json ]; then
             echo "::error::Matrix output file ./scans/migration-matrix.json was not generated."
@@ -254,7 +255,8 @@ jobs:
             --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
             "${CONT_ARG[@]}" \
-            --output "$REPORT_OUTPUT"
+            --verbose \
+            --output "$REPORT_OUTPUT" || true
 
       - name: Upload Cohort Execution Artifacts & Checkpoints
         if: always()
@@ -306,6 +308,7 @@ jobs:
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --plan ./scans/migration-plan.json \
               --scope "$INPUT_SCOPE" \
+              --verbose \
               --output ./scans/verification-report.json || {
                 echo "Verification reported discrepancies or failed."
               }
@@ -322,10 +325,12 @@ jobs:
             echo "Running Agentic Remediation Review against verification report..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
+              --execution-reports ./downloaded-cohorts \
               --spec docs/specs/verification-remediation-agent.md \
               --output ./scans/remediation-plan.json \
               --output-markdown ./scans/remediation-plan.md \
-              --append-step-summary || {
+              --append-step-summary \
+              --verbose || {
                 echo "::warning::Agent review completed with warnings or failed."
               }
           fi
@@ -357,11 +362,11 @@ jobs:
 
           for REPORT in $(find ./scans ./downloaded-cohorts -name 'cohort-report-*.json' 2>/dev/null); do
             COHORT_NAME=$(basename "$REPORT" .json | sed 's/cohort-report-//')
-            STATUS=$(jq -r '.status // "unknown"' "$REPORT")
+            STATUS=$(jq -r '.overallStatus // .status // "unknown"' "$REPORT")
             DURATION_MS=$(jq -r '.durationMs // 0' "$REPORT")
             DURATION_SEC=$(awk -v ms="$DURATION_MS" 'BEGIN { printf "%.2f", ms / 1000 }')
-            SUCCEEDED=$(jq '[.moduleResults[].results[] | select(.status == "succeeded")] | length' "$REPORT" 2>/dev/null || echo 0)
-            FAILED=$(jq '[.moduleResults[].results[] | select(.status == "failed")] | length' "$REPORT" 2>/dev/null || echo 0)
+            SUCCEEDED=$(jq '[((.results // .moduleResults // [])[]) | (.results // [])[] | select(.status == "succeeded")] | length' "$REPORT" 2>/dev/null || echo 0)
+            FAILED=$(jq '[((.results // .moduleResults // [])[]) | (.results // [])[] | select(.status == "failed")] | length' "$REPORT" 2>/dev/null || echo 0)
 
             STATUS_BADGE="❓ $STATUS"
             if [ "$STATUS" = "complete" ]; then
@@ -377,15 +382,16 @@ jobs:
           echo "" >> "$SUMMARY_FILE"
 
           if [ -f ./scans/verification-report.json ]; then
-            VERIFIED=$(jq -r '.verified' ./scans/verification-report.json)
-            DISCREPANCY_COUNT=$(jq -r '.totalDiscrepancies // (.discrepancies | length) // 0' ./scans/verification-report.json)
+            DISCREPANCY_COUNT=$(jq -r '.summary.discrepancyCount // .summary.totalDiscrepancies // .totalDiscrepancies // (.discrepancies | length) // 0' ./scans/verification-report.json)
+            UNVERIFIED_COUNT=$(jq -r '.summary.unverifiedModuleCount // .summary.failedModules // 0' ./scans/verification-report.json)
+            VERIFIED=$(jq -r 'if (.summary.discrepancyCount // 0) == 0 and (.summary.unverifiedModuleCount // 0) == 0 then "true" else (.verified // "false") end' ./scans/verification-report.json)
 
             echo "### Post-Migration Target Verification" >> "$SUMMARY_FILE"
-            if [ "$VERIFIED" = "true" ]; then
+            if [ "$VERIFIED" = "true" ] && [ "$DISCREPANCY_COUNT" -eq 0 ] && [ "$UNVERIFIED_COUNT" -eq 0 ]; then
               echo "✅ **Target state strictly verified with 0 discrepancies.**" >> "$SUMMARY_FILE"
             else
               echo "> [!WARNING]" >> "$SUMMARY_FILE"
-              echo "> **Verification detected $DISCREPANCY_COUNT discrepancy(ies) between planned and target state.**" >> "$SUMMARY_FILE"
+              echo "> **Verification detected $DISCREPANCY_COUNT discrepancy(ies) and $UNVERIFIED_COUNT unverified module(s) between planned and target state.**" >> "$SUMMARY_FILE"
             fi
             echo "" >> "$SUMMARY_FILE"
           fi
@@ -429,6 +435,7 @@ jobs:
             $REMEDIATION_FLAG \
             --output-dir ./scans/results-repo \
             --append-step-summary \
+            --verbose \
             $DRY_RUN_FLAG || {
               echo "::warning::Publishing migration results repository encountered non-fatal issues."
             }
@@ -442,6 +449,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Final Consolidated Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: migration-wave-final-${{ github.run_id }}
@@ -453,3 +461,37 @@ jobs:
             ./scans/remediation-plan.*
             ./scans/results-repo
           retention-days: 30
+
+      - name: Strict Verification & Execution Gate
+        id: strict-gate
+        if: always()
+        shell: bash
+        env:
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          EXPECTED_COHORTS: ${{ needs.slicer.outputs.cohort_count || '0' }}
+        run: |
+          GATE_FAILED=0
+          OBSERVED_COHORTS=$(find ./scans ./downloaded-cohorts -name 'cohort-report-*.json' 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$OBSERVED_COHORTS" -lt "${EXPECTED_COHORTS:-0}" ]; then
+            echo "::error::Expected $EXPECTED_COHORTS cohort report(s), but only observed $OBSERVED_COHORTS."
+            GATE_FAILED=1
+          fi
+
+          if [ "$INPUT_DRY_RUN" != "true" ]; then
+            if [ ! -f ./scans/verification-report.json ]; then
+              echo "::error::Verification report (./scans/verification-report.json) was not generated."
+              GATE_FAILED=1
+            else
+              DISCREPANCIES=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+              UNVERIFIED_MODULES=$(jq '.summary.unverifiedModuleCount // .summary.failedModules // 0' ./scans/verification-report.json)
+              if [ "$DISCREPANCIES" -gt 0 ] || [ "$UNVERIFIED_MODULES" -gt 0 ]; then
+                echo "::error::Strict Verification Gate Failed: $DISCREPANCIES discrepancy(ies) and $UNVERIFIED_MODULES unverified module(s) remain."
+                GATE_FAILED=1
+              fi
+            fi
+          fi
+
+          if [ "$GATE_FAILED" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Strict Verification & Execution Gate passed."

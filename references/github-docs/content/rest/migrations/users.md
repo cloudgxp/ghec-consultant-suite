@@ -27,3 +27,213 @@ Once you've created a migration archive, it will be available to download for se
 {% ifversion ghec %}{% data variables.migrations.enterprise_cloud_with_data_residency %}{% endif %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List user migrations
+
+`GET /user/migrations`
+
+Lists all migrations a user has started.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+
+## Start a user migration
+
+`POST /user/migrations`
+
+Initiates the generation of a user migration archive.
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `lock_repositories` | `boolean` | No | Lock the repositories being migrated at the start of the migration |
+| `exclude_metadata` | `boolean` | No | Indicates whether metadata should be excluded and only git source should be included for the migration. |
+| `exclude_git_data` | `boolean` | No | Indicates whether the repository git data should be excluded from the migration. |
+| `exclude_attachments` | `boolean` | No | Do not include attachments in the migration |
+| `exclude_releases` | `boolean` | No | Do not include releases in the migration |
+| `exclude_owner_projects` | `boolean` | No | Indicates whether projects owned by the organization or users should be excluded. |
+| `org_metadata_only` | `boolean` | No | Indicates whether this should only include organization metadata (repositories array should be empty and will ignore other flags). |
+| `exclude` | `array of strings` | No | Exclude attributes from the API response to improve performance Supported values are: `repositories` |
+| `repositories` | `array of strings` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a user migration status
+
+`GET /user/migrations/{migration_id}`
+
+Fetches a single user migration. The response includes the `state` of the migration, which can be one of the following values:
+
+`pending` - the migration hasn't started yet.
+
+`exporting` - the migration is in progress.
+
+`exported` - the migration finished successfully.
+
+`failed` - the migration failed.
+
+Once the migration has been `exported` you can [download the migration archive](https://docs.github.com/enterprise-cloud@latest/rest/migrations/users#download-a-user-migration-archive).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+| `exclude` | query | `array` | No |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Download a user migration archive
+
+`GET /user/migrations/{migration_id}/archive`
+
+Fetches the URL to download the migration archive as a `tar.gz` file. Depending on the resources your repository uses, the migration archive can contain JSON files with data for these objects:
+
+attachments
+
+bases
+
+commit_comments
+
+issue_comments
+
+issue_events
+
+issues
+
+milestones
+
+organizations
+
+projects
+
+protected_branches
+
+pull_request_reviews
+
+pull_requests
+
+releases
+
+repositories
+
+review_comments
+
+schema
+
+users
+
+The archive will also contain an `attachments` directory that includes all attachment files uploaded to GitHub.com and a `repositories` directory that contains the repository's Git data.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `302` | Found |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+
+## Delete a user migration archive
+
+`DELETE /user/migrations/{migration_id}/archive`
+
+Deletes a previous migration archive. Downloadable migration archives are automatically deleted after seven days. Migration metadata, which is returned in the [List user migrations](https://docs.github.com/enterprise-cloud@latest/rest/migrations/users#list-user-migrations) and [Get a user migration status](https://docs.github.com/enterprise-cloud@latest/rest/migrations/users#get-a-user-migration-status) endpoints, will continue to be available even after an archive is deleted.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Unlock a user repository
+
+`DELETE /user/migrations/{migration_id}/repos/{repo_name}/lock`
+
+Unlocks a repository. You can lock repositories when you [start a user migration](https://docs.github.com/enterprise-cloud@latest/rest/migrations/users#start-a-user-migration). Once the migration is complete you can unlock each repository to begin using it again or [delete the repository](https://docs.github.com/enterprise-cloud@latest/rest/repos/repos#delete-a-repository) if you no longer need the source data. Returns a status of `404 Not Found` if the repository is not locked.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+| `repo_name` | path | `string` | Yes | repo_name parameter |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## List repositories for a user migration
+
+`GET /user/migrations/{migration_id}/repositories`
+
+Lists all the repositories for this user migration.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |

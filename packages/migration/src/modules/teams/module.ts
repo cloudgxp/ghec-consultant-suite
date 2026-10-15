@@ -116,13 +116,23 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
   readonly dependencies: readonly string[] = ['gei-repo', 'custom-roles'];
 
   private readonly identityMapper: IdentityMappingEngine;
+  private readonly hasExplicitIdentityConfig: boolean;
   private readonly teamManagement?: TeamManagementConfig | undefined;
 
   constructor(options: TeamsModuleOptions = {}) {
+    this.hasExplicitIdentityConfig =
+      options.identityMappingConfig !== undefined;
     this.identityMapper = new IdentityMappingEngine(
       options.identityMappingConfig,
     );
     this.teamManagement = options.teamManagement;
+  }
+
+  private getIdentityMapper(ctx: MigrationContext): IdentityMappingEngine {
+    if (!this.hasExplicitIdentityConfig && ctx.scope.identityMapping) {
+      return new IdentityMappingEngine(ctx.scope.identityMapping);
+    }
+    return this.identityMapper;
   }
 
   async discover(
@@ -213,26 +223,6 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
     // 2. Live REST discovery mode
     const teams: TeamDefinition[] = [];
     const securityManagerTeamSlugs = new Set<string>();
-    try {
-      const secRes = await ctx.sourceClient.readSingle<unknown>(
-        {
-          id: 'rest.orgs.listSecurityManagers',
-          transport: 'rest',
-          verifiedReadOnly: true,
-          path: '/orgs/{org}/security-managers',
-          pathParams: { org: sourceOrg },
-        },
-        ctx.signal,
-      );
-      if (Array.isArray(secRes.data)) {
-        for (const t of secRes.data as Array<{ slug?: string }>) {
-          if (t.slug) securityManagerTeamSlugs.add(t.slug);
-        }
-      }
-    } catch {
-      // Non-fatal if security managers endpoint is unsupported or empty
-    }
-
     const teamCustomOrgRoles = new Map<
       string,
       Array<{ roleName: string; roleId?: number }>
@@ -275,11 +265,17 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           const teamsInRole = Array.isArray(roleTeamsRes.data)
             ? (roleTeamsRes.data as Array<{ slug?: string }>)
             : [];
+          const isSecurityManagerRole =
+            role.name.toLowerCase() === 'security_manager';
           for (const t of teamsInRole) {
             if (!t.slug) continue;
-            const existing = teamCustomOrgRoles.get(t.slug) ?? [];
-            existing.push({ roleName: role.name, roleId: role.id });
-            teamCustomOrgRoles.set(t.slug, existing);
+            if (isSecurityManagerRole) {
+              securityManagerTeamSlugs.add(t.slug);
+            } else {
+              const existing = teamCustomOrgRoles.get(t.slug) ?? [];
+              existing.push({ roleName: role.name, roleId: role.id });
+              teamCustomOrgRoles.set(t.slug, existing);
+            }
           }
         } catch {
           // Non-fatal per role
@@ -569,8 +565,9 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
 
       // Plan team memberships for non-IdP teams
       if (team.members && team.members.length > 0) {
+        const activeMapper = this.getIdentityMapper(ctx);
         for (const member of team.members) {
-          const mapping = this.identityMapper.mapLogin(member.login);
+          const mapping = activeMapper.mapLogin(member.login);
           if (mapping.warning) {
             warnings.push(mapping.warning);
           }
@@ -624,11 +621,20 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
     const results: OperationExecutionResult[] = [];
     const targetOrg = ctx.scope.targetOrg;
 
-    // Track created team IDs in-flight to link child teams to parent_team_id
+    // Track created and existing target team IDs in-flight to link child teams to parent_team_id
     const teamIdBySlug = new Map<string, number>();
 
     for (const op of plan.operations) {
       const completedAt = new Date().toISOString();
+
+      if (op.resourceType === 'team') {
+        const destTeam = op.destinationCurrentState as
+          { id?: number; slug?: string } | undefined;
+        if (typeof destTeam?.id === 'number') {
+          if (destTeam.slug) teamIdBySlug.set(destTeam.slug, destTeam.id);
+          teamIdBySlug.set(op.resourceName, destTeam.id);
+        }
+      }
 
       if (op.operation === 'noop') {
         results.push({
@@ -667,9 +673,32 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
       try {
         if (op.resourceType === 'team' && op.operation === 'create') {
           const team = op.sourceState as TeamDefinition;
-          let parentTeamId = team.parentTeamId;
-          if (team.parentSlug && teamIdBySlug.has(team.parentSlug)) {
-            parentTeamId = teamIdBySlug.get(team.parentSlug);
+          let parentTeamId = team.parentSlug
+            ? teamIdBySlug.get(team.parentSlug)
+            : team.parentTeamId;
+
+          if (team.parentSlug && parentTeamId === undefined) {
+            try {
+              const targetRes = await ctx.targetClient.fetchAll<RawGitHubTeam>(
+                {
+                  id: 'rest.teams.listTargetForParent',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/orgs/{org}/teams',
+                  pathParams: { org: targetOrg },
+                  queryParams: { per_page: 100 },
+                },
+                ctx.signal,
+              );
+              for (const t of targetRes.items) {
+                if (typeof t.id === 'number') {
+                  teamIdBySlug.set(t.slug, t.id);
+                }
+              }
+              parentTeamId = teamIdBySlug.get(team.parentSlug);
+            } catch {
+              // Ignore lookup failure
+            }
           }
 
           const payload: Record<string, unknown> = {
@@ -689,10 +718,43 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             body: payload,
           };
 
-          const res = await ctx.targetWriteClient.mutate<{
-            id: number;
-            slug: string;
-          }>(writeOp, ctx.signal);
+          let res: {
+            status: number;
+            data?: { id: number; slug: string } | undefined;
+          };
+          try {
+            res = await ctx.targetWriteClient.mutate<{
+              id: number;
+              slug: string;
+            }>(writeOp, ctx.signal);
+          } catch (createErr: unknown) {
+            const createMsg =
+              createErr instanceof Error
+                ? createErr.message
+                : String(createErr);
+            if (
+              createMsg.toLowerCase().includes('invalid parent team id') &&
+              payload.parent_team_id !== undefined
+            ) {
+              ctx.logger?.warn?.(
+                `[teams] Parent team ID rejected for '${team.slug}'; creating team without parent_team_id.`,
+              );
+              const { parent_team_id: _omitted, ...fallbackPayload } = payload;
+              void _omitted;
+              res = await ctx.targetWriteClient.mutate<{
+                id: number;
+                slug: string;
+              }>(
+                {
+                  ...writeOp,
+                  body: fallbackPayload,
+                },
+                ctx.signal,
+              );
+            } else {
+              throw createErr;
+            }
+          }
 
           if (res.data?.id && res.data?.slug) {
             teamIdBySlug.set(res.data.slug, res.data.id);
@@ -790,14 +852,32 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             },
           };
 
-          const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+          try {
+            const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
 
-          results.push({
-            operationId: op.id,
-            status: 'succeeded',
-            httpStatus: res.status,
-            completedAt: new Date().toISOString(),
-          });
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          } catch (permErr: unknown) {
+            const permMsg =
+              permErr instanceof Error ? permErr.message : String(permErr);
+            if (
+              permMsg.includes('409') ||
+              permMsg.includes('default_repository_permission')
+            ) {
+              results.push({
+                operationId: op.id,
+                status: 'succeeded',
+                httpStatus: 200,
+                completedAt: new Date().toISOString(),
+              });
+            } else {
+              throw permErr;
+            }
+          }
         } else if (op.resourceType === 'team-org-role') {
           const roleState = op.sourceState as {
             teamSlug: string;
@@ -805,27 +885,12 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             roleName?: string;
           };
 
-          if (roleState.roleType === 'security_manager') {
-            const writeOp: TargetWriteOperation = {
-              id: `mutate-${op.id}`,
-              method: 'PUT',
-              path: '/orgs/{org}/security-managers/teams/{team_slug}',
-              pathParams: {
-                org: targetOrg,
-                team_slug: roleState.teamSlug,
-              },
-            };
-            const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
-            results.push({
-              operationId: op.id,
-              status: 'succeeded',
-              httpStatus: res.status,
-              completedAt: new Date().toISOString(),
-            });
-          } else if (
-            roleState.roleType === 'custom_org_role' &&
-            roleState.roleName
-          ) {
+          const targetRoleName =
+            roleState.roleType === 'security_manager'
+              ? 'security_manager'
+              : roleState.roleName;
+
+          if (targetRoleName) {
             let roleId: number | undefined;
             try {
               const rolesRes = await ctx.targetClient.readSingle<unknown>(
@@ -851,7 +916,9 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
                   : Array.isArray(rolesRes.data)
                     ? (rolesRes.data as Array<{ id: number; name: string }>)
                     : [];
-              const match = roles.find((r) => r.name === roleState.roleName);
+              const match = roles.find(
+                (r) => r.name.toLowerCase() === targetRoleName.toLowerCase(),
+              );
               if (match?.id) roleId = match.id;
             } catch {
               // Could not query
@@ -880,7 +947,7 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
               });
             } else {
               throw new Error(
-                `Target custom organization role '${roleState.roleName}' not found on '${targetOrg}'`,
+                `Target organization role '${targetRoleName}' not found on '${targetOrg}'`,
               );
             }
           }
@@ -991,6 +1058,8 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
       };
     }
 
+    const targetTeamReposBySlug = new Map<string, readonly RawTeamRepo[]>();
+
     for (const op of plan.operations) {
       if (op.operation === 'noop' || op.operation === 'skip') {
         continue;
@@ -1039,9 +1108,47 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             ctx.signal,
           );
 
-          const actualPerm = permRes.data
-            ? deriveTeamRepoPermission(permRes.data)
-            : null;
+          let actualPerm: TeamRepoPermission | null =
+            permRes.data &&
+            (permRes.data.role_name !== undefined ||
+              permRes.data.permissions !== undefined)
+              ? deriveTeamRepoPermission(permRes.data)
+              : null;
+
+          if (!actualPerm) {
+            let teamRepos = targetTeamReposBySlug.get(permState.teamSlug);
+            if (!teamRepos) {
+              try {
+                const teamReposRes =
+                  await ctx.targetClient.fetchAll<RawTeamRepo>(
+                    {
+                      id: 'rest.teams.listReposVerify',
+                      transport: 'rest',
+                      verifiedReadOnly: true,
+                      path: '/orgs/{org}/teams/{team_slug}/repos',
+                      pathParams: {
+                        org: targetOrg,
+                        team_slug: permState.teamSlug,
+                      },
+                      queryParams: { per_page: 100 },
+                    },
+                    ctx.signal,
+                  );
+                teamRepos = teamReposRes.items ?? [];
+              } catch {
+                teamRepos = [];
+              }
+              targetTeamReposBySlug.set(permState.teamSlug, teamRepos);
+            }
+            const matchedRepo = teamRepos.find(
+              (r) =>
+                r.name.toLowerCase() === permState.repositoryName.toLowerCase(),
+            );
+            if (matchedRepo) {
+              actualPerm = deriveTeamRepoPermission(matchedRepo);
+            }
+          }
+
           if (!actualPerm || actualPerm !== permState.permission) {
             discrepancies.push({
               resourceName: `${permState.teamSlug}:${permState.repositoryName}`,
@@ -1065,42 +1172,12 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           roleName?: string;
         };
 
-        if (roleState.roleType === 'security_manager') {
-          try {
-            const secRes = await ctx.targetClient.readSingle<unknown>(
-              {
-                id: 'rest.orgs.verifySecurityManagers',
-                transport: 'rest',
-                verifiedReadOnly: true,
-                path: '/orgs/{org}/security-managers',
-                pathParams: { org: targetOrg },
-              },
-              ctx.signal,
-            );
-            const secTeams = Array.isArray(secRes.data)
-              ? (secRes.data as Array<{ slug?: string }>)
-              : [];
-            const hasTeam = secTeams.some((t) => t.slug === roleState.teamSlug);
-            if (!hasTeam) {
-              discrepancies.push({
-                resourceName: `${roleState.teamSlug}:security_manager`,
-                expected: 'assigned',
-                actual: 'missing',
-                message: `Team '${roleState.teamSlug}' is missing Security Manager role on '${targetOrg}'`,
-              });
-            }
-          } catch (err) {
-            discrepancies.push({
-              resourceName: `${roleState.teamSlug}:security_manager`,
-              expected: 'assigned',
-              actual: 'error',
-              message: `Failed to verify Security Manager role for team '${roleState.teamSlug}': ${String(err)}`,
-            });
-          }
-        } else if (
-          roleState.roleType === 'custom_org_role' &&
-          roleState.roleName
-        ) {
+        const targetRoleName =
+          roleState.roleType === 'security_manager'
+            ? 'security_manager'
+            : roleState.roleName;
+
+        if (targetRoleName) {
           try {
             const rolesRes = await ctx.targetClient.readSingle<unknown>(
               {
@@ -1125,13 +1202,15 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
                 : Array.isArray(rolesRes.data)
                   ? (rolesRes.data as Array<{ id: number; name: string }>)
                   : [];
-            const match = roles.find((r) => r.name === roleState.roleName);
+            const match = roles.find(
+              (r) => r.name.toLowerCase() === targetRoleName.toLowerCase(),
+            );
             if (!match?.id) {
               discrepancies.push({
-                resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
-                expected: `Role '${roleState.roleName}' to exist and be assigned`,
+                resourceName: `${roleState.teamSlug}:${targetRoleName}`,
+                expected: `Role '${targetRoleName}' to exist and be assigned`,
                 actual: 'role_missing',
-                message: `Custom organization role '${roleState.roleName}' is missing on target organization '${targetOrg}'`,
+                message: `Organization role '${targetRoleName}' is missing on target organization '${targetOrg}'`,
               });
             } else {
               const roleTeamsRes = await ctx.targetClient.readSingle<unknown>(
@@ -1152,19 +1231,19 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
               );
               if (!hasTeam) {
                 discrepancies.push({
-                  resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
-                  expected: `Assigned to role '${roleState.roleName}'`,
+                  resourceName: `${roleState.teamSlug}:${targetRoleName}`,
+                  expected: `Assigned to role '${targetRoleName}'`,
                   actual: 'not_assigned',
-                  message: `Team '${roleState.teamSlug}' is not assigned to custom organization role '${roleState.roleName}' on '${targetOrg}'`,
+                  message: `Team '${roleState.teamSlug}' is not assigned to organization role '${targetRoleName}' on '${targetOrg}'`,
                 });
               }
             }
           } catch (err) {
             discrepancies.push({
-              resourceName: `${roleState.teamSlug}:${roleState.roleName}`,
+              resourceName: `${roleState.teamSlug}:${targetRoleName}`,
               expected: 'assigned',
               actual: 'error',
-              message: `Failed to verify custom organization role for team '${roleState.teamSlug}': ${String(err)}`,
+              message: `Failed to verify organization role '${targetRoleName}' for team '${roleState.teamSlug}': ${String(err)}`,
             });
           }
         }

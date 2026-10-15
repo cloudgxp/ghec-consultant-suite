@@ -21,3 +21,664 @@ You can use the REST API to manage groups of self-hosted runners in {% data vari
 {% data reusables.actions.actions-authentication %} {% data variables.product.prodname_github_apps %} must have the `administration` permission for repositories or the `organization_self_hosted_runners` permission for organizations. Authenticated users must have admin access to repositories or organizations, or the `manage_runners:enterprise` scope for enterprises to use these endpoints.
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List self-hosted runner groups for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runner-groups`
+
+Lists all self-hosted runner groups for an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `visible_to_organization` | query | `string` | No | Only return runner groups that are allowed to be used by this organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a self-hosted runner group for an enterprise
+
+`POST /enterprises/{enterprise}/actions/runner-groups`
+
+Creates a new self-hosted runner group for an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the runner group. |
+| `visibility` | `string` | No | Visibility of a runner group. You can select all organizations or select individual organization. |
+| `selected_organization_ids` | `array of integers` | No | List of organization IDs that can access the runner group. |
+| `runners` | `array of integers` | No | List of runner IDs to add to the runner group. |
+| `allows_public_repositories` | `boolean` | No | Whether the runner group can be used by `public` repositories. |
+| `restricted_to_workflows` | `boolean` | No | If `true`, the runner group will be restricted to running only the workflows specified in the `selected_workflows` array. |
+| `selected_workflows` | `array of strings` | No | List of workflows the runner group should be allowed to run. This setting will be ignored unless `restricted_to_workflows` is set to `true`. |
+| `network_configuration_id` | `string` | No | The identifier of a hosted compute network configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a self-hosted runner group for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}`
+
+Gets a specific self-hosted runner group for an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a self-hosted runner group for an enterprise
+
+`PATCH /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}`
+
+Updates the `name` and `visibility` of a self-hosted runner group in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Name of the runner group. |
+| `visibility` | `string` | No | Visibility of a runner group. You can select all organizations or select individual organizations. |
+| `allows_public_repositories` | `boolean` | No | Whether the runner group can be used by `public` repositories. |
+| `restricted_to_workflows` | `boolean` | No | If `true`, the runner group will be restricted to running only the workflows specified in the `selected_workflows` array. |
+| `selected_workflows` | `array of strings` | No | List of workflows the runner group should be allowed to run. This setting will be ignored unless `restricted_to_workflows` is set to `true`. |
+| `network_configuration_id` | `string or null` | No | The identifier of a hosted compute network configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a self-hosted runner group from an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}`
+
+Deletes a self-hosted runner group for an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List organization access to a self-hosted runner group in an enterprise
+
+`GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations`
+
+Lists the organizations with access to a self-hosted runner group.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set organization access for a self-hosted runner group in an enterprise
+
+`PUT /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations`
+
+Replaces the list of organizations that have access to a self-hosted runner configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_organization_ids` | `array of integers` | Yes | List of organization IDs that can access the runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Add organization access to a self-hosted runner group in an enterprise
+
+`PUT /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations/{org_id}`
+
+Adds an organization to the list of selected organizations that can access a self-hosted runner group. The runner group must have `visibility` set to `selected`. For more information, see "[Create a self-hosted runner group for an enterprise](#create-a-self-hosted-runner-group-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `org_id` | path | `integer` | Yes | The unique identifier of the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove organization access to a self-hosted runner group in an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/organizations/{org_id}`
+
+Removes an organization from the list of selected organizations that can access a self-hosted runner group. The runner group must have `visibility` set to `selected`. For more information, see "[Create a self-hosted runner group for an enterprise](#create-a-self-hosted-runner-group-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `org_id` | path | `integer` | Yes | The unique identifier of the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List self-hosted runners in a group for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners`
+
+Lists the self-hosted runners that are in a specific enterprise group.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set self-hosted runners in a group for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners`
+
+Replaces the list of self-hosted runners that are part of an enterprise runner group.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `runners` | `array of integers` | Yes | List of runner IDs to add to the runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Add a self-hosted runner to a group for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners/{runner_id}`
+
+Adds a self-hosted runner to a runner group configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove a self-hosted runner from a group for an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/runner-groups/{runner_group_id}/runners/{runner_id}`
+
+Removes a self-hosted runner from a group configured in an enterprise. The runner is then returned to the default group.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List self-hosted runner groups for an organization
+
+`GET /orgs/{org}/actions/runner-groups`
+
+Lists all self-hosted runner groups configured in an organization and inherited from an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `visible_to_repository` | query | `string` | No | Only return runner groups that are allowed to be used by this repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a self-hosted runner group for an organization
+
+`POST /orgs/{org}/actions/runner-groups`
+
+Creates a new self-hosted runner group for an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the runner group. |
+| `visibility` | `string` | No | Visibility of a runner group. You can select all repositories, select individual repositories, or limit access to private repositories. |
+| `selected_repository_ids` | `array of integers` | No | List of repository IDs that can access the runner group. |
+| `runners` | `array of integers` | No | List of runner IDs to add to the runner group. |
+| `allows_public_repositories` | `boolean` | No | Whether the runner group can be used by `public` repositories. |
+| `restricted_to_workflows` | `boolean` | No | If `true`, the runner group will be restricted to running only the workflows specified in the `selected_workflows` array. |
+| `selected_workflows` | `array of strings` | No | List of workflows the runner group should be allowed to run. This setting will be ignored unless `restricted_to_workflows` is set to `true`. |
+| `network_configuration_id` | `string` | No | The identifier of a hosted compute network configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a self-hosted runner group for an organization
+
+`GET /orgs/{org}/actions/runner-groups/{runner_group_id}`
+
+Gets a specific self-hosted runner group for an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a self-hosted runner group for an organization
+
+`PATCH /orgs/{org}/actions/runner-groups/{runner_group_id}`
+
+Updates the `name` and `visibility` of a self-hosted runner group in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the runner group. |
+| `visibility` | `string` | No | Visibility of a runner group. You can select all repositories, select individual repositories, or all private repositories. |
+| `allows_public_repositories` | `boolean` | No | Whether the runner group can be used by `public` repositories. |
+| `restricted_to_workflows` | `boolean` | No | If `true`, the runner group will be restricted to running only the workflows specified in the `selected_workflows` array. |
+| `selected_workflows` | `array of strings` | No | List of workflows the runner group should be allowed to run. This setting will be ignored unless `restricted_to_workflows` is set to `true`. |
+| `network_configuration_id` | `string or null` | No | The identifier of a hosted compute network configuration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a self-hosted runner group from an organization
+
+`DELETE /orgs/{org}/actions/runner-groups/{runner_group_id}`
+
+Deletes a self-hosted runner group for an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List GitHub-hosted runners in a group for an organization
+
+`GET /orgs/{org}/actions/runner-groups/{runner_group_id}/hosted-runners`
+
+Lists the GitHub-hosted runners in an organization group.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List repository access to a self-hosted runner group in an organization
+
+`GET /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories`
+
+Lists the repositories with access to a self-hosted runner group configured in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set repository access for a self-hosted runner group in an organization
+
+`PUT /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories`
+
+Replaces the list of repositories that have access to a self-hosted runner group configured in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_repository_ids` | `array of integers` | Yes | List of repository IDs that can access the runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Add repository access to a self-hosted runner group in an organization
+
+`PUT /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories/{repository_id}`
+
+Adds a repository to the list of repositories that can access a self-hosted runner group. The runner group must have `visibility` set to `selected`. For more information, see "[Create a self-hosted runner group for an organization](#create-a-self-hosted-runner-group-for-an-organization)."
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove repository access to a self-hosted runner group in an organization
+
+`DELETE /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories/{repository_id}`
+
+Removes a repository from the list of selected repositories that can access a self-hosted runner group. The runner group must have `visibility` set to `selected`. For more information, see "[Create a self-hosted runner group for an organization](#create-a-self-hosted-runner-group-for-an-organization)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List self-hosted runners in a group for an organization
+
+`GET /orgs/{org}/actions/runner-groups/{runner_group_id}/runners`
+
+Lists self-hosted runners that are in a specific organization group.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set self-hosted runners in a group for an organization
+
+`PUT /orgs/{org}/actions/runner-groups/{runner_group_id}/runners`
+
+Replaces the list of self-hosted runners that are part of an organization runner group.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `runners` | `array of integers` | Yes | List of runner IDs to add to the runner group. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Add a self-hosted runner to a group for an organization
+
+`PUT /orgs/{org}/actions/runner-groups/{runner_group_id}/runners/{runner_id}`
+
+Adds a self-hosted runner to a runner group configured in an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove a self-hosted runner from a group for an organization
+
+`DELETE /orgs/{org}/actions/runner-groups/{runner_group_id}/runners/{runner_id}`
+
+Removes a self-hosted runner from a group configured in an organization. The runner is then returned to the default group.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_group_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner group. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

@@ -13,3 +13,251 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List requests to access organization resources with fine-grained personal access tokens
+
+`GET /orgs/{org}/personal-access-token-requests`
+
+Lists requests from organization members to access organization resources with a fine-grained personal access token.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `sort` | query | `string` | No | The property by which to sort the results. |
+| `direction` | query | `string` | No | The direction to sort the results by. |
+| `owner` | query | `array` | No | A list of owner usernames to use to filter the results. |
+| `repository` | query | `string` | No | The name of the repository to use to filter the results. |
+| `permission` | query | `string` | No | The permission to use to filter the results. |
+| `last_used_before` | query | `string` | No | Only show fine-grained personal access tokens used before the given time. This is a timestamp in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format: `YYYY-MM-DDTHH:MM:SSZ`. |
+| `last_used_after` | query | `string` | No | Only show fine-grained personal access tokens used after the given time. This is a timestamp in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format: `YYYY-MM-DDTHH:MM:SSZ`. |
+| `token_id` | query | `array` | No | The ID of the token |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Review requests to access organization resources with fine-grained personal access tokens
+
+`POST /orgs/{org}/personal-access-token-requests`
+
+Approves or denies multiple pending requests to access organization resources via a fine-grained personal access token.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `pat_request_ids` | `array of integers` | No | Unique identifiers of the requests for access via fine-grained personal access token. Must be formed of between 1 and 100 `pat_request_id` values. |
+| `action` | `string` | Yes | Action to apply to the requests. |
+| `reason` | `string or null` | No | Reason for approving or denying the requests. Max 1024 characters. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Review a request to access organization resources with a fine-grained personal access token
+
+`POST /orgs/{org}/personal-access-token-requests/{pat_request_id}`
+
+Approves or denies a pending request to access organization resources via a fine-grained personal access token.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `pat_request_id` | path | `integer` | Yes | Unique identifier of the request for access via fine-grained personal access token. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `action` | `string` | Yes | Action to apply to the request. |
+| `reason` | `string or null` | No | Reason for approving or denying the request. Max 1024 characters. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## List repositories requested to be accessed by a fine-grained personal access token
+
+`GET /orgs/{org}/personal-access-token-requests/{pat_request_id}/repositories`
+
+Lists the repositories a fine-grained personal access token request is requesting access to.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `pat_request_id` | path | `integer` | Yes | Unique identifier of the request for access via fine-grained personal access token. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## List fine-grained personal access tokens with access to organization resources
+
+`GET /orgs/{org}/personal-access-tokens`
+
+Lists approved fine-grained personal access tokens owned by organization members that can access organization resources.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `sort` | query | `string` | No | The property by which to sort the results. |
+| `direction` | query | `string` | No | The direction to sort the results by. |
+| `owner` | query | `array` | No | A list of owner usernames to use to filter the results. |
+| `repository` | query | `string` | No | The name of the repository to use to filter the results. |
+| `permission` | query | `string` | No | The permission to use to filter the results. |
+| `last_used_before` | query | `string` | No | Only show fine-grained personal access tokens used before the given time. This is a timestamp in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format: `YYYY-MM-DDTHH:MM:SSZ`. |
+| `last_used_after` | query | `string` | No | Only show fine-grained personal access tokens used after the given time. This is a timestamp in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format: `YYYY-MM-DDTHH:MM:SSZ`. |
+| `token_id` | query | `array` | No | The ID of the token |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Update the access to organization resources via fine-grained personal access tokens
+
+`POST /orgs/{org}/personal-access-tokens`
+
+Updates the access organization members have to organization resources via fine-grained personal access tokens. Limited to revoking a token's existing access.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `action` | `string` | Yes | Action to apply to the fine-grained personal access token. |
+| `pat_ids` | `array of integers` | Yes | The IDs of the fine-grained personal access tokens. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Update the access a fine-grained personal access token has to organization resources
+
+`POST /orgs/{org}/personal-access-tokens/{pat_id}`
+
+Updates the access an organization member has to organization resources via a fine-grained personal access token. Limited to revoking the token's existing access. Limited to revoking a token's existing access.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `pat_id` | path | `integer` | Yes | The unique identifier of the fine-grained personal access token. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `action` | `string` | Yes | Action to apply to the fine-grained personal access token. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## List repositories a fine-grained personal access token has access to
+
+`GET /orgs/{org}/personal-access-tokens/{pat_id}/repositories`
+
+Lists the repositories a fine-grained personal access token has access to.
+
+Only GitHub Apps can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `pat_id` | path | `integer` | Yes | Unique identifier of the fine-grained personal access token. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `500` | Internal Error |

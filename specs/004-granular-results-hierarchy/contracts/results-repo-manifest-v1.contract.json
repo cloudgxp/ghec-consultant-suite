@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghec-consultant-suite.local/schemas/results-repo-manifest-v1.contract.json",
+  "title": "MigrationResultsManifest",
+  "description": "3-tier migration audit repository manifest schema with organization/<module>.md and repositories/<repo>/<module>.md links.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "generatedAt",
+    "sourceOrg",
+    "targetOrg",
+    "targetResultsRepo",
+    "executionMode",
+    "summary",
+    "repositories"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceOrg": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "targetOrg": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "targetResultsRepo": {
+      "type": "string",
+      "default": "gei-migration-results"
+    },
+    "executionMode": {
+      "type": "string",
+      "enum": ["dry-run", "live"]
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "totalRepositories",
+        "succeededCount",
+        "failedCount",
+        "successRatePercent",
+        "durationMs",
+        "orgModulesSummary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "totalRepositories": { "type": "integer", "minimum": 0 },
+        "succeededCount": { "type": "integer", "minimum": 0 },
+        "failedCount": { "type": "integer", "minimum": 0 },
+        "successRatePercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "orgModulesSummary": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "status",
+              "totalOperations",
+              "succeededOperations",
+              "failedOperations",
+              "skippedOperations"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["complete", "partial", "failed", "skipped"]
+              },
+              "totalOperations": { "type": "integer", "minimum": 0 },
+              "succeededOperations": { "type": "integer", "minimum": 0 },
+              "failedOperations": { "type": "integer", "minimum": 0 },
+              "skippedOperations": { "type": "integer", "minimum": 0 },
+              "discrepancyCount": { "type": "integer", "minimum": 0 },
+              "durationMs": { "type": "integer", "minimum": 0 },
+              "relativeFilePath": {
+                "type": "string",
+                "pattern": "^organization/.+\\.md$"
+              },
+              "error": { "type": "string", "minLength": 1, "maxLength": 2048 }
+            }
+          }
+        }
+      }
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceRepo",
+          "targetRepo",
+          "status",
+          "relativeFilePath",
+          "durationMs",
+          "stagesRun",
+          "verified",
+          "discrepancyCount",
+          "warnings"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceRepo": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "targetRepo": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "status": { "type": "string", "enum": ["succeeded", "failed"] },
+          "relativeFilePath": {
+            "type": "string",
+            "pattern": "^(success|failure)/.+\\.md$"
+          },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "stagesRun": { "type": "array", "items": { "type": "string" } },
+          "verified": { "type": "boolean" },
+          "discrepancyCount": { "type": "integer", "minimum": 0 },
+          "failureReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "failedStage": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "failedMetadataCategories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "warnings": { "type": "array", "items": { "type": "string" } },
+          "remediationCommands": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "moduleSummaries": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "moduleId",
+                "status",
+                "totalOperations",
+                "succeededOperations",
+                "failedOperations",
+                "skippedOperations",
+                "discrepancyCount",
+                "relativeFilePath"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "moduleId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["complete", "partial", "failed", "skipped"]
+                },
+                "totalOperations": { "type": "integer", "minimum": 0 },
+                "succeededOperations": { "type": "integer", "minimum": 0 },
+                "failedOperations": { "type": "integer", "minimum": 0 },
+                "skippedOperations": { "type": "integer", "minimum": 0 },
+                "discrepancyCount": { "type": "integer", "minimum": 0 },
+                "durationMs": { "type": "integer", "minimum": 0 },
+                "relativeFilePath": {
+                  "type": "string",
+                  "pattern": "^repositories/.+/.+\\.md$"
+                },
+                "error": { "type": "string", "minLength": 1, "maxLength": 2048 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

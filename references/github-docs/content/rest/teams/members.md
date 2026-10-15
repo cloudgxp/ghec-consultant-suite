@@ -22,3 +22,410 @@ category:
 > When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API to make changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see [AUTOTITLE](/enterprise-cloud@latest/organizations/managing-saml-single-sign-on-for-your-organization/managing-team-synchronization-for-your-organization).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List pending team invitations
+
+`GET /orgs/{org}/teams/{team_slug}/invitations`
+
+The return hash contains a `role` field which refers to the Organization Invitation role and will be one of the following values: `direct_member`, `admin`, `billing_manager`, `hiring_manager`, or `reinstate`. If the invitee is not a GitHub Enterprise Cloud member, the `login` field in the return hash will be `null`.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}/invitations`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Unprocessable entity if you attempt to modify an enterprise team at the organization level. |
+
+## List team members
+
+`GET /orgs/{org}/teams/{team_slug}/members`
+
+Team members will include the members of child teams.
+
+Each member includes their `role` on the team (`member` or `maintainer`) and an `inherited` flag indicating whether the membership is inherited from a child team (`true`) or is a direct membership (`false`). These fields let you read a member's role and direct/inherited status without additional requests.
+
+To list members in a team, the team must be visible to the authenticated user.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}/members`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `role` | query | `string` | No | Filters members returned by their role in the team. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get team membership for a user
+
+`GET /orgs/{org}/teams/{team_slug}/memberships/{username}`
+
+Team members will include the members of child teams.
+
+To get a user's membership with a team, the team must be visible to the authenticated user.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `GET /organizations/{org_id}/team/{team_id}/memberships/{username}`.
+
+Note
+
+The response contains the `state` of the membership and the member's `role`.
+
+The `role` for organization owners is set to `maintainer`. For more information about `maintainer` roles, see [Create a team](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#create-a-team).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | if user has no team membership |
+
+## Add or update team membership for a user
+
+`PUT /orgs/{org}/teams/{team_slug}/memberships/{username}`
+
+Adds an organization member to a team. An authenticated organization owner or team maintainer can add organization members to a team.
+
+Team synchronization is available for organizations using GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+Note
+
+When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API for making changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub Enterprise Cloud team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see "[Synchronizing teams between your identity provider and GitHub Enterprise Cloud](https://docs.github.com/enterprise-cloud@latest/articles/synchronizing-teams-between-your-identity-provider-and-github/)."
+
+An organization owner can add someone who is not part of the team's organization to a team. When an organization owner adds someone to a team who is not an organization member, this endpoint will send an invitation to the person via email. This newly-created membership will be in the "pending" state until the person accepts the invitation, at which point the membership will transition to the "active" state and the user will be added as a member of the team.
+
+If the user is already a member of the team, this endpoint will update the role of the team member's role. To update the membership of a team member, the authenticated user must be an organization owner or a team maintainer.
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `PUT /organizations/{org_id}/team/{team_id}/memberships/{username}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `role` | `string` | No | The role that this user should have in the team. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden if team synchronization is set up |
+| `422` | Unprocessable Entity if you attempt to add an organization to a team |
+
+## Remove team membership for a user
+
+`DELETE /orgs/{org}/teams/{team_slug}/memberships/{username}`
+
+To remove a membership between a user and a team, the authenticated user must have 'admin' permissions to the team or be an owner of the organization that the team is associated with. Removing team membership does not delete the user, it just removes their membership from the team.
+
+Team synchronization is available for organizations using GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+Note
+
+When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API for making changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub Enterprise Cloud team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see "[Synchronizing teams between your identity provider and GitHub Enterprise Cloud](https://docs.github.com/enterprise-cloud@latest/articles/synchronizing-teams-between-your-identity-provider-and-github/)."
+
+Note
+
+You can also specify a team by `org_id` and `team_id` using the route `DELETE /organizations/{org_id}/team/{team_id}/memberships/{username}`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden if team synchronization is set up |
+
+## List pending team invitations (Legacy)
+
+`GET /teams/{team_id}/invitations`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [`List pending team invitations`](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#list-pending-team-invitations) endpoint.
+
+The return hash contains a `role` field which refers to the Organization Invitation role and will be one of the following values: `direct_member`, `admin`, `billing_manager`, `hiring_manager`, or `reinstate`. If the invitee is not a GitHub Enterprise Cloud member, the `login` field in the return hash will be `null`.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List team members (Legacy)
+
+`GET /teams/{team_id}/members`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [`List team members`](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#list-team-members) endpoint.
+
+Team members will include the members of child teams.
+
+Each member includes their `role` on the team (`member` or `maintainer`) and an `inherited` flag indicating whether the membership is inherited from a child team (`true`) or is a direct membership (`false`).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `role` | query | `string` | No | Filters members returned by their role in the team. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Get team member (Legacy)
+
+`GET /teams/{team_id}/members/{username}`
+
+The "Get team member" endpoint (described below) is closing down.
+
+We recommend using the [Get team membership for a user](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#get-team-membership-for-a-user) endpoint instead. It allows you to get both active and pending memberships.
+
+To list members in a team, the team must be visible to the authenticated user.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | if user is a member |
+| `404` | if user is not a member |
+
+## Add team member (Legacy)
+
+`PUT /teams/{team_id}/members/{username}`
+
+The "Add team member" endpoint (described below) is closing down.
+
+We recommend using the [Add or update team membership for a user](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#add-or-update-team-membership-for-a-user) endpoint instead. It allows you to invite new organization members to your teams.
+
+Team synchronization is available for organizations using GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+To add someone to a team, the authenticated user must be an organization owner or a team maintainer in the team they're changing. The person being added to the team must be a member of the team's organization.
+
+Note
+
+When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API for making changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub Enterprise Cloud team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see "[Synchronizing teams between your identity provider and GitHub Enterprise Cloud](https://docs.github.com/enterprise-cloud@latest/articles/synchronizing-teams-between-your-identity-provider-and-github/)."
+
+Note that you'll need to set `Content-Length` to zero when calling out to this endpoint. For more information, see "[HTTP method](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#http-method)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Not Found if team synchronization is set up |
+| `422` | Unprocessable Entity if you attempt to add an organization to a team or you attempt to add a user to a team when they are not a member of at least one other team in the same organization |
+
+## Remove team member (Legacy)
+
+`DELETE /teams/{team_id}/members/{username}`
+
+The "Remove team member" endpoint (described below) is closing down.
+
+We recommend using the [Remove team membership for a user](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#remove-team-membership-for-a-user) endpoint instead. It allows you to remove both active and pending memberships.
+
+Team synchronization is available for organizations using GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+To remove a team member, the authenticated user must have 'admin' permissions to the team or be an owner of the org that the team is associated with. Removing a team member does not delete the user, it just removes them from the team.
+
+Note
+
+When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API for making changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub Enterprise Cloud team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see "[Synchronizing teams between your identity provider and GitHub Enterprise Cloud](https://docs.github.com/enterprise-cloud@latest/articles/synchronizing-teams-between-your-identity-provider-and-github/)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Not Found if team synchronization is setup |
+
+## Get team membership for a user (Legacy)
+
+`GET /teams/{team_id}/memberships/{username}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Get team membership for a user](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#get-team-membership-for-a-user) endpoint.
+
+Team members will include the members of child teams.
+
+To get a user's membership with a team, the team must be visible to the authenticated user.
+
+Note:
+The response contains the `state` of the membership and the member's `role`.
+
+The `role` for organization owners is set to `maintainer`. For more information about `maintainer` roles, see [Create a team](https://docs.github.com/enterprise-cloud@latest/rest/teams/teams#create-a-team).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Add or update team membership for a user (Legacy)
+
+`PUT /teams/{team_id}/memberships/{username}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Add or update team membership for a user](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#add-or-update-team-membership-for-a-user) endpoint.
+
+Team synchronization is available for organizations using GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+If the user is already a member of the team's organization, this endpoint will add the user to the team. To add a membership between an organization member and a team, the authenticated user must be an organization owner or a team maintainer.
+
+Note
+
+When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API for making changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub Enterprise Cloud team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see "[Synchronizing teams between your identity provider and GitHub Enterprise Cloud](https://docs.github.com/enterprise-cloud@latest/articles/synchronizing-teams-between-your-identity-provider-and-github/)."
+
+If the user is unaffiliated with the team's organization, this endpoint will send an invitation to the user via email. This newly-created membership will be in the "pending" state until the user accepts the invitation, at which point the membership will transition to the "active" state and the user will be added as a member of the team. To add a membership between an unaffiliated user and a team, the authenticated user must be an organization owner.
+
+If the user is already a member of the team, this endpoint will update the role of the team member's role. To update the membership of a team member, the authenticated user must be an organization owner or a team maintainer.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `role` | `string` | No | The role that this user should have in the team. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden if team synchronization is set up |
+| `404` | Resource not found |
+| `422` | Unprocessable Entity if you attempt to add an organization to a team |
+
+## Remove team membership for a user (Legacy)
+
+`DELETE /teams/{team_id}/memberships/{username}`
+
+Warning
+
+Endpoint closing down notice: This endpoint route is closing down and will be removed from the Teams API. We recommend migrating your existing code to use the new [Remove team membership for a user](https://docs.github.com/enterprise-cloud@latest/rest/teams/members#remove-team-membership-for-a-user) endpoint.
+
+Team synchronization is available for organizations using GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+To remove a membership between a user and a team, the authenticated user must have 'admin' permissions to the team or be an owner of the organization that the team is associated with. Removing team membership does not delete the user, it just removes their membership from the team.
+
+Note
+
+When you have team synchronization set up for a team with your organization's identity provider (IdP), you will see an error if you attempt to use the API for making changes to the team's membership. If you have access to manage group membership in your IdP, you can manage GitHub Enterprise Cloud team membership through your identity provider, which automatically adds and removes team members in an organization. For more information, see "[Synchronizing teams between your identity provider and GitHub Enterprise Cloud](https://docs.github.com/enterprise-cloud@latest/articles/synchronizing-teams-between-your-identity-provider-and-github/)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `team_id` | path | `integer` | Yes | The unique identifier of the team. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | if team synchronization is set up |

@@ -12,7 +12,10 @@ import {
   validateMigrationScope,
   validateModuleExecutionResult,
 } from '@ghec/contracts';
-import type { GitHubReadAdapter } from '@ghec/github-client';
+import {
+  sanitizeDiagnostics,
+  type GitHubReadAdapter,
+} from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
 import type {
   MigrationContext,
@@ -22,6 +25,8 @@ import type {
 } from '../core/types.js';
 import type { MigrationCheckpointManager } from '../checkpoint/manager.js';
 import { MigrationPlanner } from '../planner/planner.js';
+import { enrichModuleExecutionResult } from './execution-enricher.js';
+import { parseModuleSelectionFlags } from './module-resolver.js';
 import { RepositoryMigrationPipeline } from './pipeline.js';
 import type {
   MigrationExecutionReport,
@@ -57,6 +62,7 @@ export class MigrationOrchestrator {
   private readonly cachedDiscoveryBundle?:
     DiscoveryBundle | unknown | undefined;
   private readonly modulesFilter?: readonly string[] | undefined;
+  private readonly excludeModulesFilter?: readonly string[] | undefined;
   private readonly dryRun: boolean;
   private readonly continueOnError: boolean;
   private readonly runId: string;
@@ -83,6 +89,7 @@ export class MigrationOrchestrator {
     this.releaseTransport = options.releaseTransport;
     this.cachedDiscoveryBundle = options.cachedDiscoveryBundle;
     this.modulesFilter = options.modules;
+    this.excludeModulesFilter = options.excludeModules;
     this.dryRun = options.dryRun ?? false;
     this.continueOnError = options.continueOnError ?? false;
     this.runId =
@@ -177,6 +184,12 @@ export class MigrationOrchestrator {
       );
     }
 
+    const parsedSelection = parseModuleSelectionFlags(
+      this.modulesFilter,
+      this.excludeModulesFilter,
+    );
+    const excludeSet = new Set(parsedSelection.excludeModules);
+
     let activePlan: MigrationPlan;
     if (this.plan) {
       activePlan = this.plan;
@@ -192,27 +205,56 @@ export class MigrationOrchestrator {
         runId: this.runId,
         signal: this.signal,
         modules: this.modulesFilter,
+        excludeModules: this.excludeModulesFilter,
       });
       activePlan = await planner.generatePlan();
     }
 
-    let modulePlans: readonly ModulePlan[] = activePlan.modules;
+    let initialPlans: readonly ModulePlan[] = activePlan.modules;
     if (
-      this.modulesFilter &&
-      this.modulesFilter.length > 0 &&
-      !this.modulesFilter.includes('all')
+      parsedSelection.modules &&
+      parsedSelection.modules.length > 0 &&
+      !parsedSelection.isAuto
     ) {
-      const filterSet = new Set(this.modulesFilter);
-      modulePlans = modulePlans.filter((mp) => filterSet.has(mp.moduleId));
+      const filterSet = new Set(parsedSelection.modules);
+      initialPlans = initialPlans.filter((mp) => filterSet.has(mp.moduleId));
     }
+    if (excludeSet.size > 0) {
+      initialPlans = initialPlans.filter((mp) => !excludeSet.has(mp.moduleId));
+    }
+
+    const queuedPlans: ModulePlan[] = [...initialPlans];
+    const failedRepoTargets = new Set<string>();
+    const freshlyMigratedTargets = new Set<string>();
 
     const executionResults: ModuleExecutionResult[] = [];
     const recommendations: string[] = [];
     let hasFailure = false;
 
-    for (const modulePlan of modulePlans) {
+    for (let idx = 0; idx < queuedPlans.length; idx++) {
+      const modulePlan = queuedPlans[idx]!;
       if (this.signal.aborted) {
         throw this.signal.reason ?? new Error('Migration aborted');
+      }
+
+      if (
+        !this.plan &&
+        modulePlan.moduleId !== 'gei-repo' &&
+        failedRepoTargets.has(modulePlan.targetIdentifier)
+      ) {
+        this.logger.warn(
+          `Skipping module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}" because upstream transport module "gei-repo" failed.`,
+        );
+        executionResults.push({
+          schemaVersion: MIGRATION_SCHEMA_VERSION,
+          moduleId: modulePlan.moduleId,
+          status: 'skipped',
+          durationMs: 0,
+          targetIdentifier: modulePlan.targetIdentifier,
+          scopeLevel: modulePlan.scopeLevel,
+          results: [],
+        });
+        continue;
       }
 
       const mod = this.registry.getOrThrow(modulePlan.moduleId);
@@ -231,11 +273,41 @@ export class MigrationOrchestrator {
       };
 
       try {
+        let effectiveModulePlan = modulePlan;
+        if (
+          !this.plan &&
+          !this.dryRun &&
+          modulePlan.moduleId !== 'gei-repo' &&
+          freshlyMigratedTargets.has(modulePlan.targetIdentifier)
+        ) {
+          this.logger.info(
+            `Re-planning module "${modulePlan.moduleId}" against freshly imported target "${modulePlan.targetIdentifier}"...`,
+          );
+          const freshDiscovered = await mod.discover(
+            ctx,
+            this.cachedDiscoveryBundle,
+          );
+          const freshPlan = await mod.plan(ctx, freshDiscovered);
+          effectiveModulePlan = {
+            ...freshPlan,
+            targetIdentifier:
+              freshPlan.targetIdentifier || modulePlan.targetIdentifier,
+          };
+        }
+
         this.logger.info(
           `Executing module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}"`,
         );
-        const result = await mod.apply(ctx, modulePlan);
-        const validated = validateModuleExecutionResult(result);
+        const result = await mod.apply(ctx, effectiveModulePlan);
+        const enriched = enrichModuleExecutionResult(
+          result,
+          effectiveModulePlan,
+          {
+            targetIdentifier: modulePlan.targetIdentifier,
+            scopeLevel: modulePlan.scopeLevel,
+          },
+        );
+        const validated = validateModuleExecutionResult(enriched);
         if (!validated.success) {
           throw new Error(
             `Module "${modulePlan.moduleId}" returned invalid execution result: ${validated.error.issues.map((i) => i.message).join('; ')}`,
@@ -243,16 +315,62 @@ export class MigrationOrchestrator {
         }
         executionResults.push(validated.data);
 
-        // Feedback loop: inspect gei-repo metadata omissions
-        if (
-          modulePlan.moduleId === 'gei-repo' &&
-          validated.data.failedMetadataCategories &&
-          validated.data.failedMetadataCategories.length > 0
-        ) {
-          for (const cat of validated.data.failedMetadataCategories) {
-            const rec = `GEI omitted ${cat} metadata for ${modulePlan.targetIdentifier}. Recommended fallback module: '${cat}'.`;
-            recommendations.push(rec);
-            this.logger.warn(rec);
+        if (modulePlan.moduleId === 'gei-repo') {
+          if (validated.data.status === 'failed') {
+            failedRepoTargets.add(modulePlan.targetIdentifier);
+          } else if (
+            validated.data.results.some((r) => r.status === 'succeeded')
+          ) {
+            freshlyMigratedTargets.add(modulePlan.targetIdentifier);
+          }
+
+          if (
+            validated.data.failedMetadataCategories &&
+            validated.data.failedMetadataCategories.length > 0
+          ) {
+            for (const cat of validated.data.failedMetadataCategories) {
+              const rec = `GEI omitted ${cat} metadata for ${modulePlan.targetIdentifier}. Recommended fallback module: '${cat}'.`;
+              recommendations.push(rec);
+              this.logger.warn(rec);
+
+              if (
+                !this.plan &&
+                (cat === 'issues' ||
+                  cat === 'pull-requests' ||
+                  cat === 'releases') &&
+                !excludeSet.has(cat) &&
+                this.registry.has(cat)
+              ) {
+                const alreadyQueued = queuedPlans
+                  .slice(idx + 1)
+                  .some(
+                    (p) =>
+                      p.moduleId === cat &&
+                      p.targetIdentifier === modulePlan.targetIdentifier,
+                  );
+                if (!alreadyQueued) {
+                  this.logger.info(
+                    `Dynamically promoting fallback module "${cat}" for "${modulePlan.targetIdentifier}" after GEI metadata omission/fallback.`,
+                  );
+                  freshlyMigratedTargets.add(modulePlan.targetIdentifier);
+                  let insertIdx = idx + 1;
+                  while (
+                    insertIdx < queuedPlans.length &&
+                    queuedPlans[insertIdx]?.targetIdentifier ===
+                      modulePlan.targetIdentifier
+                  ) {
+                    insertIdx++;
+                  }
+                  queuedPlans.splice(insertIdx, 0, {
+                    moduleId: cat,
+                    scopeLevel: 'repository',
+                    targetIdentifier: modulePlan.targetIdentifier,
+                    operations: [],
+                    warnings: [],
+                  });
+                }
+              }
+            }
           }
         }
 
@@ -268,7 +386,12 @@ export class MigrationOrchestrator {
         }
       } catch (err) {
         hasFailure = true;
-        const msg = err instanceof Error ? err.message : String(err);
+        if (modulePlan.moduleId === 'gei-repo') {
+          failedRepoTargets.add(modulePlan.targetIdentifier);
+        }
+        const msg = sanitizeDiagnostics(
+          err instanceof Error ? err.message : String(err),
+        );
         this.logger.error(
           `Module "${modulePlan.moduleId}" apply threw: ${msg}`,
         );
@@ -278,12 +401,15 @@ export class MigrationOrchestrator {
           moduleId: modulePlan.moduleId,
           status: 'failed',
           durationMs: 0,
+          targetIdentifier: modulePlan.targetIdentifier,
+          scopeLevel: modulePlan.scopeLevel,
           results: [
             {
               operationId: `${modulePlan.moduleId}-error`,
               status: 'failed',
               error: msg.slice(0, 2048),
               completedAt: new Date().toISOString(),
+              targetIdentifier: modulePlan.targetIdentifier,
             },
           ],
         };
@@ -339,19 +465,41 @@ export class MigrationOrchestrator {
       const sourceOrg = repoMapping?.sourceOrg ?? targetOrg!;
       const sourceRepo = repoMapping?.sourceRepo ?? targetRepo!;
       const repoKey = `${sourceOrg}/${sourceRepo}`;
-      const repoOptions =
+      const baseRepoOptions =
         repoMapping?.options ??
         this.scope?.repositoryOptions?.[repoKey] ??
         this.scope?.repositoryOptions?.[sourceRepo] ??
         (repoMapping?.skipReleases !== undefined ||
         repoMapping?.lfsStrategy !== undefined ||
-        repoMapping?.targetRepoVisibility !== undefined
+        repoMapping?.targetRepoVisibility !== undefined ||
+        repoMapping?.gitTransferStrategy !== undefined ||
+        repoMapping?.mirrorPushMode !== undefined
           ? {
               skipReleases: repoMapping.skipReleases,
               lfsStrategy: repoMapping.lfsStrategy,
               targetRepoVisibility: repoMapping.targetRepoVisibility,
+              gitTransferStrategy: repoMapping.gitTransferStrategy,
+              mirrorPushMode: repoMapping.mirrorPushMode,
             }
           : undefined);
+      const effectiveMirrorPushMode =
+        baseRepoOptions?.mirrorPushMode ??
+        repoMapping?.mirrorPushMode ??
+        this.scope?.mirrorPushMode;
+      const repoOptions =
+        effectiveMirrorPushMode !== undefined
+          ? { ...baseRepoOptions, mirrorPushMode: effectiveMirrorPushMode }
+          : baseRepoOptions;
+
+      const matchingOrg = this.scope?.organizations.find(
+        (o) => o.target === targetOrg,
+      );
+      const effectiveTargetType =
+        matchingOrg?.targetType ??
+        this.scope?.targetType ??
+        (this.scope?.identityMapping?.strategy === 'pass-through'
+          ? 'ghec'
+          : 'emu');
 
       return {
         level: 'repository',
@@ -359,6 +507,8 @@ export class MigrationOrchestrator {
         targetOrg: targetOrg!,
         sourceRepo,
         targetRepo: targetRepo!,
+        targetType: effectiveTargetType,
+        identityMapping: this.scope?.identityMapping,
         options: repoOptions,
       };
     }
@@ -366,10 +516,18 @@ export class MigrationOrchestrator {
     const orgMapping = this.scope?.organizations.find(
       (o) => o.target === targetId,
     );
+    const effectiveTargetType =
+      orgMapping?.targetType ??
+      this.scope?.targetType ??
+      (this.scope?.identityMapping?.strategy === 'pass-through'
+        ? 'ghec'
+        : 'emu');
     return {
       level: 'organization',
       sourceOrg: orgMapping?.source ?? targetId,
       targetOrg: targetId,
+      targetType: effectiveTargetType,
+      identityMapping: this.scope?.identityMapping,
     };
   }
 }

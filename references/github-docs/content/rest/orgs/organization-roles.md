@@ -13,3 +13,412 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization fine-grained permissions for an organization
+
+`GET /orgs/{org}/organization-fine-grained-permissions`
+
+Lists the fine-grained permissions that can be used in custom organization roles for an organization. For more information, see "[Managing people's access to your organization with roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-organization-roles)."
+
+To list the fine-grained permissions that can be used in custom repository roles for an organization, see "[List repository fine-grained permissions for an organization](https://docs.github.com/enterprise-cloud@latest/rest/orgs/organization-roles#list-repository-fine-grained-permissions-for-an-organization)."
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+An organization member (or a member of a team) assigned a custom organization role that includes the View organization roles (`read_organization_custom_org_role`) permission. For more information, see "[Permissions for organization access](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/permissions-of-custom-organization-roles#permissions-for-organization-access)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get all organization roles for an organization
+
+`GET /orgs/{org}/organization-roles`
+
+Lists the organization roles available in this organization. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+An organization member (or a member of a team) assigned a custom organization role that includes the View organization roles (`read_organization_custom_org_role`) permission. For more information, see "[Permissions for organization access](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/permissions-of-custom-organization-roles#permissions-for-organization-access)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - list of organization roles |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create a custom organization role
+
+`POST /orgs/{org}/organization-roles`
+
+Creates a custom organization role that can be assigned to users and teams, granting them specific
+permissions over the organization and optionally across all repositories in the organization. For
+more information on custom organization roles, see "[Managing people's access to your organization with roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-organization-roles)."
+
+To include repository permissions in an organization role, you must also include the `base_role`
+field, which is one of `read`, `write`, `triage`, `maintain`, or `admin` (or `none` if no base role is set). This base role provides a set of
+fine-grained permissions as well as implicit permissions - those that aren't exposed as fine-grained permissions
+and can only be granted through the base role (like "reading a repo").  If you include repository permissions, those
+permissions apply across all of the repositories in the organization. You do not have to include organization permissions
+in order to add repository permissions.
+
+See "[List repository permissions](https://docs.github.com/enterprise-cloud@latest/rest/orgs/custom-roles#list-repository-fine-grained-permissions-for-an-organization)" for valid repository permissions.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+An organization member (or a member of a team) assigned a custom organization role that includes the Manage custom organization roles (`write_organization_custom_org_role`) permission. For more information, see "[Permissions for organization access](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/permissions-of-custom-organization-roles#permissions-for-organization-access)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the custom role. |
+| `description` | `string` | No | A short description about the intended usage of this role or what permissions it grants. |
+| `permissions` | `array of strings` | Yes | A list of additional permissions included in this role. |
+| `base_role` | `string` | No | The system role from which this role can inherit permissions. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove all organization roles for a team
+
+`DELETE /orgs/{org}/organization-roles/teams/{team_slug}`
+
+Removes all assigned organization roles from a team. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Assign an organization role to a team
+
+`PUT /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}`
+
+Assigns an organization role to a team in an organization. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Response if the organization, team or role does not exist. |
+| `422` | Response if the organization roles feature is not enabled for the organization, or validation failed. |
+
+## Remove an organization role from a team
+
+`DELETE /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}`
+
+Removes an organization role from a team. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove all organization roles for a user
+
+`DELETE /orgs/{org}/organization-roles/users/{username}`
+
+Revokes all assigned organization roles from a user. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Assign an organization role to a user
+
+`PUT /orgs/{org}/organization-roles/users/{username}/{role_id}`
+
+Assigns an organization role to a member of an organization. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Response if the organization, user or role does not exist. |
+| `422` | Response if the organization roles feature is not enabled enabled for the organization, the validation failed, or the user is not an organization member. |
+
+## Remove an organization role from a user
+
+`DELETE /orgs/{org}/organization-roles/users/{username}/{role_id}`
+
+Remove an organization role from a user. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+The authenticated user must be an administrator for the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get an organization role
+
+`GET /orgs/{org}/organization-roles/{role_id}`
+
+Gets an organization role that is available to this organization. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+An organization member (or a member of a team) assigned a custom organization role that includes the View organization roles (`read_organization_custom_org_role`) permission. For more information, see "[Permissions for organization access](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/permissions-of-custom-organization-roles#permissions-for-organization-access)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Update a custom organization role
+
+`PATCH /orgs/{org}/organization-roles/{role_id}`
+
+Updates an existing custom organization role. Permission changes will apply to all assignees. For more information on custom organization roles, see "[Managing people's access to your organization with roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-organization-roles)."
+
+If the update would add repository permissions, the `base_role` must also be set to a value besides `none`, either
+previously or as part of the update.
+If the update sets the `base_role` field to `none`, you must also remove all of the repository
+permissions as well, otherwise the update will fail.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+An organization member (or a member of a team) assigned a custom organization role that includes the Manage custom organization roles (`write_organization_custom_org_role`) permission. For more information, see "[Permissions for organization access](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/permissions-of-custom-organization-roles#permissions-for-organization-access)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the custom role. |
+| `description` | `string` | No | A short description about the intended use of this role or the permissions it grants. |
+| `permissions` | `array of strings` | No | A list of additional permissions included in this role. |
+| `base_role` | `string` | No | The system role from which this role can inherit permissions. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a custom organization role.
+
+`DELETE /orgs/{org}/organization-roles/{role_id}`
+
+Deletes a custom organization role. For more information on custom organization roles, see "[Managing people's access to your organization with roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/about-custom-organization-roles)."
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+An organization member (or a member of a team) assigned a custom organization role that includes the Manage custom organization roles (`write_organization_custom_org_role`) permission. For more information, see "[Permissions for organization access](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/permissions-of-custom-organization-roles#permissions-for-organization-access)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List teams that are assigned to an organization role
+
+`GET /orgs/{org}/organization-roles/{role_id}/teams`
+
+Lists the teams that are assigned to an organization role. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+To use this endpoint, you must be an administrator for the organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - List of assigned teams |
+| `404` | Response if the organization or role does not exist. |
+| `422` | Response if the organization roles feature is not enabled or validation failed. |
+
+## List users that are assigned to an organization role
+
+`GET /orgs/{org}/organization-roles/{role_id}/users`
+
+Lists organization members that are assigned to an organization role. For more information on organization roles, see "[Using organization roles](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/using-organization-roles)."
+
+To use this endpoint, you must be an administrator for the organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - List of assigned users |
+| `404` | Response if the organization or role does not exist. |
+| `422` | Response if the organization roles feature is not enabled or validation failed. |

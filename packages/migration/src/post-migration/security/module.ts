@@ -231,6 +231,27 @@ export class GhasSecurityMigrationModule implements MigrationModule<GhasSecurity
       // 1. Security Settings PATCH
       if (operation.resourceType === 'repository-security-settings') {
         try {
+          const secPayload = operation.payload as
+            Record<string, { status?: string }> | undefined;
+          const wantsDependabotUpdates =
+            secPayload?.dependabot_security_updates?.status === 'enabled';
+
+          if (wantsDependabotUpdates) {
+            try {
+              await ctx.targetWriteClient!.mutate(
+                {
+                  id: 'rest.repos.enableVulnerabilityAlerts',
+                  method: 'PUT',
+                  path: '/repos/{owner}/{repo}/vulnerability-alerts',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                },
+                ctx.signal,
+              );
+            } catch {
+              // Best-effort prerequisite
+            }
+          }
+
           const res = await ctx.targetWriteClient!.mutate(
             {
               id: 'rest.repos.updateSecuritySettings',
@@ -243,6 +264,22 @@ export class GhasSecurityMigrationModule implements MigrationModule<GhasSecurity
             },
             ctx.signal,
           );
+
+          if (wantsDependabotUpdates) {
+            try {
+              await ctx.targetWriteClient!.mutate(
+                {
+                  id: 'rest.repos.enableAutomatedSecurityFixes',
+                  method: 'PUT',
+                  path: '/repos/{owner}/{repo}/automated-security-fixes',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                },
+                ctx.signal,
+              );
+            } catch {
+              // Best-effort fallback
+            }
+          }
 
           results.push({
             operationId: operation.id,

@@ -19,3 +19,392 @@ category:
 You can use the REST API to create and manage custom properties for an organization. You can use custom properties to add metadata to repositories in your organization. For more information, see [AUTOTITLE](/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get registered app installations for external custom properties
+
+`GET /orgs/{org}/properties/installations`
+
+Gets the registered GitHub App installations used to read and write external custom properties for an organization.
+
+A GitHub App installation token will only be able to see its own registration info, whereas an authenticated user will be able to see all registrations for the organization.
+
+To use this endpoint, the authenticated caller must have the `organization_external_properties_for_repos:admin` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Register an app installation for external custom properties
+
+`POST /orgs/{org}/properties/installations`
+
+Registers a GitHub App installation so it can read and write external custom properties for an organization, and assigns it a display name.
+
+The display name must be 1 to 15 characters and contain only letters and numbers. Capitalization is preserved as entered.
+
+An app installation can only be registered once, and its display name can't be changed afterward. Calling with an app installation that has already been registered returns a `422` response with an `already_exists` error code for `installation_id`. If the display name is already in use by another app installation in the organization, the response is `422` with an `already_exists` error code for `display_name`. An invalid display name also returns `422`.
+
+The app installation being registered must have write or admin permission for organization external custom properties for repositories. If it doesn't, the response is `422`. This is the permission of the installation being registered, which isn't necessarily the caller.
+
+Uninstalling the GitHub App unregisters it, and removes the external custom properties it created.
+
+To use this endpoint, the authenticated caller must have the `organization_external_properties_for_repos:admin` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `installation_id` | `integer` | No | The unique identifier of the GitHub App installation to register for managing external custom properties. When authenticating as a GitHub App installation, this defaults to the authenticated installation and can be omitted. It is required for all other callers (users and fine-grained personal access tokens). |
+| `display_name` | `string` | Yes | The display name for this app installation's external custom properties in the organization. Must be 1 to 15 characters and contain only letters and numbers. Capitalization is preserved as entered. This can't be changed after the app installation is registered. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get all external custom properties for a GitHub App installation in an organization
+
+`GET /orgs/{org}/properties/installations/schema`
+
+Gets all external custom properties defined for the authenticated GitHub App installation on an organization.
+
+To use this endpoint, the authenticated GitHub App must have the `organization_external_properties_for_repos:read` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create or update external custom property values for organization repositories
+
+`PATCH /orgs/{org}/properties/installations/values`
+
+Create new or update existing external custom property values for repositories in a batch that belong to an organization.
+Each target repository will have its external custom property values updated to match the values provided in the request.
+
+A maximum of 30 repositories can be updated in a single request.
+
+Using a value of `null` for an external custom property will remove or 'unset' the property value from the repository.
+
+To use this endpoint, the authenticated GitHub App must have the `organization_external_properties_for_repos:write` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `repository_names` | `array of strings` | Yes | The names of repositories that the external custom property values will be applied to. |
+| `properties` | `array of objects` | Yes | List of external custom property names and associated values to apply to the repositories. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when external custom property values are successfully created or updated |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create or update external custom property values for a property across organization repositories
+
+`PATCH /orgs/{org}/properties/installations/values/{property_name}`
+
+Create new or update existing external custom property values for a single named property across repositories that belong to an organization.
+
+Up to 100 repository values can be updated in a single request. Repositories not included in the request are left unchanged.
+
+Using a value of `null` for a repository will remove or 'unset' the property value for that repository. A request that only contains `null` values for a property that does not yet exist is a no-op.
+
+To use this endpoint, the authenticated GitHub App must have the `organization_external_properties_for_repos:write` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `property_name` | path | `string` | Yes | The name of the external custom property |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `repository_values` | `array of objects` | Yes | The names of repositories and the values that the named external custom property will be set to. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove all external custom property values for a property across all organization repositories
+
+`DELETE /orgs/{org}/properties/installations/values/{property_name}`
+
+Removes all external custom property values for a specified property name across all repositories that belong to an organization.
+
+To use this endpoint, the authenticated GitHub App must have the `organization_external_properties_for_repos:write` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `property_name` | path | `string` | Yes | The name of the external custom property |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get all custom properties for an organization
+
+`GET /orgs/{org}/properties/schema`
+
+Gets all custom properties defined for an organization.
+Organization members can read these properties.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update custom properties for an organization
+
+`PATCH /orgs/{org}/properties/schema`
+
+Creates new or updates existing custom properties defined for an organization in a batch.
+
+If the property already exists, the existing property will be replaced with the new values.
+Missing optional values will fall back to default values, previous values will be overwritten.
+E.g. if a property exists with `values_editable_by: org_and_repo_actors` and it's updated without specifying `values_editable_by`, it will be updated to default value `org_actors`.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+A user, or a user on a team, with the fine-grained permission of `custom_properties_org_definitions_manager` in the organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `properties` | `array of objects` | Yes | The array of custom properties to create or update. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get a custom property for an organization
+
+`GET /orgs/{org}/properties/schema/{custom_property_name}`
+
+Gets a custom property that is defined for an organization.
+Organization members can read these properties.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update a custom property for an organization
+
+`PUT /orgs/{org}/properties/schema/{custom_property_name}`
+
+Creates a new or updates an existing custom property that is defined for an organization.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+A user, or a user on a team, with the fine-grained permission of `custom_properties_org_definitions_manager` in the organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `value_type` | `string` | Yes | The type of the value for the property |
+| `required` | `boolean` | No | Whether the property is required. |
+| `default_value` | `null or string or array` | No | Default value of the property |
+| `description` | `string or null` | No | Short description of the property |
+| `allowed_values` | `array of strings or null` | No | An ordered list of the allowed values of the property. The property can have up to 200 allowed values. |
+| `values_editable_by` | `string or null` | No | Who can edit the values of the property |
+| `require_explicit_values` | `boolean` | No | Whether setting properties values is mandatory |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Remove a custom property for an organization
+
+`DELETE /orgs/{org}/properties/schema/{custom_property_name}`
+
+Removes a custom property that is defined for an organization.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+A user, or a user on a team, with the fine-grained permission of `custom_properties_org_definitions_manager` in the organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## List custom property values for organization repositories
+
+`GET /orgs/{org}/properties/values`
+
+Lists organization repositories with all of their custom property values.
+Organization members can read these properties.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `repository_query` | query | `string` | No | Finds repositories in the organization with a query containing one or more search keywords and qualifiers. Qualifiers allow you to limit your search to specific areas of GitHub Enterprise Cloud. The REST API supports the same qualifiers as the web interface for GitHub Enterprise Cloud. To learn more about the format of the query, see [Constructing a search query](https://docs.github.com/enterprise-cloud@latest/rest/search/search#constructing-a-search-query). See "[Searching for repositories](https://docs.github.com/enterprise-cloud@latest/articles/searching-for-repositories/)" for a detailed list of qualifiers. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update custom property values for organization repositories
+
+`PATCH /orgs/{org}/properties/values`
+
+Create new or update existing custom property values for repositories in a batch that belong to an organization.
+Each target repository will have its custom property values updated to match the values provided in the request.
+
+A maximum of 30 repositories can be updated in a single request.
+
+Using a value of `null` for a custom property will remove or 'unset' the property value from the repository.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the organization.
+
+A user, or a user on a team, with the fine-grained permission of `custom_properties_org_values_editor` in the organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `repository_names` | `array of strings` | Yes | The names of repositories that the custom property values will be applied to. |
+| `properties` | `array of objects` | Yes | List of custom property names and associated values to apply to the repositories. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when custom property values are successfully created or updated |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

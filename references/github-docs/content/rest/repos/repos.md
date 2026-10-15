@@ -17,3 +17,868 @@ category:
 
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization repositories
+
+`GET /orgs/{org}/repos`
+
+Lists repositories for the specified organization.
+
+Note
+
+In order to see the `security_and_analysis` block for a repository you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `type` | query | `string` | No | Specifies the types of repositories you want returned. `internal` is not yet supported when a GitHub App calls this endpoint with an installation access token. |
+| `sort` | query | `string` | No | The property to sort the results by. |
+| `direction` | query | `string` | No | The order to sort by. Default: `asc` when using `full_name`, otherwise `desc`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create an organization repository
+
+`POST /orgs/{org}/repos`
+
+Creates a new repository in the specified organization. The authenticated user must be a member of the organization.
+
+OAuth app tokens and personal access tokens (classic) need the `public_repo` or `repo` scope to create a public repository, and `repo` scope to create a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the repository. |
+| `description` | `string` | No | A short description of the repository. |
+| `homepage` | `string` | No | A URL with more information about the repository. |
+| `private` | `boolean` | No | Whether the repository is private. |
+| `visibility` | `string` | No | The visibility of the repository. |
+| `has_issues` | `boolean` | No | Either `true` to enable issues for this repository or `false` to disable them. |
+| `has_projects` | `boolean` | No | Either `true` to enable projects for this repository or `false` to disable them. Note: If you're creating a repository in an organization that has disabled repository projects, the default is `false`, and if you pass `true`, the API returns an error. |
+| `has_wiki` | `boolean` | No | Either `true` to enable the wiki for this repository or `false` to disable it. |
+| `has_downloads` | `boolean` | No | Whether downloads are enabled. |
+| `is_template` | `boolean` | No | Either `true` to make this repo available as a template repository or `false` to prevent it. |
+| `team_id` | `integer` | No | The id of the team that will be granted access to this repository. This is only valid when creating a repository in an organization. |
+| `auto_init` | `boolean` | No | Pass `true` to create an initial commit with empty README. |
+| `gitignore_template` | `string` | No | Desired language or platform [.gitignore template](https://github.com/github/gitignore) to apply. Use the name of the template without the extension. For example, "Haskell". |
+| `license_template` | `string` | No | Choose an [open source license template](https://choosealicense.com/) that best suits your needs, and then use the [license keyword](https://docs.github.com/enterprise-cloud@latest/articles/licensing-a-repository/#searching-github-by-license-type) as the `license_template` string. For example, "mit" or "mpl-2.0". |
+| `allow_squash_merge` | `boolean` | No | Either `true` to allow squash-merging pull requests, or `false` to prevent squash-merging. |
+| `allow_merge_commit` | `boolean` | No | Either `true` to allow merging pull requests with a merge commit, or `false` to prevent merging pull requests with merge commits. |
+| `allow_rebase_merge` | `boolean` | No | Either `true` to allow rebase-merging pull requests, or `false` to prevent rebase-merging. |
+| `allow_auto_merge` | `boolean` | No | Either `true` to allow auto-merge on pull requests, or `false` to disallow auto-merge. |
+| `delete_branch_on_merge` | `boolean` | No | Either `true` to allow automatically deleting head branches when pull requests are merged, or `false` to prevent automatic deletion. The authenticated user must be an organization owner to set this property to `true`. |
+| `use_squash_pr_title_as_default` | `boolean` | No | Either `true` to allow squash-merge commits to use pull request title, or `false` to use commit message. **This property is closing down. Please use `squash_merge_commit_title` instead. |
+| `squash_merge_commit_title` | `string` | No | Required when using `squash_merge_commit_message`. The default value for a squash merge commit title: `PR_TITLE` - default to the pull request's title. `COMMIT_OR_PR_TITLE` - default to the commit's title (if only one commit) or the pull request's title (when more than one commit). |
+| `squash_merge_commit_message` | `string` | No | The default value for a squash merge commit message: `PR_BODY` - default to the pull request's body. `COMMIT_MESSAGES` - default to the branch's commit messages. `BLANK` - default to a blank commit message. |
+| `merge_commit_title` | `string` | No | Required when using `merge_commit_message`. The default value for a merge commit title. `PR_TITLE` - default to the pull request's title. `MERGE_MESSAGE` - default to the classic title for a merge message (e.g., Merge pull request #123 from branch-name). |
+| `merge_commit_message` | `string` | No | The default value for a merge commit message. `PR_TITLE` - default to the pull request's title. `PR_BODY` - default to the pull request's body. `BLANK` - default to a blank commit message. |
+| `custom_properties` | `object` | No | The custom properties for the new repository. The keys are the custom property names, and the values are the corresponding custom property values. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `403` | Forbidden |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get a repository
+
+`GET /repos/{owner}/{repo}`
+
+The `parent` and `source` objects are present when the repository is a fork. `parent` is the repository this repository was forked from, `source` is the ultimate source for the network.
+
+Note
+
+In order to see the `security_and_analysis` block for a repository you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)."
+
+To view merge-related settings, you must have the `contents:read` and `contents:write` permissions.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `301` | Moved permanently |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Update a repository
+
+`PATCH /repos/{owner}/{repo}`
+
+Note: To edit a repository's topics, use the [Replace all repository topics](https://docs.github.com/enterprise-cloud@latest/rest/repos/repos#replace-all-repository-topics) endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the repository. |
+| `description` | `string` | No | A short description of the repository. |
+| `homepage` | `string` | No | A URL with more information about the repository. |
+| `private` | `boolean` | No | Either `true` to make the repository private or `false` to make it public. Default: `false`. Note: You will get a `422` error if the organization restricts [changing repository visibility](https://docs.github.com/enterprise-cloud@latest/articles/repository-permission-levels-for-an-organization#changing-the-visibility-of-repositories) to organization owners and a non-owner tries to change the value of private. |
+| `visibility` | `string` | No | The visibility of the repository. |
+| `security_and_analysis` | `object or null` | No | Specify which security and analysis features to enable or disable for the repository. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." For example, to enable GitHub Advanced Security, use this data in the body of the `PATCH` request: `{ "security_and_analysis": {"advanced_security": { "status": "enabled" } } }`. You can check which security and analysis features are currently enabled by using a `GET /repos/{owner}/{repo}` request. |
+| `has_issues` | `boolean` | No | Either `true` to enable issues for this repository or `false` to disable them. |
+| `has_projects` | `boolean` | No | Either `true` to enable projects for this repository or `false` to disable them. Note: If you're creating a repository in an organization that has disabled repository projects, the default is `false`, and if you pass `true`, the API returns an error. |
+| `has_wiki` | `boolean` | No | Either `true` to enable the wiki for this repository or `false` to disable it. |
+| `has_pull_requests` | `boolean` | No | Either `true` to allow pull requests for this repository or `false` to prevent pull requests. |
+| `pull_request_creation_policy` | `string` | No | The policy that controls who can create pull requests for this repository: `all` or `collaborators_only`. |
+| `is_template` | `boolean` | No | Either `true` to make this repo available as a template repository or `false` to prevent it. |
+| `default_branch` | `string` | No | Updates the default branch for this repository. |
+| `allow_squash_merge` | `boolean` | No | Either `true` to allow squash-merging pull requests, or `false` to prevent squash-merging. |
+| `allow_merge_commit` | `boolean` | No | Either `true` to allow merging pull requests with a merge commit, or `false` to prevent merging pull requests with merge commits. |
+| `allow_rebase_merge` | `boolean` | No | Either `true` to allow rebase-merging pull requests, or `false` to prevent rebase-merging. |
+| `allow_auto_merge` | `boolean` | No | Either `true` to allow auto-merge on pull requests, or `false` to disallow auto-merge. |
+| `delete_branch_on_merge` | `boolean` | No | Either `true` to allow automatically deleting head branches when pull requests are merged, or `false` to prevent automatic deletion. |
+| `allow_update_branch` | `boolean` | No | Either `true` to always allow a pull request head branch that is behind its base branch to be updated even if it is not required to be up to date before merging, or false otherwise. |
+| `use_squash_pr_title_as_default` | `boolean` | No | Either `true` to allow squash-merge commits to use pull request title, or `false` to use commit message. **This property is closing down. Please use `squash_merge_commit_title` instead. |
+| `squash_merge_commit_title` | `string` | No | Required when using `squash_merge_commit_message`. The default value for a squash merge commit title: `PR_TITLE` - default to the pull request's title. `COMMIT_OR_PR_TITLE` - default to the commit's title (if only one commit) or the pull request's title (when more than one commit). |
+| `squash_merge_commit_message` | `string` | No | The default value for a squash merge commit message: `PR_BODY` - default to the pull request's body. `COMMIT_MESSAGES` - default to the branch's commit messages. `BLANK` - default to a blank commit message. |
+| `merge_commit_title` | `string` | No | Required when using `merge_commit_message`. The default value for a merge commit title. `PR_TITLE` - default to the pull request's title. `MERGE_MESSAGE` - default to the classic title for a merge message (e.g., Merge pull request #123 from branch-name). |
+| `merge_commit_message` | `string` | No | The default value for a merge commit message. `PR_TITLE` - default to the pull request's title. `PR_BODY` - default to the pull request's body. `BLANK` - default to a blank commit message. |
+| `archived` | `boolean` | No | Whether to archive this repository. `false` will unarchive a previously archived repository. |
+| `allow_forking` | `boolean` | No | Either `true` to allow private forks, or `false` to prevent private forks. |
+| `web_commit_signoff_required` | `boolean` | No | Either `true` to require contributors to sign off on web-based commits, or `false` to not require contributors to sign off on web-based commits. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `307` | Temporary Redirect |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Delete a repository
+
+`DELETE /repos/{owner}/{repo}`
+
+Deleting a repository requires admin access.
+
+If an organization owner has configured the organization to prevent members from deleting organization-owned
+repositories, you will get a `403 Forbidden` response.
+
+OAuth app tokens and personal access tokens (classic) need the `delete_repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `307` | Temporary Redirect |
+| `403` | If an organization owner has configured the organization to prevent members from deleting organization-owned repositories, a member will get this response: |
+| `404` | Resource not found |
+| `409` | Conflict |
+
+## List repository activities
+
+`GET /repos/{owner}/{repo}/activity`
+
+Lists a detailed history of changes to a repository, such as pushes, merges, force pushes, and branch changes, and associates these changes with commits and users.
+
+For more information about viewing repository activity,
+see "[Viewing activity and data for your repository](https://docs.github.com/enterprise-cloud@latest/repositories/viewing-activity-and-data-for-your-repository)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `direction` | query | `string` | No | The direction to sort the results by. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `before` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for results before this cursor. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `after` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for results after this cursor. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `ref` | query | `string` | No | The Git reference for the activities you want to list. The `ref` for a branch can be formatted either as `refs/heads/BRANCH_NAME` or `BRANCH_NAME`, where `BRANCH_NAME` is the name of your branch. |
+| `actor` | query | `string` | No | The GitHub username to use to filter by the actor who performed the activity. |
+| `time_period` | query | `string` | No | The time period to filter by. For example, `day` will filter for activity that occurred in the past 24 hours, and `week` will filter for activity that occurred in the past 7 days (168 hours). |
+| `activity_type` | query | `string` | No | The activity type to filter by. For example, you can choose to filter by "force_push", to see all force pushes to the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Check if Dependabot security updates are enabled for a repository
+
+`GET /repos/{owner}/{repo}/automated-security-fixes`
+
+Shows whether Dependabot security updates are enabled, disabled or paused for a repository. The authenticated user must have admin read access to the repository. For more information, see "[Configuring Dependabot security updates](https://docs.github.com/enterprise-cloud@latest/articles/configuring-automated-security-fixes)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response if Dependabot is enabled |
+| `404` | Not Found if Dependabot is not enabled for the repository |
+
+## Enable Dependabot security updates
+
+`PUT /repos/{owner}/{repo}/automated-security-fixes`
+
+Enables Dependabot security updates for a repository. The authenticated user must have admin access to the repository. For more information, see "[Configuring Dependabot security updates](https://docs.github.com/enterprise-cloud@latest/articles/configuring-automated-security-fixes)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Disable Dependabot security updates
+
+`DELETE /repos/{owner}/{repo}/automated-security-fixes`
+
+Disables Dependabot security updates for a repository. The authenticated user must have admin access to the repository. For more information, see "[Configuring Dependabot security updates](https://docs.github.com/enterprise-cloud@latest/articles/configuring-automated-security-fixes)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List CODEOWNERS errors
+
+`GET /repos/{owner}/{repo}/codeowners/errors`
+
+List any syntax errors that are detected in the CODEOWNERS
+file.
+
+For more information about the correct CODEOWNERS syntax,
+see "[About code owners](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `ref` | query | `string` | No | A branch, tag or commit name used to determine which version of the CODEOWNERS file to use. Default: the repository's default branch (e.g. `main`) |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## List repository contributors
+
+`GET /repos/{owner}/{repo}/contributors`
+
+Lists contributors to the specified repository and sorts them by the number of commits per contributor in descending order. This endpoint may return information that is a few hours old because the GitHub REST API caches contributor data to improve performance.
+
+GitHub identifies contributors by author email address. This endpoint groups contribution counts by GitHub user, which includes all associated email addresses. To improve performance, only the first 500 author email addresses in the repository link to GitHub users. The rest will appear as anonymous contributors without associated GitHub user information.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `anon` | query | `string` | No | Set to `1` or `true` to include anonymous contributors in results. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | If repository contains content |
+| `204` | Response if repository is empty |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create a repository dispatch event
+
+`POST /repos/{owner}/{repo}/dispatches`
+
+You can use this endpoint to trigger a webhook event called `repository_dispatch` when you want activity that happens outside of GitHub Enterprise Cloud to trigger a GitHub Actions workflow or GitHub App webhook. You must configure your GitHub Actions workflow or GitHub App to run when the `repository_dispatch` event occurs. For an example `repository_dispatch` webhook payload, see "[RepositoryDispatchEvent](https://docs.github.com/enterprise-cloud@latest/webhooks/event-payloads/#repository_dispatch)."
+
+The `client_payload` parameter is available for any extra information that your workflow might need. This parameter is a JSON payload that will be passed on when the webhook event is dispatched. For example, the `client_payload` can include a message that a user would like to send using a GitHub Actions workflow. Or the `client_payload` can be used as a test to debug your workflow.
+
+This input example shows how you can use the `client_payload` as a test to debug your workflow.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `event_type` | `string` | Yes | A custom webhook event name. Must be 100 characters or fewer. |
+| `client_payload` | `object` | No | JSON payload with extra information about the webhook event that your action or workflow may use. The maximum number of top-level properties is 10. The total size of the JSON payload must be less than 64KB. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get the hash algorithm for a repository
+
+`GET /repos/{owner}/{repo}/hash-algorithm`
+
+Returns the hash algorithm used to store repository objects.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Check if immutable releases are enabled for a repository
+
+`GET /repos/{owner}/{repo}/immutable-releases`
+
+Shows whether immutable releases are enabled or disabled. Also identifies whether immutability is being
+enforced by the repository owner.  The authenticated user must have admin read access to the repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response if immutable releases are enabled |
+| `404` | Not Found if immutable releases are not enabled for the repository |
+
+## Enable immutable releases
+
+`PUT /repos/{owner}/{repo}/immutable-releases`
+
+Enables immutable releases for a repository. The authenticated user must have admin access to the repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `409` | Conflict |
+
+## Disable immutable releases
+
+`DELETE /repos/{owner}/{repo}/immutable-releases`
+
+Disables immutable releases for a repository. The authenticated user must have admin access to the repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `409` | Conflict |
+
+## List repository languages
+
+`GET /repos/{owner}/{repo}/languages`
+
+Lists languages for the specified repository. The value shown for each language is the number of bytes of code written in that language.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Check if private vulnerability reporting is enabled for a repository
+
+`GET /repos/{owner}/{repo}/private-vulnerability-reporting`
+
+Returns a boolean indicating whether or not private vulnerability reporting is enabled for the repository. For more information, see "[Evaluating the security settings of a repository](https://docs.github.com/enterprise-cloud@latest/code-security/security-advisories/working-with-repository-security-advisories/evaluating-the-security-settings-of-a-repository)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Private vulnerability reporting status |
+| `422` | Bad Request |
+
+## Enable private vulnerability reporting for a repository
+
+`PUT /repos/{owner}/{repo}/private-vulnerability-reporting`
+
+Enables private vulnerability reporting for a repository. The authenticated user must have admin access to the repository. For more information, see "[Privately reporting a security vulnerability](https://docs.github.com/enterprise-cloud@latest/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `422` | Bad Request |
+
+## Disable private vulnerability reporting for a repository
+
+`DELETE /repos/{owner}/{repo}/private-vulnerability-reporting`
+
+Disables private vulnerability reporting for a repository. The authenticated user must have admin access to the repository. For more information, see "[Privately reporting a security vulnerability](https://docs.github.com/enterprise-cloud@latest/code-security/security-advisories/guidance-on-reporting-and-writing/privately-reporting-a-security-vulnerability)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `422` | Bad Request |
+
+## List repository tags
+
+`GET /repos/{owner}/{repo}/tags`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List repository teams
+
+`GET /repos/{owner}/{repo}/teams`
+
+Lists the teams that have access to the specified repository and that are also visible to the authenticated user.
+
+For a public repository, a team is listed only if that team added the public repository explicitly.
+
+OAuth app tokens and personal access tokens (classic) need the `public_repo` or `repo` scope to use this endpoint with a public repository, and `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Get all repository topics
+
+`GET /repos/{owner}/{repo}/topics`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Replace all repository topics
+
+`PUT /repos/{owner}/{repo}/topics`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `names` | `array of strings` | Yes | An array of topics to add to the repository. Pass one or more topics to replace the set of existing topics. Send an empty array (`[]`) to clear all topics from the repository. Note: Topic `names` will be saved as lowercase. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Transfer a repository
+
+`POST /repos/{owner}/{repo}/transfer`
+
+A transfer request will need to be accepted by the new owner when transferring a personal repository to another user. The response will contain the original `owner`, and the transfer will continue asynchronously. For more details on the requirements to transfer personal and organization-owned repositories, see [about repository transfers](https://docs.github.com/enterprise-cloud@latest/articles/about-repository-transfers/).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `new_owner` | `string` | Yes | The username or organization name the repository will be transferred to. |
+| `new_name` | `string` | No | The new name to be given to the repository. |
+| `team_ids` | `array of integers` | No | ID of the team or teams to add to the repository. Teams can only be added to organization-owned repositories. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+
+## Check if vulnerability alerts are enabled for a repository
+
+`GET /repos/{owner}/{repo}/vulnerability-alerts`
+
+Shows whether dependency alerts are enabled or disabled for a repository. The authenticated user must have admin read access to the repository. For more information, see "[About security alerts for vulnerable dependencies](https://docs.github.com/enterprise-cloud@latest/articles/about-security-alerts-for-vulnerable-dependencies)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Response if repository is enabled with vulnerability alerts |
+| `404` | Not Found if repository is not enabled with vulnerability alerts |
+
+## Enable vulnerability alerts
+
+`PUT /repos/{owner}/{repo}/vulnerability-alerts`
+
+Enables dependency alerts and the dependency graph for a repository. The authenticated user must have admin access to the repository. For more information, see "[About security alerts for vulnerable dependencies](https://docs.github.com/enterprise-cloud@latest/articles/about-security-alerts-for-vulnerable-dependencies)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Disable vulnerability alerts
+
+`DELETE /repos/{owner}/{repo}/vulnerability-alerts`
+
+Disables dependency alerts and the dependency graph for a repository.
+The authenticated user must have admin access to the repository. For more information,
+see "[About security alerts for vulnerable dependencies](https://docs.github.com/enterprise-cloud@latest/articles/about-security-alerts-for-vulnerable-dependencies)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Create a repository using a template
+
+`POST /repos/{template_owner}/{template_repo}/generate`
+
+Creates a new repository using a repository template. Use the `template_owner` and `template_repo` route parameters to specify the repository to use as the template. If the repository is not public, the authenticated user must own or be a member of an organization that owns the repository. To check if a repository is available to use as a template, get the repository's information using the [Get a repository](https://docs.github.com/enterprise-cloud@latest/rest/repos/repos#get-a-repository) endpoint and check that the `is_template` key is `true`.
+
+OAuth app tokens and personal access tokens (classic) need the `public_repo` or `repo` scope to create a public repository, and `repo` scope to create a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `template_owner` | path | `string` | Yes | The account owner of the template repository. The name is not case sensitive. |
+| `template_repo` | path | `string` | Yes | The name of the template repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `owner` | `string` | No | The organization or person who will own the new repository. To create a new repository in an organization, the authenticated user must be a member of the specified organization. |
+| `name` | `string` | Yes | The name of the new repository. |
+| `description` | `string` | No | A short description of the new repository. |
+| `include_all_branches` | `boolean` | No | Set to `true` to include the directory structure and files from all branches in the template repository, and not just the default branch. Default: `false`. |
+| `private` | `boolean` | No | Either `true` to create a new private repository or `false` to create a new public one. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## List public repositories
+
+`GET /repositories`
+
+Lists all public repositories in the order that they were created.
+
+Note:
+
+For GitHub Enterprise Server, this endpoint will only list repositories available to all users on the enterprise.
+
+Pagination is powered exclusively by the `since` parameter. Use the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers) to get the URL for the next page of repositories.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `since` | query | `integer` | No | A repository ID. Only return repositories with an ID greater than this ID. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List repositories for the authenticated user
+
+`GET /user/repos`
+
+Lists repositories that the authenticated user has explicit permission (`:read`, `:write`, or `:admin`) to access.
+
+The authenticated user has explicit permission to access repositories they own, repositories where they are a collaborator, and repositories that they can access through an organization membership.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `visibility` | query | `string` | No | Limit results to repositories with the specified visibility. |
+| `affiliation` | query | `string` | No | Comma-separated list of values. Can include: `owner`: Repositories that are owned by the authenticated user. `collaborator`: Repositories that the user has been added to as a collaborator. `organization_member`: Repositories that the user has access to through being a member of an organization. This includes every repository on every team that the user is on. |
+| `type` | query | `string` | No | Limit results to repositories of the specified type. Will cause a `422` error if used in the same request as visibility or affiliation. |
+| `sort` | query | `string` | No | The property to sort the results by. |
+| `direction` | query | `string` | No | The order to sort by. Default: `asc` when using `full_name`, otherwise `desc`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `since` | query | `string` | No | Only show repositories updated after the given time. This is a timestamp in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format: `YYYY-MM-DDTHH:MM:SSZ`. |
+| `before` | query | `string` | No | Only show repositories updated before the given time. This is a timestamp in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format: `YYYY-MM-DDTHH:MM:SSZ`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create a repository for the authenticated user
+
+`POST /user/repos`
+
+Creates a new repository for the authenticated user.
+
+OAuth app tokens and personal access tokens (classic) need the `public_repo` or `repo` scope to create a public repository, and `repo` scope to create a private repository.
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the repository. |
+| `description` | `string` | No | A short description of the repository. |
+| `homepage` | `string` | No | A URL with more information about the repository. |
+| `private` | `boolean` | No | Whether the repository is private. |
+| `has_issues` | `boolean` | No | Whether issues are enabled. |
+| `has_projects` | `boolean` | No | Whether projects are enabled. |
+| `has_wiki` | `boolean` | No | Whether the wiki is enabled. |
+| `has_discussions` | `boolean` | No | Whether discussions are enabled. |
+| `team_id` | `integer` | No | The id of the team that will be granted access to this repository. This is only valid when creating a repository in an organization. |
+| `auto_init` | `boolean` | No | Whether the repository is initialized with a minimal README. |
+| `gitignore_template` | `string` | No | The desired language or platform to apply to the .gitignore. |
+| `license_template` | `string` | No | The license keyword of the open source license for this repository. |
+| `allow_squash_merge` | `boolean` | No | Whether to allow squash merges for pull requests. |
+| `allow_merge_commit` | `boolean` | No | Whether to allow merge commits for pull requests. |
+| `allow_rebase_merge` | `boolean` | No | Whether to allow rebase merges for pull requests. |
+| `allow_auto_merge` | `boolean` | No | Whether to allow Auto-merge to be used on pull requests. |
+| `delete_branch_on_merge` | `boolean` | No | Whether to delete head branches when pull requests are merged |
+| `squash_merge_commit_title` | `string` | No | Required when using `squash_merge_commit_message`. The default value for a squash merge commit title: `PR_TITLE` - default to the pull request's title. `COMMIT_OR_PR_TITLE` - default to the commit's title (if only one commit) or the pull request's title (when more than one commit). |
+| `squash_merge_commit_message` | `string` | No | The default value for a squash merge commit message: `PR_BODY` - default to the pull request's body. `COMMIT_MESSAGES` - default to the branch's commit messages. `BLANK` - default to a blank commit message. |
+| `merge_commit_title` | `string` | No | Required when using `merge_commit_message`. The default value for a merge commit title. `PR_TITLE` - default to the pull request's title. `MERGE_MESSAGE` - default to the classic title for a merge message (e.g., Merge pull request #123 from branch-name). |
+| `merge_commit_message` | `string` | No | The default value for a merge commit message. `PR_TITLE` - default to the pull request's title. `PR_BODY` - default to the pull request's body. `BLANK` - default to a blank commit message. |
+| `has_downloads` | `boolean` | No | Whether downloads are enabled. |
+| `is_template` | `boolean` | No | Whether this repository acts as a template that can be used to generate new repositories. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `304` | Not modified |
+| `400` | Bad Request |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List repositories for a user
+
+`GET /users/{username}/repos`
+
+Lists public repositories for the specified user.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `type` | query | `string` | No | Limit results to repositories of the specified type. |
+| `sort` | query | `string` | No | The property to sort the results by. |
+| `direction` | query | `string` | No | The order to sort by. Default: `asc` when using `full_name`, otherwise `desc`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

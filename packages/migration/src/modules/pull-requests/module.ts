@@ -10,6 +10,10 @@ import type {
   PlannedOperation,
   VerificationDiscrepancy,
 } from '../../core/types.js';
+import {
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import { archiveClosedPullRequests } from './pr-archiver.js';
 import { recreatePullRequest } from './pr-recreator.js';
 import type {
@@ -346,6 +350,7 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
             payload,
             ctx.signal,
             ctx.dryRun,
+            ctx.targetClient,
           );
 
           if (prRes.success) {
@@ -437,6 +442,14 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
     ctx: MigrationContext,
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
+    if (!plan.operations.some((op) => op.operation === 'create')) {
+      return {
+        moduleId: this.id,
+        verified: true,
+        discrepancies: [],
+      };
+    }
+
     const targetRepo = ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? '';
     const discrepancies: VerificationDiscrepancy[] = [];
 
@@ -454,10 +467,21 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
         ctx.signal,
       );
       if (tpRes?.items) targetPulls = [...tpRes.items];
-    } catch {
-      // In offline harness
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/pulls`,
+          expected: 'readable target pull requests',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target pull requests (/repos/${ctx.scope.targetOrg}/${targetRepo}/pulls)`,
+            err,
+          ),
+        });
+      }
     }
 
+    let issuesDisabled = false;
     let archiveFound = false;
     try {
       const issuesRes = await ctx.targetClient.fetchAll<{
@@ -480,13 +504,26 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
             'Historical Pull Requests Archive'.toLowerCase(),
         );
       }
-    } catch {
-      // In offline harness
+    } catch (err: unknown) {
+      if (isExpectedFeatureAbsentError(err)) {
+        issuesDisabled = true;
+      } else {
+        discrepancies.push({
+          resourceName: `${targetRepo}/issues`,
+          expected: 'readable target issues',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target issues (/repos/${ctx.scope.targetOrg}/${targetRepo}/issues)`,
+            err,
+          ),
+        });
+      }
     }
 
     const targetPullTitles = new Set(
       targetPulls.map((p) => p.title.toLowerCase()),
     );
+    const hasNativeClosedPulls = targetPulls.some((p) => p.state !== 'open');
 
     for (const action of plan.operations) {
       if (action.operation !== 'create') continue;
@@ -502,7 +539,7 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
           });
         }
       } else if (action.resourceType === 'pull-requests-archive') {
-        if (!archiveFound) {
+        if (!archiveFound && !hasNativeClosedPulls && !issuesDisabled) {
           discrepancies.push({
             resourceName: 'Historical Pull Requests Archive',
             expected: 'present',

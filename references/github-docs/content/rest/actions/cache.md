@@ -19,3 +19,488 @@ category:
 You can use the REST API to query and manage the cache for repositories in {% data variables.product.prodname_actions %}. You can also install a {% data variables.product.prodname_cli %} extension to manage your caches from the command line. For more information, see [AUTOTITLE](/actions/reference/workflows-and-actions/dependency-caching).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get GitHub Actions cache retention limit for an enterprise
+
+`GET /enterprises/{enterprise}/actions/cache/retention-limit`
+
+Gets GitHub Actions cache retention limit for an enterprise. All organizations and repositories under this
+enterprise may not set a higher cache retention limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set GitHub Actions cache retention limit for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/cache/retention-limit`
+
+Sets GitHub Actions cache retention limit for an enterprise. All organizations and repositories under this
+enterprise may not set a higher cache retention limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `max_cache_retention_days` | `integer` | No | For repositories &#x26; organizations in an enterprise, the maximum duration, in days, for which caches in a repository may be retained. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get GitHub Actions cache storage limit for an enterprise
+
+`GET /enterprises/{enterprise}/actions/cache/storage-limit`
+
+Gets GitHub Actions cache storage limit for an enterprise. All organizations and repositories under this
+enterprise may not set a higher cache storage limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set GitHub Actions cache storage limit for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/cache/storage-limit`
+
+Sets GitHub Actions cache storage limit for an enterprise. All organizations and repositories under this
+enterprise may not set a higher cache storage limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `max_cache_size_gb` | `integer` | No | For repositories &#x26; organizations in an enterprise, the maximum size limit for the sum of all caches in a repository, in gigabytes. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get GitHub Actions cache usage for an enterprise
+
+`GET /enterprises/{enterprise}/actions/cache/usage`
+
+Gets the total GitHub Actions cache usage for an enterprise.
+The data fetched using this API is refreshed approximately every 5 minutes, so values returned from this endpoint may take at least 5 minutes to get updated.
+
+OAuth tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get GitHub Actions cache retention limit for an organization
+
+`GET /organizations/{org}/actions/cache/retention-limit`
+
+Gets GitHub Actions cache retention limit for an organization. All repositories under this
+organization may not set a higher cache retention limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:organization` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set GitHub Actions cache retention limit for an organization
+
+`PUT /organizations/{org}/actions/cache/retention-limit`
+
+Sets GitHub Actions cache retention limit for an organization. All repositories under this
+organization may not set a higher cache retention limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:organization` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `max_cache_retention_days` | `integer` | No | For repositories in this organization, the maximum duration, in days, for which caches in a repository may be retained. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get GitHub Actions cache storage limit for an organization
+
+`GET /organizations/{org}/actions/cache/storage-limit`
+
+Gets GitHub Actions cache storage limit for an organization. All repositories under this
+organization may not set a higher cache storage limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:organization` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set GitHub Actions cache storage limit for an organization
+
+`PUT /organizations/{org}/actions/cache/storage-limit`
+
+Sets GitHub Actions cache storage limit for an organization. All organizations and repositories under this
+organization may not set a higher cache storage limit.
+
+OAuth tokens and personal access tokens (classic) need the `admin:organization` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `max_cache_size_gb` | `integer` | No | For repositories in the organization, the maximum size limit for the sum of all caches in a repository, in gigabytes. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get GitHub Actions cache usage for an organization
+
+`GET /orgs/{org}/actions/cache/usage`
+
+Gets the total GitHub Actions cache usage for an organization.
+The data fetched using this API is refreshed approximately every 5 minutes, so values returned from this endpoint may take at least 5 minutes to get updated.
+
+OAuth tokens and personal access tokens (classic) need the `read:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List repositories with GitHub Actions cache usage for an organization
+
+`GET /orgs/{org}/actions/cache/usage-by-repository`
+
+Lists repositories and their GitHub Actions cache usage for an organization.
+The data fetched using this API is refreshed approximately every 5 minutes, so values returned from this endpoint may take at least 5 minutes to get updated.
+
+OAuth tokens and personal access tokens (classic) need the `read:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get GitHub Actions cache retention limit for a repository
+
+`GET /repos/{owner}/{repo}/actions/cache/retention-limit`
+
+Gets GitHub Actions cache retention limit for a repository. This determines how long caches will be retained for, if
+not manually removed or evicted due to size constraints.
+
+OAuth tokens and personal access tokens (classic) need the `admin:repository` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set GitHub Actions cache retention limit for a repository
+
+`PUT /repos/{owner}/{repo}/actions/cache/retention-limit`
+
+Sets GitHub Actions cache retention limit for a repository. This determines how long caches will be retained for, if
+not manually removed or evicted due to size constraints.
+
+OAuth tokens and personal access tokens (classic) need the `admin:repository` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `max_cache_retention_days` | `integer` | No | The maximum number of days to keep caches in this repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get GitHub Actions cache storage limit for a repository
+
+`GET /repos/{owner}/{repo}/actions/cache/storage-limit`
+
+Gets GitHub Actions cache storage limit for a repository. This determines the maximum size of caches that can be
+stored before eviction occurs.
+
+OAuth tokens and personal access tokens (classic) need the `admin:repository` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set GitHub Actions cache storage limit for a repository
+
+`PUT /repos/{owner}/{repo}/actions/cache/storage-limit`
+
+Sets GitHub Actions cache storage limit for a repository. This determines the maximum size of caches that can be
+stored before eviction occurs.
+
+OAuth tokens and personal access tokens (classic) need the `admin:repository` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `max_cache_size_gb` | `integer` | No | The maximum total cache size for this repository, in gigabytes. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get GitHub Actions cache usage for a repository
+
+`GET /repos/{owner}/{repo}/actions/cache/usage`
+
+Gets GitHub Actions cache usage for a repository.
+The data fetched using this API is refreshed approximately every 5 minutes, so values returned from this endpoint may take at least 5 minutes to get updated.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List GitHub Actions caches for a repository
+
+`GET /repos/{owner}/{repo}/actions/caches`
+
+Lists the GitHub Actions caches for a repository.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `ref` | query | `string` | No | The full Git reference for narrowing down the cache. The `ref` for a branch should be formatted as `refs/heads/&#x3C;branch name>`. To reference a pull request use `refs/pull/&#x3C;number>/merge`. |
+| `key` | query | `string` | No | An explicit key or prefix for identifying the cache |
+| `sort` | query | `string` | No | The property to sort the results by. `created_at` means when the cache was created. `last_accessed_at` means when the cache was last accessed. `size_in_bytes` is the size of the cache in bytes. |
+| `direction` | query | `string` | No | The direction to sort the results by. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete GitHub Actions caches for a repository (using a cache key)
+
+`DELETE /repos/{owner}/{repo}/actions/caches`
+
+Deletes one or more GitHub Actions caches for a repository, using a complete cache key. By default, all caches that match the provided key are deleted, but you can optionally provide a Git ref to restrict deletions to caches that match both the provided key and the Git ref.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `key` | query | `string` | Yes | A key for identifying the cache. |
+| `ref` | query | `string` | No | The full Git reference for narrowing down the cache. The `ref` for a branch should be formatted as `refs/heads/&#x3C;branch name>`. To reference a pull request use `refs/pull/&#x3C;number>/merge`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a GitHub Actions cache for a repository (using a cache ID)
+
+`DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}`
+
+Deletes a GitHub Actions cache for a repository, using a cache ID.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `cache_id` | path | `integer` | Yes | The unique identifier of the GitHub Actions cache. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

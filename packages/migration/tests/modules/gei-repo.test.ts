@@ -801,4 +801,128 @@ describe('GeiRepoMigrationModule', () => {
     assert.equal(gitCommands.length, 2);
     assert.equal(result.results[0]?.operationId, 'gei-repo-mirror-push-repo');
   });
+
+  it('verify() fails closed and records sanitized discrepancy when source or target throws HTTP 500/403/429', async () => {
+    const module = new GeiRepoMigrationModule();
+    const throwingSource: GitHubReadAdapter = {
+      ...createMockAdapter({}),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/repos/')) {
+          throw new Error(
+            'HTTP 500 Internal Server Error for https://x-access-token:ghp_secretToken123456@api.github.com/repos/source-org/fail-repo',
+          );
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+    };
+
+    const ctx: MigrationContext = {
+      runId: 'test-verify-fail-closed-500',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'fail-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'fail-repo',
+      },
+      sourceClient: throwingSource,
+      targetClient: createMockAdapter({ targetExists: true }),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const verifyResult = await module.verify(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/fail-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(verifyResult.verified, false);
+    const readErrorDiscrepancy = verifyResult.discrepancies.find(
+      (d) => d.resourceName === 'verification-read-error',
+    );
+    assert.ok(
+      readErrorDiscrepancy,
+      'Expected verification-read-error discrepancy',
+    );
+    assert.equal(readErrorDiscrepancy.expected, 'readable repository metadata');
+    assert.equal(readErrorDiscrepancy.actual, 'api_read_error');
+    assert.ok(!readErrorDiscrepancy.message.includes('ghp_secretToken'));
+  });
+
+  it('verify() treats HTTP 404/410 on disabled sub-resources (issues/pulls/releases) as empty state without failing closed', async () => {
+    const module = new GeiRepoMigrationModule();
+    const mockRepoData = {
+      id: 1,
+      default_branch: 'main',
+      has_issues: false,
+      has_wiki: false,
+      has_projects: false,
+      allow_squash_merge: true,
+      allow_merge_commit: true,
+      allow_rebase_merge: true,
+    };
+
+    const createDisabledSubResourceAdapter = (): GitHubReadAdapter => ({
+      ...createMockAdapter({}),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/repos/')) {
+          return {
+            data: mockRepoData,
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+      async readPage(op: ReadOperation) {
+        if (op.path?.includes('/issues')) {
+          throw new Error('HTTP 410 Gone: Issues are disabled for this repo');
+        }
+        if (op.path?.includes('/releases')) {
+          throw new Error('HTTP 404 Not Found');
+        }
+        return {
+          items: [],
+          nextCursor: null,
+          observedAt: new Date().toISOString(),
+          remainingRequests: 5000,
+          resetAt: null,
+          status: 200,
+        };
+      },
+    });
+
+    const ctx: MigrationContext = {
+      runId: 'test-verify-410-pass',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'no-issues-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'no-issues-repo',
+      },
+      sourceClient: createDisabledSubResourceAdapter(),
+      targetClient: createDisabledSubResourceAdapter(),
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      continueOnError: false,
+    };
+
+    const verifyResult = await module.verify(ctx, {
+      moduleId: 'gei-repo',
+      scopeLevel: 'repository',
+      targetIdentifier: 'target-org/no-issues-repo',
+      operations: [],
+      warnings: [],
+    });
+
+    assert.equal(verifyResult.verified, true);
+    assert.deepEqual(verifyResult.discrepancies, []);
+  });
 });

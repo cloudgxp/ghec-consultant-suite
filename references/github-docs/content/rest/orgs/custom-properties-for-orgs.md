@@ -12,3 +12,73 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get all custom property values for an organization
+
+`GET /organizations/{org}/org-properties/values`
+
+Gets all custom property values that are set for an organization.
+
+The organization must belong to an enterprise.
+
+Access requirements:
+
+Organization admins
+
+OAuth tokens and personal access tokens (classic) with the `read:org` scope
+
+Actors with the organization-level "read custom properties for an organization" fine-grained permission or above
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update custom property values for an organization
+
+`PATCH /organizations/{org}/org-properties/values`
+
+Create new or update existing custom property values for an organization.
+To remove a custom property value from an organization, set the property value to `null`.
+
+The organization must belong to an enterprise.
+
+Access requirements:
+
+Organization admins
+
+OAuth tokens and personal access tokens (classic) with the `admin:org` scope
+
+Actors with the organization-level "edit custom properties for an organization" fine-grained permission
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `properties` | `array of objects` | Yes | A list of custom property names and associated values to apply to the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when custom property values are successfully created or updated |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
