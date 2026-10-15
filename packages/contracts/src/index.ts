@@ -999,11 +999,13 @@ export {
   MigrationResultsManifestSchema,
   MigrationResultsSummarySchema,
   OrgModuleResultSummarySchema,
+  RepoModuleResultSummarySchema,
   RepositoryMigrationRecordSchema,
   validateMigrationResultsManifest,
   type MigrationResultsManifest,
   type MigrationResultsSummary,
   type OrgModuleResultSummary,
+  type RepoModuleResultSummary,
   type RepositoryMigrationRecord,
 } from './results/results-repo-manifest.js';
 export * from './gap-ledger/index.js';

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   type MigrationResultsManifest,
+  type ModuleExecutionResult,
   validateMigrationResultsManifest,
+  validateModuleExecutionResult,
 } from '../src/index.js';
 
 const validManifest: MigrationResultsManifest = {
@@ -261,4 +263,125 @@ test('handles 100% success and 0 repositories edge cases', () => {
     repositories: [],
   };
   assert.equal(validateMigrationResultsManifest(zeroRepos).success, true);
+});
+
+test('accepts enriched 3-tier manifest with organization relativeFilePath and repository moduleSummaries', () => {
+  const enrichedManifest: MigrationResultsManifest = {
+    ...validManifest,
+    summary: {
+      ...validManifest.summary,
+      orgModulesSummary: {
+        teams: {
+          status: 'complete',
+          totalOperations: 5,
+          succeededOperations: 5,
+          failedOperations: 0,
+          skippedOperations: 0,
+          discrepancyCount: 0,
+          durationMs: 1200,
+          relativeFilePath: 'organization/teams.md',
+        },
+      },
+    },
+    repositories: [
+      {
+        ...validManifest.repositories[0]!,
+        moduleSummaries: {
+          'repo-variables': {
+            moduleId: 'repo-variables',
+            status: 'complete',
+            totalOperations: 3,
+            succeededOperations: 3,
+            failedOperations: 0,
+            skippedOperations: 0,
+            discrepancyCount: 0,
+            durationMs: 400,
+            relativeFilePath: 'repositories/frontend-app/repo-variables.md',
+          },
+        },
+      },
+      validManifest.repositories[1]!,
+    ],
+  };
+
+  const result = validateMigrationResultsManifest(enrichedManifest);
+  assert.equal(result.success, true);
+
+  // Rejects invalid org module relativeFilePath
+  const invalidOrgPath = {
+    ...enrichedManifest,
+    summary: {
+      ...enrichedManifest.summary,
+      orgModulesSummary: {
+        teams: {
+          ...enrichedManifest.summary.orgModulesSummary.teams!,
+          relativeFilePath: 'invalid/teams.md',
+        },
+      },
+    },
+  };
+  assert.equal(validateMigrationResultsManifest(invalidOrgPath).success, false);
+
+  // Rejects invalid repo module relativeFilePath
+  const invalidRepoModPath = {
+    ...enrichedManifest,
+    repositories: [
+      {
+        ...enrichedManifest.repositories[0]!,
+        moduleSummaries: {
+          'repo-variables': {
+            ...enrichedManifest.repositories[0]!.moduleSummaries![
+              'repo-variables'
+            ]!,
+            relativeFilePath: 'success/frontend-app/repo-variables.md',
+          },
+        },
+      },
+      enrichedManifest.repositories[1]!,
+    ],
+  };
+  assert.equal(
+    validateMigrationResultsManifest(invalidRepoModPath).success,
+    false,
+  );
+});
+
+test('accepts both legacy and enriched ModuleExecutionResult payloads', () => {
+  const legacyResult: ModuleExecutionResult = {
+    schemaVersion: '1.0.0',
+    moduleId: 'repo-variables',
+    status: 'complete',
+    durationMs: 250,
+    results: [
+      {
+        operationId: 'repo-variables:create:frontend-app:NODE_ENV',
+        status: 'succeeded',
+        completedAt: '2026-10-08T12:00:00Z',
+      },
+    ],
+  };
+  assert.equal(validateModuleExecutionResult(legacyResult).success, true);
+
+  const enrichedResult: ModuleExecutionResult = {
+    schemaVersion: '1.0.0',
+    moduleId: 'repo-variables',
+    status: 'complete',
+    durationMs: 250,
+    targetIdentifier: 'octocat-target-emu/frontend-app',
+    scopeLevel: 'repository',
+    results: [
+      {
+        operationId: 'repo-variables:create:frontend-app:NODE_ENV',
+        status: 'succeeded',
+        httpStatus: 201,
+        completedAt: '2026-10-08T12:00:00Z',
+        resourceType: 'repo-variable',
+        resourceName: 'NODE_ENV',
+        operationType: 'create',
+        reason: 'Variable missing at destination',
+        targetIdentifier: 'octocat-target-emu/frontend-app',
+      },
+    ],
+  };
+  assert.equal(validateModuleExecutionResult(enrichedResult).success, true);
 });

@@ -50,6 +50,25 @@ function collectLines(
   };
 }
 
+function formatPartialOutputTail(
+  stdoutText: string,
+  stderrText: string,
+  maxChars = 1500,
+): string {
+  const combined = [
+    stderrText.trim() ? `stderr:\n${stderrText.trim()}` : '',
+    stdoutText.trim() ? `stdout:\n${stdoutText.trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+  if (!combined) return '';
+  const tail =
+    combined.length > maxChars
+      ? `...${combined.slice(combined.length - (maxChars - 3))}`
+      : combined;
+  return ` Partial output before termination:\n${tail}`;
+}
+
 export const runGitCommand: GitCommandRunner = async (
   command,
   args,
@@ -100,20 +119,23 @@ export const runGitCommand: GitCommandRunner = async (
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    const stdout = collectLines(undefined, secrets);
-    const stderr = collectLines(undefined, secrets);
+    const stdout = collectLines(options.onStdout, secrets);
+    const stderr = collectLines(options.onStderr, secrets);
 
     let settled = false;
     const timeout = options.timeoutMs
       ? setTimeout(() => {
           child.kill('SIGTERM');
-          settle(() =>
+          settle(() => {
+            stdout.flush();
+            stderr.flush();
+            const tail = formatPartialOutputTail(stdout.text(), stderr.text());
             reject(
               new Error(
-                `Git command timed out after ${options.timeoutMs} milliseconds.`,
+                `Git command timed out after ${options.timeoutMs} milliseconds.${tail}`,
               ),
-            ),
-          );
+            );
+          });
         }, options.timeoutMs)
       : undefined;
 
@@ -127,9 +149,19 @@ export const runGitCommand: GitCommandRunner = async (
 
     const onAbort = () => {
       child.kill('SIGTERM');
-      settle(() =>
-        reject(options.signal?.reason ?? new Error('Git command was aborted.')),
-      );
+      settle(() => {
+        stdout.flush();
+        stderr.flush();
+        const tail = formatPartialOutputTail(stdout.text(), stderr.text());
+        const reason = options.signal?.reason;
+        const baseMsg =
+          reason instanceof Error
+            ? reason.message
+            : reason !== undefined
+              ? String(reason)
+              : 'Git command was aborted.';
+        reject(new Error(`${redact(baseMsg, secrets)}${tail}`));
+      });
     };
 
     options.signal?.addEventListener('abort', onAbort, { once: true });
@@ -177,7 +209,13 @@ export class GitMirrorPushExecutor {
       estimatedSizeBytes,
       signal,
       timeoutMs,
+      onStdout,
+      onStderr,
     } = request;
+    const streamCallbacks = {
+      ...(onStdout ? { onStdout } : {}),
+      ...(onStderr ? { onStderr } : {}),
+    };
 
     const effectiveSignal = signal ?? new AbortController().signal;
 
@@ -264,6 +302,7 @@ export class GitMirrorPushExecutor {
         secrets: secretsToRedact,
         signal,
         timeoutMs,
+        ...streamCallbacks,
       });
 
       combinedStdout += cloneResult.stdout;
@@ -281,6 +320,7 @@ export class GitMirrorPushExecutor {
           secrets: secretsToRedact,
           signal,
           timeoutMs,
+          ...streamCallbacks,
         });
         const branchRef = symRefRes.stdout.trim() || 'refs/heads/main';
         const commitTreeRes = await this.runner(
@@ -306,6 +346,7 @@ export class GitMirrorPushExecutor {
             secrets: secretsToRedact,
             signal,
             timeoutMs,
+            ...streamCallbacks,
           },
         );
         const newCommitSha = commitTreeRes.stdout.trim();
@@ -318,6 +359,7 @@ export class GitMirrorPushExecutor {
             secrets: secretsToRedact,
             signal,
             timeoutMs,
+            ...streamCallbacks,
           });
           rmSync(join(scratchDir, 'shallow'), { force: true });
         }
@@ -413,6 +455,7 @@ export class GitMirrorPushExecutor {
         secrets: secretsToRedact,
         signal,
         timeoutMs,
+        ...streamCallbacks,
       });
 
       combinedStdout += `\n${pushResult.stdout}`;
@@ -437,6 +480,7 @@ export class GitMirrorPushExecutor {
             secrets: secretsToRedact,
             signal,
             timeoutMs,
+            ...streamCallbacks,
           });
           const branchRef = symRefRes.stdout.trim() || 'refs/heads/main';
           const revListRes = await this.runner(
@@ -447,6 +491,7 @@ export class GitMirrorPushExecutor {
               secrets: secretsToRedact,
               signal,
               timeoutMs,
+              ...streamCallbacks,
             },
           );
           if (revListRes.exitCode === 0) {
@@ -471,6 +516,7 @@ export class GitMirrorPushExecutor {
                   secrets: secretsToRedact,
                   signal,
                   timeoutMs,
+                  ...streamCallbacks,
                 },
               );
               combinedStdout += `\n${stepPush.stdout}`;
@@ -488,6 +534,7 @@ export class GitMirrorPushExecutor {
               secrets: secretsToRedact,
               signal,
               timeoutMs,
+              ...streamCallbacks,
             },
           );
           combinedStdout += `\n${pushResult.stdout}`;
@@ -506,6 +553,7 @@ export class GitMirrorPushExecutor {
                 secrets: secretsToRedact,
                 signal,
                 timeoutMs,
+                ...streamCallbacks,
               },
             );
             if (tagListRes.exitCode === 0) {
@@ -525,6 +573,7 @@ export class GitMirrorPushExecutor {
                     secrets: secretsToRedact,
                     signal,
                     timeoutMs,
+                    ...streamCallbacks,
                   },
                 );
                 combinedStdout += `\n${tagPush.stdout}`;

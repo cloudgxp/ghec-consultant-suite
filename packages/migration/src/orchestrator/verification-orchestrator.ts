@@ -14,6 +14,10 @@ import {
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
+import {
+  VERIFY_READ_ERROR_PREFIX,
+  formatSanitizedReadError,
+} from '../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeTarget,
@@ -90,7 +94,51 @@ export class VerificationOrchestrator {
       this.logger.info(
         `Verifying module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}"`,
       );
-      const res = await mod.verify(ctx, modulePlan);
+
+      const planReadErrorWarnings = (modulePlan.warnings ?? []).filter((w) =>
+        w.startsWith(VERIFY_READ_ERROR_PREFIX),
+      );
+
+      let res: ModuleVerificationResult;
+      try {
+        res = await mod.verify(ctx, modulePlan);
+      } catch (err: unknown) {
+        if (this.signal.aborted) {
+          throw this.signal.reason ?? err;
+        }
+        const sanitizedMsg = formatSanitizedReadError(
+          `verify() for module "${modulePlan.moduleId}" on "${modulePlan.targetIdentifier}"`,
+          err,
+        );
+        this.logger.error(sanitizedMsg);
+        res = {
+          moduleId: modulePlan.moduleId,
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: modulePlan.targetIdentifier || modulePlan.moduleId,
+              expected: 'verifiable source and target state',
+              actual: 'read_error',
+              message: sanitizedMsg,
+            },
+          ],
+        };
+      }
+
+      if (planReadErrorWarnings.length > 0) {
+        const readErrorDiscrepancies: VerificationDiscrepancy[] =
+          planReadErrorWarnings.map((w) => ({
+            resourceName: modulePlan.targetIdentifier || modulePlan.moduleId,
+            expected: 'verifiable source and target state',
+            actual: 'read_error',
+            message: w,
+          }));
+        res = {
+          ...res,
+          verified: false,
+          discrepancies: [...readErrorDiscrepancies, ...res.discrepancies],
+        };
+      }
 
       let existing = aggregatedByModuleId.get(modulePlan.moduleId);
       if (!existing) {

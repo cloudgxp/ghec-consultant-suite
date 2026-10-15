@@ -13,6 +13,10 @@ import type {
   PlannedOperation,
   VerificationDiscrepancy,
 } from '../../core/types.js';
+import {
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import { executeIssueImport } from './issue-importer.js';
 import type {
   IssueImportPayload,
@@ -710,8 +714,18 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         ctx.signal,
       );
       if (lRes?.items) targetLabels = [...lRes.items];
-    } catch {
-      // In offline harness or if repo is not found
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/labels`,
+          expected: 'readable target labels',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target labels (/repos/${ctx.scope.targetOrg}/${targetRepo}/labels)`,
+            err,
+          ),
+        });
+      }
     }
 
     try {
@@ -727,8 +741,18 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
         ctx.signal,
       );
       if (mRes?.items) targetMilestones = [...mRes.items];
-    } catch {
-      // In offline harness or if repo is not found
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/milestones`,
+          expected: 'readable target milestones',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target milestones (/repos/${ctx.scope.targetOrg}/${targetRepo}/milestones)`,
+            err,
+          ),
+        });
+      }
     }
 
     try {
@@ -746,8 +770,18 @@ export class IssuesMigrationModule implements MigrationModule<IssuesMigrationDat
       if (iRes?.items) {
         targetIssues = iRes.items.filter((i) => !i.pull_request);
       }
-    } catch {
-      // In offline harness or if repo is not found
+    } catch (err: unknown) {
+      if (!isExpectedFeatureAbsentError(err)) {
+        discrepancies.push({
+          resourceName: `${targetRepo}/issues`,
+          expected: 'readable target issues',
+          actual: 'api_read_error',
+          message: formatSanitizedReadError(
+            `target issues (/repos/${ctx.scope.targetOrg}/${targetRepo}/issues)`,
+            err,
+          ),
+        });
+      }
     }
 
     const targetLabelNames = new Set(

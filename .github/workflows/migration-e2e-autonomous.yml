@@ -485,6 +485,113 @@ jobs:
           path: ./downloaded-cohorts
           merge-multiple: true
 
+      - name: Aggregate Cohort Execution Reports
+        id: aggregate-cohorts
+        if: always()
+        shell: bash
+        env:
+          EXPECTED_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count || '0' }}
+        run: |
+          mkdir -p ./scans
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import path from "node:path";
+
+            function findReports(dir) {
+              if (!fs.existsSync(dir)) return [];
+              const out = [];
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) out.push(...findReports(full));
+                else if (/^cohort-report-.*\.json$/i.test(entry.name)) out.push(full);
+              }
+              return out.sort();
+            }
+
+            const expectedCohortCount = Math.max(0, Number.parseInt(process.env.EXPECTED_COHORT_COUNT || "0", 10) || 0);
+            const files = findReports("./downloaded-cohorts");
+            const observedCohortCount = files.length;
+            const missingCohortReports = Math.max(0, expectedCohortCount - observedCohortCount);
+            let failedCohortCount = 0;
+            let failedModuleCount = 0;
+            const failures = [];
+
+            for (const file of files) {
+              try {
+                const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+                const results = Array.isArray(raw.results) ? raw.results : (Array.isArray(raw.moduleResults) ? raw.moduleResults : []);
+                let cohortHasFailure = raw.overallStatus === "failed" || raw.overallStatus === "partial" || raw.status === "failed" || raw.status === "partial";
+                for (const mod of results) {
+                  const failedOps = (Array.isArray(mod.results) ? mod.results : []).filter(op => op.status === "failed");
+                  if (mod.status === "failed" || mod.status === "partial" || failedOps.length > 0) {
+                    cohortHasFailure = true;
+                    failedModuleCount++;
+                    failures.push({
+                      cohortFile: file,
+                      moduleId: mod.moduleId || "unknown",
+                      ...(mod.targetIdentifier ? { targetIdentifier: mod.targetIdentifier } : {}),
+                      status: mod.status || "failed",
+                      failedOperations: failedOps.map(op => ({
+                        operationId: op.operationId || "unknown",
+                        status: op.status || "failed",
+                        ...(typeof op.httpStatus === "number" ? { httpStatus: op.httpStatus } : {}),
+                        ...(op.error ? { error: op.error } : {}),
+                        ...(op.resourceName ? { resourceName: op.resourceName } : {}),
+                        ...(op.targetIdentifier ? { targetIdentifier: op.targetIdentifier } : {}),
+                      })),
+                    });
+                  }
+                }
+                if (cohortHasFailure) failedCohortCount++;
+              } catch (err) {
+                failedCohortCount++;
+                failedModuleCount++;
+                failures.push({
+                  cohortFile: file,
+                  moduleId: "cohort-report-parse",
+                  status: "failed",
+                  failedOperations: [{ operationId: "json-parse", status: "failed", error: String(err) }],
+                });
+              }
+            }
+
+            const aggregated = {
+              expectedCohortCount,
+              observedCohortCount,
+              missingCohortReports,
+              failedCohortCount,
+              failedModuleCount,
+              failures,
+            };
+
+            fs.writeFileSync("./scans/aggregated-cohort-failures.json", JSON.stringify(aggregated, null, 2), "utf8");
+            console.log(`Cohort aggregation complete: observed=${observedCohortCount}/${expectedCohortCount}, failedCohorts=${failedCohortCount}, failedModules=${failedModuleCount}`);
+            for (const f of failures) {
+              const target = f.targetIdentifier ? ` @ ${f.targetIdentifier}` : "";
+              console.log(`  - [${f.moduleId}${target}] (${f.cohortFile}): status=${f.status}, failedOps=${f.failedOperations.length}`);
+              for (const op of f.failedOperations) {
+                console.log(`      * ${op.operationId}: ${op.error || "failed"}`);
+              }
+            }
+
+            if (process.env.GITHUB_STEP_SUMMARY && (failedModuleCount > 0 || missingCohortReports > 0)) {
+              const summaryLines = [
+                "### ⚠️ Phase 2 Cohort Execution Failures",
+                "",
+                `- **Expected Cohorts**: \`${expectedCohortCount}\` | **Observed Reports**: \`${observedCohortCount}\` | **Missing Reports**: \`${missingCohortReports}\``,
+                `- **Failed Cohorts**: \`${failedCohortCount}\` | **Failed Module Executions**: \`${failedModuleCount}\``,
+                "",
+              ];
+              for (const f of failures) {
+                const target = f.targetIdentifier ? ` @ ${f.targetIdentifier}` : "";
+                const opDetails = f.failedOperations.map(op => `${op.operationId}: ${op.error || "failed"}`).join("; ");
+                summaryLines.push(`- \`[${f.moduleId}${target}]\` (${path.basename(f.cohortFile)}): status=\`${f.status}\`${opDetails ? ` — ${opDetails}` : ""}`);
+              }
+              summaryLines.push("");
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryLines.join("\n"), "utf8");
+            }
+          '
+
       - name: Reconcile Cross-Cohort Organization & Package Modules
         if: ${{ inputs.dry_run == false }}
         shell: bash
@@ -574,8 +681,9 @@ jobs:
           ROUND=1
           MAX_ROUNDS=${MAX_ROUNDS:-3}
           PREV_REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
-          if [ "$PREV_REMAINING" -eq 0 ]; then
-            echo "Initial verification reported 0 discrepancies. Skipping remediation loop."
+          FAILED_COHORT_MODULES=$(jq '.failedModuleCount // 0' ./scans/aggregated-cohort-failures.json 2>/dev/null || echo 0)
+          if [ "$PREV_REMAINING" -eq 0 ] && [ "$FAILED_COHORT_MODULES" -eq 0 ]; then
+            echo "Initial verification reported 0 discrepancies and 0 cohort apply() failures. Skipping remediation loop."
             exit 0
           fi
 
@@ -584,9 +692,10 @@ jobs:
             echo "Starting Autonomous Remediation Round $ROUND of $MAX_ROUNDS"
             echo "=================================================="
 
-            # 1. Synthesize remediation plan from latest verification report
+            # 1. Synthesize remediation plan from latest verification report & cohort execution reports
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
+              --execution-reports ./downloaded-cohorts \
               --output "./remediations/remediation-plan-round-${ROUND}.json" \
               --output-markdown "./remediations/remediation-plan-round-${ROUND}.md" \
               --verbose
@@ -600,13 +709,17 @@ jobs:
               break
             fi
 
-            # 2. Extract and execute remediation bash script
+            # 2. Extract and execute remediation bash script with structured execution logging
             SCRIPT_CONTENT=$(jq -r '.script // ""' "$PLAN_FILE")
             if [ -n "$SCRIPT_CONTENT" ] && [ "$SCRIPT_CONTENT" != "null" ]; then
               echo "$SCRIPT_CONTENT" > "./remediations/remediation-round-${ROUND}.sh"
               chmod +x "./remediations/remediation-round-${ROUND}.sh"
               echo "Executing remediation script for round $ROUND..."
-              bash "./remediations/remediation-round-${ROUND}.sh" || true
+              set +e
+              bash "./remediations/remediation-round-${ROUND}.sh" 2>&1 | tee "./remediations/round-${ROUND}-execution.log"
+              REM_EXIT=${PIPESTATUS[0]}
+              echo "Remediation round $ROUND script exited with code $REM_EXIT" | tee -a "./remediations/round-${ROUND}-execution.log"
+              set -e
             fi
 
             # 3. Re-verify target state
@@ -625,7 +738,7 @@ jobs:
               break
             fi
 
-            if [ -n "${PREV_REMAINING:-}" ] && [ "$REMAINING" -ge "$PREV_REMAINING" ]; then
+            if [ -n "${PREV_REMAINING:-}" ] && [ "$PREV_REMAINING" -gt 0 ] && [ "$REMAINING" -ge "$PREV_REMAINING" ]; then
               echo "Discrepancy count plateaued ($REMAINING vs previous $PREV_REMAINING); stopping remediation loop early."
               break
             fi
@@ -647,7 +760,8 @@ jobs:
             node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
               --scope "$INPUT_SCOPE" \
               --report ./scans/verification-report.json \
-              --append-step-summary || true
+              --append-step-summary \
+              --verbose || true
           fi
 
       - name: Generate Final Audit & Step Summary
@@ -686,3 +800,48 @@ jobs:
             ./scans/
             ./remediations/
           retention-days: 30
+
+      - name: Strict Verification & Execution Gate
+        id: strict-gate
+        if: always()
+        shell: bash
+        env:
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_AUTO_REMEDIATE: ${{ inputs.auto_remediate }}
+        run: |
+          GATE_FAILED=0
+
+          if [ -f ./scans/aggregated-cohort-failures.json ]; then
+            MISSING_COHORTS=$(jq '.missingCohortReports // 0' ./scans/aggregated-cohort-failures.json)
+            FAILED_COHORT_MODULES=$(jq '.failedModuleCount // 0' ./scans/aggregated-cohort-failures.json)
+            if [ "$MISSING_COHORTS" -gt 0 ]; then
+              echo "::error::$MISSING_COHORTS expected cohort execution report(s) were not produced."
+              GATE_FAILED=1
+            fi
+            if [ "$INPUT_AUTO_REMEDIATE" != "true" ] && [ "$FAILED_COHORT_MODULES" -gt 0 ]; then
+              echo "::error::Cohort execution reported $FAILED_COHORT_MODULES failed module(s) with auto_remediate disabled."
+              GATE_FAILED=1
+            fi
+          else
+            echo "::error::Aggregated cohort failures report (./scans/aggregated-cohort-failures.json) is missing."
+            GATE_FAILED=1
+          fi
+
+          if [ "$INPUT_DRY_RUN" != "true" ]; then
+            if [ ! -f ./scans/verification-report.json ]; then
+              echo "::error::Verification report (./scans/verification-report.json) was not generated."
+              GATE_FAILED=1
+            else
+              DISCREPANCIES=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+              UNVERIFIED_MODULES=$(jq '.summary.unverifiedModuleCount // .summary.failedModules // 0' ./scans/verification-report.json)
+              if [ "$DISCREPANCIES" -gt 0 ] || [ "$UNVERIFIED_MODULES" -gt 0 ]; then
+                echo "::error::Strict Verification Gate Failed: $DISCREPANCIES discrepancy(ies) and $UNVERIFIED_MODULES unverified module(s) remain after self-healing."
+                GATE_FAILED=1
+              fi
+            fi
+          fi
+
+          if [ "$GATE_FAILED" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Strict Verification & Execution Gate passed."

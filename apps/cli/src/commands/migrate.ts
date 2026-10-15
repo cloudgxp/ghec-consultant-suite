@@ -378,6 +378,7 @@ export async function executeMigrateCommand(
       executionMode: options.dryRun ? 'dry-run' : 'live',
       executionReport: report,
       scope,
+      plan,
     });
     writeResultsToDirectory(generated, resultsRepoDir);
 

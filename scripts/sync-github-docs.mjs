@@ -300,22 +300,35 @@ function formatBytes(bytes) {
 
 function stripHtml(html) {
   if (!html) return '';
-  return html
+  let out = String(html)
     .replace(/<\/?(p|div|br|li|ul|ol|h[1-6])[^>]*>/gi, '\n')
     .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
-    .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#39;/g, "'")
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+
+  let prev;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]*>/g, '');
+  } while (out !== prev);
+
+  const entityMap = {
+    '&quot;': '"',
+    '&#39;': "'",
+    '&amp;': '&',
+  };
+  return out
+    .replace(/[<>]/g, '')
+    .replace(/&(quot|#39|amp);/g, (m) => entityMap[m] ?? m)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
 function formatTableCell(text) {
-  return stripHtml(text).replace(/\n+/g, ' ').replace(/\|/g, '\\|').trim();
+  return stripHtml(text)
+    .replace(/\n+/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .trim();
 }
 
 function renderRestEndpointsMarkdown(endpoints) {

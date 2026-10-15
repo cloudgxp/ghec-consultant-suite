@@ -22,6 +22,7 @@ import { GitLfsMigrationStrategy } from '../strategies/git-lfs/strategy.js';
 import type { GitLfsQuotaChecker } from '../strategies/git-lfs/types.js';
 import { LargeReleasesMigrationStrategy } from '../strategies/releases/strategy.js';
 import { GitMirrorPushExecutor } from '../strategies/mirror-push/index.js';
+import { enrichModuleExecutionResult } from './execution-enricher.js';
 import type {
   RepositoryPipelineOptions,
   RepositoryPipelineResult,
@@ -314,6 +315,10 @@ export class RepositoryMigrationPipeline {
                 targetWriteClient: this.options.targetWriteClient,
                 ...(timeoutMs !== undefined ? { timeoutMs } : {}),
                 signal,
+                onStdout: (line) =>
+                  this.logger.info(`[mirror-push:${sourceRepo}] ${line}`),
+                onStderr: (line) =>
+                  this.logger.warn(`[mirror-push:${sourceRepo}] ${line}`),
               });
 
               this.checkpointManager?.recordStageResult(repoKey, 'gei', {
@@ -401,6 +406,14 @@ export class RepositoryMigrationPipeline {
                     targetWriteClient: this.options.targetWriteClient,
                     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
                     signal,
+                    onStdout: (line) =>
+                      this.logger.info(
+                        `[mirror-fallback:${sourceRepo}] ${line}`,
+                      ),
+                    onStderr: (line) =>
+                      this.logger.warn(
+                        `[mirror-fallback:${sourceRepo}] ${line}`,
+                      ),
                   });
 
                   this.checkpointManager?.recordStageResult(repoKey, 'gei', {
@@ -614,7 +627,15 @@ export class RepositoryMigrationPipeline {
 
           try {
             const execResult = await mod.apply(ctx, modulePlan);
-            const validated = validateModuleExecutionResult(execResult);
+            const enriched = enrichModuleExecutionResult(
+              execResult,
+              modulePlan,
+              {
+                targetIdentifier: `${targetOrg}/${targetRepo}`,
+                scopeLevel: 'repository',
+              },
+            );
+            const validated = validateModuleExecutionResult(enriched);
             if (!validated.success) {
               throw new Error(
                 `Invalid execution result from module "${moduleId}": ${validated.error.issues.map((i) => i.message).join('; ')}`,
@@ -653,12 +674,15 @@ export class RepositoryMigrationPipeline {
               moduleId,
               status: 'failed',
               durationMs: 0,
+              targetIdentifier: `${targetOrg}/${targetRepo}`,
+              scopeLevel: 'repository',
               results: [
                 {
                   operationId: `${moduleId}-error`,
                   status: 'failed',
                   error: msg.slice(0, 2048),
                   completedAt: new Date().toISOString(),
+                  targetIdentifier: `${targetOrg}/${targetRepo}`,
                 },
               ],
             };
@@ -765,7 +789,14 @@ export class RepositoryMigrationPipeline {
               const discovered = await mod.discover(ctx);
               const taskPlan = await mod.plan(ctx, discovered);
               const result = await mod.apply(ctx, taskPlan);
-              moduleResults.push(result);
+              const enriched = enrichModuleExecutionResult(result, taskPlan, {
+                targetIdentifier:
+                  mod.scopeLevel === 'organization'
+                    ? targetOrg
+                    : `${targetOrg}/${targetRepo}`,
+                scopeLevel: mod.scopeLevel,
+              });
+              moduleResults.push(enriched);
               postMigrationResults[task] = { status: 'completed' };
               if (task === 'mannequins') {
                 this.processedOrgMannequins.add(targetOrg);

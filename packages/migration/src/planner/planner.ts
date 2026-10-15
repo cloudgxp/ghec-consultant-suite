@@ -12,6 +12,10 @@ import {
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
+import {
+  VERIFY_READ_ERROR_PREFIX,
+  formatSanitizedReadError,
+} from '../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeTarget,
@@ -182,19 +186,35 @@ export class MigrationPlanner {
           logger: this.logger,
         };
 
-        const discovered = await module.discover(ctx, this.cachedBundle);
-        const plan = await module.plan(ctx, discovered);
+        try {
+          const discovered = await module.discover(ctx, this.cachedBundle);
+          const plan = await module.plan(ctx, discovered);
 
-        // Ensure unique targetIdentifier is present
-        const validatedModulePlan: ModulePlan = {
-          ...plan,
-          targetIdentifier: plan.targetIdentifier || `${orgMapping.target}`,
-        };
+          // Ensure unique targetIdentifier is present
+          const validatedModulePlan: ModulePlan = {
+            ...plan,
+            targetIdentifier: plan.targetIdentifier || `${orgMapping.target}`,
+          };
 
-        modulePlans.push(validatedModulePlan);
+          modulePlans.push(validatedModulePlan);
 
-        for (const op of validatedModulePlan.operations) {
-          summary[op.operation]++;
+          for (const op of validatedModulePlan.operations) {
+            summary[op.operation]++;
+          }
+        } catch (err: unknown) {
+          if (this.signal.aborted || !this.verificationMode) {
+            throw err;
+          }
+          const targetId = `${orgMapping.target}`;
+          const readErrWarning = `${VERIFY_READ_ERROR_PREFIX} ${formatSanitizedReadError(`discover/plan for module "${module.id}" on "${targetId}"`, err)}`;
+          this.logger.warn(readErrWarning);
+          modulePlans.push({
+            moduleId: module.id as ModulePlan['moduleId'],
+            scopeLevel: module.scopeLevel,
+            targetIdentifier: targetId,
+            operations: [],
+            warnings: [readErrWarning],
+          });
         }
       }
     }
@@ -296,20 +316,36 @@ export class MigrationPlanner {
           logger: this.logger,
         };
 
-        const discovered = await module.discover(ctx, this.cachedBundle);
-        const plan = await module.plan(ctx, discovered);
+        try {
+          const discovered = await module.discover(ctx, this.cachedBundle);
+          const plan = await module.plan(ctx, discovered);
 
-        const validatedModulePlan: ModulePlan = {
-          ...plan,
-          targetIdentifier:
-            plan.targetIdentifier ||
-            `${repoMapping.targetOrg}/${repoMapping.targetRepo}`,
-        };
+          const validatedModulePlan: ModulePlan = {
+            ...plan,
+            targetIdentifier:
+              plan.targetIdentifier ||
+              `${repoMapping.targetOrg}/${repoMapping.targetRepo}`,
+          };
 
-        modulePlans.push(validatedModulePlan);
+          modulePlans.push(validatedModulePlan);
 
-        for (const op of validatedModulePlan.operations) {
-          summary[op.operation]++;
+          for (const op of validatedModulePlan.operations) {
+            summary[op.operation]++;
+          }
+        } catch (err: unknown) {
+          if (this.signal.aborted || !this.verificationMode) {
+            throw err;
+          }
+          const targetId = `${repoMapping.targetOrg}/${repoMapping.targetRepo}`;
+          const readErrWarning = `${VERIFY_READ_ERROR_PREFIX} ${formatSanitizedReadError(`discover/plan for module "${module.id}" on "${targetId}"`, err)}`;
+          this.logger.warn(readErrWarning);
+          modulePlans.push({
+            moduleId: module.id as ModulePlan['moduleId'],
+            scopeLevel: module.scopeLevel,
+            targetIdentifier: targetId,
+            operations: [],
+            warnings: [readErrWarning],
+          });
         }
       }
     }

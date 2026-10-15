@@ -16,6 +16,8 @@ export type GitCommandRunner = (
     readonly secrets?: readonly string[] | undefined;
     readonly signal?: AbortSignal | undefined;
     readonly timeoutMs?: number | undefined;
+    readonly onStdout?: ((line: string) => void) | undefined;
+    readonly onStderr?: ((line: string) => void) | undefined;
   },
 ) => Promise<GitCommandResult>;
 

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import {
   GitMirrorPushExecutor,
   checkScratchDiskSpace,
+  runGitCommand,
   type GitCommandRunner,
 } from '../../src/strategies/mirror-push/index.js';
 import type { GitHubReadAdapter } from '@ghec/github-client';
@@ -285,5 +286,88 @@ describe('GitMirrorPushExecutor', () => {
       ),
       true,
     );
+  });
+
+  it('streams redacted stdout and stderr lines in real time and forwards callbacks via GitMirrorPushExecutor', async () => {
+    const stdoutLines: string[] = [];
+    const stderrLines: string[] = [];
+
+    const res = await runGitCommand(
+      process.execPath,
+      [
+        '-e',
+        'console.log("Cloning with token ghp_liveSecretToken123"); console.error("Receiving objects: 50% (Bearer ghp_liveSecretToken123)");',
+      ],
+      {
+        secrets: ['ghp_liveSecretToken123'],
+        onStdout: (line) => stdoutLines.push(line),
+        onStderr: (line) => stderrLines.push(line),
+      },
+    );
+
+    assert.equal(res.exitCode, 0);
+    assert.equal(stdoutLines.length, 1);
+    assert.equal(stderrLines.length, 1);
+    assert.ok(!stdoutLines[0]!.includes('ghp_liveSecretToken123'));
+    assert.ok(!stderrLines[0]!.includes('ghp_liveSecretToken123'));
+
+    // Also verify GitMirrorPushExecutor forwards onStdout and onStderr to its runner
+    const forwardedStdout: string[] = [];
+    const forwardedStderr: string[] = [];
+    const forwardingRunner: GitCommandRunner = async (_cmd, _args, opts) => {
+      opts?.onStdout?.('clone progress line');
+      opts?.onStderr?.('push progress line');
+      return {
+        exitCode: 0,
+        stdout: 'clone progress line',
+        stderr: 'push progress line',
+      };
+    };
+    const executor = new GitMirrorPushExecutor(forwardingRunner);
+    await executor.execute({
+      sourceOrg: 'src-org',
+      sourceRepo: 'stream-repo',
+      targetOrg: 'tgt-org',
+      targetRepo: 'stream-repo',
+      onStdout: (line) => forwardedStdout.push(line),
+      onStderr: (line) => forwardedStderr.push(line),
+    });
+
+    assert.ok(forwardedStdout.includes('clone progress line'));
+    assert.ok(forwardedStderr.includes('push progress line'));
+  });
+
+  it('attaches bounded, redacted partial stdout/stderr tail when runGitCommand times out', async () => {
+    const streamedStderr: string[] = [];
+
+    await assert.rejects(
+      async () => {
+        await runGitCommand(
+          process.execPath,
+          [
+            '-e',
+            'console.error("Counting objects: 42% using token ghp_timeoutSecret789"); setTimeout(() => {}, 5000);',
+          ],
+          {
+            timeoutMs: 120,
+            secrets: ['ghp_timeoutSecret789'],
+            onStderr: (line) => streamedStderr.push(line),
+          },
+        );
+      },
+      (err: Error) => {
+        assert.match(
+          err.message,
+          /Git command timed out after 120 milliseconds/,
+        );
+        assert.match(err.message, /Partial output before termination:/);
+        assert.match(err.message, /Counting objects: 42%/);
+        assert.equal(err.message.includes('ghp_timeoutSecret789'), false);
+        return true;
+      },
+    );
+
+    assert.equal(streamedStderr.length, 1);
+    assert.equal(streamedStderr[0]!.includes('ghp_timeoutSecret789'), false);
   });
 });

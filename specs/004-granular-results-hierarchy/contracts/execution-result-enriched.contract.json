@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghec-consultant-suite.local/schemas/execution-result-enriched.contract.json",
+  "title": "EnrichedModuleExecutionResult",
+  "description": "Backward-compatible schema for ModuleExecutionResult and OperationExecutionResult enriched with ModulePlan/PlannedOperation metadata.",
+  "type": "object",
+  "required": ["schemaVersion", "moduleId", "status", "results", "durationMs"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "moduleId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "partial", "failed", "skipped"]
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "targetIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Target organization login or targetOrg/targetRepo identifier."
+    },
+    "scopeLevel": {
+      "type": "string",
+      "enum": ["organization", "repository"]
+    },
+    "metadataState": {
+      "type": "string",
+      "enum": ["complete", "partial", "failed", "skipped"]
+    },
+    "failedMetadataCategories": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["operationId", "status", "completedAt"],
+        "additionalProperties": false,
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "status": {
+            "type": "string",
+            "enum": ["succeeded", "failed", "skipped"]
+          },
+          "httpStatus": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resourceType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "resourceName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "operationType": {
+            "type": "string",
+            "enum": ["create", "update", "noop", "skip", "warn"]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "targetIdentifier": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      }
+    }
+  }
+}

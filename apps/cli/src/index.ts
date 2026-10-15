@@ -472,7 +472,7 @@ Options: --port <number> --host <address> --no-open`);
     if (commandArgs.includes('--help')) {
       console.log(`ghec-consultant-cli agent-review — Analyze verification report and generate automated remediation plan
 Usage: ghec-consultant-cli agent-review --report <file> [options]
-Options: --spec <spec.md> --output <file> --output-markdown <file> --append-step-summary --verbose`);
+Options: --execution-reports <path-or-dir> --spec <spec.md> --output <file> --output-markdown <file> --append-step-summary --verbose`);
       return 0;
     }
 

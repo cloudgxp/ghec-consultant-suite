@@ -116,7 +116,11 @@ jobs:
             cat ./remediations/apply-remediation.sh
           else
             echo "Executing live remediation script with target token..."
-            bash ./remediations/apply-remediation.sh || true
+            set +e
+            bash ./remediations/apply-remediation.sh 2>&1 | tee ./remediations/apply-remediation-execution.log
+            REM_EXIT=${PIPESTATUS[0]}
+            echo "Remediation script exited with code $REM_EXIT" | tee -a ./remediations/apply-remediation-execution.log
+            set -e
           fi
 
       - name: Re-Verify Target Organization
@@ -131,6 +135,7 @@ jobs:
           echo "Re-running verification to confirm discrepancy resolution..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
             --scope "$SCOPE" \
+            --verbose \
             --output ./scans/post-remediation-verification.json || true
 
       - name: Generate Differential Audit Summary
@@ -160,3 +165,29 @@ jobs:
             ./remediations/
             ./scans/
           retention-days: 14
+
+      - name: Strict Verification & Execution Gate
+        id: strict-gate
+        if: always()
+        shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "Dry-run mode enabled; skipping strict post-remediation verification gate."
+            exit 0
+          fi
+
+          if [ ! -f ./scans/post-remediation-verification.json ]; then
+            echo "::error::Post-remediation verification report (./scans/post-remediation-verification.json) was not generated."
+            exit 1
+          fi
+
+          DISCREPANCIES=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/post-remediation-verification.json)
+          UNVERIFIED_MODULES=$(jq '.summary.unverifiedModuleCount // .summary.failedModules // 0' ./scans/post-remediation-verification.json)
+          if [ "$DISCREPANCIES" -gt 0 ] || [ "$UNVERIFIED_MODULES" -gt 0 ]; then
+            echo "::error::Strict Post-Remediation Verification Gate Failed: $DISCREPANCIES discrepancy(ies) and $UNVERIFIED_MODULES unverified module(s) remain."
+            exit 1
+          fi
+
+          echo "Strict Post-Remediation Verification Gate passed."

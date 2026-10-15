@@ -411,6 +411,10 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           targetWriteClient: ctx.targetWriteClient,
           signal: ctx.signal,
           ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          onStdout: (line: string) =>
+            ctx.logger.info(`[gei-repo][git] ${line}`),
+          onStderr: (line: string) =>
+            ctx.logger.info(`[gei-repo][git] ${line}`),
         });
 
         ctx.logger.info(
@@ -650,6 +654,10 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
             targetWriteClient: ctx.targetWriteClient,
             signal: ctx.signal,
             ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+            onStdout: (line: string) =>
+              ctx.logger.info(`[gei-repo][git] ${line}`),
+            onStderr: (line: string) =>
+              ctx.logger.info(`[gei-repo][git] ${line}`),
           });
 
           ctx.logger.info(
@@ -726,10 +734,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
     }
 
     const report = await RepositoryParityInspector.inspect(ctx);
+    const hasReadErrors =
+      (report.source.readErrors?.length ?? 0) > 0 ||
+      (report.target.readErrors?.length ?? 0) > 0;
     const hasTokens = Boolean(
       process.env.GHEC_TARGET_TOKEN || process.env.GH_PAT || this.geiRunner,
     );
-    if (!hasTokens && !report.target.exists) {
+    if (!hasTokens && !report.target.exists && !hasReadErrors) {
       return {
         moduleId: this.id,
         verified: true,

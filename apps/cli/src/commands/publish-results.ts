@@ -1,8 +1,10 @@
 import { parseArgs } from 'node:util';
 import { existsSync, readFileSync } from 'node:fs';
 import {
+  type MigrationPlan,
   type MigrationScope,
   type VerificationReport,
+  validateMigrationPlan,
   validateMigrationScope,
   validateVerificationReport,
 } from '@ghec/contracts';
@@ -29,6 +31,7 @@ export interface PublishResultsCommandOptions {
   readonly verificationReportPath?: string | undefined;
   readonly remediationPlanPath?: string | undefined;
   readonly scopePath?: string | undefined;
+  readonly planPath?: string | undefined;
   readonly targetOrg?: string | undefined;
   readonly sourceOrg?: string | undefined;
   readonly repoName: string;
@@ -64,6 +67,7 @@ export function parsePublishResultsOptions(
       report: { type: 'string' },
       'remediation-plan': { type: 'string' },
       scope: { type: 'string' },
+      plan: { type: 'string' },
       'target-org': { type: 'string' },
       'source-org': { type: 'string' },
       'repo-name': { type: 'string', default: 'gei-migration-results' },
@@ -85,6 +89,7 @@ export function parsePublishResultsOptions(
     verificationReportPath: values['verification-report'] ?? values.report,
     remediationPlanPath: values['remediation-plan'],
     scopePath: values.scope,
+    planPath: values.plan,
     targetOrg: values['target-org'],
     sourceOrg: values['source-org'],
     repoName: values['repo-name'] || 'gei-migration-results',
@@ -116,6 +121,18 @@ export async function executePublishResultsCommand(
       throw new Error(`Invalid migration scope: ${options.scopePath}`);
     }
     scope = validated.data;
+  }
+
+  // 1b. Load Plan if provided
+  let plan: MigrationPlan | undefined;
+  if (options.planPath && existsSync(options.planPath)) {
+    const raw = readFileSync(options.planPath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    const validated = validateMigrationPlan(parsed);
+    if (!validated.success) {
+      throw new Error(`Invalid migration plan: ${options.planPath}`);
+    }
+    plan = validated.data;
   }
 
   // 2. Resolve source and target org
@@ -181,6 +198,7 @@ export async function executePublishResultsCommand(
     verificationReport,
     remediationPlan,
     scope,
+    plan,
   });
 
   // 7. Write files to output directory

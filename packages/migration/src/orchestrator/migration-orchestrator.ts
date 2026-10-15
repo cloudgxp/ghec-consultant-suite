@@ -12,7 +12,10 @@ import {
   validateMigrationScope,
   validateModuleExecutionResult,
 } from '@ghec/contracts';
-import type { GitHubReadAdapter } from '@ghec/github-client';
+import {
+  sanitizeDiagnostics,
+  type GitHubReadAdapter,
+} from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
 import type {
   MigrationContext,
@@ -22,6 +25,7 @@ import type {
 } from '../core/types.js';
 import type { MigrationCheckpointManager } from '../checkpoint/manager.js';
 import { MigrationPlanner } from '../planner/planner.js';
+import { enrichModuleExecutionResult } from './execution-enricher.js';
 import { parseModuleSelectionFlags } from './module-resolver.js';
 import { RepositoryMigrationPipeline } from './pipeline.js';
 import type {
@@ -246,6 +250,8 @@ export class MigrationOrchestrator {
           moduleId: modulePlan.moduleId,
           status: 'skipped',
           durationMs: 0,
+          targetIdentifier: modulePlan.targetIdentifier,
+          scopeLevel: modulePlan.scopeLevel,
           results: [],
         });
         continue;
@@ -293,7 +299,15 @@ export class MigrationOrchestrator {
           `Executing module "${modulePlan.moduleId}" on target "${modulePlan.targetIdentifier}"`,
         );
         const result = await mod.apply(ctx, effectiveModulePlan);
-        const validated = validateModuleExecutionResult(result);
+        const enriched = enrichModuleExecutionResult(
+          result,
+          effectiveModulePlan,
+          {
+            targetIdentifier: modulePlan.targetIdentifier,
+            scopeLevel: modulePlan.scopeLevel,
+          },
+        );
+        const validated = validateModuleExecutionResult(enriched);
         if (!validated.success) {
           throw new Error(
             `Module "${modulePlan.moduleId}" returned invalid execution result: ${validated.error.issues.map((i) => i.message).join('; ')}`,
@@ -375,7 +389,9 @@ export class MigrationOrchestrator {
         if (modulePlan.moduleId === 'gei-repo') {
           failedRepoTargets.add(modulePlan.targetIdentifier);
         }
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = sanitizeDiagnostics(
+          err instanceof Error ? err.message : String(err),
+        );
         this.logger.error(
           `Module "${modulePlan.moduleId}" apply threw: ${msg}`,
         );
@@ -385,12 +401,15 @@ export class MigrationOrchestrator {
           moduleId: modulePlan.moduleId,
           status: 'failed',
           durationMs: 0,
+          targetIdentifier: modulePlan.targetIdentifier,
+          scopeLevel: modulePlan.scopeLevel,
           results: [
             {
               operationId: `${modulePlan.moduleId}-error`,
               status: 'failed',
               error: msg.slice(0, 2048),
               completedAt: new Date().toISOString(),
+              targetIdentifier: modulePlan.targetIdentifier,
             },
           ],
         };
