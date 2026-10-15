@@ -479,6 +479,139 @@ describe('Reporting & Step Summary Subsystem', () => {
       );
     });
 
+    it('accurately counts gei-repo existing targets, LFS objects/bytes, org-rulesets, org-webhooks, and post-migration-codeowners', () => {
+      const report: MigrationExecutionReport = {
+        schemaVersion: '1.0.0',
+        planId: 'plan-step-summary-accuracy',
+        executedAt: '2026-10-15T18:30:00.000Z',
+        status: 'complete',
+        exitCode: 0,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            targetIdentifier: 'demogxp-mig2/demo',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 100,
+            results: [],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'lfs',
+            targetIdentifier: 'demogxp-mig2/dummy-repo-private-lfs',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 250,
+            results: [
+              {
+                operationId: 'lfs:noop:dummy-repo-private-lfs:a.bin',
+                status: 'succeeded',
+                reason:
+                  'Git-tracked LFS binary blob a.bin (5242880 bytes) verified on target.',
+                completedAt: '2026-10-15T18:31:10.000Z',
+              },
+              {
+                operationId: 'lfs:noop:dummy-repo-private-lfs:b.bin',
+                status: 'succeeded',
+                reason:
+                  'Git-tracked LFS binary blob b.bin (10485760 bytes) verified on target.',
+                completedAt: '2026-10-15T18:31:12.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'org-rulesets',
+            targetIdentifier: 'demogxp-mig2',
+            scopeLevel: 'organization',
+            status: 'complete',
+            durationMs: 80,
+            results: [
+              {
+                operationId: 'ruleset:create-org:demogxp-mig2:org-rule-1',
+                status: 'succeeded',
+                completedAt: '2026-10-15T18:32:00.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'org-webhooks',
+            targetIdentifier: 'demogxp-mig2',
+            scopeLevel: 'organization',
+            status: 'complete',
+            durationMs: 60,
+            results: [
+              {
+                operationId: 'org-webhook:create:1',
+                status: 'succeeded',
+                completedAt: '2026-10-15T18:32:05.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'post-migration-codeowners',
+            targetIdentifier: 'demogxp-mig2/demo',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 40,
+            results: [
+              {
+                operationId: 'codeowners:noop:.github/CODEOWNERS',
+                status: 'succeeded',
+                resourceType: 'codeowners-file',
+                resourceName: '.github/CODEOWNERS',
+                operationType: 'noop',
+                completedAt: '2026-10-15T18:31:20.000Z',
+              },
+              {
+                operationId: 'codeowners:noop:.github/workflows/build.yml',
+                status: 'succeeded',
+                resourceType: 'codeowners-file',
+                resourceName: '.github/workflows/build.yml',
+                operationType: 'noop',
+                completedAt: '2026-10-15T18:31:20.000Z',
+              },
+            ],
+          },
+        ],
+      };
+
+      const summary = buildSummaryFromExecutionReport(report, {
+        sourceOrg: 'demogxp',
+        targetOrg: 'demogxp-mig2',
+      });
+
+      assert.equal(summary.completedAt, '2026-10-15T18:32:05.000Z');
+      assert.deepEqual(summary.coreTransfer?.gei, {
+        total: 1,
+        succeeded: 1,
+        failed: 0,
+        skippedReleases: 0,
+      });
+      assert.deepEqual(summary.coreTransfer?.lfs, {
+        repositoriesWithLfs: 1,
+        objectsTransferred: 2,
+        bytesTransferred: 15728640,
+      });
+      assert.deepEqual(summary.rehydration?.rulesets, {
+        planned: 1,
+        succeeded: 1,
+        failed: 0,
+      });
+      assert.deepEqual(summary.rehydration?.codeowners, {
+        planned: 1,
+        succeeded: 1,
+        failed: 0,
+      });
+      assert.deepEqual(summary.postMigration?.webhooks, {
+        reEnabled: 1,
+      });
+    });
+
     it('renders collapsible <details> block when errors, warnings, or discrepancies exceed 10 items', () => {
       const manyErrors = Array.from(
         { length: 15 },

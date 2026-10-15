@@ -230,13 +230,18 @@ export function formatResultsReadmeMarkdown(
       const modEntries = repo.moduleSummaries
         ? Object.values(repo.moduleSummaries)
         : [];
+      const activeModEntries = modEntries.filter((m) => m.status !== 'skipped');
+      const activeCount =
+        activeModEntries.length > 0
+          ? activeModEntries.length
+          : modEntries.length;
       const totalItems = modEntries.reduce(
         (acc, m) => acc + m.totalOperations,
         0,
       );
       const categoriesSummary =
         modEntries.length > 0
-          ? `${modEntries.length} categories (${totalItems} items)`
+          ? `${activeCount} categories (${totalItems} items)`
           : `${repo.stagesRun.length} stages`;
 
       lines.push(

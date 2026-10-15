@@ -847,18 +847,27 @@ jobs:
 
           if [ -f ./scans/verification-report.json ]; then
             TOTAL_DISC=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
-            PASS_RATE=$(jq '.summary.overallStatus // (if (.summary.discrepancyCount // 0) == 0 then "passed" else "failed" end)' ./scans/verification-report.json)
+            VERIFIED_MODS=$(jq '.summary.verifiedModuleCount // 0' ./scans/verification-report.json)
+            UNVERIFIED_MODS=$(jq '.summary.unverifiedModuleCount // 0' ./scans/verification-report.json)
+            PASS_RATE=$(jq -r '.summary.overallStatus // (if (.summary.discrepancyCount // 0) == 0 and (.summary.unverifiedModuleCount // 0) == 0 then "verified" else "failed" end)' ./scans/verification-report.json)
             echo "### Verification State" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Overall Status**: \`$PASS_RATE\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Verified Modules**: \`$VERIFIED_MODS\` (\`$UNVERIFIED_MODS\` unverified)" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Remaining Discrepancies**: \`$TOTAL_DISC\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
           fi
 
           if [ -d ./remediations ]; then
             echo "### Remediation History" >> "$GITHUB_STEP_SUMMARY"
+            REM_COUNT=0
             for f in ./remediations/*.json; do
               [ -e "$f" ] || continue
+              REM_COUNT=$((REM_COUNT + 1))
               echo "- Produced remediation plan: \`$f\`" >> "$GITHUB_STEP_SUMMARY"
             done
+            if [ "$REM_COUNT" -eq 0 ]; then
+              echo "- No remediation rounds required (0 discrepancies on initial verification)." >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
 
       - name: Upload Final Audit Artifacts

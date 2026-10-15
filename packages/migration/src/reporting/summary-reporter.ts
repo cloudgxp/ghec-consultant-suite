@@ -59,10 +59,27 @@ export function buildSummaryFromExecutionReport(
   options: BuildSummaryOptions = {},
 ): MigrationRunSummary {
   const startedAt = report.executedAt;
-  const completedAt = new Date().toISOString();
   const totalDurationMs =
     options.durationMs ??
     report.results.reduce((acc, r) => acc + (r.durationMs || 0), 0);
+
+  let latestOpCompletedAt: string | undefined;
+  for (const modResult of report.results) {
+    for (const op of modResult.results) {
+      if (
+        op.completedAt &&
+        (!latestOpCompletedAt || op.completedAt > latestOpCompletedAt)
+      ) {
+        latestOpCompletedAt = op.completedAt;
+      }
+    }
+  }
+  const startedMs = Date.parse(startedAt);
+  const completedAt =
+    latestOpCompletedAt ??
+    (!Number.isNaN(startedMs) && totalDurationMs > 0
+      ? new Date(startedMs + totalDurationMs).toISOString()
+      : startedAt);
 
   const errors: string[] = [];
   const warnings: string[] = [...(options.warnings ?? [])];
@@ -89,7 +106,35 @@ export function buildSummaryFromExecutionReport(
   const metadataFailures: MetadataFailureSummary[] = [];
 
   for (const modResult of report.results) {
-    const counts = countOperations(modResult.results);
+    const filteredResults = modResult.results.filter((op) => {
+      if (
+        op.operationId.startsWith('op-autolink-noop-empty-') ||
+        op.reason === 'No autolinks defined on source repository'
+      ) {
+        return false;
+      }
+      if (
+        op.operationId.startsWith('codeowners:') &&
+        op.operationType === 'noop' &&
+        !op.reason &&
+        op.resourceType === 'codeowners-file' &&
+        Boolean(op.resourceName) &&
+        !/(^|\/)CODEOWNERS$/i.test(op.resourceName ?? '')
+      ) {
+        return false;
+      }
+      return true;
+    });
+    const rawCounts = countOperations(filteredResults);
+    const counts: ModuleOpCounts =
+      modResult.moduleId === 'gei-repo' && rawCounts.planned === 0
+        ? modResult.status === 'failed'
+          ? { planned: 1, succeeded: 0, failed: 1 }
+          : modResult.status === 'complete' || modResult.status === 'partial'
+            ? { planned: 1, succeeded: 1, failed: 0 }
+            : rawCounts
+        : rawCounts;
+
     moduleBreakdown[modResult.moduleId] = accumulateCounts(
       moduleBreakdown[modResult.moduleId],
       counts,
@@ -112,7 +157,7 @@ export function buildSummaryFromExecutionReport(
     }
 
     // Collect errors with target attribution and DEC-004 sanitization
-    for (const opResult of modResult.results) {
+    for (const opResult of filteredResults) {
       if (opResult.status === 'failed' && opResult.error) {
         const targetId =
           modResult.targetIdentifier || opResult.targetIdentifier;
@@ -137,11 +182,21 @@ export function buildSummaryFromExecutionReport(
       case 'lfs':
       case 'git-lfs': {
         const prev = coreTransfer.lfs;
+        let lfsBytes = 0;
+        for (const op of filteredResults) {
+          if (op.status === 'succeeded' && op.reason) {
+            const byteMatch = /\((\d+)\s+bytes\b/i.exec(op.reason);
+            if (byteMatch?.[1]) {
+              lfsBytes += Number.parseInt(byteMatch[1], 10);
+            }
+          }
+        }
         coreTransfer.lfs = {
           repositoriesWithLfs:
-            (prev?.repositoriesWithLfs ?? 0) + counts.succeeded,
-          objectsTransferred: prev?.objectsTransferred ?? 0,
-          bytesTransferred: prev?.bytesTransferred ?? 0,
+            (prev?.repositoriesWithLfs ?? 0) + (counts.succeeded > 0 ? 1 : 0),
+          objectsTransferred:
+            (prev?.objectsTransferred ?? 0) + counts.succeeded,
+          bytesTransferred: (prev?.bytesTransferred ?? 0) + lfsBytes,
         };
         break;
       }
@@ -168,6 +223,7 @@ export function buildSummaryFromExecutionReport(
         );
         break;
       case 'rulesets':
+      case 'org-rulesets':
         rehydration.rulesets = accumulateCounts(rehydration.rulesets, counts);
         break;
       case 'branch-protection':
@@ -285,6 +341,7 @@ export function buildSummaryFromExecutionReport(
         rehydration.packages = accumulateCounts(rehydration.packages, counts);
         break;
       case 'codeowners':
+      case 'post-migration-codeowners':
         rehydration.codeowners = accumulateCounts(
           rehydration.codeowners,
           counts,
@@ -303,7 +360,8 @@ export function buildSummaryFromExecutionReport(
         };
         break;
       }
-      case 'webhooks': {
+      case 'webhooks':
+      case 'org-webhooks': {
         const prev = postMigration.webhooks;
         postMigration.webhooks = {
           reEnabled: (prev?.reEnabled ?? 0) + counts.succeeded,

@@ -895,3 +895,209 @@ test('replaces pre-migration absence/drift planning reasons with post-migration 
     1,
   );
 });
+
+test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped, counts only active categories in README, and renders verification warnings and default noop notes', () => {
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-consistency',
+    executedAt: '2026-10-15T18:30:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: [
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'org-variables',
+        targetIdentifier: 'demogxp-mig2',
+        scopeLevel: 'organization',
+        status: 'complete',
+        durationMs: 120,
+        results: [
+          {
+            operationId: 'org-variables:noop:ORG_SHARED_VAR',
+            status: 'succeeded',
+            resourceType: 'org-variable',
+            resourceName: 'ORG_SHARED_VAR',
+            operationType: 'noop',
+            completedAt: '2026-10-15T18:30:01Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'gei-repo',
+        targetIdentifier: 'demogxp-mig2/demo',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 90,
+        results: [],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'autolinks',
+        targetIdentifier: 'demogxp-mig2/demo',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 40,
+        results: [
+          {
+            operationId: 'op-autolink-noop-empty-demo',
+            status: 'succeeded',
+            resourceType: 'autolink',
+            resourceName: 'demo:autolinks',
+            operationType: 'noop',
+            reason: 'No autolinks defined on source repository',
+            completedAt: '2026-10-15T18:30:02Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'post-migration-codeowners',
+        targetIdentifier: 'demogxp-mig2/demo',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 50,
+        results: [
+          {
+            operationId: 'codeowners:noop:.github/CODEOWNERS',
+            status: 'succeeded',
+            resourceType: 'codeowners-file',
+            resourceName: '.github/CODEOWNERS',
+            operationType: 'noop',
+            completedAt: '2026-10-15T18:30:03Z',
+          },
+          {
+            operationId: 'codeowners:noop:.github/workflows/ci.yml',
+            status: 'succeeded',
+            resourceType: 'codeowners-file',
+            resourceName: '.github/workflows/ci.yml',
+            operationType: 'noop',
+            completedAt: '2026-10-15T18:30:03Z',
+          },
+        ],
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-consistency',
+    verifiedAt: '2026-10-15T18:35:00Z',
+    scopeName: 'consistency-scope',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    modules: [
+      {
+        moduleId: 'org-variables',
+        verified: true,
+        discrepancies: [],
+        warnings: ['Organization variable values are verified by name parity.'],
+      },
+      {
+        moduleId: 'gei-repo',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'autolinks',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'post-migration-codeowners',
+        verified: true,
+        discrepancies: [],
+        warnings: [
+          '[demogxp-mig2/demo] CODEOWNERS verified with pass-through team ownership.',
+        ],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 4,
+      unverifiedModuleCount: 0,
+      discrepancyCount: 0,
+    },
+  };
+
+  const results = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    executionMode: 'live',
+    generatedAt: '2026-10-15T19:00:00Z',
+    executionReport,
+    verificationReport,
+    scope: {
+      version: '1.0.0',
+      name: 'consistency-scope',
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'demo',
+          targetOrg: 'demogxp-mig2',
+          targetRepo: 'demo',
+          useGei: true,
+        },
+      ],
+    },
+  });
+
+  // 1. autolinks should have 0 items and status 'skipped'
+  const demoRecord = results.manifest.repositories[0];
+  assert.ok(demoRecord);
+  assert.equal(demoRecord.moduleSummaries?.['autolinks']?.status, 'skipped');
+  assert.equal(demoRecord.moduleSummaries?.['autolinks']?.totalOperations, 0);
+
+  // 2. post-migration-codeowners should keep .github/CODEOWNERS and filter out untouched .github/workflows/ci.yml
+  assert.equal(
+    demoRecord.moduleSummaries?.['post-migration-codeowners']?.status,
+    'complete',
+  );
+  assert.equal(
+    demoRecord.moduleSummaries?.['post-migration-codeowners']?.totalOperations,
+    1,
+  );
+  const codeownersMd =
+    results.files['repositories/demo/post-migration-codeowners.md'] ?? '';
+  assert.ok(codeownersMd.includes('`.github/CODEOWNERS`'));
+  assert.ok(!codeownersMd.includes('.github/workflows/ci.yml'));
+  assert.ok(
+    codeownersMd.includes(
+      'Configuration already matches target; verified parity.',
+    ),
+  );
+  assert.ok(codeownersMd.includes('### Module Warnings'));
+  assert.ok(
+    codeownersMd.includes(
+      'CODEOWNERS verified with pass-through team ownership.',
+    ),
+  );
+
+  // 3. gei-repo should use earliest repo operation timestamp and noop parity note
+  const geiRepoMd = results.files['repositories/demo/gei-repo.md'] ?? '';
+  assert.ok(geiRepoMd.includes('`2026-10-15T18:30:02Z`'));
+  assert.ok(geiRepoMd.includes('`noop`'));
+  assert.ok(
+    geiRepoMd.includes(
+      'Target repository already exists on destination; verified parity.',
+    ),
+  );
+
+  // 4. README should count only active (non-skipped) categories: gei-repo + post-migration-codeowners = 2 categories (2 items)
+  const readmeMd = results.files['README.md'] ?? '';
+  assert.ok(readmeMd.includes('2 categories (2 items)'));
+
+  // 5. Org module detail should include verification warnings and default noop note
+  const orgVarsMd = results.files['organization/org-variables.md'] ?? '';
+  assert.ok(orgVarsMd.includes('### Module Warnings'));
+  assert.ok(
+    orgVarsMd.includes(
+      'Organization variable values are verified by name parity.',
+    ),
+  );
+  assert.ok(
+    orgVarsMd.includes(
+      'Configuration already matches target; verified parity.',
+    ),
+  );
+});

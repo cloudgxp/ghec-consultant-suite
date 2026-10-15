@@ -95,6 +95,14 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
         this.options.teamSlugMap,
       );
 
+      const isCodeownersFile = /(^|\/)CODEOWNERS$/i.test(diff.path);
+      const hasTeamRefs =
+        diff.hasChanges ||
+        /@[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+/.test(file.decodedContent);
+      if (!isCodeownersFile && !hasTeamRefs) {
+        continue;
+      }
+
       const opType = diff.hasChanges ? 'update' : 'noop';
       if (diff.hasChanges) {
         warnings.push(
@@ -102,11 +110,21 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
         );
       }
 
+      const resourceType = isCodeownersFile
+        ? 'codeowners-file'
+        : diff.path.startsWith('.github/workflows/')
+          ? 'workflow-team-ref'
+          : 'issue-template-team-ref';
+      const reason = diff.hasChanges
+        ? `Rewrote ${diff.matches.length} team reference(s) in ${diff.path}`
+        : `Team ownership references in ${diff.path} already match target organization`;
+
       operations.push({
         id: `codeowners:${targetRepo}:${diff.path}`,
-        resourceType: 'codeowners-file',
+        resourceType,
         resourceName: diff.path,
         operation: opType,
+        reason,
         sourceState: { path: diff.path, matches: diff.matches },
         destinationCurrentState: {
           path: file.path,
@@ -185,7 +203,11 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
     return {
       schemaVersion: MIGRATION_SCHEMA_VERSION,
       moduleId: this.id,
-      status: isFailed ? 'failed' : 'complete',
+      status: isFailed
+        ? 'failed'
+        : results.length === 0
+          ? 'skipped'
+          : 'complete',
       results,
       durationMs: Date.now() - startedAt,
     };

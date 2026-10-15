@@ -151,6 +151,22 @@ function deduplicateOperationResults(
 ): OperationExecutionResult[] {
   const byKey = new Map<string, OperationExecutionResult>();
   for (const op of ops) {
+    if (
+      op.operationId.startsWith('op-autolink-noop-empty-') ||
+      op.reason === 'No autolinks defined on source repository'
+    ) {
+      continue;
+    }
+    if (
+      op.operationId.startsWith('codeowners:') &&
+      op.operationType === 'noop' &&
+      !op.reason &&
+      op.resourceType === 'codeowners-file' &&
+      Boolean(op.resourceName) &&
+      !/(^|\/)CODEOWNERS$/i.test(op.resourceName ?? '')
+    ) {
+      continue;
+    }
     const key = getCanonicalOperationDedupKey(op);
     const existing = byKey.get(key);
     if (!existing) {
@@ -445,6 +461,28 @@ function buildGranularItemsForModule(params: {
     }
     if (noteParts.length === 0 && secretFlag) {
       noteParts.push('[SEALED] Write-only secret placeholder');
+    } else if (noteParts.length === 0 && op.status === 'succeeded') {
+      if (operationType === 'noop') {
+        noteParts.push(
+          verificationStatus === 'verified'
+            ? 'Configuration already matches target; verified parity.'
+            : 'Configuration already matches target; no changes required.',
+        );
+      } else if (operationType === 'create') {
+        noteParts.push(
+          verificationStatus === 'verified'
+            ? 'Created and verified on target.'
+            : 'Created on target.',
+        );
+      } else if (operationType === 'update') {
+        noteParts.push(
+          verificationStatus === 'verified'
+            ? 'Updated and verified on target.'
+            : 'Updated on target.',
+        );
+      } else if (op.httpStatus !== undefined) {
+        noteParts.push(`HTTP ${op.httpStatus}`);
+      }
     } else if (noteParts.length === 0 && op.httpStatus !== undefined) {
       noteParts.push(`HTTP ${op.httpStatus}`);
     }
@@ -504,6 +542,7 @@ function deriveModuleStatus(
   }
   if (
     explicitStatus === 'skipped' ||
+    (results.length === 0 && discrepancyCount === 0) ||
     (results.length > 0 && skippedCount === results.length)
   ) {
     return 'skipped';
@@ -616,6 +655,9 @@ export function generateMigrationResults(
     string,
     RepositoryDiscrepancyDetail[]
   >();
+  const orgWarningsByModule = new Map<string, string[]>();
+  const repoWarnings = new Map<string, string[]>();
+  const repoModuleWarnings = new Map<string, string[]>();
 
   if (options.verificationReport?.modules) {
     for (const mod of options.verificationReport.modules) {
@@ -630,6 +672,43 @@ export function generateMigrationResults(
           knownRepoNames,
         },
       );
+
+      if (mod.warnings && mod.warnings.length > 0) {
+        if (isOrgMod) {
+          const existing = orgWarningsByModule.get(mod.moduleId) ?? [];
+          for (const w of mod.warnings) {
+            if (!existing.includes(w)) {
+              existing.push(w);
+            }
+          }
+          orgWarningsByModule.set(mod.moduleId, existing);
+        } else {
+          for (const w of mod.warnings) {
+            const bracketMatch = /^\[([^\]]+)\]\s*(.*)$/.exec(w);
+            const prefixCandidate = bracketMatch?.[1];
+            const cleanWarning = bracketMatch?.[2] || w;
+            const matchedTargetRepo = prefixCandidate
+              ? (resolveCanonicalTargetRepo(prefixCandidate) ?? prefixCandidate)
+              : options.scope?.repositories.length === 1
+                ? options.scope.repositories[0]!.targetRepo
+                : undefined;
+            if (matchedTargetRepo) {
+              const rWarns = repoWarnings.get(matchedTargetRepo) ?? [];
+              if (!rWarns.includes(cleanWarning)) {
+                rWarns.push(cleanWarning);
+              }
+              repoWarnings.set(matchedTargetRepo, rWarns);
+
+              const modKey = `${matchedTargetRepo}::${mod.moduleId}`;
+              const mWarns = repoModuleWarnings.get(modKey) ?? [];
+              if (!mWarns.includes(cleanWarning)) {
+                mWarns.push(cleanWarning);
+              }
+              repoModuleWarnings.set(modKey, mWarns);
+            }
+          }
+        }
+      }
 
       for (const disc of mod.discrepancies) {
         const detail: RepositoryDiscrepancyDetail = {
@@ -883,6 +962,7 @@ export function generateMigrationResults(
       repoNames: [options.sourceOrg, options.targetOrg],
     });
 
+    const orgModWarnings = orgWarningsByModule.get(moduleId);
     orgModuleDetailModels.set(moduleId, {
       moduleId,
       sourceOrg: options.sourceOrg,
@@ -890,6 +970,9 @@ export function generateMigrationResults(
       summary: summaryEntry,
       items,
       discrepancies,
+      ...(orgModWarnings && orgModWarnings.length > 0
+        ? { warnings: orgModWarnings }
+        : {}),
     });
   }
 
@@ -931,6 +1014,26 @@ export function generateMigrationResults(
       }
     }
 
+    // Find earliest operation completedAt across all modules for this repository
+    let earliestRepoOpCompletedAt: string | undefined;
+    for (const execList of modExecMap.values()) {
+      for (const m of execList) {
+        for (const op of m.results) {
+          if (
+            op.completedAt &&
+            (!earliestRepoOpCompletedAt ||
+              op.completedAt < earliestRepoOpCompletedAt)
+          ) {
+            earliestRepoOpCompletedAt = op.completedAt;
+          }
+        }
+      }
+    }
+    const fallbackRepoCompletedAt =
+      earliestRepoOpCompletedAt ??
+      options.executionReport?.executedAt ??
+      generatedAt;
+
     // Synthesize gei-repo module entry if no repository modules were explicitly recorded
     // or if geiMigrationId is present without a gei-repo module entry
     if (
@@ -955,7 +1058,7 @@ export function generateMigrationResults(
             ...(geiFailed && repoError
               ? { error: repoError.slice(0, 2048) }
               : {}),
-            completedAt: generatedAt,
+            completedAt: fallbackRepoCompletedAt,
             resourceType: 'repository',
             resourceName: targetRepo,
             operationType: 'create',
@@ -987,20 +1090,26 @@ export function generateMigrationResults(
           (repoStatus === 'failed' &&
             Boolean(repoError) &&
             allRepoDiscs.length === 0);
+        const alreadyPresent =
+          execList.length > 0 && !geiMigrationId && !geiFailed;
         allOps = [
           {
-            operationId: `gei-repo:transfer:${targetRepo}`,
+            operationId: alreadyPresent
+              ? `gei-repo:noop:${targetRepo}`
+              : `gei-repo:transfer:${targetRepo}`,
             status: geiFailed ? 'failed' : 'succeeded',
             ...(geiFailed && repoError
               ? { error: repoError.slice(0, 2048) }
               : {}),
-            completedAt: generatedAt,
+            completedAt: fallbackRepoCompletedAt,
             resourceType: 'repository',
             resourceName: targetRepo,
-            operationType: 'create',
+            operationType: alreadyPresent ? 'noop' : 'create',
             reason: geiMigrationId
               ? `GEI Migration ID: ${geiMigrationId}`
-              : 'Core Git repository transfer',
+              : alreadyPresent
+                ? 'Target repository already exists on destination; verified parity.'
+                : 'Core Git repository transfer',
             targetIdentifier: `${options.targetOrg}/${targetRepo}`,
           },
         ];
@@ -1009,6 +1118,12 @@ export function generateMigrationResults(
         ...(repoModuleDiscrepancies.get(`${targetRepo}::${moduleId}`) ?? []),
         ...(sourceRepo !== targetRepo
           ? (repoModuleDiscrepancies.get(`${sourceRepo}::${moduleId}`) ?? [])
+          : []),
+      ];
+      const modWarns = [
+        ...(repoModuleWarnings.get(`${targetRepo}::${moduleId}`) ?? []),
+        ...(sourceRepo !== targetRepo
+          ? (repoModuleWarnings.get(`${sourceRepo}::${moduleId}`) ?? [])
           : []),
       ];
       const isModVerifiedClean =
@@ -1088,6 +1203,7 @@ export function generateMigrationResults(
         summary: summaryEntry,
         items,
         discrepancies: modDiscs,
+        ...(modWarns.length > 0 ? { warnings: modWarns } : {}),
       });
     }
 
