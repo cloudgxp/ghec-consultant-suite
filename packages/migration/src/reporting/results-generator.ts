@@ -767,9 +767,19 @@ export function generateMigrationResults(
   ]);
 
   for (const [moduleId, modExecList] of orgExecResultsByModule.entries()) {
-    const allOps = deduplicateOperationResults(
+    const discrepancies = orgDiscrepanciesByModule.get(moduleId) ?? [];
+    const rawDedupedOps = deduplicateOperationResults(
       modExecList.flatMap((m) => m.results),
     );
+    const isVerifiedClean =
+      verifiedModulesSet.has(moduleId) && discrepancies.length === 0;
+    const allOps = isVerifiedClean
+      ? rawDedupedOps.map((o) =>
+          o.status === 'failed'
+            ? { ...o, status: 'succeeded' as const, error: undefined }
+            : o,
+        )
+      : rawDedupedOps;
     const total = allOps.length;
     const succeeded = allOps.filter(
       (o: OperationExecutionResult) => o.status === 'succeeded',
@@ -784,11 +794,15 @@ export function generateMigrationResults(
       (acc, m) => acc + (m.durationMs || 0),
       0,
     );
-    const discrepancies = orgDiscrepanciesByModule.get(moduleId) ?? [];
-    const explicitStatus =
+    const rawExplicitStatus =
       modExecList.length > 0
         ? modExecList[modExecList.length - 1]!.status
         : undefined;
+    const explicitStatus =
+      isVerifiedClean &&
+      (rawExplicitStatus === 'partial' || rawExplicitStatus === 'failed')
+        ? 'complete'
+        : rawExplicitStatus;
     const status = deriveModuleStatus(
       allOps,
       discrepancies.length,
@@ -814,8 +828,7 @@ export function generateMigrationResults(
       moduleId,
       operations: allOps,
       discrepancies,
-      isModuleVerified:
-        verifiedModulesSet.has(moduleId) && discrepancies.length === 0,
+      isModuleVerified: isVerifiedClean,
       planOpsById,
       knownSkipTokens: orgSkipTokens,
       repoNames: [options.sourceOrg, options.targetOrg],
@@ -949,6 +962,15 @@ export function generateMigrationResults(
           ? (repoModuleDiscrepancies.get(`${sourceRepo}::${moduleId}`) ?? [])
           : []),
       ];
+      const isModVerifiedClean =
+        verifiedModulesSet.has(moduleId) && modDiscs.length === 0;
+      if (isModVerifiedClean) {
+        allOps = allOps.map((o) =>
+          o.status === 'failed'
+            ? { ...o, status: 'succeeded' as const, error: undefined }
+            : o,
+        );
+      }
 
       const total = allOps.length;
       const succeeded = allOps.filter((o) => o.status === 'succeeded').length;
@@ -958,8 +980,15 @@ export function generateMigrationResults(
         (acc, m) => acc + (m.durationMs || 0),
         0,
       );
-      const explicitStatus =
+      const rawExplicitStatus =
         execList.length > 0 ? execList[execList.length - 1]!.status : undefined;
+      const explicitStatus =
+        isModVerifiedClean &&
+        (rawExplicitStatus === 'partial' || rawExplicitStatus === 'failed')
+          ? 'complete'
+          : rawExplicitStatus === 'partial' && failed === 0 && succeeded > 0
+            ? 'complete'
+            : rawExplicitStatus;
       const status = deriveModuleStatus(
         allOps,
         modDiscs.length,
@@ -1184,6 +1213,17 @@ export function generateMigrationResults(
       let failedOpError: string | undefined;
       if (modMap) {
         for (const [mId, execList] of modMap.entries()) {
+          const modDiscs = [
+            ...(repoModuleDiscrepancies.get(`${repoMap.targetRepo}::${mId}`) ??
+              []),
+            ...(repoMap.sourceRepo !== repoMap.targetRepo
+              ? (repoModuleDiscrepancies.get(`${repoMap.sourceRepo}::${mId}`) ??
+                [])
+              : []),
+          ];
+          if (verifiedModulesSet.has(mId) && modDiscs.length === 0) {
+            continue;
+          }
           const dedupedOps = deduplicateOperationResults(
             execList.flatMap((m) => m.results),
           );

@@ -222,7 +222,7 @@ export class RepoSecretsMigrationModule implements MigrationModule<RepoSecretsDa
       }
 
       try {
-        const publicKey =
+        let publicKey =
           await ctx.targetClient.readSingle<RawGitHubPublicKeyResponse>(
             {
               id: `rest.${secret.domain}.getRepoPublicKey`,
@@ -233,9 +233,61 @@ export class RepoSecretsMigrationModule implements MigrationModule<RepoSecretsDa
             },
             ctx.signal,
           );
+        if (
+          (!publicKey.data?.key_id || !publicKey.data.key) &&
+          secret.domain === 'codespaces' &&
+          publicKey.status === 404 &&
+          ctx.scope.targetType === 'ghec' &&
+          ctx.targetWriteClient
+        ) {
+          const sourceRepoName = ctx.scope.sourceRepo ?? targetRepo;
+          const srcRepo = await ctx.sourceClient.readSingle<{
+            visibility?: string;
+            private?: boolean;
+          }>(
+            {
+              id: 'rest.repos.getSourceVisibilityForCodespaces',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}',
+              pathParams: {
+                owner: ctx.scope.sourceOrg,
+                repo: sourceRepoName,
+              },
+            },
+            ctx.signal,
+          );
+          if (
+            srcRepo.status === 200 &&
+            (srcRepo.data?.visibility === 'public' ||
+              srcRepo.data?.private === false)
+          ) {
+            await ctx.targetWriteClient.mutate(
+              {
+                id: 'rest.repos.reconcilePublicVisibilityForCodespaces',
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body: { visibility: 'public', private: false },
+              },
+              ctx.signal,
+            );
+            publicKey =
+              await ctx.targetClient.readSingle<RawGitHubPublicKeyResponse>(
+                {
+                  id: `rest.${secret.domain}.getRepoPublicKey`,
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: endpointFor(secret.domain, '/public-key'),
+                  pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                },
+                ctx.signal,
+              );
+          }
+        }
         if (!publicKey.data?.key_id || !publicKey.data.key) {
           throw new Error(
-            `Target ${secret.domain} secrets public key is unavailable.`,
+            `Target ${secret.domain} secrets public key is unavailable (HTTP ${publicKey.status}).`,
           );
         }
         const value =

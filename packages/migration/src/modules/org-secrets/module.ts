@@ -112,8 +112,20 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
       target.map((secret) => [`${secret.domain}:${secret.name}`, secret]),
     );
     const operations: PlannedOperation[] = [];
+    const dynamicMap =
+      Object.keys(this.repositoryIdMap).length === 0 &&
+      source.secrets.some(
+        (s) =>
+          s.visibility === 'selected' && s.selectedRepositoryIds.length > 0,
+      )
+        ? await this.resolveDynamicRepositoryIdMap(ctx)
+        : undefined;
     for (const secret of source.secrets) {
-      const selectedRepositoryIds = this.mapped(secret, warnings).map(String);
+      const selectedRepositoryIds = this.mapped(
+        secret,
+        warnings,
+        dynamicMap,
+      ).map(String);
       const desired = { ...secret, selectedRepositoryIds };
       const current = existing.get(`${secret.domain}:${secret.name}`);
       const operation = !current
@@ -377,11 +389,15 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
       repository.id === undefined ? [] : [String(repository.id)],
     );
   }
-  private mapped(secret: OrganizationSecret, warnings: string[]): number[] {
+  private mapped(
+    secret: OrganizationSecret,
+    warnings: string[],
+    dynamicMap?: Readonly<Record<string, number>> | undefined,
+  ): number[] {
     if (secret.visibility !== 'selected') return [];
     const mapped: number[] = [];
     for (const sourceId of secret.selectedRepositoryIds) {
-      const targetId = this.repositoryIdMap[sourceId];
+      const targetId = this.repositoryIdMap[sourceId] ?? dynamicMap?.[sourceId];
       if (targetId === undefined)
         warnings.push(
           `Selected repository ${sourceId} for ${secret.domain} secret "${secret.name}" has no target repository ID mapping.`,
@@ -389,6 +405,54 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
       else mapped.push(targetId);
     }
     return [...new Set(mapped)].sort((a, b) => a - b);
+  }
+  private async resolveDynamicRepositoryIdMap(
+    ctx: MigrationContext,
+  ): Promise<Record<string, number>> {
+    const map: Record<string, number> = {};
+    try {
+      const [srcRes, tgtRes] = await Promise.all([
+        ctx.sourceClient.fetchAll<{ id?: number; name?: string }>(
+          {
+            id: 'rest.repos.listForOrg',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/repos',
+            pathParams: { org: ctx.scope.sourceOrg },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        ),
+        ctx.targetClient.fetchAll<{ id?: number; name?: string }>(
+          {
+            id: 'rest.repos.listForOrg',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/repos',
+            pathParams: { org: ctx.scope.targetOrg },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        ),
+      ]);
+      const targetByName = new Map<string, number>();
+      for (const item of tgtRes?.items ?? []) {
+        if (typeof item.id === 'number' && typeof item.name === 'string') {
+          targetByName.set(item.name.toLowerCase(), item.id);
+        }
+      }
+      for (const item of srcRes?.items ?? []) {
+        if (typeof item.id === 'number' && typeof item.name === 'string') {
+          const targetId = targetByName.get(item.name.toLowerCase());
+          if (targetId !== undefined) {
+            map[String(item.id)] = targetId;
+          }
+        }
+      }
+    } catch {
+      // Ignore if repository listing fails; fallback to empty map
+    }
+    return map;
   }
   private discoverCached(
     organization: string,

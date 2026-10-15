@@ -152,6 +152,7 @@ import { ProjectsV2MigrationModule } from '../modules/projects-v2/module.js';
 export function createDefaultModuleRegistry(): ModuleRegistry {
   const registry = new ModuleRegistry();
   registry.register(new GeiRepoMigrationModule());
+  registry.register(new RepoSettingsMigrationModule());
   registry.register(new RepoVariablesMigrationModule());
   registry.register(new OrgVariablesMigrationModule());
   registry.register(new OrgSecretsMigrationModule());
@@ -159,7 +160,6 @@ export function createDefaultModuleRegistry(): ModuleRegistry {
   registry.register(new EnvironmentsMigrationModule());
   registry.register(new WebhooksMigrationModule());
   registry.register(new OrgWebhooksMigrationModule());
-  registry.register(new RepoSettingsMigrationModule());
   registry.register(new OrgCustomPropertiesMigrationModule());
   registry.register(new RepoCustomPropertiesMigrationModule());
   registry.register(new RulesetsMigrationModule());

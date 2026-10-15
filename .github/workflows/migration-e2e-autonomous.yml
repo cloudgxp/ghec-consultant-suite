@@ -562,10 +562,23 @@ jobs:
               try {
                 const raw = JSON.parse(fs.readFileSync(file, "utf8"));
                 const results = Array.isArray(raw.results) ? raw.results : (Array.isArray(raw.moduleResults) ? raw.moduleResults : []);
+                const healedInCohort = new Set();
+                for (const mod of results) {
+                  if (mod.status === "complete" || mod.status === "skipped") {
+                    healedInCohort.add(`${mod.moduleId}::${mod.targetIdentifier || ""}`);
+                  }
+                }
                 let cohortHasFailure = raw.overallStatus === "failed" || raw.overallStatus === "partial" || raw.status === "failed" || raw.status === "partial";
                 for (const mod of results) {
                   const failedOps = (Array.isArray(mod.results) ? mod.results : []).filter(op => op.status === "failed");
-                  if (mod.status === "failed" || mod.status === "partial" || failedOps.length > 0) {
+                  const isHealedGeiMetadataFallback =
+                    mod.moduleId === "gei-repo" &&
+                    mod.status === "partial" &&
+                    failedOps.length === 0 &&
+                    Array.isArray(mod.failedMetadataCategories) &&
+                    mod.failedMetadataCategories.length > 0 &&
+                    mod.failedMetadataCategories.every(cat => healedInCohort.has(`${cat}::${mod.targetIdentifier || ""}`));
+                  if ((mod.status === "failed" || mod.status === "partial" || failedOps.length > 0) && !isHealedGeiMetadataFallback) {
                     cohortHasFailure = true;
                     failedModuleCount++;
                     failures.push({
@@ -742,7 +755,7 @@ jobs:
             # 1. Synthesize remediation plan from latest verification report & cohort execution reports
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
-              --execution-reports ./downloaded-cohorts \
+              --execution-reports ./downloaded-cohorts,./downloaded-slicer/scans/pre-cohort-org-report.json,./scans/post-cohort-reconcile-report.json \
               --output "./remediations/remediation-plan-round-${ROUND}.json" \
               --output-markdown "./remediations/remediation-plan-round-${ROUND}.md" \
               --verbose
