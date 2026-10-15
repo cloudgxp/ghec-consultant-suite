@@ -157,22 +157,25 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE_FILE: ${{ inputs.scope }}
         run: |
+          SOURCE_ORG=$(jq -r '.organizations[0].source // .repositories[0].sourceOrg // "demogxp"' "$SCOPE_FILE")
+          TARGET_ORG=$(jq -r '.organizations[0].target // .repositories[0].targetOrg // "demogxp-mig"' "$SCOPE_FILE")
           RETIRED_REPOS=(WebKit linux llvm-project nixpkgs next.js TypeScript grafana node kubernetes rust)
           for repo in "${RETIRED_REPOS[@]}"; do
             if [ -n "$GHEC_SOURCE_TOKEN" ]; then
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
                 -H "Authorization: Bearer $GHEC_SOURCE_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/demogxp/$repo" || true)
-              echo "Prune demogxp/$repo: HTTP $STATUS"
+                "https://api.github.com/repos/$SOURCE_ORG/$repo" || true)
+              echo "Prune $SOURCE_ORG/$repo: HTTP $STATUS"
             fi
             if [ -n "$GHEC_TARGET_TOKEN" ]; then
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
                 -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/demogxp-mig/$repo" || true)
-              echo "Prune demogxp-mig/$repo: HTTP $STATUS"
+                "https://api.github.com/repos/$TARGET_ORG/$repo" || true)
+              echo "Prune $TARGET_ORG/$repo: HTTP $STATUS"
             fi
           done
           if [ -n "$GHEC_TARGET_TOKEN" ]; then
@@ -181,13 +184,13 @@ jobs:
                 -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
                 -d '{}' \
-                "https://api.github.com/repos/demogxp-mig/$locked_candidate" || true)
+                "https://api.github.com/repos/$TARGET_ORG/$locked_candidate" || true)
               if echo "$PROBE_RESP" | grep -qi "locked for migration"; then
                 DEL_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
                   -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
                   -H "Accept: application/vnd.github+json" \
-                  "https://api.github.com/repos/demogxp-mig/$locked_candidate" || true)
-                echo "Deleted stale migration-locked target repo demogxp-mig/$locked_candidate: HTTP $DEL_STATUS"
+                  "https://api.github.com/repos/$TARGET_ORG/$locked_candidate" || true)
+                echo "Deleted stale migration-locked target repo $TARGET_ORG/$locked_candidate: HTTP $DEL_STATUS"
               fi
             done
           fi
@@ -206,6 +209,41 @@ jobs:
             --scope "$SCOPE_FILE" \
             --output ./scans/preflight-report.json \
             --verbose || true
+
+      - name: Bootstrap Organization-Level Prerequisites (Pre-Cohort)
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE_FILE: ${{ inputs.scope }}
+        run: |
+          mkdir -p ./scans
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const scope = JSON.parse(fs.readFileSync(process.env.SCOPE_FILE, "utf8"));
+            const orgPrereqScope = {
+              ...scope,
+              organizations: (scope.organizations || []).map(o => ({
+                ...o,
+                modules: (o.modules || []).filter(m =>
+                  m !== "org-rulesets" &&
+                  m !== "packages" &&
+                  m !== "actions-runners" &&
+                  m !== "post-migration-mannequins"
+                ),
+              })),
+              repositories: [],
+            };
+            fs.writeFileSync("./scans/org-prereq-scope.json", JSON.stringify(orgPrereqScope, null, 2), "utf8");
+          '
+          echo "Bootstrapping organization prerequisites (custom properties, custom roles, teams, variables, secrets, settings, policies, webhooks, ip-allow-lists, apps, projects-v2) before repository cohorts..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+            --scope ./scans/org-prereq-scope.json \
+            --modules org-custom-properties,custom-roles,teams,org-variables,org-secrets,org-settings,actions-policies,org-webhooks,ip-allow-lists,apps-inventory,projects-v2 \
+            --continue-on-error \
+            --verbose \
+            --output ./scans/pre-cohort-org-report.json || true
 
       - name: Diagnose Repository Sizes & Generate Slicer Matrix
         id: slice
@@ -299,15 +337,11 @@ jobs:
 
             fs.writeFileSync("./scans/slicer-matrix.json", JSON.stringify(matrixOutput, null, 2), "utf8");
 
-            // Write individual cohort scopes (run organization-level modules in the final cohort)
-            const totalCohorts = matrixOutput.matrix.include.length;
-            matrixOutput.matrix.include.forEach((cohort, idx) => {
-              const isLastCohort = idx === totalCohorts - 1;
+            // Write individual cohort scopes (org modules are bootstrapped pre-cohort and reconciled post-cohort)
+            matrixOutput.matrix.include.forEach((cohort) => {
               const cohortScope = {
                 ...scope,
-                organizations: isLastCohort
-                  ? scope.organizations
-                  : (scope.organizations || []).map(o => ({ ...o, modules: [] })),
+                organizations: (scope.organizations || []).map(o => ({ ...o, modules: [] })),
                 repositories: scope.repositories
                   .filter(r => {
                     const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
@@ -340,6 +374,7 @@ jobs:
           name: slicer-matrix-${{ github.run_id }}
           path: |
             ./scans/preflight-report.json
+            ./scans/pre-cohort-org-report.json
             ./scans/slicer-matrix.json
             ./cohorts/*-scope.json
           retention-days: 14
@@ -477,6 +512,13 @@ jobs:
         uses: ./.github/actions/setup-suite
         with:
           install-gei: 'true'
+
+      - name: Download Slicer Pre-Cohort Artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: slicer-matrix-${{ github.run_id }}
+          path: ./downloaded-slicer
 
       - name: Download Cohort Artifacts
         uses: actions/download-artifact@v4
@@ -626,10 +668,10 @@ jobs:
               }
             }
           '
-          echo "Reconciling teams, packages, and actions-runners after all cohort repositories have unlocked..."
+          echo "Reconciling all organization-scoped modules (including teams, packages, actions-runners, org-rulesets, post-migration-mannequins) after all cohort repositories have unlocked..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --scope "$INPUT_SCOPE" \
-            --modules teams,packages,actions-runners \
+            --modules org-custom-properties,custom-roles,teams,packages,actions-runners,org-rulesets,org-webhooks,org-variables,org-secrets,org-settings,actions-policies,ip-allow-lists,apps-inventory,projects-v2,post-migration-mannequins \
             --continue-on-error \
             --verbose \
             --output ./scans/post-cohort-reconcile-report.json || true
@@ -685,6 +727,11 @@ jobs:
           if [ "$PREV_REMAINING" -eq 0 ] && [ "$FAILED_COHORT_MODULES" -eq 0 ]; then
             echo "Initial verification reported 0 discrepancies and 0 cohort apply() failures. Skipping remediation loop."
             exit 0
+          fi
+
+          if [ -f ./scans/post-cohort-reconcile-report.json ]; then
+            mkdir -p ./downloaded-cohorts/scans
+            cp ./scans/post-cohort-reconcile-report.json ./downloaded-cohorts/scans/cohort-report-zz-post-reconcile.json
           fi
 
           while [ "$ROUND" -le "$MAX_ROUNDS" ]; do
@@ -756,11 +803,29 @@ jobs:
           INPUT_SCOPE: ${{ inputs.scope }}
         run: |
           if [ -f ./scans/verification-report.json ]; then
-            echo "Publishing migration audit results repository to target organization..."
+            EXEC_REPORTS="./downloaded-cohorts"
+            if [ -f ./downloaded-slicer/scans/pre-cohort-org-report.json ]; then
+              EXEC_REPORTS="./downloaded-slicer/scans/pre-cohort-org-report.json,${EXEC_REPORTS}"
+            fi
+            if [ -f ./scans/post-cohort-reconcile-report.json ]; then
+              EXEC_REPORTS="${EXEC_REPORTS},./scans/post-cohort-reconcile-report.json"
+            fi
+            echo "Publishing 3-tier migration audit results repository (migration-audit-results) to target organization..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
               --scope "$INPUT_SCOPE" \
+              --execution-reports "$EXEC_REPORTS" \
               --report ./scans/verification-report.json \
+              --repo-name migration-audit-results \
+              --output-dir ./scans/audit-results-repo \
               --append-step-summary \
+              --verbose || true
+            echo "Publishing 3-tier migration audit results repository (gei-migration-results) to target organization..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+              --scope "$INPUT_SCOPE" \
+              --execution-reports "$EXEC_REPORTS" \
+              --report ./scans/verification-report.json \
+              --repo-name gei-migration-results \
+              --output-dir ./scans/gei-results-repo \
               --verbose || true
           fi
 

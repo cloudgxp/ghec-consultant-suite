@@ -101,6 +101,8 @@ const DEFAULT_RESOURCE_TYPE_BY_MODULE: Readonly<Record<string, string>> = {
   'projects-v2': 'project-v2',
   'org-projects-v2': 'project-v2',
   'rulesets-org': 'org-ruleset',
+  'org-rulesets': 'org-ruleset',
+  'org-webhooks': 'org-webhook',
   'gei-repo': 'repository',
   'repo-variables': 'repo-variable',
   'repo-secrets': 'repo-secret',
@@ -126,6 +128,34 @@ const DEFAULT_RESOURCE_TYPE_BY_MODULE: Readonly<Record<string, string>> = {
 
 function inferDefaultResourceType(moduleId: string): string {
   return DEFAULT_RESOURCE_TYPE_BY_MODULE[moduleId] ?? moduleId;
+}
+
+/**
+ * Deduplicates OperationExecutionResult items by operationId across multiple runs
+ * (e.g. pre-cohort, cohort, post-cohort reconcile, or remediation), ensuring
+ * later 'succeeded' results supersede earlier 'skipped' or 'failed' results.
+ */
+function deduplicateOperationResults(
+  ops: readonly OperationExecutionResult[],
+): OperationExecutionResult[] {
+  const byId = new Map<string, OperationExecutionResult>();
+  for (const op of ops) {
+    const existing = byId.get(op.operationId);
+    if (!existing) {
+      byId.set(op.operationId, op);
+      continue;
+    }
+    if (op.status === 'succeeded') {
+      byId.set(op.operationId, op);
+    } else if (existing.status === 'succeeded') {
+      continue;
+    } else if (op.status === 'skipped' && existing.status === 'failed') {
+      byId.set(op.operationId, op);
+    } else {
+      byId.set(op.operationId, op);
+    }
+  }
+  return Array.from(byId.values());
 }
 
 /**
@@ -737,7 +767,9 @@ export function generateMigrationResults(
   ]);
 
   for (const [moduleId, modExecList] of orgExecResultsByModule.entries()) {
-    const allOps = modExecList.flatMap((m) => m.results);
+    const allOps = deduplicateOperationResults(
+      modExecList.flatMap((m) => m.results),
+    );
     const total = allOps.length;
     const succeeded = allOps.filter(
       (o: OperationExecutionResult) => o.status === 'succeeded',
@@ -754,7 +786,9 @@ export function generateMigrationResults(
     );
     const discrepancies = orgDiscrepanciesByModule.get(moduleId) ?? [];
     const explicitStatus =
-      modExecList.length === 1 ? modExecList[0]!.status : undefined;
+      modExecList.length > 0
+        ? modExecList[modExecList.length - 1]!.status
+        : undefined;
     const status = deriveModuleStatus(
       allOps,
       discrepancies.length,
@@ -882,7 +916,33 @@ export function generateMigrationResults(
     ]);
 
     for (const [moduleId, execList] of modExecMap.entries()) {
-      const allOps = execList.flatMap((m) => m.results);
+      let allOps = deduplicateOperationResults(
+        execList.flatMap((m) => m.results),
+      );
+      if (moduleId === 'gei-repo' && allOps.length === 0) {
+        const geiFailed =
+          execList.every((m) => m.status === 'failed') ||
+          (repoStatus === 'failed' &&
+            Boolean(repoError) &&
+            allRepoDiscs.length === 0);
+        allOps = [
+          {
+            operationId: `gei-repo:transfer:${targetRepo}`,
+            status: geiFailed ? 'failed' : 'succeeded',
+            ...(geiFailed && repoError
+              ? { error: repoError.slice(0, 2048) }
+              : {}),
+            completedAt: generatedAt,
+            resourceType: 'repository',
+            resourceName: targetRepo,
+            operationType: 'create',
+            reason: geiMigrationId
+              ? `GEI Migration ID: ${geiMigrationId}`
+              : 'Core Git repository transfer',
+            targetIdentifier: `${options.targetOrg}/${targetRepo}`,
+          },
+        ];
+      }
       const modDiscs = [
         ...(repoModuleDiscrepancies.get(`${targetRepo}::${moduleId}`) ?? []),
         ...(sourceRepo !== targetRepo
@@ -899,7 +959,7 @@ export function generateMigrationResults(
         0,
       );
       const explicitStatus =
-        execList.length === 1 ? execList[0]!.status : undefined;
+        execList.length > 0 ? execList[execList.length - 1]!.status : undefined;
       const status = deriveModuleStatus(
         allOps,
         modDiscs.length,
@@ -1120,11 +1180,29 @@ export function generateMigrationResults(
         [];
       const modMap = repoExecResultsByRepo.get(repoMap.targetRepo);
       const repoModResults = modMap ? Array.from(modMap.values()).flat() : [];
-      const failedMod = repoModResults.find(
-        (m) =>
-          m.status === 'failed' || m.results.some((r) => r.status === 'failed'),
-      );
-      const isClean = !failedMod && discrepancies.length === 0;
+      let failedModId: string | undefined;
+      let failedOpError: string | undefined;
+      if (modMap) {
+        for (const [mId, execList] of modMap.entries()) {
+          const dedupedOps = deduplicateOperationResults(
+            execList.flatMap((m) => m.results),
+          );
+          const latestStatus = execList[execList.length - 1]?.status;
+          const hasFailedOp = dedupedOps.some((r) => r.status === 'failed');
+          const isModFailed =
+            hasFailedOp ||
+            (latestStatus === 'failed' &&
+              !dedupedOps.some((r) => r.status === 'succeeded'));
+          if (isModFailed) {
+            failedModId = mId;
+            failedOpError = dedupedOps.find(
+              (r) => r.status === 'failed' && r.error,
+            )?.error;
+            break;
+          }
+        }
+      }
+      const isClean = !failedModId && discrepancies.length === 0;
       const remediation = repoRemediationCommands.get(repoMap.targetRepo) ?? [];
       const computedDuration =
         repoModResults.reduce((acc, m) => acc + (m.durationMs || 0), 0) ||
@@ -1137,9 +1215,6 @@ export function generateMigrationResults(
       const repoStatus: 'succeeded' | 'failed' = isClean
         ? 'succeeded'
         : 'failed';
-      const failedOpError = failedMod?.results.find(
-        (r) => r.status === 'failed' && r.error,
-      )?.error;
 
       const moduleSummaries = buildRepoModuleSummariesAndModels({
         sourceRepo: repoMap.sourceRepo,
@@ -1168,10 +1243,10 @@ export function generateMigrationResults(
       } else {
         const failureReason =
           failedOpError ??
-          (failedMod
-            ? `Module "${failedMod.moduleId}" failed during migration execution.`
+          (failedModId
+            ? `Module "${failedModId}" failed during migration execution.`
             : `Verification detected ${discrepancies.length} discrepancy(ies) at destination.`);
-        const failedStage = failedMod?.moduleId ?? 'verification';
+        const failedStage = failedModId ?? 'verification';
 
         repositories.push({
           sourceRepo: repoMap.sourceRepo,
