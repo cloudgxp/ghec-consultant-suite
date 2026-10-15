@@ -17,6 +17,7 @@
 
 **Learning:** When generating metrics or aggregating counts from a large dataset for UI cards (like `MetricCard`), performing multiple `.filter(...).length` and `.reduce(...)` passes over the exact same array within the render loop leads to severe performance degradation due to redundant iterations, especially when these computations are triggered repeatedly by state updates like search inputs.
 **Action:** Replace multiple sequential array passes with a single `useMemo` block that iterates through the data once, tracking all necessary metric counters in a single pass (O(N)), avoiding redundant array allocations and operations.
+
 ## 2024-05-17 - Decouple Sorting from Data Aggregation
 
 **Learning:** When sorting a list of dynamically generated complex data (e.g., aggregated metrics using `.reduce()` and `.filter()`), keeping the generation logic and sorting logic in a single `useMemo` causes the expensive operations to run unnecessarily every time the user just clicks to reverse the sorting direction.
