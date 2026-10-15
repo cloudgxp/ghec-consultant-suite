@@ -180,14 +180,9 @@ describe('SourceCredentialInspector', () => {
     const assessment = await inspector.inspect();
     assert.equal(assessment.valid, false);
     assert.equal(assessment.ssoRequired, true);
-    assert.match(
-      assessment.blockers[0]!,
-      /requires SAML Single Sign-On \(SSO\) authorization/,
-    );
-    assert.ok(
-      assessment.blockers[0]!.includes(
-        'https://github.com/orgs/example-source-org/sso',
-      ),
+    assert.equal(
+      assessment.blockers[0],
+      'Source organization "example-source-org" requires SAML Single Sign-On (SSO) authorization. Authorize your token at: https://github.com/orgs/example-source-org/sso',
     );
   });
 
