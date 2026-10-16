@@ -127,6 +127,7 @@ A reusable workflow for custom automation that needs to mint a scoped GitHub App
 - **Location**: `.github/workflows/reusable-ghec-token.yml`
 - **Trigger**: `workflow_call`
 - **Example Usage**:
+
   ```yaml
   jobs:
     get-token:

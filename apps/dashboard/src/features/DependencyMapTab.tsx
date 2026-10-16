@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import {
+  buildDependencyIndex,
   dependencyInsights,
   suggestMigrationCohorts,
   transitiveDependencies,
@@ -189,9 +190,13 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     setPrevGraph(filteredGraph);
     setCohorts(suggestMigrationCohorts(filteredGraph));
   }
-  const rows = filteredGraph.nodes.filter(
-    (n) => !query || n.label.toLowerCase().includes(query.toLowerCase()),
-  );
+  // ⚡ Bolt: Memoize rows filtering and extract toLowerCase to avoid O(N) string operations on every render
+  const rows = useMemo(() => {
+    const q = query?.toLowerCase() ?? '';
+    return filteredGraph.nodes.filter(
+      (n) => !q || n.label.toLowerCase().includes(q),
+    );
+  }, [filteredGraph.nodes, query]);
 
   // ⚡ Bolt: Optimize node lookups from O(N) to O(1) during selection and rendering
   const nodeMap = useMemo(
@@ -199,16 +204,21 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     [filteredGraph.nodes],
   );
 
+  // ⚡ Bolt: Optimize graph edge lookups using precomputed indexes to replace repeated O(E) filters
+  const graphIndex = useMemo(
+    () => buildDependencyIndex(filteredGraph),
+    [filteredGraph],
+  );
+
   const selected = selectedId ? (nodeMap.get(selectedId) ?? null) : null;
-  const outgoing = selected
-    ? filteredGraph.edges.filter((e) => e.fromNodeId === selected.id)
-    : [];
-  const incoming = selected
-    ? filteredGraph.edges.filter((e) => e.toNodeId === selected.id)
-    : [];
-  const transitive = selected
-    ? transitiveDependencies(filteredGraph, selected.id, depth)
-    : [];
+  const outgoing = selected ? (graphIndex.outgoing.get(selected.id) ?? []) : [];
+  const incoming = selected ? (graphIndex.incoming.get(selected.id) ?? []) : [];
+  // ⚡ Bolt: Memoize expensive graph traversals based on selection
+  const transitive = useMemo(
+    () =>
+      selected ? transitiveDependencies(filteredGraph, selected.id, depth) : [],
+    [selected, filteredGraph, depth],
+  );
   const columns: readonly VirtualizedColumn<DependencyNode>[] = [
     {
       header: 'Repository / node',
@@ -239,13 +249,11 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     },
     {
       header: 'Fan in',
-      cell: (n) =>
-        filteredGraph.edges.filter((e) => e.toNodeId === n.id).length,
+      cell: (n) => graphIndex.incoming.get(n.id)?.length ?? 0,
     },
     {
       header: 'Fan out',
-      cell: (n) =>
-        filteredGraph.edges.filter((e) => e.fromNodeId === n.id).length,
+      cell: (n) => graphIndex.outgoing.get(n.id)?.length ?? 0,
     },
     {
       header: 'Signals',

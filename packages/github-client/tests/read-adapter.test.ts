@@ -36,7 +36,16 @@ test('rejects unverified REST operations and GraphQL mutations before network ac
       'mutation { createRepository(input: {}) { clientMutationId } }',
     ),
   );
+  assert.throws(() =>
+    assertReadOnlyGraphQL(
+      'query { viewer { login } } , mutation { createRepository(input: {}) { clientMutationId } }',
+    ),
+  );
   assert.throws(() => assertReadOnlyGraphQL('subscription { ping }'));
+  assert.throws(
+    () => assertReadOnlyGraphQL('not valid graphql {{{'),
+    /GraphQL validation failed/,
+  );
   assert.doesNotThrow(() =>
     assertReadOnlyGraphQL('query { viewer { login } }'),
   );

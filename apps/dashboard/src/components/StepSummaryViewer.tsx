@@ -216,11 +216,17 @@ export const StepSummaryViewer: React.FC<StepSummaryViewerProps> = ({
         </div>
 
         {/* View Switcher Tabs */}
-        <div className="flex rounded border border-[var(--borderColor-default)] overflow-hidden text-xs">
+        <div
+          className="flex rounded border border-[var(--borderColor-default)] overflow-hidden text-xs"
+          role="tablist"
+          aria-label="Step Summary Views"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'summary'}
             onClick={() => setActiveTab('summary')}
-            className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--focus-outlineColor)] ${
               activeTab === 'summary'
                 ? 'bg-[var(--bgColor-accent-emphasis)] text-[var(--fgColor-onEmphasis)]'
                 : 'bg-[var(--canvas-default)] text-[var(--fgColor-muted)] hover:text-[var(--fgColor-default)]'
@@ -230,8 +236,10 @@ export const StepSummaryViewer: React.FC<StepSummaryViewerProps> = ({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'breakdown'}
             onClick={() => setActiveTab('breakdown')}
-            className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--focus-outlineColor)] ${
               activeTab === 'breakdown'
                 ? 'bg-[var(--bgColor-accent-emphasis)] text-[var(--fgColor-onEmphasis)]'
                 : 'bg-[var(--canvas-default)] text-[var(--fgColor-muted)] hover:text-[var(--fgColor-default)]'
@@ -242,8 +250,10 @@ export const StepSummaryViewer: React.FC<StepSummaryViewerProps> = ({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'artifacts'}
             onClick={() => setActiveTab('artifacts')}
-            className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 font-medium transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--focus-outlineColor)] ${
               activeTab === 'artifacts'
                 ? 'bg-[var(--bgColor-accent-emphasis)] text-[var(--fgColor-onEmphasis)]'
                 : 'bg-[var(--canvas-default)] text-[var(--fgColor-muted)] hover:text-[var(--fgColor-default)]'

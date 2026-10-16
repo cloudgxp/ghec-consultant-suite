@@ -28,7 +28,7 @@ export function sanitizeCsvCell(value: unknown): string {
   let str = String(value);
 
   // Neutralize formula injection
-  if (/^[=+\-@\t\r]/.test(str)) {
+  if (/^[\t\r\n=+\-@]/.test(str)) {
     str = `'${str}`;
   }
 
