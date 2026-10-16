@@ -717,6 +717,36 @@
         "autolinks",
         "discussions"
       ]
+    },
+    {
+      "sourceOrg": "demogxp",
+      "sourceRepo": "release-heavy-benchmark",
+      "targetOrg": "demogxp-mig3",
+      "targetRepo": "release-heavy-benchmark",
+      "useGei": true,
+      "skipReleases": true,
+      "lfsStrategy": "dual-remote-stream",
+      "modules": [
+        "gei-repo",
+        "repo-variables",
+        "repo-secrets",
+        "environments",
+        "webhooks",
+        "repo-settings",
+        "repo-custom-properties",
+        "rulesets",
+        "branch-protection",
+        "post-migration-codeowners",
+        "security",
+        "releases",
+        "deploy-keys",
+        "collaborators",
+        "lfs",
+        "issues",
+        "pull-requests",
+        "autolinks",
+        "discussions"
+      ]
     }
   ],
   "identityMapping": {

@@ -167,4 +167,72 @@ describe('Scale-Adaptive Repository Sizing & Strategy Classification', () => {
     assert.equal(massiveCohort.useMirrorPush, true);
     assert.equal(massiveCohort.requiresHeadroomCheck, true);
   });
+
+  it('assessRepositorySizing paginates all releases via fetchAll and computes >10 GiB total assets', async () => {
+    const { assessRepositorySizing } =
+      await import('../../src/orchestrator/sizing.js');
+    const ONE_GIB = 1024 * 1024 * 1024;
+    const simulatedReleases = Array.from({ length: 42 }, (_, idx) => ({
+      assets:
+        idx < 11 ? [{ size: ONE_GIB }, { size: 128 }] : [{ size: 1024 * 1024 }],
+    }));
+
+    let fetchAllCalled = false;
+    const mockClient = {
+      async fetchAll<T>(descriptor: {
+        id: string;
+        queryParams?: Record<string, unknown>;
+      }) {
+        if (descriptor.id === 'rest.repos.list-releases') {
+          fetchAllCalled = true;
+          assert.equal(descriptor.queryParams?.per_page, 100);
+          return {
+            items: simulatedReleases as unknown as readonly T[],
+            pageCount: 1,
+            rateLimitRemaining: 4999,
+          };
+        }
+        return {
+          items: [] as readonly T[],
+          pageCount: 0,
+          rateLimitRemaining: 4999,
+        };
+      },
+      async readSingle<T>(descriptor: { id: string }) {
+        if (descriptor.id === 'rest.repos.get') {
+          return {
+            status: 200,
+            headers: {},
+            data: {
+              size: 2048,
+              visibility: 'public',
+              private: false,
+            } as unknown as T,
+          };
+        }
+        return {
+          status: 404,
+          headers: {},
+          data: {} as unknown as T,
+        };
+      },
+    };
+
+    const profile = await assessRepositorySizing(
+      mockClient as unknown as Parameters<typeof assessRepositorySizing>[0],
+      'demogxp',
+      'release-heavy-benchmark',
+    );
+
+    assert.equal(fetchAllCalled, true);
+    assert.equal(profile.repositoryName, 'release-heavy-benchmark');
+    assert.equal(profile.releaseCount, 42);
+    assert.ok(profile.releaseAssetsTotalBytes > TEN_GIB);
+
+    const classified = classifyRepository(profile);
+    assert.equal(classified.tier, 'large-releases');
+    assert.equal(classified.useGei, true);
+    assert.equal(classified.skipReleases, true);
+    assert.equal(classified.useReleaseFallback, true);
+  });
 });
