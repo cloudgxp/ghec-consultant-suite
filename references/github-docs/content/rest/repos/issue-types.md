@@ -12,3 +12,27 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List issue types for a repository
+
+`GET /repos/{owner}/{repo}/issue-types`
+
+Lists enabled issue types inherited from the repository owner.
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+Fine-grained access tokens require the "Metadata" repository permission (read).
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |

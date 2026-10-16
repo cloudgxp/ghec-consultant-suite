@@ -14,9 +14,13 @@ export class LfsStreamer implements LfsStreamerInterface {
     signal?: AbortSignal,
     token?: string,
   ): Promise<LfsBatchResponse> {
+    let baseEndpoint = repoEndpoint;
+    while (baseEndpoint.endsWith('/')) {
+      baseEndpoint = baseEndpoint.slice(0, -1);
+    }
     const url = repoEndpoint.endsWith('/info/lfs/objects/batch')
       ? repoEndpoint
-      : `${repoEndpoint.replace(/\/+$/, '')}/info/lfs/objects/batch`;
+      : `${baseEndpoint}/info/lfs/objects/batch`;
 
     const headers: Record<string, string> = {
       Accept: 'application/vnd.git-lfs+json',

@@ -326,29 +326,23 @@ export const rulesetsProvisioner: ItemProvisioner = {
   async provision(ctx: ItemProvisionContext): Promise<ProvisionResult> {
     const org = ctx.organization;
     const repo = ctx.repository ?? `${ctx.prefix}synthetic-source-repo`;
-    const rulesetName = `${ctx.prefix}Main-Protection-Ruleset`;
+    const branchRulesetName = `${ctx.prefix}Main-Protection-Ruleset`;
+    const tagRulesetName = `${ctx.prefix}Release-Tag-Ruleset`;
     if (ctx.dryRun) {
       return {
         action: 'dry-run-create',
-        resourceIdentifier: rulesetName,
-        details: 'Would create modern repository ruleset',
+        resourceIdentifier: `${branchRulesetName}, ${tagRulesetName}`,
+        details: 'Would create modern branch and tag repository rulesets',
       };
     }
     const list = await ctx.client.request<Array<{ id: number; name: string }>>(
       `/repos/${org}/${repo}/rulesets`,
     );
-    const existing = list.data?.find?.((r) => r.name === rulesetName);
-    if (existing) {
-      return {
-        action: 'updated',
-        resourceIdentifier: rulesetName,
-        details: 'Ruleset already exists',
-      };
-    }
-    const create = await ctx.client.request(`/repos/${org}/${repo}/rulesets`, {
-      method: 'POST',
-      body: {
-        name: rulesetName,
+    const existingList = Array.isArray(list.data) ? list.data : [];
+
+    const rulesetDefs = [
+      {
+        name: branchRulesetName,
         target: 'branch',
         enforcement: 'active',
         conditions: {
@@ -369,34 +363,85 @@ export const rulesetsProvisioner: ItemProvisioner = {
             },
           },
         ],
+        bypass_actors: [
+          {
+            actor_id: 5,
+            actor_type: 'RepositoryRole',
+            bypass_mode: 'always',
+          },
+        ],
       },
-    });
-    if (!create.ok) {
-      return {
-        action: 'failed',
-        resourceIdentifier: rulesetName,
-        error: `Failed to create ruleset: status ${create.status}`,
-      };
+      {
+        name: tagRulesetName,
+        target: 'tag',
+        enforcement: 'active',
+        conditions: {
+          ref_name: {
+            include: ['refs/tags/v*'],
+            exclude: [],
+          },
+        },
+        rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
+        bypass_actors: [
+          {
+            actor_id: 5,
+            actor_type: 'RepositoryRole',
+            bypass_mode: 'always',
+          },
+        ],
+      },
+    ];
+
+    let createdCount = 0;
+    for (const def of rulesetDefs) {
+      const existing = existingList.find((r) => r.name === def.name);
+      if (existing) {
+        continue;
+      }
+      const create = await ctx.client.request(
+        `/repos/${org}/${repo}/rulesets`,
+        {
+          method: 'POST',
+          body: def,
+        },
+      );
+      if (!create.ok) {
+        return {
+          action: 'failed',
+          resourceIdentifier: def.name,
+          error: `Failed to create ruleset: status ${create.status}`,
+        };
+      }
+      createdCount++;
     }
+
     return {
-      action: 'created',
-      resourceIdentifier: rulesetName,
-      details: 'Created repository ruleset protecting default branch',
+      action: createdCount > 0 ? 'created' : 'updated',
+      resourceIdentifier: `${branchRulesetName}, ${tagRulesetName}`,
+      details:
+        createdCount > 0
+          ? 'Created branch and tag repository rulesets with bypass actors'
+          : 'Branch and tag rulesets already exist',
     };
   },
   async cleanup(ctx: ItemProvisionContext): Promise<void> {
     const org = ctx.organization;
     const repo = ctx.repository ?? `${ctx.prefix}synthetic-source-repo`;
-    const rulesetName = `${ctx.prefix}Main-Protection-Ruleset`;
+    const namesToDelete = new Set([
+      `${ctx.prefix}Main-Protection-Ruleset`,
+      `${ctx.prefix}Release-Tag-Ruleset`,
+    ]);
     const list = await ctx.client.request<Array<{ id: number; name: string }>>(
       `/repos/${org}/${repo}/rulesets`,
     );
-    const existing = list.data?.find?.((r) => r.name === rulesetName);
-    if (existing) {
-      await ctx.client.request(
-        `/repos/${org}/${repo}/rulesets/${existing.id}`,
-        { method: 'DELETE' },
-      );
+    if (Array.isArray(list.data)) {
+      for (const r of list.data) {
+        if (namesToDelete.has(r.name)) {
+          await ctx.client.request(`/repos/${org}/${repo}/rulesets/${r.id}`, {
+            method: 'DELETE',
+          });
+        }
+      }
     }
   },
 };

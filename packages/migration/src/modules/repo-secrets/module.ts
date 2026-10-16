@@ -280,11 +280,11 @@ export class RepoSecretsMigrationModule implements MigrationModule<RepoSecretsDa
           completedAt: new Date().toISOString(),
         });
       } catch (error) {
-        void error;
+        const detail = error instanceof Error ? error.message : String(error);
         results.push({
           operationId: operation.id,
           status: 'failed',
-          error: 'Secret population or target update failed.',
+          error: `Secret population or target update failed: ${detail}`,
           completedAt: new Date().toISOString(),
         });
       }

@@ -14,3 +14,225 @@ category:
 You can use these endpoints to upload storage and deployment records for software that your organization builds with {% data variables.product.prodname_actions %}. The records are displayed on the organization's {% data variables.product.virtual_registry %}. See [AUTOTITLE](/code-security/concepts/supply-chain-security/linked-artifacts).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Create an artifact deployment record
+
+`POST /orgs/{org}/artifacts/metadata/deployment-record`
+
+Create or update deployment records for an artifact associated
+with an organization.
+This endpoint allows you to record information about a specific
+artifact, such as its name, digest, environments, cluster, and
+deployment.
+The deployment name has to be uniqe within a cluster (i.e a
+combination of logical, physical environment and cluster) as it
+identifies unique deployment.
+Multiple requests for the same combination of logical, physical
+environment, cluster and deployment name will only create one
+record, successive request will update the existing record.
+This allows for a stable tracking of a deployment where the actual
+deployed artifact can change over time.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the artifact. |
+| `digest` | `string` | Yes | The hex encoded digest of the artifact. |
+| `version` | `string` | No | The artifact version. |
+| `status` | `string` | Yes | The status of the artifact. Can be either deployed or decommissioned. |
+| `logical_environment` | `string` | Yes | The stage of the deployment. |
+| `physical_environment` | `string` | No | The physical region of the deployment. |
+| `cluster` | `string` | No | The deployment cluster. |
+| `deployment_name` | `string` | Yes | The unique identifier for the deployment represented by the new record. To accommodate differing containers and namespaces within a cluster, the following format is recommended: {namespaceName}-{deploymentName}-{containerName}. |
+| `tags` | `object` | No | The tags associated with the deployment. |
+| `runtime_risks` | `array of strings` | No | A list of runtime risks associated with the deployment. Supported values are: `critical-resource`, `internet-exposed`, `lateral-movement`, `sensitive-data` |
+| `github_repository` | `string` | No | The name of the GitHub repository associated with the artifact. This should be used when there are no provenance attestations available for the artifact. The repository must belong to the organization specified in the path parameter. If a provenance attestation is available for the artifact, the API will use the repository information from the attestation instead of this parameter. |
+| `return_records` | `boolean` | No | If true, the endpoint will return the created or updated record in the response body. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Artifact deployment record stored successfully. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set cluster deployment records
+
+`POST /orgs/{org}/artifacts/metadata/deployment-record/cluster/{cluster}`
+
+Set deployment records for a given cluster.
+If proposed records in the 'deployments' field have identical 'cluster', 'logical_environment',
+'physical_environment', and 'deployment_name' values as existing records, the existing records will be updated.
+If no existing records match, new records will be created.
+Note: Artifacts are uniquely identified by the combination of their repository and digest fields. If two entries in the deployments
+array resolve to the same repository and have identical digest fields but differing name and version fields, the endpoint will use
+the artifact name and version from the record processed first, since a single artifact (identified by repository and digest) can
+only have one name and version.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `cluster` | path | `string` | Yes | The cluster name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `logical_environment` | `string` | Yes | The stage of the deployment. |
+| `physical_environment` | `string` | No | The physical region of the deployment. |
+| `deployments` | `array of objects` | Yes | The list of deployments to record. |
+| `partial_success` | `boolean` | No | When enabled, deployments associated with repositories the actor can write to are processed while deployments associated with repositories that cannot be resolved or written to by the actor are skipped and reported in the `errors` array. When false (the default), the endpoint returns an error if any targeted repository cannot be resolved, the actor lacks write access, or no matching attestation can be found. |
+| `return_records` | `boolean` | No | If true, the endpoint will return the set records in the response body |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Deployment records created or updated successfully. |
+| `207` | This response format is only returned when `partial_success` is set to true in the request body. Successfully processed deployments are included in the `deployment_records` field. Records that could not be processed and were skipped because of unresolvable repositories, missing actor permissions, or lack of a matching attestation are included in the `errors` field. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create a cluster deployment records job
+
+`POST /orgs/{org}/artifacts/metadata/deployment-record/cluster/{cluster}/jobs`
+
+Create a background job to set deployment records for a given cluster.
+Performs validation and permission checks synchronously, returning rejected
+deployments immediately, then enqueues a background job for the actual
+deployment updates. Use the companion GET endpoint to poll for job status.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `cluster` | path | `string` | Yes | The cluster name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `logical_environment` | `string` | Yes | The stage of the deployment. |
+| `physical_environment` | `string` | No | The physical region of the deployment. |
+| `deployments` | `array of objects` | Yes | The list of deployments to record. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Job created successfully. Authorized deployments will be processed in the background. |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `409` | A job is already in progress for this cluster. |
+
+## Get cluster deployment records job status
+
+`GET /orgs/{org}/artifacts/metadata/deployment-record/cluster/{cluster}/jobs/{job_id}`
+
+Get the status and results of a previously created cluster deployment records job.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `cluster` | path | `string` | Yes | The cluster name. |
+| `job_id` | path | `integer` | Yes | The ID of the job. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Job status retrieved successfully. |
+| `404` | Resource not found |
+
+## Create artifact metadata storage record
+
+`POST /orgs/{org}/artifacts/metadata/storage-record`
+
+Create metadata storage records for artifacts associated with an organization.
+This endpoint will create a new artifact storage record on behalf of any artifact matching the provided digest and
+associated with a repository owned by the organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the artifact. |
+| `digest` | `string` | Yes | The digest of the artifact (algorithm:hex-encoded-digest). |
+| `version` | `string` | No | The artifact version. |
+| `artifact_url` | `string` | No | The URL where the artifact is stored. |
+| `path` | `string` | No | The path of the artifact. |
+| `registry_url` | `string` | Yes | The base URL of the artifact registry. |
+| `repository` | `string` | No | The repository name within the registry. |
+| `status` | `string` | No | The status of the artifact (e.g., active, inactive). |
+| `github_repository` | `string` | No | The name of the GitHub repository associated with the artifact. This should be used when there are no provenance attestations available for the artifact. The repository must belong to the organization specified in the path parameter. If a provenance attestation is available for the artifact, the API will use the repository information from the attestation instead of this parameter. |
+| `return_records` | `boolean` | No | If true, the endpoint will return the created record in the response body. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Artifact metadata storage record stored successfully. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## List artifact deployment records
+
+`GET /orgs/{org}/artifacts/{subject_digest}/metadata/deployment-records`
+
+List deployment records for an artifact metadata associated with an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `subject_digest` | path | `string` | Yes | The SHA256 digest of the artifact, in the form `sha256:HEX_DIGEST`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Successful response |
+
+## List artifact storage records
+
+`GET /orgs/{org}/artifacts/{subject_digest}/metadata/storage-records`
+
+List artifact storage records with a given subject digest for repositories owned by an organization.
+
+Results are filtered by the authenticated user's permissions; records for repositories the user cannot read are omitted. Fine-grained access tokens require the `artifact-metadata:read` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `subject_digest` | path | `string` | Yes | The parameter should be set to the attestation's subject's SHA256 digest, in the form `sha256:HEX_DIGEST`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

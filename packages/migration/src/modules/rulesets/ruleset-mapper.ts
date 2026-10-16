@@ -40,6 +40,50 @@ export function areConditionsEqual(
     return false;
   }
 
+  const aRepoInc = normalizeArray(a.repository_name?.include);
+  const bRepoInc = normalizeArray(b.repository_name?.include);
+  if (
+    aRepoInc.length !== bRepoInc.length ||
+    aRepoInc.some((val, idx) => val !== bRepoInc[idx])
+  ) {
+    return false;
+  }
+
+  const aRepoExc = normalizeArray(a.repository_name?.exclude);
+  const bRepoExc = normalizeArray(b.repository_name?.exclude);
+  if (
+    aRepoExc.length !== bRepoExc.length ||
+    aRepoExc.some((val, idx) => val !== bRepoExc[idx])
+  ) {
+    return false;
+  }
+
+  if (
+    Boolean(a.repository_name?.protected) !==
+    Boolean(b.repository_name?.protected)
+  ) {
+    return false;
+  }
+
+  const aRepoIds = [...(a.repository_id?.repository_ids ?? [])].sort(
+    (x, y) => x - y,
+  );
+  const bRepoIds = [...(b.repository_id?.repository_ids ?? [])].sort(
+    (x, y) => x - y,
+  );
+  if (
+    aRepoIds.length !== bRepoIds.length ||
+    aRepoIds.some((val, idx) => val !== bRepoIds[idx])
+  ) {
+    return false;
+  }
+
+  const aProp = JSON.stringify(a.repository_property ?? null);
+  const bProp = JSON.stringify(b.repository_property ?? null);
+  if (aProp !== bProp) {
+    return false;
+  }
+
   return true;
 }
 

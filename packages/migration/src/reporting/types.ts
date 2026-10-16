@@ -45,6 +45,27 @@ export interface RehydrationSummary {
   readonly rulesets?: ModuleOpCounts | undefined;
   readonly branchProtection?: ModuleOpCounts | undefined;
   readonly teams?: ModuleOpCounts | undefined;
+  readonly repoSettings?: ModuleOpCounts | undefined;
+  readonly orgSettings?: ModuleOpCounts | undefined;
+  readonly orgVariables?: ModuleOpCounts | undefined;
+  readonly orgSecrets?: ModuleOpCounts | undefined;
+  readonly customRoles?: ModuleOpCounts | undefined;
+  readonly orgCustomProperties?: ModuleOpCounts | undefined;
+  readonly repoCustomProperties?: ModuleOpCounts | undefined;
+  readonly collaborators?: ModuleOpCounts | undefined;
+  readonly deployKeys?: ModuleOpCounts | undefined;
+  readonly autolinks?: ModuleOpCounts | undefined;
+  readonly discussions?: ModuleOpCounts | undefined;
+  readonly issues?: ModuleOpCounts | undefined;
+  readonly pullRequests?: ModuleOpCounts | undefined;
+  readonly projectsV2?: ModuleOpCounts | undefined;
+  readonly actionsPolicies?: ModuleOpCounts | undefined;
+  readonly actionsRunners?: ModuleOpCounts | undefined;
+  readonly ipAllowLists?: ModuleOpCounts | undefined;
+  readonly appsInventory?: ModuleOpCounts | undefined;
+  readonly packages?: ModuleOpCounts | undefined;
+  readonly codeowners?: ModuleOpCounts | undefined;
+  readonly security?: ModuleOpCounts | undefined;
 }
 
 export interface PostMigrationSummary {
@@ -88,6 +109,8 @@ export interface MigrationRunSummary {
   readonly coreTransfer?: CoreTransferSummary | undefined;
   readonly rehydration?: RehydrationSummary | undefined;
   readonly postMigration?: PostMigrationSummary | undefined;
+  readonly moduleBreakdown?:
+    Readonly<Record<string, ModuleOpCounts>> | undefined;
   readonly verification?: VerificationSummary | undefined;
   readonly metadataFailures?: readonly MetadataFailureSummary[] | undefined;
   readonly warnings: readonly string[];
@@ -98,4 +121,5 @@ export interface StepSummaryOptions {
   readonly title?: string | undefined;
   readonly sanitizeFormulas?: boolean | undefined;
   readonly includeDetails?: boolean | undefined;
+  readonly diagnosticLogPath?: string | undefined;
 }

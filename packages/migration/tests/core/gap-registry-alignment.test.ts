@@ -7,7 +7,7 @@ test('every registered migration module is represented in the gap ledger catalog
   const registry = createDefaultModuleRegistry();
   const registeredIds = new Set(registry.getAll().map((m) => m.id));
 
-  assert.equal(registeredIds.size, 32);
+  assert.equal(registeredIds.size, 34);
 
   const ledgerImplementedIds = new Set(
     GAP_LEDGER_CATALOG.filter((e) => e.existingModuleId).map(

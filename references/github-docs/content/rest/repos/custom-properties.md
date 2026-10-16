@@ -19,3 +19,58 @@ category:
 You can use the REST API to view the custom properties that were assigned to a repository by the organization that owns the repository. For more information, see [AUTOTITLE](/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). For more information about the REST API endpoints to manage custom properties, see [AUTOTITLE](/rest/orgs/custom-properties).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get all custom property values for a repository
+
+`GET /repos/{owner}/{repo}/properties/values`
+
+Gets all custom property values that are set for a repository.
+Users with read access to the repository can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update custom property values for a repository
+
+`PATCH /repos/{owner}/{repo}/properties/values`
+
+Create new or update existing custom property values for a repository.
+Using a value of `null` for a custom property will remove or 'unset' the property value from the repository.
+
+Repository admins and other users with the repository-level "edit custom property values" fine-grained permission can use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `properties` | `array of objects` | Yes | A list of custom property names and associated values to apply to the repositories. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when custom property values are successfully created or updated |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

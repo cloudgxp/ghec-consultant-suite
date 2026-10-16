@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ModuleRegistry,
+  OrgRulesetsMigrationModule,
   RulesetsMigrationModule,
   type GitHubRuleset,
   type MigrationContext,
@@ -11,6 +12,7 @@ import {
 import type {
   GitHubReadAdapter,
   GraphQLResponse,
+  ReadOperation,
   ReadPage,
 } from '@ghec/github-client';
 
@@ -320,4 +322,191 @@ test('RulesetsMigrationModule verify detects matching configuration and discrepa
   assert.equal(mismatchRes.verified, false);
   assert.equal(mismatchRes.discrepancies.length, 1);
   assert.match(mismatchRes.discrepancies[0]!.message, /missing on destination/);
+});
+
+test('RulesetsMigrationModule hydrates ruleset details via GET .../rulesets/{id} when list returns summary items', async () => {
+  const module = new RulesetsMigrationModule();
+  const readPaths: string[] = [];
+
+  const summaryOnlyItem: GitHubRuleset = {
+    id: 501,
+    name: 'branch-gov',
+    target: 'branch',
+    enforcement: 'active',
+    source_type: 'Repository',
+  };
+
+  const fullDetailItem: GitHubRuleset = {
+    ...summaryOnlyItem,
+    conditions: {
+      ref_name: {
+        include: ['~DEFAULT_BRANCH'],
+        exclude: [],
+      },
+    },
+    rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
+    bypass_actors: [
+      {
+        actor_id: 5,
+        actor_type: 'RepositoryRole',
+        bypass_mode: 'always',
+      },
+    ],
+  };
+
+  const detailAdapter: GitHubReadAdapter = {
+    async readSingle<T>(op: ReadOperation) {
+      readPaths.push(op.path ?? op.id);
+      if (op.path?.endsWith('/rulesets/501')) {
+        return {
+          data: fullDetailItem as unknown as T,
+          status: 200,
+          observedAt: new Date().toISOString(),
+        };
+      }
+      return {
+        data: [summaryOnlyItem] as unknown as T,
+        status: 200,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async readPage<T>(): Promise<ReadPage<T>> {
+      return {
+        items: [],
+        nextCursor: null,
+        status: 200,
+        observedAt: new Date().toISOString(),
+        remainingRequests: null,
+        resetAt: null,
+      };
+    },
+    async fetchAll<T>() {
+      return {
+        items: [] as readonly T[],
+        observedAt: new Date().toISOString(),
+        complete: true,
+      };
+    },
+    async queryGraphQL<T>(): Promise<GraphQLResponse<T>> {
+      return { data: {} as T, observedAt: new Date().toISOString() };
+    },
+  };
+
+  const ctx: MigrationContext = {
+    runId: 'test-detail-hydration',
+    scope: {
+      level: 'repository',
+      sourceOrg: 'src-org',
+      targetOrg: 'dst-org',
+      sourceRepo: 'repo-a',
+      targetRepo: 'repo-a',
+    },
+    sourceClient: detailAdapter,
+    targetClient: new MockReadAdapter([]),
+    signal: new AbortController().signal,
+    dryRun: true,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+
+  const discovered = await module.discover(ctx);
+  assert.equal(discovered.rulesets.length, 1);
+  assert.ok(readPaths.includes('/repos/src-org/repo-a/rulesets/501'));
+  assert.equal(discovered.rulesets[0]!.rules?.length, 2);
+  assert.deepEqual(discovered.rulesets[0]!.conditions?.ref_name?.include, [
+    '~DEFAULT_BRANCH',
+  ]);
+  assert.equal(discovered.rulesets[0]!.bypass_actors?.length, 1);
+});
+
+test('OrgRulesetsMigrationModule executes full 4-stage lifecycle at organization scope', async () => {
+  const orgModule = new OrgRulesetsMigrationModule();
+  assert.equal(orgModule.id, 'org-rulesets');
+  assert.equal(orgModule.scopeLevel, 'organization');
+  assert.deepEqual(orgModule.dependencies, ['teams', 'custom-roles']);
+
+  const orgRuleset: GitHubRuleset = {
+    id: 701,
+    name: 'org-wide-main-protection',
+    target: 'branch',
+    enforcement: 'active',
+    source_type: 'Organization',
+    conditions: {
+      ref_name: {
+        include: ['~DEFAULT_BRANCH'],
+        exclude: [],
+      },
+      repository_name: {
+        include: ['~ALL'],
+        exclude: ['sandbox-*'],
+        protected: true,
+      },
+    },
+    rules: [{ type: 'deletion' }, { type: 'required_linear_history' }],
+    bypass_actors: [
+      {
+        actor_id: 1,
+        actor_type: 'OrganizationAdmin',
+        bypass_mode: 'always',
+      },
+    ],
+  };
+
+  const writeClient = new MockWriteClient();
+  const ctx: MigrationContext = {
+    runId: 'test-org-rulesets',
+    scope: {
+      level: 'organization',
+      sourceOrg: 'src-org',
+      targetOrg: 'dst-org',
+    },
+    sourceClient: new MockReadAdapter([orgRuleset]),
+    targetClient: new MockReadAdapter([]),
+    targetWriteClient: writeClient,
+    signal: new AbortController().signal,
+    dryRun: false,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+
+  const discovered = await orgModule.discover(ctx);
+  assert.equal(discovered.rulesets.length, 1);
+
+  const plan = await orgModule.plan(ctx, discovered);
+  assert.equal(plan.moduleId, 'org-rulesets');
+  assert.equal(plan.scopeLevel, 'organization');
+  assert.equal(plan.targetIdentifier, 'dst-org');
+  assert.equal(plan.operations.length, 1);
+  assert.equal(plan.operations[0]!.operation, 'create');
+
+  const execRes = await orgModule.apply(ctx, plan);
+  assert.equal(execRes.status, 'complete');
+  assert.equal(writeClient.calls.length, 1);
+  assert.equal(writeClient.calls[0]!.path, '/orgs/dst-org/rulesets');
+
+  // Verify detects discrepancy if repository_name condition differs on target
+  const driftedTarget: GitHubRuleset = {
+    ...orgRuleset,
+    conditions: {
+      ...orgRuleset.conditions,
+      repository_name: {
+        include: ['~ALL'],
+        exclude: [],
+        protected: false,
+      },
+    },
+  };
+  const verifyDrift = await orgModule.verify(
+    { ...ctx, targetClient: new MockReadAdapter([driftedTarget]) },
+    plan,
+  );
+  assert.equal(verifyDrift.verified, false);
+  assert.equal(verifyDrift.discrepancies.length, 1);
+
+  const verifyMatch = await orgModule.verify(
+    { ...ctx, targetClient: new MockReadAdapter([orgRuleset]) },
+    plan,
+  );
+  assert.equal(verifyMatch.verified, true);
+  assert.equal(verifyMatch.discrepancies.length, 0);
 });

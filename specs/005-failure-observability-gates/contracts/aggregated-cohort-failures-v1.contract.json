@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghec-consultant-suite.local/schemas/aggregated-cohort-failures-v1.contract.json",
+  "title": "AggregatedCohortFailures",
+  "type": "object",
+  "required": [
+    "expectedCohortCount",
+    "observedCohortCount",
+    "missingCohortReports",
+    "failedCohortCount",
+    "failedModuleCount",
+    "failures"
+  ],
+  "properties": {
+    "expectedCohortCount": { "type": "integer", "minimum": 0 },
+    "observedCohortCount": { "type": "integer", "minimum": 0 },
+    "missingCohortReports": { "type": "integer", "minimum": 0 },
+    "failedCohortCount": { "type": "integer", "minimum": 0 },
+    "failedModuleCount": { "type": "integer", "minimum": 0 },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cohortFile", "moduleId", "status", "failedOperations"],
+        "properties": {
+          "cohortFile": { "type": "string" },
+          "moduleId": { "type": "string" },
+          "targetIdentifier": { "type": "string" },
+          "status": { "type": "string" },
+          "failedOperations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["operationId", "status"],
+              "properties": {
+                "operationId": { "type": "string" },
+                "status": { "type": "string" },
+                "httpStatus": { "type": "integer" },
+                "error": { "type": "string" },
+                "resourceName": { "type": "string" },
+                "targetIdentifier": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

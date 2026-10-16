@@ -15,3 +15,65 @@ category:
 
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List forks
+
+`GET /repos/{owner}/{repo}/forks`
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `sort` | query | `string` | No | The sort order. `stargazers` will sort by star count. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `400` | Bad Request |
+
+## Create a fork
+
+`POST /repos/{owner}/{repo}/forks`
+
+Create a fork for the authenticated user.
+
+Note
+
+Forking a Repository happens asynchronously. You may have to wait a short period of time before you can access the git objects. If this takes longer than 5 minutes, be sure to contact [GitHub Enterprise Cloud Support](https://support.github.com/contact?tags=dotcom-rest-api).
+
+Note
+
+Although this endpoint works with GitHub Apps, the GitHub App must be installed on the destination account with access to all repositories and on the source account with access to the source repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `organization` | `string` | No | Optional parameter to specify the organization name if forking into an organization. |
+| `name` | `string` | No | When forking from an existing repository, a new name for the fork. |
+| `default_branch_only` | `boolean` | No | When forking from an existing repository, fork with only the default branch. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `400` | Bad Request |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

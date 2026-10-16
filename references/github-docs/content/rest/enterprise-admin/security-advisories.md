@@ -11,3 +11,72 @@ allowTitleToDifferFromFilename: true
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Sync innersource vulnerabilities for an enterprise
+
+`POST /enterprises/{enterprise}/innersource-vulnerabilities/sync`
+
+Synchronize innersource vulnerability data with the Advisory Database for an enterprise.
+This endpoint receives vulnerability data in OSV format and creates, updates, or withdraws
+innersource vulnerabilities accordingly. Dependabot alerting is triggered for created and
+updated vulnerabilities.
+
+The request body accepts up to 100 vulnerabilities per call. The request is validated and
+then queued for asynchronous processing: a successful request returns `202 Accepted` with a
+`Location` header pointing to a status URL that you poll for the final result.
+
+Syncing vulnerabilities too quickly using this endpoint may result in secondary rate limiting. For more information, see "[Rate limits for the API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/rate-limits-for-the-rest-api#about-secondary-rate-limits)" and "[Best practices for using the REST API](https://docs.github.com/enterprise-cloud@latest/rest/guides/best-practices-for-using-the-rest-api)."
+
+This endpoint does not support OAuth apps or personal access tokens.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `vulnerabilities` | `array of objects` | Yes | Array of vulnerabilities in OSV format to synchronize |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Sync operation accepted for asynchronous processing. Poll the returned URL for results. |
+| `400` | Bad Request |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get innersource vulnerability sync status for an enterprise
+
+`GET /enterprises/{enterprise}/innersource-vulnerabilities/sync/status/{job_id}`
+
+Get the status of an asynchronous innersource vulnerability sync operation for an enterprise.
+Returns 202 with a `Retry-After` header while the sync is still processing, or 200 with
+the full sync results once complete.
+
+This endpoint does not support OAuth apps or personal access tokens.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `job_id` | path | `string` | Yes | The unique identifier of the sync job. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Sync operation completed |
+| `202` | Sync operation is still processing |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |

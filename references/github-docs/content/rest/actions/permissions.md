@@ -19,3 +19,1359 @@ category:
 You can use the REST API to set permissions for the {% ifversion ghes or ghec %}enterprises, {% endif %}organizations and repositories that are allowed to run {% data variables.product.prodname_actions %}, and the actions{% ifversion actions-workflow-policy %} and reusable workflows{% endif %} that are allowed to run. For more information, see {% ifversion ghec or ghes %}[AUTOTITLE](/admin/enforcing-policies/enforcing-policies-for-your-enterprise/enforcing-policies-for-github-actions-in-your-enterprise), {% endif %}[AUTOTITLE](/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization), and [AUTOTITLE](/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get GitHub Actions permissions for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions`
+
+Gets the GitHub Actions permissions policy for organizations and allowed actions and reusable workflows in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set GitHub Actions permissions for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions`
+
+Sets the GitHub Actions permissions policy for organizations and allowed actions and reusable workflows in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled_organizations` | `string` | Yes | The policy that controls the organizations in the enterprise that are allowed to run GitHub Actions. |
+| `allowed_actions` | `string` | No | The permissions policy that controls the actions and reusable workflows that are allowed to run. |
+| `sha_pinning_required` | `boolean` | No | Whether actions must be pinned to a full-length commit SHA. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get artifact and log retention settings for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/artifact-and-log-retention`
+
+Gets retention settings for checks, workflow runs, commit statuses, artifacts, and logs for an enterprise.
+
+Checks include check suites, check runs, and check annotations. These settings also apply to checks and commit statuses created by third-party integrations, and are not limited to data created by GitHub Actions.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Successfully retrieved the retention settings for checks, workflow runs, commit statuses, artifacts, and logs |
+| `401` | Authorization failure |
+| `404` | Resource not found |
+
+## Set artifact and log retention settings for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/artifact-and-log-retention`
+
+Sets retention settings for checks, workflow runs, commit statuses, artifacts, and logs for an enterprise.
+
+Checks include check suites, check runs, and check annotations. These settings also apply to checks and commit statuses created by third-party integrations, and are not limited to data created by GitHub Actions.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `days` | `integer` | Yes | The number of days to retain checks, workflow runs, commit statuses, artifacts, and logs |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Successfully updated the retention settings for checks, workflow runs, commit statuses, artifacts, and logs |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get fork PR contributor approval permissions for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/fork-pr-contributor-approval`
+
+Gets the fork PR contributor approval policy for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Set fork PR contributor approval permissions for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/fork-pr-contributor-approval`
+
+Sets the fork PR contributor approval policy for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `approval_policy` | `string` | Yes | The policy that controls when fork PR workflows require approval from a maintainer. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get private repo fork PR workflow settings for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/fork-pr-workflows-private-repos`
+
+Gets the settings for whether workflows from fork pull requests can run on private repositories in an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Set private repo fork PR workflow settings for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/fork-pr-workflows-private-repos`
+
+Sets the settings for whether workflows from fork pull requests can run on private repositories in an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `run_workflows_from_fork_pull_requests` | `boolean` | Yes | Whether workflows triggered by pull requests from forks are allowed to run on private repositories. |
+| `send_write_tokens_to_workflows` | `boolean` | No | Whether GitHub Actions can create pull requests or submit approving pull request reviews from a workflow triggered by a fork pull request. |
+| `send_secrets_and_variables` | `boolean` | No | Whether to make secrets and variables available to workflows triggered by pull requests from forks. |
+| `require_approval_for_fork_pr_workflows` | `boolean` | No | Whether workflows triggered by pull requests from forks require approval from a repository administrator to run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Empty response for successful settings update |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List selected organizations enabled for GitHub Actions in an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/organizations`
+
+Lists the organizations that are selected to have GitHub Actions enabled in an enterprise. To use this endpoint, the enterprise permission policy for `enabled_organizations` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an enterprise](#set-github-actions-permissions-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set selected organizations enabled for GitHub Actions in an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/organizations`
+
+Replaces the list of selected organizations that are enabled for GitHub Actions in an enterprise. To use this endpoint, the enterprise permission policy for `enabled_organizations` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an enterprise](#set-github-actions-permissions-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_organization_ids` | `array of integers` | Yes | List of organization IDs to enable for GitHub Actions. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Enable a selected organization for GitHub Actions in an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/organizations/{org_id}`
+
+Adds an organization to the list of selected organizations that are enabled for GitHub Actions in an enterprise. To use this endpoint, the enterprise permission policy for `enabled_organizations` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an enterprise](#set-github-actions-permissions-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `org_id` | path | `integer` | Yes | The unique identifier of the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Disable a selected organization for GitHub Actions in an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/permissions/organizations/{org_id}`
+
+Removes an organization from the list of selected organizations that are enabled for GitHub Actions in an enterprise. To use this endpoint, the enterprise permission policy for `enabled_organizations` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an enterprise](#set-github-actions-permissions-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `org_id` | path | `integer` | Yes | The unique identifier of the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get allowed actions and reusable workflows for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/selected-actions`
+
+Gets the selected actions and reusable workflows that are allowed in an enterprise. To use this endpoint, the enterprise permission policy for `allowed_actions` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an enterprise](#set-github-actions-permissions-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set allowed actions and reusable workflows for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/selected-actions`
+
+Sets the actions and reusable workflows that are allowed in an enterprise. To use this endpoint, the enterprise permission policy for `allowed_actions` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an enterprise](#set-github-actions-permissions-for-an-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `github_owned_allowed` | `boolean` | No | Whether GitHub-owned actions are allowed. For example, this includes the actions in the `actions` organization. |
+| `verified_allowed` | `boolean` | No | Whether actions from GitHub Marketplace verified creators are allowed. Set to `true` to allow all actions by GitHub Marketplace verified creators. |
+| `patterns_allowed` | `array of strings` | No | Specifies a list of string-matching patterns to allow specific action(s) and reusable workflow(s). Wildcards, tags, and SHAs are allowed. For example, `monalisa/octocat@*`, `monalisa/octocat@v2`, `monalisa/*`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get self-hosted runners permissions for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/self-hosted-runners`
+
+Gets the settings for whether organizations in the enterprise are allowed to manage self-hosted runners at the repository level.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Set self-hosted runners permissions for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/self-hosted-runners`
+
+Sets the settings for whether organizations in the enterprise are allowed to manage self-hosted runners at the repository level.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `disable_self_hosted_runners_for_all_orgs` | `boolean` | Yes | When true, repository-level runners will be disabled across all organizations in the enterprise |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get default workflow permissions for an enterprise
+
+`GET /enterprises/{enterprise}/actions/permissions/workflow`
+
+Gets the default workflow permissions granted to the `GITHUB_TOKEN` when running workflows in an enterprise,
+as well as whether GitHub Actions can submit approving pull request reviews. For more information, see
+"[Enforcing a policy for workflow permissions in your enterprise](https://docs.github.com/enterprise-cloud@latest/admin/policies/enforcing-policies-for-your-enterprise/enforcing-policies-for-github-actions-in-your-enterprise#enforcing-a-policy-for-workflow-permissions-in-your-enterprise)."
+
+OAuth tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success response |
+
+## Set default workflow permissions for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/permissions/workflow`
+
+Sets the default workflow permissions granted to the `GITHUB_TOKEN` when running workflows in an enterprise, and sets
+whether GitHub Actions can submit approving pull request reviews. For more information, see
+"[Enforcing a policy for workflow permissions in your enterprise](https://docs.github.com/enterprise-cloud@latest/admin/policies/enforcing-policies-for-your-enterprise/enforcing-policies-for-github-actions-in-your-enterprise#enforcing-a-policy-for-workflow-permissions-in-your-enterprise)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `default_workflow_permissions` | `string` | No | The default workflow permissions granted to the GITHUB_TOKEN when running workflows. |
+| `can_approve_pull_request_reviews` | `boolean` | No | Whether GitHub Actions can approve pull requests. Enabling this can be a security risk. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Success response |
+
+## Get GitHub Actions permissions for an organization
+
+`GET /orgs/{org}/actions/permissions`
+
+Gets the GitHub Actions permissions policy for repositories and allowed actions and reusable workflows in an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set GitHub Actions permissions for an organization
+
+`PUT /orgs/{org}/actions/permissions`
+
+Sets the GitHub Actions permissions policy for repositories and allowed actions in an organization.
+
+If the organization belongs to an enterprise that has set restrictive permissions at the enterprise level, such as `allowed_actions` to `selected` actions, then you cannot override them for the organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled_repositories` | `string` | Yes | The policy that controls the repositories in the organization that are allowed to run GitHub Actions. |
+| `allowed_actions` | `string` | No | The permissions policy that controls the actions and reusable workflows that are allowed to run. |
+| `sha_pinning_required` | `boolean` | No | Whether actions must be pinned to a full-length commit SHA. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get artifact and log retention settings for an organization
+
+`GET /orgs/{org}/actions/permissions/artifact-and-log-retention`
+
+Gets retention settings for checks, workflow runs, commit statuses, artifacts, and logs for an organization.
+
+Checks include check suites, check runs, and check annotations. These settings also apply to checks and commit statuses created by third-party integrations, and are not limited to data created by GitHub Actions.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set artifact and log retention settings for an organization
+
+`PUT /orgs/{org}/actions/permissions/artifact-and-log-retention`
+
+Sets retention settings for checks, workflow runs, commit statuses, artifacts, and logs for an organization.
+
+Checks include check suites, check runs, and check annotations. These settings also apply to checks and commit statuses created by third-party integrations, and are not limited to data created by GitHub Actions.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `days` | `integer` | Yes | The number of days to retain checks, workflow runs, commit statuses, artifacts, and logs |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get fork PR contributor approval permissions for an organization
+
+`GET /orgs/{org}/actions/permissions/fork-pr-contributor-approval`
+
+Gets the fork PR contributor approval policy for an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Set fork PR contributor approval permissions for an organization
+
+`PUT /orgs/{org}/actions/permissions/fork-pr-contributor-approval`
+
+Sets the fork PR contributor approval policy for an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `approval_policy` | `string` | Yes | The policy that controls when fork PR workflows require approval from a maintainer. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get private repo fork PR workflow settings for an organization
+
+`GET /orgs/{org}/actions/permissions/fork-pr-workflows-private-repos`
+
+Gets the settings for whether workflows from fork pull requests can run on private repositories in an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set private repo fork PR workflow settings for an organization
+
+`PUT /orgs/{org}/actions/permissions/fork-pr-workflows-private-repos`
+
+Sets the settings for whether workflows from fork pull requests can run on private repositories in an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `run_workflows_from_fork_pull_requests` | `boolean` | Yes | Whether workflows triggered by pull requests from forks are allowed to run on private repositories. |
+| `send_write_tokens_to_workflows` | `boolean` | No | Whether GitHub Actions can create pull requests or submit approving pull request reviews from a workflow triggered by a fork pull request. |
+| `send_secrets_and_variables` | `boolean` | No | Whether to make secrets and variables available to workflows triggered by pull requests from forks. |
+| `require_approval_for_fork_pr_workflows` | `boolean` | No | Whether workflows triggered by pull requests from forks require approval from a repository administrator to run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Empty response for successful settings update |
+| `403` | Forbidden - Fork PR workflow settings for private repositories are managed by the enterprise owner |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List selected repositories enabled for GitHub Actions in an organization
+
+`GET /orgs/{org}/actions/permissions/repositories`
+
+Lists the selected repositories that are enabled for GitHub Actions in an organization. To use this endpoint, the organization permission policy for `enabled_repositories` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an organization](#set-github-actions-permissions-for-an-organization)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set selected repositories enabled for GitHub Actions in an organization
+
+`PUT /orgs/{org}/actions/permissions/repositories`
+
+Replaces the list of selected repositories that are enabled for GitHub Actions in an organization. To use this endpoint, the organization permission policy for `enabled_repositories` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an organization](#set-github-actions-permissions-for-an-organization)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_repository_ids` | `array of integers` | Yes | List of repository IDs to enable for GitHub Actions. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Enable a selected repository for GitHub Actions in an organization
+
+`PUT /orgs/{org}/actions/permissions/repositories/{repository_id}`
+
+Adds a repository to the list of selected repositories that are enabled for GitHub Actions in an organization. To use this endpoint, the organization permission policy for `enabled_repositories` must be must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an organization](#set-github-actions-permissions-for-an-organization)."
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Disable a selected repository for GitHub Actions in an organization
+
+`DELETE /orgs/{org}/actions/permissions/repositories/{repository_id}`
+
+Removes a repository from the list of selected repositories that are enabled for GitHub Actions in an organization. To use this endpoint, the organization permission policy for `enabled_repositories` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an organization](#set-github-actions-permissions-for-an-organization)."
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get allowed actions and reusable workflows for an organization
+
+`GET /orgs/{org}/actions/permissions/selected-actions`
+
+Gets the selected actions and reusable workflows that are allowed in an organization. To use this endpoint, the organization permission policy for `allowed_actions` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an organization](#set-github-actions-permissions-for-an-organization)."
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set allowed actions for an organization
+
+`PUT /orgs/{org}/actions/permissions/selected-actions`
+
+Sets the actions that are allowed in an organization. To use this endpoint, the organization permission policy for `allowed_actions` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for an organization](#set-github-actions-permissions-for-an-organization)."
+
+If the organization belongs to an enterprise that has `selected` actions set at the enterprise level, then you cannot override any of the enterprise's allowed actions settings.
+
+To use the `patterns_allowed` setting for private repositories, the organization must belong to an enterprise. If the organization does not belong to an enterprise, then the `patterns_allowed` setting only applies to public repositories in the organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `github_owned_allowed` | `boolean` | No | Whether GitHub-owned actions are allowed. For example, this includes the actions in the `actions` organization. |
+| `verified_allowed` | `boolean` | No | Whether actions from GitHub Marketplace verified creators are allowed. Set to `true` to allow all actions by GitHub Marketplace verified creators. |
+| `patterns_allowed` | `array of strings` | No | Specifies a list of string-matching patterns to allow specific action(s) and reusable workflow(s). Wildcards, tags, and SHAs are allowed. For example, `monalisa/octocat@*`, `monalisa/octocat@v2`, `monalisa/*`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get self-hosted runners settings for an organization
+
+`GET /orgs/{org}/actions/permissions/self-hosted-runners`
+
+Gets the settings for self-hosted runners for an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set self-hosted runners settings for an organization
+
+`PUT /orgs/{org}/actions/permissions/self-hosted-runners`
+
+Sets the settings for self-hosted runners for an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled_repositories` | `string` | Yes | The policy that controls whether self-hosted runners can be used in the organization |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List repositories allowed to use self-hosted runners in an organization
+
+`GET /orgs/{org}/actions/permissions/self-hosted-runners/repositories`
+
+Lists repositories that are allowed to use self-hosted runners in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set repositories allowed to use self-hosted runners in an organization
+
+`PUT /orgs/{org}/actions/permissions/self-hosted-runners/repositories`
+
+Sets repositories that are allowed to use self-hosted runners in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_repository_ids` | `array of integers` | Yes | IDs of repositories that can use repository-level self-hosted runners |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Add a repository to the list of repositories allowed to use self-hosted runners in an organization
+
+`PUT /orgs/{org}/actions/permissions/self-hosted-runners/repositories/{repository_id}`
+
+Adds a repository to the list of repositories that are allowed to use self-hosted runners in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove a repository from the list of repositories allowed to use self-hosted runners in an organization
+
+`DELETE /orgs/{org}/actions/permissions/self-hosted-runners/repositories/{repository_id}`
+
+Removes a repository from the list of repositories that are allowed to use self-hosted runners in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope or the "Actions policies" fine-grained permission to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get default workflow permissions for an organization
+
+`GET /orgs/{org}/actions/permissions/workflow`
+
+Gets the default workflow permissions granted to the `GITHUB_TOKEN` when running workflows in an organization,
+as well as whether GitHub Actions can submit approving pull request reviews. For more information, see
+"[Setting the permissions of the GITHUB_TOKEN for your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization#setting-the-permissions-of-the-github_token-for-your-organization)."
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set default workflow permissions for an organization
+
+`PUT /orgs/{org}/actions/permissions/workflow`
+
+Sets the default workflow permissions granted to the `GITHUB_TOKEN` when running workflows in an organization, and sets if GitHub Actions
+can submit approving pull request reviews. For more information, see
+"[Setting the permissions of the GITHUB_TOKEN for your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization#setting-the-permissions-of-the-github_token-for-your-organization)."
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `default_workflow_permissions` | `string` | No | The default workflow permissions granted to the GITHUB_TOKEN when running workflows. |
+| `can_approve_pull_request_reviews` | `boolean` | No | Whether GitHub Actions can approve pull requests. Enabling this can be a security risk. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Success response |
+| `409` | Conflict response when changing a setting is prevented by the owning enterprise |
+
+## Get GitHub Actions permissions for a repository
+
+`GET /repos/{owner}/{repo}/actions/permissions`
+
+Gets the GitHub Actions permissions policy for a repository, including whether GitHub Actions is enabled and the actions and reusable workflows allowed to run in the repository.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set GitHub Actions permissions for a repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions`
+
+Sets the GitHub Actions permissions policy for enabling GitHub Actions and allowed actions in the repository.
+
+If the repository belongs to an organization or enterprise that has set restrictive permissions at the organization or enterprise levels, such as `allowed_actions` to `selected` actions, then you cannot override them for the repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `boolean` | Yes | Whether GitHub Actions is enabled on the repository. |
+| `allowed_actions` | `string` | No | The permissions policy that controls the actions and reusable workflows that are allowed to run. |
+| `sha_pinning_required` | `boolean` | No | Whether actions must be pinned to a full-length commit SHA. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get the level of access for workflows outside of the repository
+
+`GET /repos/{owner}/{repo}/actions/permissions/access`
+
+Gets the level of access that workflows outside of the repository have to actions and reusable workflows in the repository.
+This endpoint only applies to internal and private repositories.
+For more information, see "[Allowing access to components in a private repository](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-a-private-repository)" and
+"[Allowing access to components in an internal repository](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository)."
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set the level of access for workflows outside of the repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions/access`
+
+Sets the level of access that workflows outside of the repository have to actions and reusable workflows in the repository.
+This endpoint only applies to internal and private repositories.
+For more information, see "[Allowing access to components in a private repository](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-a-private-repository)" and
+"[Allowing access to components in an internal repository](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-access-to-components-in-an-internal-repository)."
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `access_level` | `string` | Yes | Defines the level of access that workflows outside of the repository have to actions and reusable workflows within the repository. `none` means the access is only possible from workflows in this repository. `user` level access allows sharing across user owned private repositories only. `organization` level access allows sharing across the organization. `enterprise` level access allows sharing across the enterprise. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get artifact and log retention settings for a repository
+
+`GET /repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention`
+
+Gets retention settings for checks, workflow runs, commit statuses, artifacts, and logs for a repository.
+
+Checks include check suites, check runs, and check annotations. These settings also apply to checks and commit statuses created by third-party integrations, and are not limited to data created by GitHub Actions.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Set artifact and log retention settings for a repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention`
+
+Sets retention settings for checks, workflow runs, commit statuses, artifacts, and logs for a repository.
+
+Checks include check suites, check runs, and check annotations. These settings also apply to checks and commit statuses created by third-party integrations, and are not limited to data created by GitHub Actions.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `days` | `integer` | Yes | The number of days to retain checks, workflow runs, commit statuses, artifacts, and logs |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Empty response for successful settings update |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get fork PR contributor approval permissions for a repository
+
+`GET /repos/{owner}/{repo}/actions/permissions/fork-pr-contributor-approval`
+
+Gets the fork PR contributor approval policy for a repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Set fork PR contributor approval permissions for a repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions/fork-pr-contributor-approval`
+
+Sets the fork PR contributor approval policy for a repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `approval_policy` | `string` | Yes | The policy that controls when fork PR workflows require approval from a maintainer. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get private repo fork PR workflow settings for a repository
+
+`GET /repos/{owner}/{repo}/actions/permissions/fork-pr-workflows-private-repos`
+
+Gets the settings for whether workflows from fork pull requests can run on a private repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Set private repo fork PR workflow settings for a repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions/fork-pr-workflows-private-repos`
+
+Sets the settings for whether workflows from fork pull requests can run on a private repository.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `run_workflows_from_fork_pull_requests` | `boolean` | Yes | Whether workflows triggered by pull requests from forks are allowed to run on private repositories. |
+| `send_write_tokens_to_workflows` | `boolean` | No | Whether GitHub Actions can create pull requests or submit approving pull request reviews from a workflow triggered by a fork pull request. |
+| `send_secrets_and_variables` | `boolean` | No | Whether to make secrets and variables available to workflows triggered by pull requests from forks. |
+| `require_approval_for_fork_pr_workflows` | `boolean` | No | Whether workflows triggered by pull requests from forks require approval from a repository administrator to run. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Empty response for successful settings update |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get allowed actions and reusable workflows for a repository
+
+`GET /repos/{owner}/{repo}/actions/permissions/selected-actions`
+
+Gets the settings for selected actions and reusable workflows that are allowed in a repository. To use this endpoint, the repository policy for `allowed_actions` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for a repository](#set-github-actions-permissions-for-a-repository)."
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set allowed actions for a repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions/selected-actions`
+
+Sets the actions that are allowed in a repository. To use this endpoint, the repository permission policy for `allowed_actions` must be configured to `selected`. For more information, see "[Set GitHub Actions permissions for a repository](#set-github-actions-permissions-for-a-repository)."
+
+If the repository belongs to an organization or enterprise that has `selected` actions set at the organization or enterprise levels, then you cannot override any of the allowed actions settings and reusable workflows settings.
+
+To use the `patterns_allowed` setting for private repositories, the repository must belong to an enterprise. If the repository does not belong to an enterprise, then the `patterns_allowed` setting only applies to public repositories.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `github_owned_allowed` | `boolean` | No | Whether GitHub-owned actions are allowed. For example, this includes the actions in the `actions` organization. |
+| `verified_allowed` | `boolean` | No | Whether actions from GitHub Marketplace verified creators are allowed. Set to `true` to allow all actions by GitHub Marketplace verified creators. |
+| `patterns_allowed` | `array of strings` | No | Specifies a list of string-matching patterns to allow specific action(s) and reusable workflow(s). Wildcards, tags, and SHAs are allowed. For example, `monalisa/octocat@*`, `monalisa/octocat@v2`, `monalisa/*`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get default workflow permissions for a repository
+
+`GET /repos/{owner}/{repo}/actions/permissions/workflow`
+
+Gets the default workflow permissions granted to the `GITHUB_TOKEN` when running workflows in a repository,
+as well as if GitHub Actions can submit approving pull request reviews.
+For more information, see "[Setting the permissions of the GITHUB_TOKEN for your repository](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#setting-the-permissions-of-the-github_token-for-your-repository)."
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set default workflow permissions for a repository
+
+`PUT /repos/{owner}/{repo}/actions/permissions/workflow`
+
+Sets the default workflow permissions granted to the `GITHUB_TOKEN` when running workflows in a repository, and sets if GitHub Actions
+can submit approving pull request reviews.
+For more information, see "[Setting the permissions of the GITHUB_TOKEN for your repository](https://docs.github.com/enterprise-cloud@latest/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#setting-the-permissions-of-the-github_token-for-your-repository)."
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `default_workflow_permissions` | `string` | No | The default workflow permissions granted to the GITHUB_TOKEN when running workflows. |
+| `can_approve_pull_request_reviews` | `boolean` | No | Whether GitHub Actions can approve pull requests. Enabling this can be a security risk. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Success response |
+| `409` | Conflict response when changing a setting is prevented by the owning organization or enterprise |

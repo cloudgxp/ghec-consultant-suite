@@ -12,3 +12,32 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List push rule bypass requests within an organization
+
+`GET /orgs/{org}/bypass-requests/push-rules`
+
+Lists the requests made by users of a repository to bypass push protection rules within an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_name` | query | `string` | No | The name of the repository to filter on. |
+| `reviewer` | query | `string` | No | Filter bypass requests by the handle of the GitHub user who reviewed the bypass request. |
+| `requester` | query | `string` | No | Filter bypass requests by the handle of the GitHub user who requested the bypass. |
+| `time_period` | query | `string` | No | The time period to filter by. For example, `day` will filter for rule suites that occurred in the past 24 hours, and `week` will filter for rule suites that occurred in the past 7 days (168 hours). |
+| `request_status` | query | `string` | No | The status of the bypass request to filter on. When specified, only requests with this status will be returned. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |

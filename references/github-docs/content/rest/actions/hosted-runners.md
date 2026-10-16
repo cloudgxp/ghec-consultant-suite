@@ -12,3 +12,693 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List GitHub-hosted runners for an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners`
+
+Lists all GitHub-hosted runners configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a GitHub-hosted runner for an enterprise
+
+`POST /enterprises/{enterprise}/actions/hosted-runners`
+
+Creates a GitHub-hosted runner for an enterprise.
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the runner. Must be between 1 and 64 characters and may only contain upper and lowercase letters a-z, numbers 0-9, '.', '-', and '_'. |
+| `image` | `object` | Yes | The image of runner. To list all available images, use `GET /actions/hosted-runners/images/github-owned` or `GET /actions/hosted-runners/images/partner`. |
+| `size` | `string` | Yes | The machine size of the runner. To list available sizes, use `GET actions/hosted-runners/machine-sizes` |
+| `runner_group_id` | `integer` | Yes | The existing runner group to add this runner to. |
+| `maximum_runners` | `integer` | No | The maximum amount of runners to scale up to. Runners will not auto-scale above this number. Use this setting to limit your cost. |
+| `enable_static_ip` | `boolean` | No | Whether this runner should be created with a static public IP. Note limit on account. To list limits on account, use `GET actions/hosted-runners/limits` |
+| `image_gen` | `boolean` | No | Whether this runner should be used to generate custom images. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## List custom images for an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/images/custom`
+
+List custom images for an enterprise.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an enterprise custom image definition for GitHub Actions Hosted Runners
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/images/custom/{image_definition_id}`
+
+Get an enterprise custom image definition for GitHub Actions Hosted Runners.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a custom image from the enterprise
+
+`DELETE /enterprises/{enterprise}/actions/hosted-runners/images/custom/{image_definition_id}`
+
+Delete a custom image from the enterprise.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List image versions of a custom image for an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/images/custom/{image_definition_id}/versions`
+
+List image versions of a custom image for an enterprise.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an image version of an enterprise custom image for GitHub Actions Hosted Runners
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/images/custom/{image_definition_id}/versions/{version}`
+
+Get an image version of an enterprise custom image for GitHub Actions Hosted Runners.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+| `version` | path | `string` | Yes | Version of a custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete an image version of custom image from the enterprise
+
+`DELETE /enterprises/{enterprise}/actions/hosted-runners/images/custom/{image_definition_id}/versions/{version}`
+
+Delete an image version of custom image from the enterprise.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+| `version` | path | `string` | Yes | Version of a custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get GitHub-owned images for GitHub-hosted runners in an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/images/github-owned`
+
+Get the list of GitHub-owned images available for GitHub-hosted runners for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get partner images for GitHub-hosted runners in an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/images/partner`
+
+Get the list of partner images available for GitHub-hosted runners for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get limits on GitHub-hosted runners for an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/limits`
+
+Get the GitHub-hosted runners limits for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get GitHub-hosted runners machine specs for an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/machine-sizes`
+
+Get the list of machine specs available for GitHub-hosted runners for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get platforms for GitHub-hosted runners in an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/platforms`
+
+Get the list of platforms available for GitHub-hosted runners for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get a GitHub-hosted runner for an enterprise
+
+`GET /enterprises/{enterprise}/actions/hosted-runners/{hosted_runner_id}`
+
+Gets a GitHub-hosted runner configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `hosted_runner_id` | path | `integer` | Yes | Unique identifier of the GitHub-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a GitHub-hosted runner for an enterprise
+
+`PATCH /enterprises/{enterprise}/actions/hosted-runners/{hosted_runner_id}`
+
+Updates a GitHub-hosted runner for an enterprise.
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `hosted_runner_id` | path | `integer` | Yes | Unique identifier of the GitHub-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Name of the runner. Must be between 1 and 64 characters and may only contain upper and lowercase letters a-z, numbers 0-9, '.', '-', and '_'. |
+| `runner_group_id` | `integer` | No | The existing runner group to add this runner to. |
+| `maximum_runners` | `integer` | No | The maximum amount of runners to scale up to. Runners will not auto-scale above this number. Use this setting to limit your cost. |
+| `enable_static_ip` | `boolean` | No | Whether this runner should be updated with a static public IP. Note limit on account. To list limits on account, use `GET actions/hosted-runners/limits` |
+| `size` | `string` | No | The machine size of the runner. To list available sizes, use `GET actions/hosted-runners/machine-sizes` |
+| `image_source` | `string` | No | The source type of the runner image to use. Must match the source of the image specified by `image_id`. Can be one of `github`, `partner`, or `custom`. |
+| `image_id` | `string` | No | The unique identifier of the runner image. To list available images, use `GET /actions/hosted-runners/images/github-owned`, `GET /actions/hosted-runners/images/partner`, or `GET /actions/hosted-runners/images/custom`. |
+| `image_version` | `string or null` | No | The version of the runner image to deploy. This is relevant only for runners using custom images. |
+| `image_gen` | `boolean` | No | Whether to enable image generation for this runner pool. When enabled, the runner pool is used to build and publish custom runner images. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a GitHub-hosted runner for an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/hosted-runners/{hosted_runner_id}`
+
+Deletes a GitHub-hosted runner for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `hosted_runner_id` | path | `integer` | Yes | Unique identifier of the GitHub-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+
+## List GitHub-hosted runners for an organization
+
+`GET /orgs/{org}/actions/hosted-runners`
+
+Lists all GitHub-hosted runners configured in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runner:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a GitHub-hosted runner for an organization
+
+`POST /orgs/{org}/actions/hosted-runners`
+
+Creates a GitHub-hosted runner for an organization.
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | Name of the runner. Must be between 1 and 64 characters and may only contain upper and lowercase letters a-z, numbers 0-9, '.', '-', and '_'. |
+| `image` | `object` | Yes | The image of runner. To list all available images, use `GET /actions/hosted-runners/images/github-owned` or `GET /actions/hosted-runners/images/partner`. |
+| `size` | `string` | Yes | The machine size of the runner. To list available sizes, use `GET actions/hosted-runners/machine-sizes` |
+| `runner_group_id` | `integer` | Yes | The existing runner group to add this runner to. |
+| `maximum_runners` | `integer` | No | The maximum amount of runners to scale up to. Runners will not auto-scale above this number. Use this setting to limit your cost. |
+| `enable_static_ip` | `boolean` | No | Whether this runner should be created with a static public IP. Note limit on account. To list limits on account, use `GET actions/hosted-runners/limits` |
+| `image_gen` | `boolean` | No | Whether this runner should be used to generate custom images. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## List custom images for an organization
+
+`GET /orgs/{org}/actions/hosted-runners/images/custom`
+
+List custom images for an organization.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get a custom image definition for GitHub Actions Hosted Runners
+
+`GET /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}`
+
+Get a custom image definition for GitHub Actions Hosted Runners.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a custom image from the organization
+
+`DELETE /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}`
+
+Delete a custom image from the organization.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List image versions of a custom image for an organization
+
+`GET /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}/versions`
+
+List image versions of a custom image for an organization.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an image version of a custom image for GitHub Actions Hosted Runners
+
+`GET /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}/versions/{version}`
+
+Get an image version of a custom image for GitHub Actions Hosted Runners.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+| `version` | path | `string` | Yes | Version of a custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete an image version of custom image from the organization
+
+`DELETE /orgs/{org}/actions/hosted-runners/images/custom/{image_definition_id}/versions/{version}`
+
+Delete an image version of custom image from the organization.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `image_definition_id` | path | `integer` | Yes | Image definition ID of custom image |
+| `version` | path | `string` | Yes | Version of a custom image |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Get GitHub-owned images for GitHub-hosted runners in an organization
+
+`GET /orgs/{org}/actions/hosted-runners/images/github-owned`
+
+Get the list of GitHub-owned images available for GitHub-hosted runners for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get partner images for GitHub-hosted runners in an organization
+
+`GET /orgs/{org}/actions/hosted-runners/images/partner`
+
+Get the list of partner images available for GitHub-hosted runners for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get limits on GitHub-hosted runners for an organization
+
+`GET /orgs/{org}/actions/hosted-runners/limits`
+
+Get the GitHub-hosted runners limits for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get GitHub-hosted runners machine specs for an organization
+
+`GET /orgs/{org}/actions/hosted-runners/machine-sizes`
+
+Get the list of machine specs available for GitHub-hosted runners for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get platforms for GitHub-hosted runners in an organization
+
+`GET /orgs/{org}/actions/hosted-runners/platforms`
+
+Get the list of platforms available for GitHub-hosted runners for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get a GitHub-hosted runner for an organization
+
+`GET /orgs/{org}/actions/hosted-runners/{hosted_runner_id}`
+
+Gets a GitHub-hosted runner configured in an organization.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hosted_runner_id` | path | `integer` | Yes | Unique identifier of the GitHub-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a GitHub-hosted runner for an organization
+
+`PATCH /orgs/{org}/actions/hosted-runners/{hosted_runner_id}`
+
+Updates a GitHub-hosted runner for an organization.
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hosted_runner_id` | path | `integer` | Yes | Unique identifier of the GitHub-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | Name of the runner. Must be between 1 and 64 characters and may only contain upper and lowercase letters a-z, numbers 0-9, '.', '-', and '_'. |
+| `runner_group_id` | `integer` | No | The existing runner group to add this runner to. |
+| `maximum_runners` | `integer` | No | The maximum amount of runners to scale up to. Runners will not auto-scale above this number. Use this setting to limit your cost. |
+| `enable_static_ip` | `boolean` | No | Whether this runner should be updated with a static public IP. Note limit on account. To list limits on account, use `GET actions/hosted-runners/limits` |
+| `size` | `string` | No | The machine size of the runner. To list available sizes, use `GET actions/hosted-runners/machine-sizes` |
+| `image_source` | `string` | No | The source type of the runner image to use. Must match the source of the image specified by `image_id`. Can be one of `github`, `partner`, or `custom`. |
+| `image_id` | `string` | No | The unique identifier of the runner image. To list available images, use `GET /actions/hosted-runners/images/github-owned`, `GET /actions/hosted-runners/images/partner`, or `GET /actions/hosted-runners/images/custom`. |
+| `image_version` | `string or null` | No | The version of the runner image to deploy. This is relevant only for runners using custom images. |
+| `image_gen` | `boolean` | No | Whether to enable image generation for this runner pool. When enabled, the runner pool is used to build and publish custom runner images. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a GitHub-hosted runner for an organization
+
+`DELETE /orgs/{org}/actions/hosted-runners/{hosted_runner_id}`
+
+Deletes a GitHub-hosted runner for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `hosted_runner_id` | path | `integer` | Yes | Unique identifier of the GitHub-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |

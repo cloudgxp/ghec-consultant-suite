@@ -1,4 +1,5 @@
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { MigrationRunSummary, StepSummaryOptions } from './types.js';
 
 /**
@@ -61,6 +62,7 @@ export function formatStepSummaryMarkdown(
   const sanitize = (text: string): string => {
     return options.sanitizeFormulas !== false ? sanitizeFormula(text) : text;
   };
+  const includeDetails = options.includeDetails !== false;
 
   const title = options.title ?? '🚀 Migration Execution Summary';
   const lines: string[] = [];
@@ -155,6 +157,27 @@ export function formatStepSummaryMarkdown(
     addModuleRow('Repository Rulesets', rh.rulesets);
     addModuleRow('Branch Protection Rules', rh.branchProtection);
     addModuleRow('Teams & Permissions', rh.teams);
+    addModuleRow('Repository Settings', rh.repoSettings);
+    addModuleRow('Organization Settings', rh.orgSettings);
+    addModuleRow('Organization Variables', rh.orgVariables);
+    addModuleRow('Organization Secrets (DEC-004)', rh.orgSecrets);
+    addModuleRow('Custom Repository Roles', rh.customRoles);
+    addModuleRow('Organization Custom Properties', rh.orgCustomProperties);
+    addModuleRow('Repository Custom Properties', rh.repoCustomProperties);
+    addModuleRow('Outside Collaborators', rh.collaborators);
+    addModuleRow('Deploy Keys', rh.deployKeys);
+    addModuleRow('Autolink References', rh.autolinks);
+    addModuleRow('GitHub Discussions', rh.discussions);
+    addModuleRow('GitHub Issues', rh.issues);
+    addModuleRow('Pull Requests', rh.pullRequests);
+    addModuleRow('Projects v2', rh.projectsV2);
+    addModuleRow('Actions Policies', rh.actionsPolicies);
+    addModuleRow('Actions Runners', rh.actionsRunners);
+    addModuleRow('IP Allow Lists', rh.ipAllowLists);
+    addModuleRow('GitHub Apps Inventory', rh.appsInventory);
+    addModuleRow('GitHub Packages', rh.packages);
+    addModuleRow('CODEOWNERS', rh.codeowners);
+    addModuleRow('Security & Advanced Security', rh.security);
     lines.push('');
   }
 
@@ -201,6 +224,22 @@ export function formatStepSummaryMarkdown(
           );
         }
       }
+      if (
+        includeDetails &&
+        v.discrepancySummaries &&
+        v.discrepancySummaries.length > 10
+      ) {
+        lines.push('');
+        lines.push(
+          `<details><summary>Full Verification Discrepancy List (${v.discrepancySummaries.length} total)</summary>`,
+        );
+        lines.push('');
+        for (const d of v.discrepancySummaries) {
+          lines.push(`- ${sanitize(d)}`);
+        }
+        lines.push('');
+        lines.push('</details>');
+      }
     }
     lines.push('');
   }
@@ -239,6 +278,18 @@ export function formatStepSummaryMarkdown(
     if (summary.errors.length > 10) {
       lines.push(`> - ... and ${summary.errors.length - 10} more error(s)`);
     }
+    if (includeDetails && summary.errors.length > 10) {
+      lines.push('');
+      lines.push(
+        `<details><summary>Full Diagnostic Error List (${summary.errors.length} total)</summary>`,
+      );
+      lines.push('');
+      for (const err of summary.errors) {
+        lines.push(`- ${sanitize(err)}`);
+      }
+      lines.push('');
+      lines.push('</details>');
+    }
     lines.push('');
   }
 
@@ -252,7 +303,57 @@ export function formatStepSummaryMarkdown(
     if (summary.warnings.length > 10) {
       lines.push(`> - ... and ${summary.warnings.length - 10} more warning(s)`);
     }
+    if (includeDetails && summary.warnings.length > 10) {
+      lines.push('');
+      lines.push(
+        `<details><summary>Full Diagnostic Warning List (${summary.warnings.length} total)</summary>`,
+      );
+      lines.push('');
+      for (const warn of summary.warnings) {
+        lines.push(`- ${sanitize(warn)}`);
+      }
+      lines.push('');
+      lines.push('</details>');
+    }
     lines.push('');
+  }
+
+  if (options.diagnosticLogPath) {
+    const diagLines: string[] = [
+      `# Diagnostic Log — Run ${summary.runId}`,
+      `Status: ${summary.status}`,
+      `Started: ${summary.startedAt}`,
+      `Completed: ${summary.completedAt}`,
+      '',
+    ];
+    if (summary.errors.length > 0) {
+      diagLines.push(`## Errors (${summary.errors.length})`);
+      for (const err of summary.errors) {
+        diagLines.push(`- ${err}`);
+      }
+      diagLines.push('');
+    }
+    if (summary.warnings.length > 0) {
+      diagLines.push(`## Warnings (${summary.warnings.length})`);
+      for (const warn of summary.warnings) {
+        diagLines.push(`- ${warn}`);
+      }
+      diagLines.push('');
+    }
+    if (
+      summary.verification?.discrepancySummaries &&
+      summary.verification.discrepancySummaries.length > 0
+    ) {
+      diagLines.push(
+        `## Discrepancies (${summary.verification.discrepancySummaries.length})`,
+      );
+      for (const disc of summary.verification.discrepancySummaries) {
+        diagLines.push(`- ${disc}`);
+      }
+      diagLines.push('');
+    }
+    mkdirSync(dirname(options.diagnosticLogPath), { recursive: true });
+    writeFileSync(options.diagnosticLogPath, diagLines.join('\n'), 'utf8');
   }
 
   return lines.join('\n');

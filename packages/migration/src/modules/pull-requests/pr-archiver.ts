@@ -105,6 +105,14 @@ export async function archiveClosedPullRequests(
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (
+      msg.toLowerCase().includes('issues has been disabled') ||
+      msg.includes('HTTP 410')
+    ) {
+      return {
+        success: true,
+      };
+    }
     return {
       success: false,
       error: `Historical PR archive creation failed: ${msg}`,

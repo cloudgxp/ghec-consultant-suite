@@ -89,7 +89,7 @@ describe('Seed Demo Provisioning (US1)', () => {
 
     assert.equal(summary.organization, 'mock-org');
     assert.equal(summary.repository, 'new-demo-repo');
-    assert.equal(summary.counts.total, 32);
+    assert.equal(summary.counts.total, 33);
     assert.equal(summary.counts.failed, 0);
     assert.equal(summary.errors.length, 0);
 
@@ -104,6 +104,28 @@ describe('Seed Demo Provisioning (US1)', () => {
     assert.equal(
       (repoCreateCall?.body as { name: string })?.name,
       'new-demo-repo',
+    );
+
+    // Verify organization ruleset was created via POST /orgs/mock-org/rulesets
+    const orgRulesetCall = recordedCalls.find(
+      (c) => c.url.endsWith('/orgs/mock-org/rulesets') && c.method === 'POST',
+    );
+    assert.ok(orgRulesetCall, 'Expected POST call to create org ruleset');
+    assert.equal(
+      (orgRulesetCall?.body as { name: string })?.name,
+      'demo-Org-Default-Branch-Ruleset',
+    );
+
+    // Verify repository branch and tag rulesets were created via POST /repos/mock-org/new-demo-repo/rulesets
+    const repoRulesetCalls = recordedCalls.filter(
+      (c) =>
+        c.url.endsWith('/repos/mock-org/new-demo-repo/rulesets') &&
+        c.method === 'POST',
+    );
+    assert.equal(
+      repoRulesetCalls.length,
+      2,
+      'Expected 2 repo ruleset POST calls (branch and tag)',
     );
   });
 });

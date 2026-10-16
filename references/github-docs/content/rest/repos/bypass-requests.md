@@ -12,3 +12,54 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List repository push rule bypass requests
+
+`GET /repos/{owner}/{repo}/bypass-requests/push-rules`
+
+Lists the requests made by users of a repository to bypass push protection rules
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `reviewer` | query | `string` | No | Filter bypass requests by the handle of the GitHub user who reviewed the bypass request. |
+| `requester` | query | `string` | No | Filter bypass requests by the handle of the GitHub user who requested the bypass. |
+| `time_period` | query | `string` | No | The time period to filter by. For example, `day` will filter for rule suites that occurred in the past 24 hours, and `week` will filter for rule suites that occurred in the past 7 days (168 hours). |
+| `request_status` | query | `string` | No | The status of the bypass request to filter on. When specified, only requests with this status will be returned. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get a repository push bypass request
+
+`GET /repos/{owner}/{repo}/bypass-requests/push-rules/{bypass_request_number}`
+
+Get information about a request to bypass push protection rules for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `bypass_request_number` | path | `integer` | Yes | The number that identifies the bypass request within the context of the given repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |

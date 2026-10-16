@@ -82,7 +82,9 @@ test('creates repo when missing and publishes complete atomic commit tree', asyn
   const files = {
     'README.md': '# Migration Results Summary',
     'manifest.json': '{"schemaVersion":"1.0.0"}',
+    'organization/teams.md': '# Organization Module: teams',
     'success/repo-a.md': '# Success Repo A',
+    'repositories/repo-a/repo-variables.md': '# Repo Variables',
   };
 
   const result = await publisher.publish(files);
@@ -90,24 +92,26 @@ test('creates repo when missing and publishes complete atomic commit tree', asyn
   assert.equal(readRepoCalled, true);
   assert.equal(readRefCalled, true);
   assert.equal(result.commitSha, 'new-commit-sha-456');
-  assert.equal(result.filesCommitted, 3);
+  assert.equal(result.filesCommitted, 5);
   assert.equal(result.dryRun, false);
 
   // Check mutation sequence:
   // 1: POST /orgs/{org}/repos (create repo)
-  // 2, 3, 4: POST /git/blobs (3 files)
-  // 5: POST /git/trees (tree with base_tree)
-  // 6: POST /git/commits (commit)
-  // 7: PATCH /git/refs/heads/main (update ref)
-  assert.equal(mutations.length, 7);
+  // 2..6: POST /git/blobs (5 files across 3 tiers)
+  // 7: POST /git/trees (tree with base_tree)
+  // 8: POST /git/commits (commit)
+  // 9: PATCH /git/refs/heads/main (update ref)
+  assert.equal(mutations.length, 9);
   assert.equal(mutations[0].path, '/orgs/{org}/repos');
   assert.equal(mutations[1].path, '/repos/{owner}/{repo}/git/blobs');
   assert.equal(mutations[2].path, '/repos/{owner}/{repo}/git/blobs');
   assert.equal(mutations[3].path, '/repos/{owner}/{repo}/git/blobs');
-  assert.equal(mutations[4].path, '/repos/{owner}/{repo}/git/trees');
-  assert.equal(mutations[5].path, '/repos/{owner}/{repo}/git/commits');
+  assert.equal(mutations[4].path, '/repos/{owner}/{repo}/git/blobs');
+  assert.equal(mutations[5].path, '/repos/{owner}/{repo}/git/blobs');
+  assert.equal(mutations[6].path, '/repos/{owner}/{repo}/git/trees');
+  assert.equal(mutations[7].path, '/repos/{owner}/{repo}/git/commits');
   assert.equal(
-    mutations[6].path,
+    mutations[8].path,
     '/repos/{owner}/{repo}/git/refs/heads/{branch}',
   );
 });

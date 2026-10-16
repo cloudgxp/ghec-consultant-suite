@@ -375,4 +375,158 @@ describe('Reporting & Step Summary Subsystem', () => {
       rmSync(tempDir, { recursive: true, force: true });
     });
   });
+
+  describe('Phase 7: 32-Module Attribution & Un-Truncated Step Summaries', () => {
+    it('prefixes errors with [<moduleId> @ <targetIdentifier>], maps lfs module, and accumulates multi-repo counts', () => {
+      const report: MigrationExecutionReport = {
+        schemaVersion: '1.0.0',
+        planId: 'plan-multi-repo',
+        executedAt: '2026-10-15T00:00:00.000Z',
+        status: 'partial',
+        exitCode: 1,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'lfs',
+            targetIdentifier: 'target-org/repo-a',
+            status: 'complete',
+            durationMs: 500,
+            results: [
+              {
+                operationId: 'lfs-1',
+                status: 'succeeded',
+                completedAt: '2026-10-15T00:00:01.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'rulesets',
+            targetIdentifier: 'target-org/repo-a',
+            status: 'complete',
+            durationMs: 200,
+            results: [
+              {
+                operationId: 'rs-a1',
+                status: 'succeeded',
+                completedAt: '2026-10-15T00:00:02.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'rulesets',
+            targetIdentifier: 'target-org/repo-b',
+            status: 'failed',
+            durationMs: 300,
+            results: [
+              {
+                operationId: 'rs-b1',
+                status: 'failed',
+                error: 'HTTP 422 Unprocessable Entity: ruleset name conflict',
+                completedAt: '2026-10-15T00:00:03.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'issues',
+            targetIdentifier: 'target-org/repo-b',
+            status: 'complete',
+            durationMs: 400,
+            results: [
+              {
+                operationId: 'iss-1',
+                status: 'succeeded',
+                completedAt: '2026-10-15T00:00:04.000Z',
+              },
+              {
+                operationId: 'iss-2',
+                status: 'succeeded',
+                completedAt: '2026-10-15T00:00:04.000Z',
+              },
+            ],
+          },
+        ],
+      };
+
+      const summary = buildSummaryFromExecutionReport(report, {
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org',
+      });
+
+      assert.equal(summary.coreTransfer?.lfs?.repositoriesWithLfs, 1);
+      assert.deepEqual(summary.rehydration?.rulesets, {
+        planned: 2,
+        succeeded: 1,
+        failed: 1,
+      });
+      assert.deepEqual(summary.rehydration?.issues, {
+        planned: 2,
+        succeeded: 2,
+        failed: 0,
+      });
+      assert.deepEqual(summary.moduleBreakdown?.['rulesets'], {
+        planned: 2,
+        succeeded: 1,
+        failed: 1,
+      });
+      assert.equal(summary.errors.length, 1);
+      assert.equal(
+        summary.errors[0],
+        '[rulesets @ target-org/repo-b] HTTP 422 Unprocessable Entity: ruleset name conflict',
+      );
+    });
+
+    it('renders collapsible <details> block when errors, warnings, or discrepancies exceed 10 items', () => {
+      const manyErrors = Array.from(
+        { length: 15 },
+        (_, i) => `[rulesets @ target-org/repo-${i + 1}] Error #${i + 1}`,
+      );
+      const manyDiscrepancies = Array.from(
+        { length: 12 },
+        (_, i) => `[repo-variables] repo-${i + 1}:VAR_${i + 1} missing`,
+      );
+
+      const summary: MigrationRunSummary = {
+        schemaVersion: '1.0.0',
+        runId: 'run-many-errors',
+        startedAt: '2026-10-15T00:00:00.000Z',
+        completedAt: '2026-10-15T00:01:00.000Z',
+        durationMs: 60000,
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org',
+        status: 'failed',
+        dryRun: false,
+        verification: {
+          verified: false,
+          totalDiscrepancies: 12,
+          discrepancySummaries: manyDiscrepancies,
+        },
+        warnings: [],
+        errors: manyErrors,
+      };
+
+      const markdown = formatStepSummaryMarkdown(summary);
+      assert.ok(
+        markdown.includes(
+          '<details><summary>Full Diagnostic Error List (15 total)</summary>',
+        ),
+      );
+      assert.ok(
+        markdown.includes('[rulesets @ target-org/repo-15] Error #15'),
+        '15th error should be present in collapsible details block',
+      );
+      assert.ok(
+        markdown.includes(
+          '<details><summary>Full Verification Discrepancy List (12 total)</summary>',
+        ),
+      );
+      assert.ok(
+        markdown.includes('[repo-variables] repo-12:VAR_12 missing'),
+        '12th discrepancy should be present in collapsible details block',
+      );
+    });
+  });
 });

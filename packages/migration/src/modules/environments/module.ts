@@ -84,11 +84,20 @@ export class EnvironmentsMigrationModule implements MigrationModule<Environments
   readonly dependencies: readonly string[] = ['gei-repo'];
 
   private readonly identityMapper: IdentityMappingEngine;
+  private readonly hasExplicitIdentityMapper: boolean;
 
   constructor(options: EnvironmentsModuleOptions = {}) {
+    this.hasExplicitIdentityMapper = options.identityMapper !== undefined;
     this.identityMapper =
       options.identityMapper ??
       new IdentityMappingEngine({ strategy: 'pass-through' });
+  }
+
+  private getIdentityMapper(ctx: MigrationContext): IdentityMappingEngine {
+    if (!this.hasExplicitIdentityMapper && ctx.scope.identityMapping) {
+      return new IdentityMappingEngine(ctx.scope.identityMapping);
+    }
+    return this.identityMapper;
   }
 
   async discover(
@@ -383,9 +392,10 @@ export class EnvironmentsMigrationModule implements MigrationModule<Environments
       const targetEnv = targetEnvMap.get(srcEnv.name);
 
       const mappedReviewers: EnvironmentReviewer[] = [];
+      const activeMapper = this.getIdentityMapper(ctx);
       for (const r of srcEnv.reviewers ?? []) {
         if (r.type === 'User' && r.login) {
-          const mapping = this.identityMapper.mapLogin(r.login);
+          const mapping = activeMapper.mapLogin(r.login);
           if (mapping.status === 'unmapped') {
             warnings.push(
               `Reviewer user "${r.login}" in environment "${srcEnv.name}" could not be mapped to target EMU identity.`,

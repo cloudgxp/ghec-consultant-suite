@@ -12,3 +12,162 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get custom properties for an enterprise
+
+`GET /enterprises/{enterprise}/properties/schema`
+
+Gets all custom properties defined for an enterprise.
+Enterprise members can read these properties.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update custom properties for an enterprise
+
+`PATCH /enterprises/{enterprise}/properties/schema`
+
+Creates new or updates existing custom properties defined for an enterprise in a batch.
+
+If the property already exists, the existing property will be replaced with the new values.
+Missing optional values will fall back to default values, previous values will be overwritten.
+E.g. if a property exists with `values_editable_by: org_and_repo_actors` and it's updated without specifying `values_editable_by`, it will be updated to default value `org_actors`.
+
+To use this endpoint, the authenticated user must be an administrator for the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `properties` | `array of objects` | Yes | The array of custom properties to create or update. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Promote a custom property to an enterprise
+
+`PUT /enterprises/{enterprise}/properties/schema/organizations/{org}/{custom_property_name}/promote`
+
+Promotes an existing organization custom property to an enterprise.
+
+To use this endpoint, the authenticated user must be an administrator for the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get a custom property for an enterprise
+
+`GET /enterprises/{enterprise}/properties/schema/{custom_property_name}`
+
+Gets a custom property that is defined for an enterprise.
+Enterprise members can read these properties.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update a custom property for an enterprise
+
+`PUT /enterprises/{enterprise}/properties/schema/{custom_property_name}`
+
+Creates a new or updates an existing custom property that is defined for an enterprise.
+
+To use this endpoint, the authenticated user must be an administrator for the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `value_type` | `string` | Yes | The type of the value for the property |
+| `required` | `boolean` | No | Whether the property is required. |
+| `default_value` | `null or string or array` | No | Default value of the property |
+| `description` | `string or null` | No | Short description of the property |
+| `allowed_values` | `array of strings or null` | No | An ordered list of the allowed values of the property. The property can have up to 200 allowed values. |
+| `values_editable_by` | `string or null` | No | Who can edit the values of the property |
+| `require_explicit_values` | `boolean` | No | Whether setting properties values is mandatory |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Remove a custom property for an enterprise
+
+`DELETE /enterprises/{enterprise}/properties/schema/{custom_property_name}`
+
+Remove a custom property that is defined for an enterprise.
+
+To use this endpoint, the authenticated user must be an administrator for the enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |

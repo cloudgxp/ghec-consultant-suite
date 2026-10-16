@@ -19,3 +19,116 @@ For more information about environments, see [AUTOTITLE](/actions/how-tos/deploy
 {% data reusables.gated-features.environments %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List environments
+
+`GET /repos/{owner}/{repo}/environments`
+
+Lists the environments for a repository.
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an environment
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}`
+
+Note
+
+To get information about name patterns that branches must match in order to deploy to this environment, see "[Get a deployment branch policy](/rest/deployments/branch-policies#get-a-deployment-branch-policy)."
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create or update an environment
+
+`PUT /repos/{owner}/{repo}/environments/{environment_name}`
+
+Create or update an environment with protection rules, such as required reviewers. For more information about environment protection rules, see "[Environments](/actions/reference/environments#environment-protection-rules)."
+
+Note
+
+To create or update name patterns that branches must match in order to deploy to this environment, see "[Deployment branch policies](/rest/deployments/branch-policies)."
+
+Note
+
+To create or update secrets for an environment, see "[GitHub Actions secrets](/rest/actions/secrets)."
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `wait_timer` | `integer` | No | The amount of time to delay a job after the job is initially triggered. The time (in minutes) must be an integer between 0 and 43,200 (30 days). |
+| `prevent_self_review` | `boolean` | No | Whether or not a user who created the job is prevented from approving their own job. |
+| `reviewers` | `array of objects or null` | No | The people or teams that may review jobs that reference the environment. You can list up to six users or teams as reviewers. The reviewers must have at least read access to the repository. Only one of the required reviewers needs to approve the job for it to proceed. |
+| `deployment_branch_policy` | `object or null` | No | The type of deployment branch policy for this environment. To allow all branches to deploy, set to `null`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Validation error when the environment name is invalid or when `protected_branches` and `custom_branch_policies` in `deployment_branch_policy` are set to the same value |
+
+## Delete an environment
+
+`DELETE /repos/{owner}/{repo}/environments/{environment_name}`
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Default response |

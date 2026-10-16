@@ -181,7 +181,10 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
   ): Promise<ModulePlan> {
     const targetOrg = discovered.targetOrg || ctx.scope.targetOrg;
     const mapper =
-      this.engineOptions.identityMapper ?? new IdentityMappingEngine();
+      this.engineOptions.identityMapper ??
+      (ctx.scope.identityMapping
+        ? new IdentityMappingEngine(ctx.scope.identityMapping)
+        : new IdentityMappingEngine());
 
     const { mappedRecords, unmappedUsers, warnings } = applyIdentityMappings(
       discovered.records,
@@ -329,7 +332,10 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
         await executeMannequinReclamation({
           targetOrg,
           csvPath,
-          isEmu: this.engineOptions.isEmu !== false,
+          isEmu:
+            ctx.scope.targetType === 'ghec'
+              ? false
+              : this.engineOptions.isEmu !== false,
           ...(this.engineOptions.geiRunner
             ? { geiRunner: this.engineOptions.geiRunner }
             : {}),

@@ -15,3 +15,195 @@ category:
 
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List repository collaborators
+
+`GET /repos/{owner}/{repo}/collaborators`
+
+For organization-owned repositories, the list of collaborators includes outside collaborators, organization members that are direct collaborators, organization members with access through team memberships, organization members with access through default organization permissions, and organization owners.
+The `permissions` hash returned in the response contains the base role permissions of the collaborator. The `role_name` is the highest role assigned to the collaborator after considering all sources of grants, including: repo, teams, organization, and enterprise.
+There is presently not a way to differentiate between an organization level grant and a repository level grant from this endpoint response.
+
+Team members will include the members of child teams.
+
+The authenticated user must have write, maintain, or admin privileges on the repository to use this endpoint. For organization-owned repositories, the authenticated user needs to be a member of the organization.
+OAuth app tokens and personal access tokens (classic) need the `read:org` and `repo` scopes to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `affiliation` | query | `string` | No | Filter collaborators returned by their affiliation. `outside` means all outside collaborators of an organization-owned repository. `direct` means all collaborators with permissions to an organization-owned repository, regardless of organization membership status. `all` means all collaborators the authenticated user can see. |
+| `permission` | query | `string` | No | Filter collaborators by the permissions they have on the repository. If not specified, all collaborators will be returned. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Check if a user is a repository collaborator
+
+`GET /repos/{owner}/{repo}/collaborators/{username}`
+
+For organization-owned repositories, the list of collaborators includes outside collaborators, organization members that are direct collaborators, organization members with access through team memberships, organization members with access through default organization permissions, and organization owners.
+
+Team members will include the members of child teams.
+
+The authenticated user must have push access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:org` and `repo` scopes to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Response if user is a collaborator |
+| `404` | Not Found if user is not a collaborator |
+
+## Add a repository collaborator
+
+`PUT /repos/{owner}/{repo}/collaborators/{username}`
+
+Add a user to a repository with a specified level of access. If the repository is owned by an organization, this API does not add the user to the organization - a user that has repository access without being an organization member is called an "outside collaborator" (if they are not an Enterprise Managed User) or a "repository collaborator" if they are an Enterprise Managed User. These users are exempt from some organization policies - see "[Adding outside collaborators to repositories](https://docs.github.com/enterprise-cloud@latest/organizations/managing-user-access-to-your-organizations-repositories/managing-outside-collaborators/adding-outside-collaborators-to-repositories-in-your-organization)" to learn more about these collaborator types.
+
+This endpoint triggers [notifications](https://docs.github.com/enterprise-cloud@latest/github/managing-subscriptions-and-notifications-on-github/about-notifications).
+
+Adding an outside collaborator may be restricted by enterprise and organization administrators. For more information, see "[Enforcing repository management policies in your enterprise](https://docs.github.com/enterprise-cloud@latest/admin/policies/enforcing-policies-for-your-enterprise/enforcing-repository-management-policies-in-your-enterprise#enforcing-a-policy-for-inviting-outside-collaborators-to-repositories)" and "[Setting permissions for adding outside collaborators](https://docs.github.com/enterprise-cloud@latest/organizations/managing-organization-settings/setting-permissions-for-adding-outside-collaborators)" for organization settings.
+
+For more information on permission levels, see "[Repository permission levels for an organization](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/repository-permission-levels-for-an-organization#permission-levels-for-repositories-owned-by-an-organization)". There are restrictions on which permissions can be granted to organization members when an organization base role is in place. In this case, the role being given must be equal to or higher than the org base permission. Otherwise, the request will fail with:
+
+Cannot assign {member} permission of {role name}
+
+Note that, if you choose not to pass any parameters, you'll need to set `Content-Length` to zero when calling out to this endpoint. For more information, see "[HTTP method](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#http-method)."
+
+The invitee will receive a notification that they have been invited to the repository, which they must accept or decline. They may do this via the notifications page, the email they receive, or by using the [API](https://docs.github.com/enterprise-cloud@latest/rest/collaborators/invitations).
+
+For Enterprise Managed Users, this endpoint does not send invitations - these users are automatically added to organizations and repositories. Enterprise Managed Users can only be added to organizations and repositories within their enterprise.
+
+Updating an existing collaborator's permission level
+
+The endpoint can also be used to change the permissions of an existing collaborator without first removing and re-adding the collaborator. To change the permissions, use the same endpoint and pass a different `permission` parameter. The response will be a `204`, with no other indication that the permission level changed.
+
+Rate limits
+
+You are limited to sending 50 invitations to a repository per 24 hour period. Note there is no limit if you are inviting organization members to an organization repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `permission` | `string` | No | The permission to grant the collaborator. Only valid on organization-owned repositories. We accept the following permissions to be set: `pull`, `triage`, `triage_plus`, `push`, `maintain`, `admin` and you can also specify a custom repository role name, if the owning organization has defined any. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Response when a new invitation is created |
+| `204` | Response when: an existing collaborator is added as a collaborator an organization member is added as an individual collaborator an existing team member (whose team is also a repository collaborator) is added as an individual collaborator |
+| `403` | Forbidden |
+| `422` | Response when: validation failed, or the endpoint has been spammed an Enterprise Managed User (EMU) account was invited to a repository in an enterprise with personal user accounts |
+
+## Remove a repository collaborator
+
+`DELETE /repos/{owner}/{repo}/collaborators/{username}`
+
+Removes a collaborator from a repository.
+
+To use this endpoint, the authenticated user must either be an administrator of the repository or target themselves for removal.
+
+This endpoint also:
+
+Cancels any outstanding invitations sent by the collaborator
+
+Unassigns the user from any issues
+
+Removes access to organization projects if the user is not an organization member and is not a collaborator on any other organization repositories.
+
+Unstars the repository
+
+Updates access permissions to packages
+
+Removing a user as a collaborator has the following effects on forks:
+
+If the user had access to a fork through their membership to this repository, the user will also be removed from the fork.
+
+If the user had their own fork of the repository, the fork will be deleted.
+
+If the user still has read access to the repository, open pull requests by this user from a fork will be denied.
+
+Note
+
+A user can still have access to the repository through organization permissions like base repository permissions.
+
+Although the API responds immediately, the additional permission updates might take some extra time to complete in the background.
+
+For more information on fork permissions, see "[About permissions and visibility of forks](https://docs.github.com/enterprise-cloud@latest/pull-requests/collaborating-with-pull-requests/working-with-forks/about-permissions-and-visibility-of-forks)".
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when collaborator was removed from the repository. |
+| `403` | Forbidden |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get repository permissions for a user
+
+`GET /repos/{owner}/{repo}/collaborators/{username}/permission`
+
+Checks the repository permission and role of a collaborator.
+
+The `permission` attribute provides the legacy base roles of `admin`, `write`, `read`, and `none`, where the
+`maintain` role is mapped to `write` and the `triage` role is mapped to `read`.
+The `role_name` attribute provides the name of the assigned role, including custom roles. The
+`permission` can also be used to determine which base level of access the collaborator has to the repository.
+
+The calculated permissions are the highest role assigned to the collaborator after considering all sources of grants, including: repo, teams, organization, and enterprise.
+There is presently not a way to differentiate between an organization level grant and a repository level grant from this endpoint response.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | if user has admin permissions |
+| `404` | Resource not found |

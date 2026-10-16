@@ -13,3 +13,2939 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/graphql/data/ghec -->
+
+## Queries
+
+### `enterprise`: `Enterprise`
+
+Look up an enterprise by URL slug.
+
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `invitationToken` | `String` | The enterprise invitation token. |
+| `slug` | `String!` | The enterprise URL slug. |
+
+### `enterpriseAdministratorInvitation`: `EnterpriseAdministratorInvitation`
+
+Look up a pending enterprise administrator invitation by invitee, enterprise and role.
+
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `enterpriseSlug` | `String!` | The slug of the enterprise the user was invited to join. |
+| `role` | `EnterpriseAdministratorRole!` | The role for the enterprise member invitation. |
+| `userLogin` | `String!` | The login of the user invited to join the enterprise. |
+
+### `enterpriseAdministratorInvitationByToken`: `EnterpriseAdministratorInvitation`
+
+Look up a pending enterprise administrator invitation by invitation token. If
+the invitation was sent to an email address, the viewer must have verified
+that email address, or otherwise be an administrator of the enterprise.
+
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `invitationToken` | `String!` | The invitation token sent with the invitation email. |
+
+### `enterpriseMemberInvitation`: `EnterpriseMemberInvitation`
+
+Look up a pending enterprise unaffiliated member invitation by invitee and enterprise.
+
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `enterpriseSlug` | `String!` | The slug of the enterprise the user was invited to join. |
+| `userLogin` | `String!` | The login of the user invited to join the enterprise. |
+
+### `enterpriseMemberInvitationByToken`: `EnterpriseMemberInvitation`
+
+Look up a pending enterprise unaffiliated member invitation by invitation
+token. If the invitation was sent to an email address, the viewer must have
+verified that email address, or otherwise be an administrator of the enterprise.
+
+| Argument | Type | Description |
+| :--- | :--- | :--- |
+| `invitationToken` | `String!` | The invitation token sent with the invitation email. |
+
+## Mutations
+
+### `acceptEnterpriseAdministratorInvitation`
+
+Accepts a pending invitation for a user to become an administrator of an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `AcceptEnterpriseAdministratorInvitationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitation` | `EnterpriseAdministratorInvitation` | The invitation that was accepted. |
+| `message` | `String` | A message confirming the result of accepting an administrator invitation. |
+
+### `acceptEnterpriseMemberInvitation`
+
+Accepts a pending invitation for a user to become an unaffiliated member of an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `AcceptEnterpriseMemberInvitationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitation` | `EnterpriseMemberInvitation` | The invitation that was accepted. |
+| `message` | `String` | A message confirming the result of accepting an unaffiliated member invitation. |
+
+### `accessUserNamespaceRepository`
+
+Access user namespace repository for a temporary duration.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `AccessUserNamespaceRepositoryInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `expiresAt` | `DateTime` | The time that repository access expires at. |
+| `repository` | `Repository` | The repository that is temporarily accessible. |
+
+### `addEnterpriseOrganizationMember`
+
+Adds enterprise members to an organization within the enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `AddEnterpriseOrganizationMemberInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `users` | `[User!]` | The users who were added to the organization. |
+
+### `addEnterpriseSupportEntitlement`
+
+Adds a support entitlement to an enterprise member.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `AddEnterpriseSupportEntitlementInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `message` | `String` | A message confirming the result of adding the support entitlement. |
+
+### `cancelEnterpriseAdminInvitation`
+
+Cancels a pending invitation for an administrator to join an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `CancelEnterpriseAdminInvitationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitation` | `EnterpriseAdministratorInvitation` | The invitation that was canceled. |
+| `message` | `String` | A message confirming the result of canceling an administrator invitation. |
+
+### `cancelEnterpriseMemberInvitation`
+
+Cancels a pending invitation for an unaffiliated member to join an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `CancelEnterpriseMemberInvitationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitation` | `EnterpriseMemberInvitation` | The invitation that was canceled. |
+| `message` | `String` | A message confirming the result of canceling an member invitation. |
+
+### `createEnterpriseOrganization`
+
+Creates an organization as part of an enterprise account. User-authenticated
+requests make the viewer an owner. Users listed in `adminLogins` are invited
+as owners unless owner invitations are disabled, in which case they are added
+directly. Installation requests also add existing enterprise members directly.
+Invitation failures do not roll back organization creation. A personal access
+token used to create an organization is implicitly permitted to update the
+organization it created, if the organization is part of an enterprise that has
+SAML enabled or uses Enterprise Managed Users. If the organization is not part
+of such an enterprise, and instead has SAML enabled for it individually, the
+token will then require SAML authorization to continue working against that organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `CreateEnterpriseOrganizationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise that owns the created organization. |
+| `organization` | `Organization` | The organization that was created. |
+
+### `createIpAllowListEntry`
+
+Creates a new IP allow list entry.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `CreateIpAllowListEntryInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ipAllowListEntry` | `IpAllowListEntry` | The IP allow list entry that was created. |
+
+### `deleteIpAllowListEntry`
+
+Deletes an IP allow list entry.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `DeleteIpAllowListEntryInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ipAllowListEntry` | `IpAllowListEntry` | The IP allow list entry that was deleted. |
+
+### `grantEnterpriseOrganizationsMigratorRole`
+
+Grant the migrator role to a user for all organizations under an enterprise account.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `GrantEnterpriseOrganizationsMigratorRoleInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organizations` | `OrganizationConnection` | The organizations that had the migrator role applied to for the given user. |
+
+### `inviteEnterpriseAdmin`
+
+Invite someone to become an administrator of the enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `InviteEnterpriseAdminInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitation` | `EnterpriseAdministratorInvitation` | The created enterprise administrator invitation. |
+
+### `inviteEnterpriseMember`
+
+Invite someone to become an unaffiliated member of the enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `InviteEnterpriseMemberInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitation` | `EnterpriseMemberInvitation` | The created enterprise member invitation. |
+
+### `regenerateEnterpriseIdentityProviderRecoveryCodes`
+
+Regenerates the identity provider recovery codes for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RegenerateEnterpriseIdentityProviderRecoveryCodesInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `identityProvider` | `EnterpriseIdentityProvider` | The identity provider for the enterprise. |
+
+### `removeEnterpriseAdmin`
+
+Removes an administrator from the enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RemoveEnterpriseAdminInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `admin` | `User` | The user who was removed as an administrator. |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The updated enterprise. |
+| `message` | `String` | A message confirming the result of removing an administrator. |
+| `viewer` | `User` | The viewer performing the mutation. |
+
+### `removeEnterpriseIdentityProvider`
+
+Removes the identity provider from an enterprise. Owners of enterprises both
+with and without Enterprise Managed Users may use this mutation.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RemoveEnterpriseIdentityProviderInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `identityProvider` | `EnterpriseIdentityProvider` | The identity provider that was removed from the enterprise. |
+
+### `removeEnterpriseMember`
+
+Completely removes a user from the enterprise asynchronously.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RemoveEnterpriseMemberInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The updated enterprise. |
+| `user` | `User` | The user that was removed from the enterprise. |
+| `viewer` | `User` | The viewer performing the mutation. |
+
+### `removeEnterpriseOrganization`
+
+Removes an organization from the enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RemoveEnterpriseOrganizationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The updated enterprise. |
+| `organization` | `Organization` | The organization that was removed from the enterprise. |
+| `viewer` | `User` | The viewer performing the mutation. |
+
+### `removeEnterpriseSupportEntitlement`
+
+Removes a support entitlement from an enterprise member.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RemoveEnterpriseSupportEntitlementInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `message` | `String` | A message confirming the result of removing the support entitlement. |
+
+### `revokeEnterpriseOrganizationsMigratorRole`
+
+Revoke the migrator role to a user for all organizations under an enterprise account.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `RevokeEnterpriseOrganizationsMigratorRoleInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organizations` | `OrganizationConnection` | The organizations that had the migrator role revoked for the given user. |
+
+### `setEnterpriseIdentityProvider`
+
+Creates or updates the identity provider for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `SetEnterpriseIdentityProviderInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `identityProvider` | `EnterpriseIdentityProvider` | The identity provider for the enterprise. |
+
+### `transferEnterpriseOrganization`
+
+Transfer an organization from one enterprise to another enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `TransferEnterpriseOrganizationInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `organization` | `Organization` | The organization for which a transfer was initiated. |
+
+### `updateEnterpriseAdministratorRole`
+
+Updates the role of an enterprise administrator.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseAdministratorRoleInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `message` | `String` | A message confirming the result of changing the administrator's role. |
+
+### `updateEnterpriseAllowPrivateRepositoryForkingSetting`
+
+Sets whether private repository forks are enabled for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseAllowPrivateRepositoryForkingSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated allow private repository forking setting. |
+| `message` | `String` | A message confirming the result of updating the allow private repository forking setting. |
+
+### `updateEnterpriseDefaultRepositoryPermissionSetting`
+
+Sets the base repository permission for organizations in an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseDefaultRepositoryPermissionSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated base repository permission setting. |
+| `message` | `String` | A message confirming the result of updating the base repository permission setting. |
+
+### `updateEnterpriseDeployKeySetting`
+
+Sets whether deploy keys are allowed to be created and used for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseDeployKeySettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated deploy key setting. |
+| `message` | `String` | A message confirming the result of updating the deploy key setting. |
+
+### `updateEnterpriseMembersCanChangeRepositoryVisibilitySetting`
+
+Sets whether organization members with admin permissions on a repository can change repository visibility.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanChangeRepositoryVisibilitySettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can change repository visibility setting. |
+| `message` | `String` | A message confirming the result of updating the members can change repository visibility setting. |
+
+### `updateEnterpriseMembersCanCreateRepositoriesSetting`
+
+Sets the members can create repositories setting for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanCreateRepositoriesSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can create repositories setting. |
+| `message` | `String` | A message confirming the result of updating the members can create repositories setting. |
+
+### `updateEnterpriseMembersCanDeleteIssuesSetting`
+
+Sets the members can delete issues setting for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanDeleteIssuesSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can delete issues setting. |
+| `message` | `String` | A message confirming the result of updating the members can delete issues setting. |
+
+### `updateEnterpriseMembersCanDeleteRepositoriesSetting`
+
+Sets the members can delete repositories setting for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanDeleteRepositoriesSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can delete repositories setting. |
+| `message` | `String` | A message confirming the result of updating the members can delete repositories setting. |
+
+### `updateEnterpriseMembersCanInviteCollaboratorsSetting`
+
+Sets whether members can invite collaborators are enabled for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanInviteCollaboratorsSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can invite collaborators setting. |
+| `message` | `String` | A message confirming the result of updating the members can invite collaborators setting. |
+
+### `updateEnterpriseMembersCanMakePurchasesSetting`
+
+Sets whether or not an organization owner can make purchases.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanMakePurchasesSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can make purchases setting. |
+| `message` | `String` | A message confirming the result of updating the members can make purchases setting. |
+
+### `updateEnterpriseMembersCanUpdateProtectedBranchesSetting`
+
+Sets the members can update protected branches setting for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanUpdateProtectedBranchesSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can update protected branches setting. |
+| `message` | `String` | A message confirming the result of updating the members can update protected branches setting. |
+
+### `updateEnterpriseMembersCanViewDependencyInsightsSetting`
+
+Sets the members can view dependency insights for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseMembersCanViewDependencyInsightsSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated members can view dependency insights setting. |
+| `message` | `String` | A message confirming the result of updating the members can view dependency insights setting. |
+
+### `updateEnterpriseOrganizationProjectsSetting`
+
+Sets whether organization projects are enabled for an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseOrganizationProjectsSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated organization projects setting. |
+| `message` | `String` | A message confirming the result of updating the organization projects setting. |
+
+### `updateEnterpriseOwnerOrganizationRole`
+
+Updates the role of an enterprise owner with an organization.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseOwnerOrganizationRoleInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `message` | `String` | A message confirming the result of changing the owner's organization role. |
+
+### `updateEnterpriseProfile`
+
+Updates an enterprise's profile.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseProfileInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The updated enterprise. |
+
+### `updateEnterpriseRepositoryProjectsSetting`
+
+Sets whether repository projects are enabled for a enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseRepositoryProjectsSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated repository projects setting. |
+| `message` | `String` | A message confirming the result of updating the repository projects setting. |
+
+### `updateEnterpriseTwoFactorAuthenticationDisallowedMethodsSetting`
+
+Sets the two-factor authentication methods that users of an enterprise may not use.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseTwoFactorAuthenticationDisallowedMethodsSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated two-factor authentication disallowed methods setting. |
+| `message` | `String` | A message confirming the result of updating the two-factor authentication disallowed methods setting. |
+
+### `updateEnterpriseTwoFactorAuthenticationRequiredSetting`
+
+Sets whether two factor authentication is required for all users in an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateEnterpriseTwoFactorAuthenticationRequiredSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterprise` | `Enterprise` | The enterprise with the updated two factor authentication required setting. |
+| `message` | `String` | A message confirming the result of updating the two factor authentication required setting. |
+
+### `updateIpAllowListEnabledSetting`
+
+Sets whether an IP allow list is enabled on an owner.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateIpAllowListEnabledSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `owner` | `IpAllowListOwner` | The IP allow list owner on which the setting was updated. |
+
+### `updateIpAllowListEntry`
+
+Updates an IP allow list entry.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateIpAllowListEntryInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ipAllowListEntry` | `IpAllowListEntry` | The IP allow list entry that was updated. |
+
+### `updateIpAllowListForInstalledAppsEnabledSetting`
+
+Sets whether IP allow list configuration for installed GitHub Apps is enabled on an owner.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateIpAllowListForInstalledAppsEnabledSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `owner` | `IpAllowListOwner` | The IP allow list owner on which the setting was updated. |
+
+### `updateIpAllowListUserLevelEnforcementEnabledSetting`
+
+Sets whether IP allow list user-level enforcement is enabled on an enterprise.
+
+**Input Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | `UpdateIpAllowListUserLevelEnforcementEnabledSettingInput!` |  |
+
+**Return Fields:**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `owner` | `IpAllowListOwner` | The IP allow list owner on which the setting was updated. |
+
+## Input Objects
+
+### `AcceptEnterpriseAdministratorInvitationInput`
+
+Autogenerated input type of AcceptEnterpriseAdministratorInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitationId` | `ID!` | The id of the invitation being accepted. |
+
+### `AcceptEnterpriseMemberInvitationInput`
+
+Autogenerated input type of AcceptEnterpriseMemberInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitationId` | `ID!` | The id of the invitation being accepted. |
+
+### `AccessUserNamespaceRepositoryInput`
+
+Autogenerated input type of AccessUserNamespaceRepository.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise owning the user namespace repository. |
+| `repositoryId` | `ID!` | The ID of the user namespace repository to access. |
+
+### `AddEnterpriseOrganizationMemberInput`
+
+Autogenerated input type of AddEnterpriseOrganizationMember.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise which owns the organization. |
+| `organizationId` | `ID!` | The ID of the organization the users will be added to. |
+| `role` | `OrganizationMemberRole` | The role to assign the users in the organization. |
+| `userIds` | `[ID!]!` | The IDs of the enterprise members to add. |
+
+### `AddEnterpriseSupportEntitlementInput`
+
+Autogenerated input type of AddEnterpriseSupportEntitlement.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the Enterprise which the admin belongs to. |
+| `login` | `String!` | The login of a member who will receive the support entitlement. |
+
+### `AuditLogOrder`
+
+Ordering options for Audit Log connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection` | The ordering direction. |
+| `field` | `AuditLogOrderField` | The field to order Audit Logs by. |
+
+### `CancelEnterpriseAdminInvitationInput`
+
+Autogenerated input type of CancelEnterpriseAdminInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitationId` | `ID!` | The Node ID of the pending enterprise administrator invitation. |
+
+### `CancelEnterpriseMemberInvitationInput`
+
+Autogenerated input type of CancelEnterpriseMemberInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `invitationId` | `ID!` | The Node ID of the pending enterprise member invitation. |
+
+### `CreateEnterpriseOrganizationInput`
+
+Autogenerated input type of CreateEnterpriseOrganization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `adminLogins` | `[String!]!` | The logins of additional organization owners. Listed users are invited unless owner invitations are disabled, in which case they are added directly. Installation requests also add existing enterprise members directly. |
+| `billingEmail` | `String!` | The email used for sending billing receipts. |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise owning the new organization. |
+| `login` | `String!` | The login of the new organization. |
+| `profileName` | `String!` | The profile name of the new organization. |
+
+### `CreateIpAllowListEntryInput`
+
+Autogenerated input type of CreateIpAllowListEntry.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `allowListValue` | `String!` | An IP address or range of addresses in CIDR notation. Ranges that cover the entire address space, such as `0.0.0.0/0` or `::/0`, are not accepted for organizations or enterprises. |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `isActive` | `Boolean!` | Whether the IP allow list entry is active when an IP allow list is enabled. |
+| `name` | `String` | An optional name for the IP allow list entry. |
+| `ownerId` | `ID!` | The ID of the owner for which to create the new IP allow list entry. |
+
+### `DeleteIpAllowListEntryInput`
+
+Autogenerated input type of DeleteIpAllowListEntry.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ipAllowListEntryId` | `ID!` | The ID of the IP allow list entry to delete. |
+
+### `EnterpriseAdministratorInvitationOrder`
+
+Ordering options for enterprise administrator invitation connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseAdministratorInvitationOrderField!` | The field to order enterprise administrator invitations by. |
+
+### `EnterpriseMemberInvitationOrder`
+
+Ordering options for enterprise administrator invitation connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseMemberInvitationOrderField!` | The field to order enterprise member invitations by. |
+
+### `EnterpriseMemberOrder`
+
+Ordering options for enterprise member connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseMemberOrderField!` | The field to order enterprise members by. |
+
+### `EnterpriseOrder`
+
+Ordering options for enterprises.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseOrderField!` | The field to order enterprises by. |
+
+### `EnterpriseServerInstallationOrder`
+
+Ordering options for Enterprise Server installation connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseServerInstallationOrderField!` | The field to order Enterprise Server installations by. |
+
+### `EnterpriseServerUserAccountEmailOrder`
+
+Ordering options for Enterprise Server user account email connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseServerUserAccountEmailOrderField!` | The field to order emails by. |
+
+### `EnterpriseServerUserAccountOrder`
+
+Ordering options for Enterprise Server user account connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseServerUserAccountOrderField!` | The field to order user accounts by. |
+
+### `EnterpriseServerUserAccountsUploadOrder`
+
+Ordering options for Enterprise Server user accounts upload connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseServerUserAccountsUploadOrderField!` | The field to order user accounts uploads by. |
+
+### `EnterpriseTeamMemberOrder`
+
+Ordering options for enterprise team member connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseTeamMemberOrderField!` | The field to order enterprise team members by. |
+
+### `EnterpriseTeamOrder`
+
+Ordering options for enterprise team connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseTeamOrderField!` | The field to order enterprise teams by. |
+
+### `EnterpriseTeamOrganizationOrder`
+
+Ordering options for enterprise team organization connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `EnterpriseTeamOrganizationOrderField!` | The field to order organizations by. |
+
+### `GrantEnterpriseOrganizationsMigratorRoleInput`
+
+Autogenerated input type of GrantEnterpriseOrganizationsMigratorRole.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise to which all organizations managed by it will be granted the migrator role. |
+| `login` | `String!` | The login of the user to grant the migrator role. |
+
+### `InviteEnterpriseAdminInput`
+
+Autogenerated input type of InviteEnterpriseAdmin.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `email` | `String` | The email of the person to invite as an administrator. |
+| `enterpriseId` | `ID!` | The ID of the enterprise to which you want to invite an administrator. |
+| `invitee` | `String` | The login of a user to invite as an administrator. |
+| `role` | `EnterpriseAdministratorRole` | The role of the administrator. |
+
+### `InviteEnterpriseMemberInput`
+
+Autogenerated input type of InviteEnterpriseMember.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `email` | `String` | The email of the person to invite as an unaffiliated member. |
+| `enterpriseId` | `ID!` | The ID of the enterprise to which you want to invite an unaffiliated member. |
+| `invitee` | `String` | The login of a user to invite as an unaffiliated member. |
+
+### `IpAllowListEntryOrder`
+
+Ordering options for IP allow list entry connections.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The ordering direction. |
+| `field` | `IpAllowListEntryOrderField!` | The field to order IP allow list entries by. |
+
+### `RegenerateEnterpriseIdentityProviderRecoveryCodesInput`
+
+Autogenerated input type of RegenerateEnterpriseIdentityProviderRecoveryCodes.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set an identity provider. |
+
+### `RemoveEnterpriseAdminInput`
+
+Autogenerated input type of RemoveEnterpriseAdmin.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The Enterprise ID from which to remove the administrator. |
+| `login` | `String!` | The login of the user to remove as an administrator. |
+
+### `RemoveEnterpriseIdentityProviderInput`
+
+Autogenerated input type of RemoveEnterpriseIdentityProvider.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise from which to remove the identity provider. |
+
+### `RemoveEnterpriseMemberInput`
+
+Autogenerated input type of RemoveEnterpriseMember.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise from which the user should be removed. |
+| `userId` | `ID!` | The ID of the user to remove from the enterprise. |
+
+### `RemoveEnterpriseOrganizationInput`
+
+Autogenerated input type of RemoveEnterpriseOrganization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise from which the organization should be removed. |
+| `organizationId` | `ID!` | The ID of the organization to remove from the enterprise. |
+
+### `RemoveEnterpriseSupportEntitlementInput`
+
+Autogenerated input type of RemoveEnterpriseSupportEntitlement.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the Enterprise which the admin belongs to. |
+| `login` | `String!` | The login of a member who will lose the support entitlement. |
+
+### `RevokeEnterpriseOrganizationsMigratorRoleInput`
+
+Autogenerated input type of RevokeEnterpriseOrganizationsMigratorRole.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise to which all organizations managed by it will be granted the migrator role. |
+| `login` | `String!` | The login of the user to revoke the migrator role. |
+
+### `SetEnterpriseIdentityProviderInput`
+
+Autogenerated input type of SetEnterpriseIdentityProvider.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `digestMethod` | `SamlDigestAlgorithm!` | The digest algorithm used to sign SAML requests for the identity provider. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set an identity provider. |
+| `idpCertificate` | `String!` | The x509 certificate used by the identity provider to sign assertions and responses. |
+| `issuer` | `String` | The Issuer Entity ID for the SAML identity provider. |
+| `signatureMethod` | `SamlSignatureAlgorithm!` | The signature algorithm used to sign SAML requests for the identity provider. |
+| `ssoUrl` | `URI!` | The URL endpoint for the identity provider's SAML SSO. |
+
+### `TransferEnterpriseOrganizationInput`
+
+Autogenerated input type of TransferEnterpriseOrganization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `destinationEnterpriseId` | `ID!` | The ID of the enterprise where the organization should be transferred. |
+| `organizationId` | `ID!` | The ID of the organization to transfer. |
+
+### `UpdateEnterpriseAdministratorRoleInput`
+
+Autogenerated input type of UpdateEnterpriseAdministratorRole.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the Enterprise which the admin belongs to. |
+| `login` | `String!` | The login of a administrator whose role is being changed. |
+| `role` | `EnterpriseAdministratorRole!` | The new role for the Enterprise administrator. |
+
+### `UpdateEnterpriseAllowPrivateRepositoryForkingSettingInput`
+
+Autogenerated input type of UpdateEnterpriseAllowPrivateRepositoryForkingSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the allow private repository forking setting. |
+| `policyValue` | `EnterpriseAllowPrivateRepositoryForkingPolicyValue` | The value for the allow private repository forking policy on the enterprise. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the allow private repository forking setting on the enterprise. |
+
+### `UpdateEnterpriseDefaultRepositoryPermissionSettingInput`
+
+Autogenerated input type of UpdateEnterpriseDefaultRepositoryPermissionSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the base repository permission setting. |
+| `settingValue` | `EnterpriseDefaultRepositoryPermissionSettingValue!` | The value for the base repository permission setting on the enterprise. |
+
+### `UpdateEnterpriseDeployKeySettingInput`
+
+Autogenerated input type of UpdateEnterpriseDeployKeySetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the deploy key setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the deploy key setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanChangeRepositoryVisibilitySettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanChangeRepositoryVisibilitySetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can change repository visibility setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the members can change repository visibility setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanCreateRepositoriesSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanCreateRepositoriesSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can create repositories setting. |
+| `membersCanCreateInternalRepositories` | `Boolean` | Allow members to create internal repositories. Defaults to current value. |
+| `membersCanCreatePrivateRepositories` | `Boolean` | Allow members to create private repositories. Defaults to current value. |
+| `membersCanCreatePublicRepositories` | `Boolean` | Allow members to create public repositories. Defaults to current value. |
+| `membersCanCreateRepositoriesPolicyEnabled` | `Boolean` | When false, allow member organizations to set their own repository creation member privileges. |
+| `settingValue` | `EnterpriseMembersCanCreateRepositoriesSettingValue` | Value for the members can create repositories setting on the enterprise. This or the granular public/private/internal allowed fields (but not both) must be provided. |
+
+### `UpdateEnterpriseMembersCanDeleteIssuesSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanDeleteIssuesSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can delete issues setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the members can delete issues setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanDeleteRepositoriesSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanDeleteRepositoriesSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can delete repositories setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the members can delete repositories setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanInviteCollaboratorsSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanInviteCollaboratorsSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can invite collaborators setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the members can invite collaborators setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanMakePurchasesSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanMakePurchasesSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can make purchases setting. |
+| `settingValue` | `EnterpriseMembersCanMakePurchasesSettingValue!` | The value for the members can make purchases setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanUpdateProtectedBranchesSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanUpdateProtectedBranchesSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can update protected branches setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the members can update protected branches setting on the enterprise. |
+
+### `UpdateEnterpriseMembersCanViewDependencyInsightsSettingInput`
+
+Autogenerated input type of UpdateEnterpriseMembersCanViewDependencyInsightsSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the members can view dependency insights setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the members can view dependency insights setting on the enterprise. |
+
+### `UpdateEnterpriseOrganizationProjectsSettingInput`
+
+Autogenerated input type of UpdateEnterpriseOrganizationProjectsSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the organization projects setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the organization projects setting on the enterprise. |
+
+### `UpdateEnterpriseOwnerOrganizationRoleInput`
+
+Autogenerated input type of UpdateEnterpriseOwnerOrganizationRole.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the Enterprise which the owner belongs to. |
+| `organizationId` | `ID!` | The ID of the organization for membership change. |
+| `organizationRole` | `RoleInOrganization!` | The role to assume in the organization. |
+
+### `UpdateEnterpriseProfileInput`
+
+Autogenerated input type of UpdateEnterpriseProfile.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `description` | `String` | The description of the enterprise. |
+| `enterpriseId` | `ID!` | The Enterprise ID to update. |
+| `location` | `String` | The location of the enterprise. |
+| `name` | `String` | The name of the enterprise. |
+| `securityContactEmail` | `String` | The security contact email address of the enterprise. |
+| `websiteUrl` | `String` | The URL of the enterprise's website. |
+
+### `UpdateEnterpriseRepositoryProjectsSettingInput`
+
+Autogenerated input type of UpdateEnterpriseRepositoryProjectsSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the repository projects setting. |
+| `settingValue` | `EnterpriseEnabledDisabledSettingValue!` | The value for the repository projects setting on the enterprise. |
+
+### `UpdateEnterpriseTwoFactorAuthenticationDisallowedMethodsSettingInput`
+
+Autogenerated input type of UpdateEnterpriseTwoFactorAuthenticationDisallowedMethodsSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the two-factor authentication disallowed methods setting. |
+| `settingValue` | `EnterpriseDisallowedMethodsSettingValue!` | The value for the two-factor authentication disallowed methods setting on the enterprise. |
+
+### `UpdateEnterpriseTwoFactorAuthenticationRequiredSettingInput`
+
+Autogenerated input type of UpdateEnterpriseTwoFactorAuthenticationRequiredSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `enterpriseId` | `ID!` | The ID of the enterprise on which to set the two factor authentication required setting. |
+| `settingValue` | `EnterpriseEnabledSettingValue!` | The value for the two factor authentication required setting on the enterprise. |
+
+### `UpdateIpAllowListEnabledSettingInput`
+
+Autogenerated input type of UpdateIpAllowListEnabledSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ownerId` | `ID!` | The ID of the owner on which to set the IP allow list enabled setting. |
+| `settingValue` | `IpAllowListEnabledSettingValue!` | The value for the IP allow list enabled setting. |
+
+### `UpdateIpAllowListEntryInput`
+
+Autogenerated input type of UpdateIpAllowListEntry.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `allowListValue` | `String!` | An IP address or range of addresses in CIDR notation. Ranges that cover the entire address space, such as `0.0.0.0/0` or `::/0`, are not accepted for organizations or enterprises. |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ipAllowListEntryId` | `ID!` | The ID of the IP allow list entry to update. |
+| `isActive` | `Boolean!` | Whether the IP allow list entry is active when an IP allow list is enabled. |
+| `name` | `String` | An optional name for the IP allow list entry. |
+
+### `UpdateIpAllowListForInstalledAppsEnabledSettingInput`
+
+Autogenerated input type of UpdateIpAllowListForInstalledAppsEnabledSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ownerId` | `ID!` | The ID of the owner. |
+| `settingValue` | `IpAllowListForInstalledAppsEnabledSettingValue!` | The value for the IP allow list configuration for installed GitHub Apps setting. |
+
+### `UpdateIpAllowListUserLevelEnforcementEnabledSettingInput`
+
+Autogenerated input type of UpdateIpAllowListUserLevelEnforcementEnabledSetting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `clientMutationId` | `String` | A unique identifier for the client performing the mutation. |
+| `ownerId` | `ID!` | The ID of the owner. |
+| `settingValue` | `IpAllowListUserLevelEnforcementEnabledSettingValue!` | The value for the IP allow list user-level enforcement enabled setting. |
+
+## Objects
+
+### `AnnouncementBanner`
+
+An announcement banner for an enterprise or organization.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | The date the announcement was created. |
+| `expiresAt` | `DateTime` | The expiration date of the announcement, if any. |
+| `isUserDismissible` | `Boolean!` | Whether the announcement can be dismissed by the user. |
+| `message` | `String` | The text of the announcement. |
+
+### `Enterprise`
+
+An account to manage multiple organizations with consolidated policy and billing.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `announcementBanner` | `AnnouncementBanner` | The announcement banner set on this enterprise, if any. Only visible to members of the enterprise. |
+| `avatarUrl` | `URI!` | A URL pointing to the enterprise's public avatar. |
+| `billingEmail` | `String` | The enterprise's billing email. |
+| `billingInfo` | `EnterpriseBillingInfo` | Enterprise billing information visible to enterprise billing managers. |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `databaseId` | `Int` | Identifies the primary key from the database. |
+| `description` | `String` | The description of the enterprise. |
+| `descriptionHTML` | `HTML!` | The description of the enterprise as HTML. |
+| `enterpriseTeam` | `EnterpriseTeam` | Find an enterprise team by its slug. |
+| `enterpriseTeams` | `EnterpriseTeamConnection!` | A list of enterprise teams in this enterprise. |
+| `id` | `ID!` | The Node ID of the Enterprise object. |
+| `innersourceVulnerabilities` | `SecurityVulnerabilityConnection!` | Innersource security vulnerabilities scoped to this enterprise. |
+| `location` | `String` | The location of the enterprise. |
+| `members` | `EnterpriseMemberConnection!` | A list of users who are members of this enterprise. |
+| `name` | `String!` | The name of the enterprise. |
+| `organizations` | `OrganizationConnection!` | A list of organizations that belong to this enterprise. |
+| `ownerInfo` | `EnterpriseOwnerInfo` | Enterprise information visible to enterprise owners or enterprise owners' personal access tokens (classic) with read:enterprise or admin:enterprise scope. |
+| `readme` | `String` | The raw content of the enterprise README. |
+| `readmeHTML` | `HTML!` | The content of the enterprise README as HTML. |
+| `repositoryCustomProperties` | `RepositoryCustomPropertyConnection` | A list of repository custom properties for this enterprise. |
+| `repositoryCustomProperty` | `RepositoryCustomProperty` | Returns a single repository custom property for the current enterprise by name. |
+| `resourcePath` | `URI!` | The HTTP path for this enterprise. |
+| `ruleset` | `RepositoryRuleset` | Returns a single ruleset from the current enterprise by ID. |
+| `rulesets` | `RepositoryRulesetConnection` | A list of rulesets for this enterprise. |
+| `securityContactEmail` | `String` | The enterprise's security contact email address. |
+| `slug` | `String!` | The URL-friendly identifier for the enterprise. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `url` | `URI!` | The HTTP URL for this enterprise. |
+| `userNamespaceRepositories` | `UserNamespaceRepositoryConnection!` | A list of repositories that belong to users. Only available for enterprises with Enterprise Managed Users. |
+| `viewerIsAdmin` | `Boolean!` | Is the current viewer an admin of this enterprise?. |
+| `websiteUrl` | `URI` | The URL of the enterprise website. |
+
+### `EnterpriseAdministratorInvitation`
+
+An invitation for a user to become an owner or billing manager of an enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `email` | `String` | The email of the person who was invited to the enterprise. |
+| `enterprise` | `Enterprise!` | The enterprise the invitation is for. |
+| `id` | `ID!` | The Node ID of the EnterpriseAdministratorInvitation object. |
+| `invitee` | `User` | The user who was invited to the enterprise. |
+| `inviter` | `User` | The user who created the invitation. |
+| `role` | `EnterpriseAdministratorRole!` | The invitee's pending role in the enterprise (owner or billing_manager). |
+
+### `EnterpriseAdministratorInvitationConnection`
+
+The connection type for EnterpriseAdministratorInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseAdministratorInvitationEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseAdministratorInvitation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseAdministratorInvitationEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseAdministratorInvitation` | The item at the end of the edge. |
+
+### `EnterpriseBillingInfo`
+
+Enterprise billing information visible to enterprise billing managers and owners.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `allLicensableUsersCount` | `Int!` | The number of licenseable users/emails across the enterprise. |
+| `assetPacks` | `Int!` | The number of data packs used by all organizations owned by the enterprise. Data packs are deprecated, always returns 0. |
+| `bandwidthQuota` | `Float!` | The bandwidth quota in GB for all organizations owned by the enterprise. |
+| `bandwidthUsage` | `Float!` | The bandwidth usage in GB for all organizations owned by the enterprise. |
+| `bandwidthUsagePercentage` | `Int!` | The bandwidth usage as a percentage of the bandwidth quota. |
+| `storageQuota` | `Float!` | The storage quota in GB for all organizations owned by the enterprise. |
+| `storageUsage` | `Float!` | The storage usage in GB for all organizations owned by the enterprise. |
+| `storageUsagePercentage` | `Int!` | The storage usage as a percentage of the storage quota. |
+| `totalAvailableLicenses` | `Int!` | The number of available licenses across all owned organizations based on the unique number of billable users. |
+| `totalLicenses` | `Int!` | The total number of licenses allocated. |
+
+### `EnterpriseConnection`
+
+The connection type for Enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseEdge]` | A list of edges. |
+| `nodes` | `[Enterprise]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `Enterprise` | The item at the end of the edge. |
+
+### `EnterpriseIdentityProvider`
+
+An identity provider configured to provision identities for an enterprise.
+Visible to enterprise owners or enterprise owners' personal access tokens
+(classic) with read:enterprise or admin:enterprise scope.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `digestMethod` | `SamlDigestAlgorithm` | The digest algorithm used to sign SAML requests for the identity provider. |
+| `enterprise` | `Enterprise` | The enterprise this identity provider belongs to. |
+| `externalIdentities` | `ExternalIdentityConnection!` | ExternalIdentities provisioned by this identity provider. |
+| `id` | `ID!` | The Node ID of the EnterpriseIdentityProvider object. |
+| `idpCertificate` | `X509Certificate` | The x509 certificate used by the identity provider to sign assertions and responses. |
+| `issuer` | `String` | The Issuer Entity ID for the SAML identity provider. |
+| `recoveryCodes` | `[String!]` | Recovery codes that can be used by admins to access the enterprise if the identity provider is unavailable. |
+| `signatureMethod` | `SamlSignatureAlgorithm` | The signature algorithm used to sign SAML requests for the identity provider. |
+| `ssoUrl` | `URI` | The URL endpoint for the identity provider's SAML SSO. |
+
+### `EnterpriseMemberConnection`
+
+The connection type for EnterpriseMember.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseMemberEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseMember]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseMemberEdge`
+
+A User who is a member of an enterprise through one or more organizations.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseMember` | The item at the end of the edge. |
+
+### `EnterpriseMemberInvitation`
+
+An invitation for a user to become an unaffiliated member of an enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `email` | `String` | The email of the person who was invited to the enterprise. |
+| `enterprise` | `Enterprise!` | The enterprise the invitation is for. |
+| `id` | `ID!` | The Node ID of the EnterpriseMemberInvitation object. |
+| `invitee` | `User` | The user who was invited to the enterprise. |
+| `inviter` | `User` | The user who created the invitation. |
+
+### `EnterpriseMemberInvitationConnection`
+
+The connection type for EnterpriseMemberInvitation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseMemberInvitationEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseMemberInvitation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseMemberInvitationEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseMemberInvitation` | The item at the end of the edge. |
+
+### `EnterpriseOwnerInfo`
+
+Enterprise information visible to enterprise owners or enterprise owners'
+personal access tokens (classic) with read:enterprise or admin:enterprise scope.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `admins` | `EnterpriseAdministratorConnection!` | A list of all of the administrators for this enterprise. |
+| `affiliatedUsersWithTwoFactorDisabled` | `UserConnection!` | A list of users in the enterprise who currently have two-factor authentication disabled. |
+| `affiliatedUsersWithTwoFactorDisabledExist` | `Boolean!` | Whether or not affiliated users with two-factor authentication disabled exist in the enterprise. |
+| `allowPrivateRepositoryForkingSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether private repository forking is enabled for repositories in organizations in this enterprise. |
+| `allowPrivateRepositoryForkingSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided private repository forking setting value. |
+| `allowPrivateRepositoryForkingSettingPolicyValue` | `EnterpriseAllowPrivateRepositoryForkingPolicyValue` | The value for the allow private repository forking policy on the enterprise. |
+| `defaultRepositoryPermissionSetting` | `EnterpriseDefaultRepositoryPermissionSettingValue!` | The setting value for base repository permissions for organizations in this enterprise. |
+| `defaultRepositoryPermissionSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided base repository permission. |
+| `domains` | `VerifiableDomainConnection!` | A list of domains owned by the enterprise. Visible to enterprise owners or enterprise owners' personal access tokens (classic) with admin:enterprise scope. |
+| `enterpriseServerInstallations` | `EnterpriseServerInstallationConnection!` | Enterprise Server installations owned by the enterprise. |
+| `failedInvitations` | `EnterpriseFailedInvitationConnection!` | A list of failed invitations in the enterprise. |
+| `ipAllowListEnabledSetting` | `IpAllowListEnabledSettingValue!` | The setting value for whether the enterprise has an IP allow list enabled. |
+| `ipAllowListEntries` | `IpAllowListEntryConnection!` | The IP addresses that are allowed to access resources owned by the enterprise. Visible to enterprise owners or enterprise owners' personal access tokens (classic) with admin:enterprise scope. |
+| `ipAllowListForInstalledAppsEnabledSetting` | `IpAllowListForInstalledAppsEnabledSettingValue!` | The setting value for whether the enterprise has IP allow list configuration for installed GitHub Apps enabled. |
+| `ipAllowListUserLevelEnforcementEnabledSetting` | `IpAllowListUserLevelEnforcementEnabledSettingValue!` | The setting value for whether the enterprise has IP allow list user-level enforcement enabled. |
+| `isUpdatingDefaultRepositoryPermission` | `Boolean!` | Whether or not the base repository permission is currently being updated. |
+| `isUpdatingTwoFactorRequirement` | `Boolean!` | Whether the two-factor authentication requirement is currently being enforced. |
+| `membersCanChangeRepositoryVisibilitySetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether organization members with admin permissions on a repository can change repository visibility. |
+| `membersCanChangeRepositoryVisibilitySettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided can change repository visibility setting value. |
+| `membersCanCreateInternalRepositoriesSetting` | `Boolean` | The setting value for whether members of organizations in the enterprise can create internal repositories. |
+| `membersCanCreatePrivateRepositoriesSetting` | `Boolean` | The setting value for whether members of organizations in the enterprise can create private repositories. |
+| `membersCanCreatePublicRepositoriesSetting` | `Boolean` | The setting value for whether members of organizations in the enterprise can create public repositories. |
+| `membersCanCreateRepositoriesSetting` | `EnterpriseMembersCanCreateRepositoriesSettingValue` | The setting value for whether members of organizations in the enterprise can create repositories. |
+| `membersCanCreateRepositoriesSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided repository creation setting value. |
+| `membersCanDeleteIssuesSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether members with admin permissions for repositories can delete issues. |
+| `membersCanDeleteIssuesSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided members can delete issues setting value. |
+| `membersCanDeleteRepositoriesSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether members with admin permissions for repositories can delete or transfer repositories. |
+| `membersCanDeleteRepositoriesSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided members can delete repositories setting value. |
+| `membersCanInviteCollaboratorsSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether members of organizations in the enterprise can invite outside collaborators. |
+| `membersCanInviteCollaboratorsSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided members can invite collaborators setting value. |
+| `membersCanMakePurchasesSetting` | `EnterpriseMembersCanMakePurchasesSettingValue!` | Indicates whether members of this enterprise's organizations can purchase additional services for those organizations. |
+| `membersCanUpdateProtectedBranchesSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether members with admin permissions for repositories can update protected branches. |
+| `membersCanUpdateProtectedBranchesSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided members can update protected branches setting value. |
+| `membersCanViewDependencyInsightsSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether members can view dependency insights. |
+| `membersCanViewDependencyInsightsSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided members can view dependency insights setting value. |
+| `notificationDeliveryRestrictionEnabledSetting` | `NotificationRestrictionSettingValue!` | Indicates if email notification delivery for this enterprise is restricted to verified or approved domains. |
+| `oidcProvider` | `OIDCProvider` | The OIDC Identity Provider for the enterprise. |
+| `organizationProjectsSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether organization projects are enabled for organizations in this enterprise. |
+| `organizationProjectsSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided organization projects setting value. |
+| `outsideCollaborators` | `EnterpriseOutsideCollaboratorConnection!` | A list of outside collaborators across the repositories in the enterprise. |
+| `pendingAdminInvitations` | `EnterpriseAdministratorInvitationConnection!` | A list of pending administrator invitations for the enterprise. |
+| `pendingCollaboratorInvitations` | `RepositoryInvitationConnection!` | A list of pending collaborator invitations across the repositories in the enterprise. |
+| `pendingMemberInvitations` | `EnterprisePendingMemberInvitationConnection!` | A list of pending member invitations for organizations in the enterprise. |
+| `pendingUnaffiliatedMemberInvitations` | `EnterpriseMemberInvitationConnection!` | A list of pending unaffiliated member invitations for the enterprise. |
+| `repositoryDeployKeySetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether deploy keys are enabled for repositories in organizations in this enterprise. |
+| `repositoryDeployKeySettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided deploy keys setting value. |
+| `repositoryProjectsSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether repository projects are enabled in this enterprise. |
+| `repositoryProjectsSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the provided repository projects setting value. |
+| `samlIdentityProvider` | `EnterpriseIdentityProvider` | The SAML Identity Provider for the enterprise. |
+| `samlIdentityProviderSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the SAML single sign-on setting value. |
+| `supportEntitlements` | `EnterpriseMemberConnection!` | A list of members with a support entitlement. |
+| `teamDiscussionsSetting` | `EnterpriseEnabledDisabledSettingValue!` | The setting value for whether team discussions are enabled for organizations in this enterprise. |
+| `twoFactorDisallowedMethodsSetting` | `EnterpriseDisallowedMethodsSettingValue!` | The setting value for what methods of two-factor authentication the enterprise prevents its users from having. |
+| `twoFactorRequiredSetting` | `EnterpriseEnabledSettingValue!` | The setting value for whether the enterprise requires two-factor authentication for its organizations and users. |
+| `twoFactorRequiredSettingOrganizations` | `OrganizationConnection!` | A list of enterprise organizations configured with the two-factor authentication setting value. |
+
+### `EnterpriseRepositoryInfo`
+
+A subset of repository information queryable from an enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `ID!` | The Node ID of the EnterpriseRepositoryInfo object. |
+| `isPrivate` | `Boolean!` | Identifies if the repository is private or internal. |
+| `name` | `String!` | The repository's name. |
+| `nameWithOwner` | `String!` | The repository's name with owner. |
+
+### `EnterpriseRepositoryInfoConnection`
+
+The connection type for EnterpriseRepositoryInfo.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseRepositoryInfoEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseRepositoryInfo]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseRepositoryInfoEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseRepositoryInfo` | The item at the end of the edge. |
+
+### `EnterpriseServerInstallation`
+
+An Enterprise Server installation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `customerName` | `String!` | The customer name to which the Enterprise Server installation belongs. |
+| `hostName` | `String!` | The host name of the Enterprise Server installation. |
+| `id` | `ID!` | The Node ID of the EnterpriseServerInstallation object. |
+| `isConnected` | `Boolean!` | Whether or not the installation is connected to an Enterprise Server installation via GitHub Connect. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `userAccounts` | `EnterpriseServerUserAccountConnection!` | User accounts on this Enterprise Server installation. |
+| `userAccountsUploads` | `EnterpriseServerUserAccountsUploadConnection!` | User accounts uploads for the Enterprise Server installation. |
+
+### `EnterpriseServerInstallationConnection`
+
+The connection type for EnterpriseServerInstallation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseServerInstallationEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseServerInstallation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseServerInstallationEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseServerInstallation` | The item at the end of the edge. |
+
+### `EnterpriseServerInstallationMembershipConnection`
+
+The connection type for EnterpriseServerInstallation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseServerInstallationMembershipEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseServerInstallation]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseServerInstallationMembershipEdge`
+
+An Enterprise Server installation that a user is a member of.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseServerInstallation` | The item at the end of the edge. |
+| `role` | `EnterpriseUserAccountMembershipRole!` | The role of the user in the enterprise membership. |
+
+### `EnterpriseServerUserAccount`
+
+A user account on an Enterprise Server installation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `emails` | `EnterpriseServerUserAccountEmailConnection!` | User emails belonging to this user account. |
+| `enterpriseServerInstallation` | `EnterpriseServerInstallation!` | The Enterprise Server installation on which this user account exists. |
+| `id` | `ID!` | The Node ID of the EnterpriseServerUserAccount object. |
+| `isSiteAdmin` | `Boolean!` | Whether the user account is a site administrator on the Enterprise Server installation. |
+| `login` | `String!` | The login of the user account on the Enterprise Server installation. |
+| `profileName` | `String` | The profile name of the user account on the Enterprise Server installation. |
+| `remoteCreatedAt` | `DateTime!` | The date and time when the user account was created on the Enterprise Server installation. |
+| `remoteUserId` | `Int!` | The ID of the user account on the Enterprise Server installation. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+
+### `EnterpriseServerUserAccountConnection`
+
+The connection type for EnterpriseServerUserAccount.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseServerUserAccountEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseServerUserAccount]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseServerUserAccountEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseServerUserAccount` | The item at the end of the edge. |
+
+### `EnterpriseServerUserAccountEmail`
+
+An email belonging to a user account on an Enterprise Server installation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `email` | `String!` | The email address. |
+| `id` | `ID!` | The Node ID of the EnterpriseServerUserAccountEmail object. |
+| `isPrimary` | `Boolean!` | Indicates whether this is the primary email of the associated user account. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `userAccount` | `EnterpriseServerUserAccount!` | The user account to which the email belongs. |
+
+### `EnterpriseServerUserAccountEmailConnection`
+
+The connection type for EnterpriseServerUserAccountEmail.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseServerUserAccountEmailEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseServerUserAccountEmail]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseServerUserAccountEmailEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseServerUserAccountEmail` | The item at the end of the edge. |
+
+### `EnterpriseServerUserAccountsUpload`
+
+A user accounts upload from an Enterprise Server installation.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `enterprise` | `Enterprise!` | The enterprise to which this upload belongs. |
+| `enterpriseServerInstallation` | `EnterpriseServerInstallation!` | The Enterprise Server installation for which this upload was generated. |
+| `id` | `ID!` | The Node ID of the EnterpriseServerUserAccountsUpload object. |
+| `name` | `String!` | The name of the file uploaded. |
+| `syncState` | `EnterpriseServerUserAccountsUploadSyncState!` | The synchronization state of the upload. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+
+### `EnterpriseServerUserAccountsUploadConnection`
+
+The connection type for EnterpriseServerUserAccountsUpload.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseServerUserAccountsUploadEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseServerUserAccountsUpload]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseServerUserAccountsUploadEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseServerUserAccountsUpload` | The item at the end of the edge. |
+
+### `EnterpriseTeam`
+
+A team that belongs to an enterprise and can be assigned to multiple organizations.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `assignedOrganizations` | `EnterpriseTeamAssignedOrganizationConnection!` | Organizations this team is assigned to. |
+| `combinedSlug` | `String!` | The human-readable, unique identifier for the enterprise and team. |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `description` | `String` | The description of the team. |
+| `enterprise` | `Enterprise` | The enterprise this team belongs to. |
+| `enterpriseTeamMembers` | `EnterpriseTeamMemberConnection!` | A list of users who are members of this enterprise team. |
+| `fullDatabaseId` | `BigInt` | Identifies the primary key from the database as a BigInt. |
+| `id` | `ID!` | The Node ID of the EnterpriseTeam object. |
+| `isViewerMember` | `Boolean!` | Whether the viewer is a member of this team. |
+| `name` | `String!` | The name of the team. |
+| `notificationSetting` | `TeamNotificationSetting!` | Whether the team will receive notifications when mentioned. |
+| `organizationSelectionType` | `EnterpriseTeamOrganizationSelectionType!` | How this team selects its associated organizations. |
+| `privacy` | `TeamPrivacy!` | The level of privacy the team has. |
+| `slug` | `String!` | The slug corresponding to the team. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `viewerCanAdminister` | `Boolean!` | Whether the viewer can administer this team. |
+
+### `EnterpriseTeamConnection`
+
+A list of enterprise teams owned by the enterprise.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[EnterpriseTeamEdge]` | A list of edges. |
+| `nodes` | `[EnterpriseTeam]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `EnterpriseTeamEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `EnterpriseTeam` | The item at the end of the edge. |
+
+### `EnterpriseUserAccount`
+
+An account for a user who is an admin of an enterprise or a member of an enterprise through one or more organizations.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `avatarUrl` | `URI!` | A URL pointing to the enterprise user account's public avatar. |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `enterprise` | `Enterprise!` | The enterprise in which this user account exists. |
+| `enterpriseInstallations` | `EnterpriseServerInstallationMembershipConnection!` | A list of Enterprise Server installations this user is a member of. |
+| `id` | `ID!` | The Node ID of the EnterpriseUserAccount object. |
+| `login` | `String!` | An identifier for the enterprise user account, a login or email address. |
+| `name` | `String` | The name of the enterprise user account. |
+| `organizations` | `EnterpriseOrganizationMembershipConnection!` | A list of enterprise organizations this user is a member of. |
+| `resourcePath` | `URI!` | The HTTP path for this user. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `url` | `URI!` | The HTTP URL for this user. |
+| `user` | `User` | The user within the enterprise. |
+
+### `ExternalIdentity`
+
+An external identity provisioned by SAML SSO or SCIM. If SAML is configured on
+the organization, the external identity is visible to (1) organization owners,
+(2) organization owners' personal access tokens (classic) with read:org or
+admin:org scope, (3) GitHub App with an installation token with read or write
+access to members. If SAML is configured on the enterprise, the external
+identity is visible to (1) enterprise owners, (2) enterprise owners' personal
+access tokens (classic) with read:enterprise or admin:enterprise scope.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `guid` | `String!` | The GUID for this identity. |
+| `id` | `ID!` | The Node ID of the ExternalIdentity object. |
+| `organizationInvitation` | `OrganizationInvitation` | Organization invitation for this SCIM-provisioned external identity. |
+| `samlIdentity` | `ExternalIdentitySamlAttributes` | SAML Identity attributes. |
+| `scimIdentity` | `ExternalIdentityScimAttributes` | SCIM Identity attributes. |
+| `user` | `User` | User linked to this external identity. Will be NULL if this identity has not been claimed by an organization member. |
+
+### `ExternalIdentityAttribute`
+
+An attribute for the External Identity attributes collection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `metadata` | `String` | The attribute metadata as JSON. |
+| `name` | `String!` | The attribute name. |
+| `value` | `String!` | The attribute value. |
+
+### `ExternalIdentityConnection`
+
+The connection type for ExternalIdentity.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[ExternalIdentityEdge]` | A list of edges. |
+| `nodes` | `[ExternalIdentity]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `ExternalIdentityEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `ExternalIdentity` | The item at the end of the edge. |
+
+### `ExternalIdentitySamlAttributes`
+
+SAML attributes for the External Identity.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `attributes` | `[ExternalIdentityAttribute!]!` | SAML Identity attributes. |
+| `emails` | `[UserEmailMetadata!]` | The emails associated with the SAML identity. |
+| `familyName` | `String` | Family name of the SAML identity. |
+| `givenName` | `String` | Given name of the SAML identity. |
+| `groups` | `[String!]` | The groups linked to this identity in IDP. |
+| `nameId` | `String` | The NameID of the SAML identity. |
+| `username` | `String` | The userName of the SAML identity. |
+
+### `ExternalIdentityScimAttributes`
+
+SCIM attributes for the External Identity.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `emails` | `[UserEmailMetadata!]` | The emails associated with the SCIM identity. |
+| `familyName` | `String` | Family name of the SCIM identity. |
+| `givenName` | `String` | Given name of the SCIM identity. |
+| `groups` | `[String!]` | The groups linked to this identity in IDP. |
+| `username` | `String` | The userName of the SCIM identity. |
+
+### `IpAllowListEntry`
+
+An IP address or range of addresses that is allowed to access an owner's resources.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `allowListValue` | `String!` | A single IP address or range of IP addresses in CIDR notation. |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `id` | `ID!` | The Node ID of the IpAllowListEntry object. |
+| `isActive` | `Boolean!` | Whether the entry is currently active. |
+| `name` | `String` | The name of the IP allow list entry. |
+| `owner` | `IpAllowListOwner!` | The owner of the IP allow list entry. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+
+### `IpAllowListEntryConnection`
+
+The connection type for IpAllowListEntry.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[IpAllowListEntryEdge]` | A list of edges. |
+| `nodes` | `[IpAllowListEntry]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `IpAllowListEntryEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `IpAllowListEntry` | The item at the end of the edge. |
+
+### `MembersCanDeleteReposClearAuditEntry`
+
+Audit log entry for a members_can_delete_repos.clear event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the MembersCanDeleteReposClearAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `MembersCanDeleteReposDisableAuditEntry`
+
+Audit log entry for a members_can_delete_repos.disable event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the MembersCanDeleteReposDisableAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `MembersCanDeleteReposEnableAuditEntry`
+
+Audit log entry for a members_can_delete_repos.enable event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the MembersCanDeleteReposEnableAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `OIDCProvider`
+
+An OIDC identity provider configured to provision identities for an enterprise.
+Visible to enterprise owners or enterprise owners' personal access tokens
+(classic) with read:enterprise or admin:enterprise scope.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `enterprise` | `Enterprise` | The enterprise this identity provider belongs to. |
+| `externalIdentities` | `ExternalIdentityConnection!` | ExternalIdentities provisioned by this identity provider. |
+| `id` | `ID!` | The Node ID of the OIDCProvider object. |
+| `providerType` | `OIDCProviderType!` | The OIDC identity provider type. |
+| `tenantId` | `String!` | The id of the tenant this provider is attached to. |
+
+### `OauthApplicationCreateAuditEntry`
+
+Audit log entry for a oauth_application.create event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `applicationUrl` | `URI` | The application URL of the OAuth application. |
+| `callbackUrl` | `URI` | The callback URL of the OAuth application. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the OauthApplicationCreateAuditEntry object. |
+| `oauthApplicationName` | `String` | The name of the OAuth application. |
+| `oauthApplicationResourcePath` | `URI` | The HTTP path for the OAuth application. |
+| `oauthApplicationUrl` | `URI` | The HTTP URL for the OAuth application. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `rateLimit` | `Int` | The rate limit of the OAuth application. |
+| `state` | `OauthApplicationCreateAuditEntryState` | The state of the OAuth application. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `PrivateRepositoryForkingDisableAuditEntry`
+
+Audit log entry for a private_repository_forking.disable event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the PrivateRepositoryForkingDisableAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `PrivateRepositoryForkingEnableAuditEntry`
+
+Audit log entry for a private_repository_forking.enable event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the PrivateRepositoryForkingEnableAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigDisableAnonymousGitAccessAuditEntry`
+
+Audit log entry for a repo.config.disable_anonymous_git_access event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigDisableAnonymousGitAccessAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigDisableCollaboratorsOnlyAuditEntry`
+
+Audit log entry for a repo.config.disable_collaborators_only event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigDisableCollaboratorsOnlyAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigDisableContributorsOnlyAuditEntry`
+
+Audit log entry for a repo.config.disable_contributors_only event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigDisableContributorsOnlyAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigDisableSockpuppetDisallowedAuditEntry`
+
+Audit log entry for a repo.config.disable_sockpuppet_disallowed event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigDisableSockpuppetDisallowedAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigEnableAnonymousGitAccessAuditEntry`
+
+Audit log entry for a repo.config.enable_anonymous_git_access event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigEnableAnonymousGitAccessAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigEnableCollaboratorsOnlyAuditEntry`
+
+Audit log entry for a repo.config.enable_collaborators_only event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigEnableCollaboratorsOnlyAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigEnableContributorsOnlyAuditEntry`
+
+Audit log entry for a repo.config.enable_contributors_only event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigEnableContributorsOnlyAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigEnableSockpuppetDisallowedAuditEntry`
+
+Audit log entry for a repo.config.enable_sockpuppet_disallowed event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigEnableSockpuppetDisallowedAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigLockAnonymousGitAccessAuditEntry`
+
+Audit log entry for a repo.config.lock_anonymous_git_access event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigLockAnonymousGitAccessAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepoConfigUnlockAnonymousGitAccessAuditEntry`
+
+Audit log entry for a repo.config.unlock_anonymous_git_access event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `id` | `ID!` | The Node ID of the RepoConfigUnlockAnonymousGitAccessAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `repository` | `Repository` | The repository associated with the action. |
+| `repositoryName` | `String` | The name of the repository. |
+| `repositoryResourcePath` | `URI` | The HTTP path for the repository. |
+| `repositoryUrl` | `URI` | The HTTP URL for the repository. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepositoryVisibilityChangeDisableAuditEntry`
+
+Audit log entry for a repository_visibility_change.disable event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the RepositoryVisibilityChangeDisableAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `RepositoryVisibilityChangeEnableAuditEntry`
+
+Audit log entry for a repository_visibility_change.enable event.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `action` | `String!` | The action name. |
+| `actor` | `AuditEntryActor` | The user who initiated the action. |
+| `actorIp` | `String` | The IP address of the actor. |
+| `actorLocation` | `ActorLocation` | A readable representation of the actor's location. |
+| `actorLogin` | `String` | The username of the user who initiated the action. |
+| `actorResourcePath` | `URI` | The HTTP path for the actor. |
+| `actorUrl` | `URI` | The HTTP URL for the actor. |
+| `createdAt` | `PreciseDateTime!` | The time the action was initiated. |
+| `enterpriseResourcePath` | `URI` | The HTTP path for this enterprise. |
+| `enterpriseSlug` | `String` | The slug of the enterprise. |
+| `enterpriseUrl` | `URI` | The HTTP URL for this enterprise. |
+| `id` | `ID!` | The Node ID of the RepositoryVisibilityChangeEnableAuditEntry object. |
+| `operationType` | `OperationType` | The corresponding operation type for the action. |
+| `organization` | `Organization` | The Organization associated with the Audit Entry. |
+| `organizationName` | `String` | The name of the Organization. |
+| `organizationResourcePath` | `URI` | The HTTP path for the organization. |
+| `organizationUrl` | `URI` | The HTTP URL for the organization. |
+| `user` | `User` | The user affected by the action. |
+| `userLogin` | `String` | For actions involving two users, the actor is the initiator and the user is the affected user. |
+| `userResourcePath` | `URI` | The HTTP path for the user. |
+| `userUrl` | `URI` | The HTTP URL for the user. |
+
+### `UserNamespaceRepository`
+
+A repository owned by an Enterprise Managed user.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `ID!` | The Node ID of the UserNamespaceRepository object. |
+| `name` | `String!` | The name of the repository. |
+| `nameWithOwner` | `String!` | The repository's name with owner. |
+| `owner` | `RepositoryOwner!` | The user owner of the repository. |
+
+### `UserNamespaceRepositoryConnection`
+
+A list of repositories owned by users in an enterprise with Enterprise Managed Users.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[UserNamespaceRepositoryEdge]` | A list of edges. |
+| `nodes` | `[UserNamespaceRepository]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `UserNamespaceRepositoryEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `UserNamespaceRepository` | The item at the end of the edge. |
+
+## Enums
+
+### `AuditLogOrderField`
+
+Properties by which Audit Log connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order audit log entries by timestamp. |
+
+### `EnterpriseAdministratorInvitationOrderField`
+
+Properties by which enterprise administrator invitation connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order enterprise administrator member invitations by creation time. |
+
+### `EnterpriseAdministratorRole`
+
+The possible administrator roles in an enterprise account.
+
+| Value | Description |
+| :--- | :--- |
+| `BILLING_MANAGER` | Represents a billing manager of the enterprise account. |
+| `OWNER` | Represents an owner of the enterprise account. |
+| `UNAFFILIATED` | Unaffiliated member of the enterprise account without an admin role. |
+
+### `EnterpriseAllowPrivateRepositoryForkingPolicyValue`
+
+The possible values for the enterprise allow private repository forking policy value.
+
+| Value | Description |
+| :--- | :--- |
+| `ENTERPRISE_ORGANIZATIONS` | Members can fork a repository to an organization within this enterprise. |
+| `ENTERPRISE_ORGANIZATIONS_USER_ACCOUNTS` | Members can fork a repository to their enterprise-managed user account or an organization inside this enterprise. |
+| `EVERYWHERE` | Members can fork a repository to their user account or an organization, either inside or outside of this enterprise. Internal repositories can only be forked inside of this enterprise. |
+| `SAME_ORGANIZATION` | Members can fork a repository only within the same organization (intra-org). |
+| `SAME_ORGANIZATION_USER_ACCOUNTS` | Members can fork a repository to their user account or within the same organization. |
+| `USER_ACCOUNTS` | Members can fork a repository to their user account. |
+
+### `EnterpriseDefaultRepositoryPermissionSettingValue`
+
+The possible values for the enterprise base repository permission setting.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | Organization members will be able to clone, pull, push, and add new collaborators to all organization repositories. |
+| `NONE` | Organization members will only be able to clone and pull public repositories. |
+| `NO_POLICY` | Organizations in the enterprise choose base repository permissions for their members. |
+| `READ` | Organization members will be able to clone and pull all organization repositories. |
+| `WRITE` | Organization members will be able to clone, pull, and push all organization repositories. |
+
+### `EnterpriseDisallowedMethodsSettingValue`
+
+The possible values for an enabled/no policy enterprise setting.
+
+| Value | Description |
+| :--- | :--- |
+| `INSECURE` | The setting prevents insecure 2FA methods from being used by members of the enterprise. |
+| `NO_POLICY` | There is no policy set for preventing insecure 2FA methods from being used by members of the enterprise. |
+
+### `EnterpriseEnabledDisabledSettingValue`
+
+The possible values for an enabled/disabled enterprise setting.
+
+| Value | Description |
+| :--- | :--- |
+| `DISABLED` | The setting is disabled for organizations in the enterprise. |
+| `ENABLED` | The setting is enabled for organizations in the enterprise. |
+| `NO_POLICY` | There is no policy set for organizations in the enterprise. |
+
+### `EnterpriseEnabledSettingValue`
+
+The possible values for an enabled/no policy enterprise setting.
+
+| Value | Description |
+| :--- | :--- |
+| `ENABLED` | The setting is enabled for organizations in the enterprise. |
+| `NO_POLICY` | There is no policy set for organizations in the enterprise. |
+
+### `EnterpriseMemberInvitationOrderField`
+
+Properties by which enterprise member invitation connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order enterprise member invitations by creation time. |
+
+### `EnterpriseMemberOrderField`
+
+Properties by which enterprise member connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order enterprise members by creation time. |
+| `LOGIN` | Order enterprise members by login. |
+
+### `EnterpriseMembersCanCreateRepositoriesSettingValue`
+
+The possible values for the enterprise members can create repositories setting.
+
+| Value | Description |
+| :--- | :--- |
+| `ALL` | Members will be able to create public and private repositories. |
+| `DISABLED` | Members will not be able to create public or private repositories. |
+| `NO_POLICY` | Organization owners choose whether to allow members to create repositories. |
+| `PRIVATE` | Members will be able to create only private repositories. |
+| `PUBLIC` | Members will be able to create only public repositories. |
+
+### `EnterpriseMembersCanMakePurchasesSettingValue`
+
+The possible values for the members can make purchases setting.
+
+| Value | Description |
+| :--- | :--- |
+| `DISABLED` | The setting is disabled for organizations in the enterprise. |
+| `ENABLED` | The setting is enabled for organizations in the enterprise. |
+
+### `EnterpriseMembershipType`
+
+The possible values we have for filtering Platform::Objects::User#enterprises.
+
+| Value | Description |
+| :--- | :--- |
+| `ADMIN` | Returns all enterprises in which the user is an admin. |
+| `ALL` | Returns all enterprises in which the user is a member, admin, or billing manager. |
+| `BILLING_MANAGER` | Returns all enterprises in which the user is a billing manager. |
+| `ORG_MEMBERSHIP` | Returns all enterprises in which the user is a member of an org that is owned by the enterprise. |
+
+### `EnterpriseOrderField`
+
+Properties by which enterprise connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `NAME` | Order enterprises by name. |
+
+### `EnterpriseServerInstallationOrderField`
+
+Properties by which Enterprise Server installation connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order Enterprise Server installations by creation time. |
+| `CUSTOMER_NAME` | Order Enterprise Server installations by customer name. |
+| `HOST_NAME` | Order Enterprise Server installations by host name. |
+
+### `EnterpriseServerUserAccountEmailOrderField`
+
+Properties by which Enterprise Server user account email connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `EMAIL` | Order emails by email. |
+
+### `EnterpriseServerUserAccountOrderField`
+
+Properties by which Enterprise Server user account connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `LOGIN` | Order user accounts by login. |
+| `REMOTE_CREATED_AT` | Order user accounts by creation time on the Enterprise Server installation. |
+
+### `EnterpriseServerUserAccountsUploadOrderField`
+
+Properties by which Enterprise Server user accounts upload connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order user accounts uploads by creation time. |
+
+### `EnterpriseServerUserAccountsUploadSyncState`
+
+Synchronization state of the Enterprise Server user accounts upload.
+
+| Value | Description |
+| :--- | :--- |
+| `FAILURE` | The synchronization of the upload failed. |
+| `PENDING` | The synchronization of the upload is pending. |
+| `SUCCESS` | The synchronization of the upload succeeded. |
+
+### `EnterpriseTeamMemberOrderField`
+
+Properties by which enterprise team member connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order enterprise team members by creation time. |
+| `ID` | Order enterprise team members by ID. |
+| `LOGIN` | Order enterprise team members by login. |
+
+### `EnterpriseTeamOrderField`
+
+Properties by which enterprise team connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order enterprise teams by creation time. |
+| `ID` | Order enterprise teams by ID. |
+| `NAME` | Order enterprise teams by name. |
+
+### `EnterpriseTeamOrganizationOrderField`
+
+Properties by which enterprise team organization connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order enterprise team organizations by creation time. |
+| `ID` | Order enterprise team organizations by ID. |
+| `LOGIN` | Order enterprise team organizations by login. |
+
+### `EnterpriseTeamOrganizationSelectionType`
+
+The possible organization selection types for an enterprise team.
+
+| Value | Description |
+| :--- | :--- |
+| `ALL` | The team is associated with all organizations in the enterprise. |
+| `DISABLED` | The team is not associated with any organizations. |
+| `SELECTED` | The team is associated with selected organizations. |
+
+### `EnterpriseUserAccountMembershipRole`
+
+The possible roles for enterprise membership.
+
+| Value | Description |
+| :--- | :--- |
+| `MEMBER` | The user is a member of an organization in the enterprise. |
+| `OWNER` | The user is an owner of an organization in the enterprise. |
+| `UNAFFILIATED` | The user is not an owner of the enterprise, and not a member or owner of any organizations in the enterprise; only for EMU-enabled enterprises. |
+
+### `EnterpriseUserDeployment`
+
+The possible GitHub Enterprise deployments where this user can exist.
+
+| Value | Description |
+| :--- | :--- |
+| `CLOUD` | The user is part of a GitHub Enterprise Cloud deployment. |
+| `SERVER` | The user is part of a GitHub Enterprise Server deployment. |
+
+### `IdentityProviderConfigurationState`
+
+The possible states in which authentication can be configured with an identity provider.
+
+| Value | Description |
+| :--- | :--- |
+| `CONFIGURED` | Authentication with an identity provider is configured but not enforced. |
+| `ENFORCED` | Authentication with an identity provider is configured and enforced. |
+| `UNCONFIGURED` | Authentication with an identity provider is not configured. |
+
+### `IpAllowListEnabledSettingValue`
+
+The possible values for the IP allow list enabled setting.
+
+| Value | Description |
+| :--- | :--- |
+| `DISABLED` | The setting is disabled for the owner. |
+| `ENABLED` | The setting is enabled for the owner. |
+
+### `IpAllowListEntryOrderField`
+
+Properties by which IP allow list entry connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `ALLOW_LIST_VALUE` | Order IP allow list entries by the allow list value. |
+| `CREATED_AT` | Order IP allow list entries by creation time. |
+
+### `IpAllowListForInstalledAppsEnabledSettingValue`
+
+The possible values for the IP allow list configuration for installed GitHub Apps setting.
+
+| Value | Description |
+| :--- | :--- |
+| `DISABLED` | The setting is disabled for the owner. |
+| `ENABLED` | The setting is enabled for the owner. |
+
+### `IpAllowListUserLevelEnforcementEnabledSettingValue`
+
+The possible values for the IP allow list user-level enforcement enabled setting.
+
+| Value | Description |
+| :--- | :--- |
+| `DISABLED` | The setting is disabled for the owner. |
+| `ENABLED` | The setting is enabled for the owner. |
+
+### `OIDCProviderType`
+
+The OIDC identity provider type.
+
+| Value | Description |
+| :--- | :--- |
+| `AAD` | Azure Active Directory. |
+
+### `SamlDigestAlgorithm`
+
+The possible digest algorithms used to sign SAML requests for an identity provider.
+
+| Value | Description |
+| :--- | :--- |
+| `SHA1` | SHA1. |
+| `SHA256` | SHA256. |
+| `SHA384` | SHA384. |
+| `SHA512` | SHA512. |
+
+### `SamlSignatureAlgorithm`
+
+The possible signature algorithms used to sign SAML requests for a Identity Provider.
+
+| Value | Description |
+| :--- | :--- |
+| `RSA_SHA1` | RSA-SHA1. |
+| `RSA_SHA256` | RSA-SHA256. |
+| `RSA_SHA384` | RSA-SHA384. |
+| `RSA_SHA512` | RSA-SHA512. |
+
+### `TwoFactorCredentialSecurityType`
+
+Filters by whether or not 2FA is enabled and if the method configured is considered secure or insecure.
+
+| Value | Description |
+| :--- | :--- |
+| `DISABLED` | No method of two-factor authentication. |
+| `INSECURE` | Has an insecure method of two-factor authentication. GitHub currently defines this as SMS two-factor authentication. |
+| `SECURE` | Has only secure methods of two-factor authentication. |

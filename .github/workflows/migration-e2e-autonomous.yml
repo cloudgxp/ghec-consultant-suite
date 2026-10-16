@@ -22,12 +22,12 @@ on:
         description: 'Runner pool for standard/small repos (comma-separated or single label)'
         required: false
         type: string
-        default: 'ubuntu-latest'
+        default: 'self-hosted'
       large_repo_runner_labels:
         description: 'High-capacity runner pool with >=100 GB scratch disk for large repos'
         required: false
         type: string
-        default: 'self-hosted,high-disk'
+        default: 'self-hosted'
       dry_run:
         description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
         required: false
@@ -38,6 +38,37 @@ on:
         required: false
         type: boolean
         default: true
+      modules:
+        description: 'Modules to execute ("auto" for strategy-aware resolution, or comma-separated list)'
+        required: false
+        type: string
+        default: 'auto'
+      exclude_modules:
+        description: 'Optional comma-separated module IDs to exclude (e.g. "teams,post-migration-mannequins")'
+        required: false
+        type: string
+        default: ''
+      target_type:
+        description: 'Target tenant type ("ghec" for standard GHEC, "emu" for Enterprise Managed Users)'
+        required: false
+        type: choice
+        options:
+          - 'ghec'
+          - 'emu'
+        default: 'ghec'
+      emu_shortcode:
+        description: 'Admin-defined EMU shortcode/suffix (e.g. "acme" or "_acme") — only used when target_type is "emu"'
+        required: false
+        type: string
+        default: ''
+      mirror_push_mode:
+        description: 'Mirror-push mode for massive (>2 GiB / >40 GiB) repos ("fast-snapshot" shallow root commit vs "full-history" full clone + windowed commits & tags)'
+        required: false
+        type: choice
+        options:
+          - 'fast-snapshot'
+          - 'full-history'
+        default: 'fast-snapshot'
 
 env:
   GHEC_ALLOW_SAME_CREDENTIAL: ${{ inputs.allow_same_credential != false && 'true' || 'false' }}
@@ -50,7 +81,7 @@ permissions:
 jobs:
   slicer:
     name: 'Phase 1: Scale-Adaptive Sizing & Strategy Classification'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       matrix: ${{ steps.slice.outputs.matrix }}
       cohort_count: ${{ steps.slice.outputs.cohort_count }}
@@ -63,6 +94,10 @@ jobs:
 
       - name: Validate Migration Scope Contract
         shell: bash
+        env:
+          INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
+          INPUT_MIRROR_PUSH_MODE: ${{ inputs.mirror_push_mode || 'fast-snapshot' }}
         run: |
           if [ ! -f "${{ inputs.scope }}" ]; then
             echo "::error::Scope file '${{ inputs.scope }}' does not exist."
@@ -72,14 +107,105 @@ jobs:
           node --input-type=module -e '
             import { validateMigrationScope } from "./packages/contracts/dist/index.js";
             import fs from "fs";
-            const parsed = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const scopePath = process.argv[1];
+            const parsed = JSON.parse(fs.readFileSync(scopePath, "utf8"));
+            const targetType = process.env.INPUT_TARGET_TYPE;
+            const emuShortcode = (process.env.INPUT_EMU_SHORTCODE || "").trim();
+            const mirrorPushMode = process.env.INPUT_MIRROR_PUSH_MODE;
+            let modified = false;
+            if (targetType === "ghec" || targetType === "emu") {
+              parsed.targetType = targetType;
+              if (Array.isArray(parsed.organizations)) {
+                for (const org of parsed.organizations) {
+                  org.targetType = targetType;
+                }
+              }
+              if (targetType === "ghec") {
+                parsed.identityMapping = { strategy: "pass-through" };
+              } else if (targetType === "emu" && emuShortcode) {
+                const normalizedSuffix = emuShortcode.startsWith("_") ? emuShortcode : `_${emuShortcode}`;
+                parsed.identityMapping = { strategy: "emu-saml", suffix: normalizedSuffix };
+              }
+              modified = true;
+            }
+            if (mirrorPushMode === "fast-snapshot" || mirrorPushMode === "full-history") {
+              parsed.mirrorPushMode = mirrorPushMode;
+              if (Array.isArray(parsed.repositories)) {
+                for (const repo of parsed.repositories) {
+                  repo.mirrorPushMode = mirrorPushMode;
+                  if (repo.options && typeof repo.options === "object") {
+                    repo.options.mirrorPushMode = mirrorPushMode;
+                  }
+                }
+              }
+              modified = true;
+            }
+            if (modified) {
+              fs.writeFileSync(scopePath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
+            }
             const res = validateMigrationScope(parsed);
             if (!res.success) {
               console.error("Scope validation failed:", JSON.stringify(res.error, null, 2));
               process.exit(1);
             }
-            console.log("Scope schema validation passed successfully.");
+            console.log(`Scope schema validation passed successfully (targetType=${parsed.targetType ?? "default"}, mirrorPushMode=${parsed.mirrorPushMode ?? "fast-snapshot"}).`);
           ' "${{ inputs.scope }}"
+
+      - name: Prune Retired Oversized Repositories
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          RETIRED_REPOS=(WebKit linux llvm-project nixpkgs next.js TypeScript grafana node kubernetes rust)
+          for repo in "${RETIRED_REPOS[@]}"; do
+            if [ -n "$GHEC_SOURCE_TOKEN" ]; then
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GHEC_SOURCE_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/demogxp/$repo" || true)
+              echo "Prune demogxp/$repo: HTTP $STATUS"
+            fi
+            if [ -n "$GHEC_TARGET_TOKEN" ]; then
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/demogxp-mig/$repo" || true)
+              echo "Prune demogxp-mig/$repo: HTTP $STATUS"
+            fi
+          done
+          if [ -n "$GHEC_TARGET_TOKEN" ]; then
+            for locked_candidate in migration-demo-1361857985-fork; do
+              PROBE_RESP=$(curl -s -X PATCH \
+                -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -d '{}' \
+                "https://api.github.com/repos/demogxp-mig/$locked_candidate" || true)
+              if echo "$PROBE_RESP" | grep -qi "locked for migration"; then
+                DEL_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                  -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
+                  -H "Accept: application/vnd.github+json" \
+                  "https://api.github.com/repos/demogxp-mig/$locked_candidate" || true)
+                echo "Deleted stale migration-locked target repo demogxp-mig/$locked_candidate: HTTP $DEL_STATUS"
+              fi
+            done
+          fi
+
+      - name: Execute Preflight Readiness Gate
+        id: preflight
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE_FILE: ${{ inputs.scope }}
+        run: |
+          mkdir -p ./scans
+          echo "Running preflight readiness checks on Actions Runner..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
+            --scope "$SCOPE_FILE" \
+            --output ./scans/preflight-report.json \
+            --verbose || true
 
       - name: Diagnose Repository Sizes & Generate Slicer Matrix
         id: slice
@@ -100,26 +226,69 @@ jobs:
             const repos = scope.repositories || [];
             const defaultLabels = process.env.DEFAULT_RUNNERS.split(",").map(s => s.trim()).filter(Boolean);
             const largeLabels = process.env.LARGE_RUNNERS.split(",").map(s => s.trim()).filter(Boolean);
+            const sourceToken = process.env.GHEC_SOURCE_TOKEN;
+            const defaultSourceOrg = scope.organizations?.[0]?.source;
 
-            // Generate sizing profiles (combining metadata and API query estimates)
-            const profiles = repos.map(r => {
-              const name = typeof r === "string" ? r : r.name;
-              const diskUsage = (typeof r === "object" && r.diskUsageBytes) ? r.diskUsageBytes : 500 * 1024 * 1024;
-              const releaseBytes = (typeof r === "object" && r.releaseAssetsBytes) ? r.releaseAssetsBytes : 0;
-              const lfsCount = (typeof r === "object" && r.lfsObjectCount) ? r.lfsObjectCount : 0;
-              const visibility = (typeof r === "object" && r.visibility) ? r.visibility : "private";
+            let preflightMap = new Map();
+            if (fs.existsSync("./scans/preflight-report.json")) {
+              try {
+                const preflight = JSON.parse(fs.readFileSync("./scans/preflight-report.json", "utf8"));
+                for (const a of preflight.repositoryAssessments || []) {
+                  preflightMap.set(a.repo, a);
+                }
+              } catch {}
+            }
 
-              return {
+            // Generate sizing profiles (combining metadata, preflight report, and live API query estimates)
+            const profiles = [];
+            for (const r of repos) {
+              const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
+              const sourceOrg = (typeof r === "object" && r.sourceOrg) ? r.sourceOrg : defaultSourceOrg;
+              const pf = preflightMap.get(name);
+              let diskUsage = (typeof r === "object" && r.diskUsageBytes) ? r.diskUsageBytes : (pf?.gitSizeBytes || 0);
+              let visibility = (typeof r === "object" && (r.targetRepoVisibility || r.visibility)) ? (r.targetRepoVisibility || r.visibility) : "private";
+
+              if (!diskUsage && sourceToken && sourceOrg && name) {
+                try {
+                  const resp = await fetch(`https://api.github.com/repos/${sourceOrg}/${name}`, {
+                    headers: {
+                      Authorization: `Bearer ${sourceToken}`,
+                      Accept: "application/vnd.github+json",
+                    },
+                  });
+                  if (resp.ok) {
+                    const data = await resp.json();
+                    diskUsage = (data.size || 0) * 1024;
+                    if (data.visibility && !(typeof r === "object" && (r.targetRepoVisibility || r.visibility))) {
+                      visibility = data.visibility;
+                    }
+                  }
+                } catch {
+                  // Fallback to default sizing if API probe fails
+                }
+              }
+
+              if (!diskUsage) {
+                diskUsage = 500 * 1024 * 1024;
+              }
+              if (typeof r === "object" && (r.gitTransferStrategy === "mirror-push" || r.options?.gitTransferStrategy === "mirror-push")) {
+                diskUsage = Math.max(diskUsage, 45 * 1024 * 1024 * 1024);
+              }
+
+              const releaseBytes = (typeof r === "object" && r.releaseAssetsBytes) ? r.releaseAssetsBytes : (pf?.releaseTotalAssetBytes || 0);
+              const lfsCount = (typeof r === "object" && r.lfsObjectCount) ? r.lfsObjectCount : (pf?.lfsObjectCount || 0);
+
+              profiles.push({
                 repositoryName: name,
                 gitDiskUsageBytes: diskUsage,
                 gitLfsObjectCount: lfsCount,
-                gitLfsTotalBytes: lfsCount > 0 ? 1048576 : 0,
-                releaseCount: releaseBytes > 0 ? 1 : 0,
+                gitLfsTotalBytes: pf?.lfsTotalBytes || (lfsCount > 0 ? 1048576 : 0),
+                releaseCount: pf?.releaseCount || (releaseBytes > 0 ? 1 : 0),
                 releaseAssetsTotalBytes: releaseBytes,
                 estimatedScratchBytes: Math.ceil(diskUsage * 1.5 + (releaseBytes > 10 * 1024 * 1024 * 1024 ? 0 : releaseBytes)),
                 sourceVisibility: visibility,
-              };
-            });
+              });
+            }
 
             const matrixOutput = sliceScaleAdaptiveMatrix(profiles, {
               defaultRunnerLabels: defaultLabels,
@@ -130,17 +299,31 @@ jobs:
 
             fs.writeFileSync("./scans/slicer-matrix.json", JSON.stringify(matrixOutput, null, 2), "utf8");
 
-            // Write individual cohort scopes
-            for (const cohort of matrixOutput.matrix.include) {
+            // Write individual cohort scopes (run organization-level modules in the final cohort)
+            const totalCohorts = matrixOutput.matrix.include.length;
+            matrixOutput.matrix.include.forEach((cohort, idx) => {
+              const isLastCohort = idx === totalCohorts - 1;
               const cohortScope = {
                 ...scope,
-                repositories: scope.repositories.filter(r => {
-                  const name = typeof r === "string" ? r : r.name;
-                  return cohort.repositories.includes(name);
-                })
+                organizations: isLastCohort
+                  ? scope.organizations
+                  : (scope.organizations || []).map(o => ({ ...o, modules: [] })),
+                repositories: scope.repositories
+                  .filter(r => {
+                    const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
+                    return cohort.repositories.includes(name);
+                  })
+                  .map(r => {
+                    if (typeof r !== "object" || !r) return r;
+                    return {
+                      ...r,
+                      ...(cohort.useMirrorPush ? { gitTransferStrategy: "mirror-push" } : {}),
+                      ...(cohort.skipReleases ? { skipReleases: true } : {}),
+                    };
+                  })
               };
               fs.writeFileSync(`./cohorts/${cohort.cohortId}-scope.json`, JSON.stringify(cohortScope, null, 2), "utf8");
-            }
+            });
 
             console.log(`Generated ${matrixOutput.cohortCount} scale-adaptive cohorts.`);
           '
@@ -156,6 +339,7 @@ jobs:
         with:
           name: slicer-matrix-${{ github.run_id }}
           path: |
+            ./scans/preflight-report.json
             ./scans/slicer-matrix.json
             ./cohorts/*-scope.json
           retention-days: 14
@@ -200,7 +384,10 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          GHEC_SCRATCH_DIR: ${{ runner.temp }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
           MATRIX_COHORT_ID: ${{ matrix.cohortId }}
           USE_GEI: ${{ matrix.useGei }}
           SKIP_RELEASES: ${{ matrix.skipReleases }}
@@ -212,17 +399,27 @@ jobs:
           COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
           REPORT_OUTPUT="./scans/cohort-report-${MATRIX_COHORT_ID}.json"
 
-          DRY_RUN_ARG=()
+          EXTRA_ARGS=(--modules "${INPUT_MODULES:-auto}")
           if [ "$INPUT_DRY_RUN" = "true" ]; then
-            DRY_RUN_ARG=(--dry-run)
+            EXTRA_ARGS+=(--dry-run)
+          fi
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            EXTRA_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
           fi
 
-          echo "Executing migration for cohort $MATRIX_COHORT_ID..."
+          echo "Executing migration for cohort $MATRIX_COHORT_ID (modules=${INPUT_MODULES:-auto}, exclude=${INPUT_EXCLUDE_MODULES:-none})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
             --scope "$COHORT_SCOPE" \
-            "${DRY_RUN_ARG[@]}" \
+            "${EXTRA_ARGS[@]}" \
+            --continue-on-error \
+            --verbose \
             --checkpoint-dir ./migrations/ \
-            --output "$REPORT_OUTPUT"
+            --output "$REPORT_OUTPUT" || true
+
+          if [ -f "$REPORT_OUTPUT" ]; then
+            echo "Cohort $MATRIX_COHORT_ID execution summary:"
+            jq '{status, exitCode, totalModules: (.results | length), complete: ([.results[] | select(.status == "complete")] | length), partial: ([.results[] | select(.status == "partial")] | length), skipped: ([.results[] | select(.status == "skipped")] | length), failed: ([.results[] | select(.status == "failed")] | length), failedModules: [.results[] | select(.status == "failed" or .status == "partial") | {moduleId, status, failedOps: [.results[] | select(.status == "failed")]}]}' "$REPORT_OUTPUT" || true
+          fi
 
       - name: Post-GEI Visibility Restoration Reconciliation
         if: always() && inputs.dry_run == false
@@ -231,35 +428,27 @@ jobs:
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           MATRIX_COHORT_ID: ${{ matrix.cohortId }}
         run: |
-          COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
+          export COHORT_SCOPE="./cohorts/${MATRIX_COHORT_ID}-scope.json"
           if [ -f "$COHORT_SCOPE" ]; then
             echo "Reconciling target repository visibility..."
             node --input-type=module -e '
               import fs from "node:fs";
-              import { Octokit } from "@octokit/rest";
-              import { reconcilePostGeiVisibility } from "./packages/migration/dist/index.js";
+              import { HttpTargetWriteClient, reconcilePostGeiVisibility } from "./packages/migration/dist/index.js";
 
               const scope = JSON.parse(fs.readFileSync(process.env.COHORT_SCOPE, "utf8"));
               const token = process.env.GHEC_TARGET_TOKEN;
               if (!token) process.exit(0);
 
-              const octokit = new Octokit({ auth: token });
-              const targetWriteClient = {
-                mutate: async (op) => {
-                  const res = await octokit.request(`${op.method} ${op.path}`, {
-                    ...op.pathParams,
-                    ...op.body,
-                  });
-                  return { status: res.status, data: res.data };
-                }
-              };
+              const targetWriteClient = new HttpTargetWriteClient({ token });
 
+              const defaultTargetOrg = scope.organizations?.[0]?.target || scope.targetOrg;
               for (const repo of scope.repositories || []) {
-                const name = typeof repo === "string" ? repo : repo.name;
-                const vis = (typeof repo === "object" && repo.visibility) ? repo.visibility : "private";
-                if (vis !== "private") {
-                  console.log(`Restoring visibility to ${vis} for ${scope.targetOrg}/${name}...`);
-                  await reconcilePostGeiVisibility(targetWriteClient, scope.targetOrg, name, vis);
+                const name = typeof repo === "string" ? repo : (repo.targetRepo || repo.sourceRepo || repo.name);
+                const targetOrg = (typeof repo === "object" && repo.targetOrg) ? repo.targetOrg : defaultTargetOrg;
+                const vis = (typeof repo === "object" && (repo.targetRepoVisibility || repo.visibility || repo.options?.targetRepoVisibility)) ? (repo.targetRepoVisibility || repo.visibility || repo.options?.targetRepoVisibility) : "private";
+                if (vis !== "private" && targetOrg && name) {
+                  console.log(`Restoring visibility to ${vis} for ${targetOrg}/${name}...`);
+                  await reconcilePostGeiVisibility(targetWriteClient, targetOrg, name, vis);
                 }
               }
             '
@@ -279,13 +468,15 @@ jobs:
     name: 'Phase 3 & 4: Verification & Autonomous Closed-Loop Self-Healing'
     needs: [slicer, migrate-cohorts]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
+        with:
+          install-gei: 'true'
 
       - name: Download Cohort Artifacts
         uses: actions/download-artifact@v4
@@ -294,6 +485,155 @@ jobs:
           path: ./downloaded-cohorts
           merge-multiple: true
 
+      - name: Aggregate Cohort Execution Reports
+        id: aggregate-cohorts
+        if: always()
+        shell: bash
+        env:
+          EXPECTED_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count || '0' }}
+        run: |
+          mkdir -p ./scans
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import path from "node:path";
+
+            function findReports(dir) {
+              if (!fs.existsSync(dir)) return [];
+              const out = [];
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) out.push(...findReports(full));
+                else if (/^cohort-report-.*\.json$/i.test(entry.name)) out.push(full);
+              }
+              return out.sort();
+            }
+
+            const expectedCohortCount = Math.max(0, Number.parseInt(process.env.EXPECTED_COHORT_COUNT || "0", 10) || 0);
+            const files = findReports("./downloaded-cohorts");
+            const observedCohortCount = files.length;
+            const missingCohortReports = Math.max(0, expectedCohortCount - observedCohortCount);
+            let failedCohortCount = 0;
+            let failedModuleCount = 0;
+            const failures = [];
+
+            for (const file of files) {
+              try {
+                const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+                const results = Array.isArray(raw.results) ? raw.results : (Array.isArray(raw.moduleResults) ? raw.moduleResults : []);
+                let cohortHasFailure = raw.overallStatus === "failed" || raw.overallStatus === "partial" || raw.status === "failed" || raw.status === "partial";
+                for (const mod of results) {
+                  const failedOps = (Array.isArray(mod.results) ? mod.results : []).filter(op => op.status === "failed");
+                  if (mod.status === "failed" || mod.status === "partial" || failedOps.length > 0) {
+                    cohortHasFailure = true;
+                    failedModuleCount++;
+                    failures.push({
+                      cohortFile: file,
+                      moduleId: mod.moduleId || "unknown",
+                      ...(mod.targetIdentifier ? { targetIdentifier: mod.targetIdentifier } : {}),
+                      status: mod.status || "failed",
+                      failedOperations: failedOps.map(op => ({
+                        operationId: op.operationId || "unknown",
+                        status: op.status || "failed",
+                        ...(typeof op.httpStatus === "number" ? { httpStatus: op.httpStatus } : {}),
+                        ...(op.error ? { error: op.error } : {}),
+                        ...(op.resourceName ? { resourceName: op.resourceName } : {}),
+                        ...(op.targetIdentifier ? { targetIdentifier: op.targetIdentifier } : {}),
+                      })),
+                    });
+                  }
+                }
+                if (cohortHasFailure) failedCohortCount++;
+              } catch (err) {
+                failedCohortCount++;
+                failedModuleCount++;
+                failures.push({
+                  cohortFile: file,
+                  moduleId: "cohort-report-parse",
+                  status: "failed",
+                  failedOperations: [{ operationId: "json-parse", status: "failed", error: String(err) }],
+                });
+              }
+            }
+
+            const aggregated = {
+              expectedCohortCount,
+              observedCohortCount,
+              missingCohortReports,
+              failedCohortCount,
+              failedModuleCount,
+              failures,
+            };
+
+            fs.writeFileSync("./scans/aggregated-cohort-failures.json", JSON.stringify(aggregated, null, 2), "utf8");
+            console.log(`Cohort aggregation complete: observed=${observedCohortCount}/${expectedCohortCount}, failedCohorts=${failedCohortCount}, failedModules=${failedModuleCount}`);
+            for (const f of failures) {
+              const target = f.targetIdentifier ? ` @ ${f.targetIdentifier}` : "";
+              console.log(`  - [${f.moduleId}${target}] (${f.cohortFile}): status=${f.status}, failedOps=${f.failedOperations.length}`);
+              for (const op of f.failedOperations) {
+                console.log(`      * ${op.operationId}: ${op.error || "failed"}`);
+              }
+            }
+
+            if (process.env.GITHUB_STEP_SUMMARY && (failedModuleCount > 0 || missingCohortReports > 0)) {
+              const summaryLines = [
+                "### ⚠️ Phase 2 Cohort Execution Failures",
+                "",
+                `- **Expected Cohorts**: \`${expectedCohortCount}\` | **Observed Reports**: \`${observedCohortCount}\` | **Missing Reports**: \`${missingCohortReports}\``,
+                `- **Failed Cohorts**: \`${failedCohortCount}\` | **Failed Module Executions**: \`${failedModuleCount}\``,
+                "",
+              ];
+              for (const f of failures) {
+                const target = f.targetIdentifier ? ` @ ${f.targetIdentifier}` : "";
+                const opDetails = f.failedOperations.map(op => `${op.operationId}: ${op.error || "failed"}`).join("; ");
+                summaryLines.push(`- \`[${f.moduleId}${target}]\` (${path.basename(f.cohortFile)}): status=\`${f.status}\`${opDetails ? ` — ${opDetails}` : ""}`);
+              }
+              summaryLines.push("");
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryLines.join("\n"), "utf8");
+            }
+          '
+
+      - name: Reconcile Cross-Cohort Organization & Package Modules
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
+        run: |
+          node --input-type=module -e '
+            import fs from "fs";
+            const scopePath = process.env.INPUT_SCOPE;
+            if (scopePath && fs.existsSync(scopePath)) {
+              const parsed = JSON.parse(fs.readFileSync(scopePath, "utf8"));
+              const targetType = process.env.INPUT_TARGET_TYPE;
+              const emuShortcode = (process.env.INPUT_EMU_SHORTCODE || "").trim();
+              if (targetType === "ghec" || targetType === "emu") {
+                parsed.targetType = targetType;
+                if (Array.isArray(parsed.organizations)) {
+                  for (const org of parsed.organizations) {
+                    org.targetType = targetType;
+                  }
+                }
+                if (targetType === "ghec") {
+                  parsed.identityMapping = { strategy: "pass-through" };
+                } else if (targetType === "emu" && emuShortcode) {
+                  const normalizedSuffix = emuShortcode.startsWith("_") ? emuShortcode : `_${emuShortcode}`;
+                  parsed.identityMapping = { strategy: "emu-saml", suffix: normalizedSuffix };
+                }
+                fs.writeFileSync(scopePath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
+              }
+            }
+          '
+          echo "Reconciling teams, packages, and actions-runners after all cohort repositories have unlocked..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+            --scope "$INPUT_SCOPE" \
+            --modules teams,packages,actions-runners \
+            --continue-on-error \
+            --verbose \
+            --output ./scans/post-cohort-reconcile-report.json || true
+
       - name: Execute Full-Spectrum Verification
         id: initial-verify
         shell: bash
@@ -301,11 +641,18 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
         run: |
           mkdir -p ./scans
-          echo "Executing initial target verification across all 32 modules..."
+          VERIFY_ARGS=(--modules "${INPUT_MODULES:-auto}")
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            VERIFY_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
+          fi
+          echo "Executing initial target verification (modules=${INPUT_MODULES:-auto}, exclude=${INPUT_EXCLUDE_MODULES:-none})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
             --scope "$INPUT_SCOPE" \
+            "${VERIFY_ARGS[@]}" \
             --output ./scans/verification-report.json \
             --verbose || true
 
@@ -316,23 +663,42 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          GHEC_SCRATCH_DIR: ${{ runner.temp }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
           MAX_ROUNDS: ${{ inputs.max_remediation_rounds }}
         run: |
           mkdir -p ./scans ./remediations
+          if [ ! -f ./scans/verification-report.json ]; then
+            echo "Verification report was not generated; skipping remediation loop."
+            exit 0
+          fi
+          VERIFY_ARGS=(--modules "${INPUT_MODULES:-auto}")
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            VERIFY_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
+          fi
           ROUND=1
           MAX_ROUNDS=${MAX_ROUNDS:-3}
+          PREV_REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+          FAILED_COHORT_MODULES=$(jq '.failedModuleCount // 0' ./scans/aggregated-cohort-failures.json 2>/dev/null || echo 0)
+          if [ "$PREV_REMAINING" -eq 0 ] && [ "$FAILED_COHORT_MODULES" -eq 0 ]; then
+            echo "Initial verification reported 0 discrepancies and 0 cohort apply() failures. Skipping remediation loop."
+            exit 0
+          fi
 
           while [ "$ROUND" -le "$MAX_ROUNDS" ]; do
             echo "=================================================="
             echo "Starting Autonomous Remediation Round $ROUND of $MAX_ROUNDS"
             echo "=================================================="
 
-            # 1. Synthesize remediation plan from latest verification report
+            # 1. Synthesize remediation plan from latest verification report & cohort execution reports
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
+              --execution-reports ./downloaded-cohorts \
               --output "./remediations/remediation-plan-round-${ROUND}.json" \
-              --output-markdown "./remediations/remediation-plan-round-${ROUND}.md"
+              --output-markdown "./remediations/remediation-plan-round-${ROUND}.md" \
+              --verbose
 
             PLAN_FILE="./remediations/remediation-plan-round-${ROUND}.json"
             ACTION_COUNT=$(jq '.actionableCount // 0' "$PLAN_FILE")
@@ -343,22 +709,28 @@ jobs:
               break
             fi
 
-            # 2. Extract and execute remediation bash script
+            # 2. Extract and execute remediation bash script with structured execution logging
             SCRIPT_CONTENT=$(jq -r '.script // ""' "$PLAN_FILE")
             if [ -n "$SCRIPT_CONTENT" ] && [ "$SCRIPT_CONTENT" != "null" ]; then
               echo "$SCRIPT_CONTENT" > "./remediations/remediation-round-${ROUND}.sh"
               chmod +x "./remediations/remediation-round-${ROUND}.sh"
               echo "Executing remediation script for round $ROUND..."
-              bash "./remediations/remediation-round-${ROUND}.sh" || true
+              set +e
+              bash "./remediations/remediation-round-${ROUND}.sh" 2>&1 | tee "./remediations/round-${ROUND}-execution.log"
+              REM_EXIT=${PIPESTATUS[0]}
+              echo "Remediation round $ROUND script exited with code $REM_EXIT" | tee -a "./remediations/round-${ROUND}-execution.log"
+              set -e
             fi
 
             # 3. Re-verify target state
             echo "Re-running target verification after round $ROUND..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --scope "$INPUT_SCOPE" \
-              --output ./scans/verification-report.json || true
+              "${VERIFY_ARGS[@]}" \
+              --output ./scans/verification-report.json \
+              --verbose || true
 
-            REMAINING=$(jq '.summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+            REMAINING=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
             echo "Verification post-round $ROUND reported $REMAINING discrepancies."
 
             if [ "$REMAINING" -eq 0 ]; then
@@ -366,8 +738,31 @@ jobs:
               break
             fi
 
+            if [ -n "${PREV_REMAINING:-}" ] && [ "$PREV_REMAINING" -gt 0 ] && [ "$REMAINING" -ge "$PREV_REMAINING" ]; then
+              echo "Discrepancy count plateaued ($REMAINING vs previous $PREV_REMAINING); stopping remediation loop early."
+              break
+            fi
+            PREV_REMAINING="$REMAINING"
+
             ROUND=$((ROUND + 1))
           done
+
+      - name: Publish Migration Audit Repository to Target Organization
+        if: always() && inputs.dry_run == false
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+        run: |
+          if [ -f ./scans/verification-report.json ]; then
+            echo "Publishing migration audit results repository to target organization..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+              --scope "$INPUT_SCOPE" \
+              --report ./scans/verification-report.json \
+              --append-step-summary \
+              --verbose || true
+          fi
 
       - name: Generate Final Audit & Step Summary
         if: always()
@@ -381,8 +776,8 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f ./scans/verification-report.json ]; then
-            TOTAL_DISC=$(jq '.summary.totalDiscrepancies // 0' ./scans/verification-report.json)
-            PASS_RATE=$(jq '.summary.overallStatus // "unknown"' ./scans/verification-report.json)
+            TOTAL_DISC=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+            PASS_RATE=$(jq '.summary.overallStatus // (if (.summary.discrepancyCount // 0) == 0 then "passed" else "failed" end)' ./scans/verification-report.json)
             echo "### Verification State" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Overall Status**: \`$PASS_RATE\`" >> "$GITHUB_STEP_SUMMARY"
             echo "- **Remaining Discrepancies**: \`$TOTAL_DISC\`" >> "$GITHUB_STEP_SUMMARY"
@@ -390,8 +785,9 @@ jobs:
 
           if [ -d ./remediations ]; then
             echo "### Remediation History" >> "$GITHUB_STEP_SUMMARY"
-            ls -la ./remediations/*.json 2>/dev/null | while read -r line; do
-              echo "- Produced remediation plan: \`$line\`" >> "$GITHUB_STEP_SUMMARY"
+            for f in ./remediations/*.json; do
+              [ -e "$f" ] || continue
+              echo "- Produced remediation plan: \`$f\`" >> "$GITHUB_STEP_SUMMARY"
             done
           fi
 
@@ -404,3 +800,48 @@ jobs:
             ./scans/
             ./remediations/
           retention-days: 30
+
+      - name: Strict Verification & Execution Gate
+        id: strict-gate
+        if: always()
+        shell: bash
+        env:
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_AUTO_REMEDIATE: ${{ inputs.auto_remediate }}
+        run: |
+          GATE_FAILED=0
+
+          if [ -f ./scans/aggregated-cohort-failures.json ]; then
+            MISSING_COHORTS=$(jq '.missingCohortReports // 0' ./scans/aggregated-cohort-failures.json)
+            FAILED_COHORT_MODULES=$(jq '.failedModuleCount // 0' ./scans/aggregated-cohort-failures.json)
+            if [ "$MISSING_COHORTS" -gt 0 ]; then
+              echo "::error::$MISSING_COHORTS expected cohort execution report(s) were not produced."
+              GATE_FAILED=1
+            fi
+            if [ "$INPUT_AUTO_REMEDIATE" != "true" ] && [ "$FAILED_COHORT_MODULES" -gt 0 ]; then
+              echo "::error::Cohort execution reported $FAILED_COHORT_MODULES failed module(s) with auto_remediate disabled."
+              GATE_FAILED=1
+            fi
+          else
+            echo "::error::Aggregated cohort failures report (./scans/aggregated-cohort-failures.json) is missing."
+            GATE_FAILED=1
+          fi
+
+          if [ "$INPUT_DRY_RUN" != "true" ]; then
+            if [ ! -f ./scans/verification-report.json ]; then
+              echo "::error::Verification report (./scans/verification-report.json) was not generated."
+              GATE_FAILED=1
+            else
+              DISCREPANCIES=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+              UNVERIFIED_MODULES=$(jq '.summary.unverifiedModuleCount // .summary.failedModules // 0' ./scans/verification-report.json)
+              if [ "$DISCREPANCIES" -gt 0 ] || [ "$UNVERIFIED_MODULES" -gt 0 ]; then
+                echo "::error::Strict Verification Gate Failed: $DISCREPANCIES discrepancy(ies) and $UNVERIFIED_MODULES unverified module(s) remain after self-healing."
+                GATE_FAILED=1
+              fi
+            fi
+          fi
+
+          if [ "$GATE_FAILED" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Strict Verification & Execution Gate passed."

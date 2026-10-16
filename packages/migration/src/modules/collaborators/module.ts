@@ -31,11 +31,21 @@ export class CollaboratorsMigrationModule implements MigrationModule<Collaborato
   readonly dependencies: readonly string[] = ['gei-repo'];
 
   private readonly identityMapper: IdentityMappingEngine;
+  private readonly hasExplicitIdentityConfig: boolean;
 
   constructor(options: CollaboratorsModuleOptions = {}) {
+    this.hasExplicitIdentityConfig =
+      options.identityMappingConfig !== undefined;
     this.identityMapper = new IdentityMappingEngine(
       options.identityMappingConfig,
     );
+  }
+
+  private getIdentityMapper(ctx: MigrationContext): IdentityMappingEngine {
+    if (!this.hasExplicitIdentityConfig && ctx.scope.identityMapping) {
+      return new IdentityMappingEngine(ctx.scope.identityMapping);
+    }
+    return this.identityMapper;
   }
 
   /**
@@ -180,8 +190,9 @@ export class CollaboratorsMigrationModule implements MigrationModule<Collaborato
       }
     }
 
+    const activeMapper = this.getIdentityMapper(ctx);
     for (const srcCollab of sourceData.collaborators) {
-      const mapping = this.identityMapper.mapLogin(srcCollab.login);
+      const mapping = activeMapper.mapLogin(srcCollab.login);
       if (mapping.warning) {
         warnings.push(mapping.warning);
       }

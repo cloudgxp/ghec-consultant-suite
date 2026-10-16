@@ -2,8 +2,10 @@ import { z } from 'zod';
 import {
   MIGRATION_SCHEMA_VERSION,
   MigrationModuleIdSchema,
+  MigrationScopeLevelSchema,
   NonEmptyStringSchema,
   NonNegativeIntegerSchema,
+  PlannedOperationTypeSchema,
   TimestampSchema,
 } from '../migration-common.js';
 
@@ -14,6 +16,11 @@ export const OperationExecutionResultSchema = z
     httpStatus: z.number().int().min(100).max(599).optional(),
     error: z.string().trim().min(1).max(2048).optional(),
     completedAt: TimestampSchema,
+    resourceType: NonEmptyStringSchema.optional(),
+    resourceName: NonEmptyStringSchema.optional(),
+    operationType: PlannedOperationTypeSchema.optional(),
+    reason: z.string().max(2048).optional(),
+    targetIdentifier: NonEmptyStringSchema.optional(),
   })
   .strict()
   .superRefine((result, ctx) => {
@@ -40,6 +47,8 @@ export const ModuleExecutionResultSchema = z
     status: z.enum(['complete', 'partial', 'failed', 'skipped']),
     results: z.array(OperationExecutionResultSchema),
     durationMs: NonNegativeIntegerSchema,
+    targetIdentifier: NonEmptyStringSchema.optional(),
+    scopeLevel: MigrationScopeLevelSchema.optional(),
     metadataState: z
       .enum(['complete', 'partial', 'failed', 'skipped'])
       .optional(),

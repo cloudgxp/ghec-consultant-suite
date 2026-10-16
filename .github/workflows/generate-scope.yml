@@ -33,11 +33,19 @@ on:
         description: 'Scope name / filename (without .json). Leave blank for default.'
         required: false
         type: string
-      identity_suffix:
-        description: 'EMU identity suffix (e.g. _antigravity)'
+      target_type:
+        description: 'Target tenant type ("ghec" for standard GHEC, "emu" for Enterprise Managed Users)'
+        required: false
+        type: choice
+        options:
+          - 'ghec'
+          - 'emu'
+        default: 'ghec'
+      emu_shortcode:
+        description: 'Admin-defined EMU shortcode/suffix (e.g. "acme" or "_acme") — only used when target_type is "emu"'
         required: false
         type: string
-        default: '_antigravity'
+        default: ''
       lfs_strategy:
         description: 'LFS migration strategy'
         required: false
@@ -76,6 +84,14 @@ on:
         required: false
         type: boolean
         default: false
+      mirror_push_mode:
+        description: 'Mirror-push mode for massive (>2 GiB / >40 GiB) repos ("fast-snapshot" default vs "full-history")'
+        required: false
+        type: choice
+        options:
+          - 'fast-snapshot'
+          - 'full-history'
+        default: 'fast-snapshot'
       commit_to_branch:
         description: 'Commit and push the generated scope file to this branch'
         required: false
@@ -107,9 +123,14 @@ jobs:
           ARGS=(
             "--source" "${{ inputs.source_org }}"
             "--target" "${{ inputs.target_org }}"
-            "--identity-suffix" "${{ inputs.identity_suffix }}"
+            "--target-type" "${{ inputs.target_type || 'ghec' }}"
             "--lfs-strategy" "${{ inputs.lfs_strategy }}"
+            "--mirror-push-mode" "${{ inputs.mirror_push_mode || 'fast-snapshot' }}"
           )
+
+          if [ -n "${{ inputs.emu_shortcode }}" ]; then
+            ARGS+=("--emu-shortcode" "${{ inputs.emu_shortcode }}")
+          fi
 
           if [ -n "${{ inputs.scope_name }}" ]; then
             ARGS+=("--name" "${{ inputs.scope_name }}")

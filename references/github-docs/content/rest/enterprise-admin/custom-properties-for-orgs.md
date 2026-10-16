@@ -14,3 +14,239 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get organization custom properties schema for an enterprise
+
+`GET /enterprises/{enterprise}/org-properties/schema`
+
+Gets all organization custom property definitions that are defined on an enterprise.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `read:enterprise` scope
+
+Actors with the enterprise-level "read enterprise custom properties for organizations" fine-grained permission or above
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update organization custom property definitions on an enterprise
+
+`PATCH /enterprises/{enterprise}/org-properties/schema`
+
+Creates new or updates existing organization custom properties defined on an enterprise in a batch.
+
+If the property already exists, the existing property will be replaced with the new values.
+Missing optional values will fall back to default values, previous values will be overwritten.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `admin:enterprise` scope
+
+Actors with the enterprise-level "manage enterprise custom properties for organizations" fine-grained permission
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `properties` | `array of objects` | Yes | The array of organization custom properties to create or update. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get an organization custom property definition from an enterprise
+
+`GET /enterprises/{enterprise}/org-properties/schema/{custom_property_name}`
+
+Gets an organization custom property definition that is defined on an enterprise.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `read:enterprise` scope
+
+Actors with the enterprise-level "read enterprise custom properties for organizations" fine-grained permission or above
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update an organization custom property definition on an enterprise
+
+`PUT /enterprises/{enterprise}/org-properties/schema/{custom_property_name}`
+
+Creates a new or updates an existing organization custom property definition that is defined on an enterprise.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `admin:enterprise` scope
+
+Actors with the enterprise-level "manage enterprise custom properties for organizations" fine-grained permission
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `value_type` | `string` | Yes | The type of the value for the property. |
+| `required` | `boolean` | No | Whether the property is required. |
+| `default_value` | `null or string or array` | No | Default value of the property. |
+| `description` | `string or null` | No | Short description of the property. |
+| `allowed_values` | `array of strings or null` | No | An ordered list of the allowed values of the property. The property can have up to 200 allowed values. |
+| `values_editable_by` | `string or null` | No | Who can edit the values of the property. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove an organization custom property definition from an enterprise
+
+`DELETE /enterprises/{enterprise}/org-properties/schema/{custom_property_name}`
+
+Removes an organization custom property definition that is defined on an enterprise.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `admin:enterprise` scope
+
+Actors with the enterprise-level "manage enterprise custom properties for organizations" fine-grained permission
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `custom_property_name` | path | `string` | Yes | The custom property name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | A header with no content is returned. |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List custom property values for organizations in an enterprise
+
+`GET /enterprises/{enterprise}/org-properties/values`
+
+Lists enterprise organizations with all of their custom property values.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `read:enterprise` scope
+
+Actors with the enterprise-level "read enterprise custom properties for organizations" fine-grained permission or above
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Create or update custom property values for organizations in an enterprise
+
+`PATCH /enterprises/{enterprise}/org-properties/values`
+
+Create or update custom property values for organizations in an enterprise.
+
+To remove a custom property value from an organization, set the property value to `null`.
+
+Access requirements:
+
+Enterprise admins
+
+OAuth tokens and personal access tokens (classic) with the `admin:enterprise` scope
+
+Actors with the enterprise-level "edit enterprise custom properties for organizations" fine-grained permission or above
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `organization_logins` | `array of strings` | Yes | The names of organizations that the custom property values will be applied to. |
+| `properties` | `array of objects` | Yes | List of custom property names and associated values to apply to the organizations. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when custom property values are successfully created or updated |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

@@ -27,3 +27,123 @@ To use these endpoints, the authenticated user must be a team maintainer or an o
 {% endif %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get an external group
+
+`GET /orgs/{org}/external-group/{group_id}`
+
+Displays information about the specific group's usage.  Provides a list of the group's external members as well as a list of teams that this group is connected to.
+
+You can manage team membership with your identity provider using Enterprise Managed Users for GitHub Enterprise Cloud. For more information, see "[GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products)" in the GitHub Help documentation.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `group_id` | path | `integer` | Yes | The unique identifier of the group. |
+| `per_page` | query | `integer` | No | The number of results per page for the "members" array (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the "members" array results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List external groups available to an organization
+
+`GET /orgs/{org}/external-groups`
+
+Lists external groups provisioned on the enterprise that are available to an organization. You can query the groups using the `display_name` parameter, only groups with a `group_name` containing the text provided in the `display_name` parameter will be returned.  You can also limit your page results using the `per_page` parameter. GitHub Enterprise Cloud generates a url-encoded `page` token using a cursor value for where the next page begins. For more information on cursor pagination, see "[Offset and Cursor Pagination explained](https://dev.to/jackmarchant/offset-and-cursor-pagination-explained-b89)."
+
+You can manage team membership with your identity provider using Enterprise Managed Users for GitHub Enterprise Cloud. For more information, see "[GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products)" in the GitHub Help documentation.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | Page token |
+| `display_name` | query | `string` | No | Limits the list to groups containing the text in the group name |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List a connection between an external group and a team
+
+`GET /orgs/{org}/teams/{team_slug}/external-groups`
+
+Lists a connection between a team and an external group.
+
+You can manage team membership with your identity provider using Enterprise Managed Users for GitHub Enterprise Cloud. For more information, see "[GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products)" in the GitHub Help documentation.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Unprocessable entity if you attempt to modify an enterprise team at the organization level. |
+
+## Update the connection between an external group and a team
+
+`PATCH /orgs/{org}/teams/{team_slug}/external-groups`
+
+Creates a connection between a team and an external group.  Only one external group can be linked to a team.
+
+You can manage team membership with your identity provider using Enterprise Managed Users for GitHub Enterprise Cloud. For more information, see "[GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products)" in the GitHub Help documentation.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `group_id` | `integer` | Yes | External Group Id |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `422` | Unprocessable entity if you attempt to modify an enterprise team at the organization level. |
+
+## Remove the connection between an external group and a team
+
+`DELETE /orgs/{org}/teams/{team_slug}/external-groups`
+
+Deletes a connection between a team and an external group.
+
+You can manage team membership with your IdP using Enterprise Managed Users for GitHub Enterprise Cloud. For more information, see [GitHub's products](https://docs.github.com/enterprise-cloud@latest/github/getting-started-with-github/githubs-products) in the GitHub Help documentation.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `422` | Unprocessable entity if you attempt to modify an enterprise team at the organization level. |

@@ -15,3 +15,639 @@ category:
 
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organizations
+
+`GET /organizations`
+
+Lists all organizations, in the order that they were created.
+
+Note
+
+Pagination is powered exclusively by the `since` parameter. Use the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers) to get the URL for the next page of organizations.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `since` | query | `integer` | No | An organization ID. Only return organizations with an ID greater than this ID. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+
+## Get an organization
+
+`GET /orgs/{org}`
+
+Gets information about an organization.
+
+When the value of `two_factor_requirement_enabled` is `true`, the organization requires all members, billing managers, outside collaborators, guest collaborators, repository collaborators, or everyone with access to any repository within the organization to enable [two-factor authentication](https://docs.github.com/enterprise-cloud@latest/articles/securing-your-account-with-two-factor-authentication-2fa/).
+
+To see the full details about an organization, the authenticated user must be an organization owner.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to see the full details about an organization.
+
+To see information about an organization's GitHub Enterprise Cloud plan, GitHub Apps need the `Organization plan` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update an organization
+
+`PATCH /orgs/{org}`
+
+Warning
+
+Closing down notice: GitHub Enterprise Cloud will replace and discontinue `members_allowed_repository_creation_type` in favor of more granular permissions. The new input parameters are `members_can_create_public_repositories`, `members_can_create_private_repositories` for all organizations and `members_can_create_internal_repositories` for organizations associated with an enterprise account using GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+. For more information, see the [blog post](https://developer.github.com/changes/2019-12-03-internal-visibility-changes).
+
+Warning
+
+Closing down notice: Code security product enablement for new repositories through the organization API is closing down. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations#set-a-code-security-configuration-as-a-default-for-an-organization) to set defaults instead. For more information on setting a default security configuration, see the [changelog](https://github.blog/changelog/2024-07-09-sunsetting-security-settings-defaults-parameters-in-the-organizations-rest-api/).
+
+Updates the organization's profile and member privileges.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` or `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `billing_email` | `string` | No | Billing email address. This address is not publicized. |
+| `company` | `string` | No | The company name. |
+| `email` | `string` | No | The publicly visible email address. |
+| `twitter_username` | `string` | No | The Twitter username of the company. |
+| `location` | `string` | No | The location. |
+| `name` | `string` | No | The shorthand name of the company. |
+| `description` | `string` | No | The description of the company. The maximum size is 160 characters. |
+| `has_organization_projects` | `boolean` | No | Whether an organization can use organization projects. |
+| `has_repository_projects` | `boolean` | No | Whether repositories that belong to the organization can use repository projects. |
+| `default_repository_permission` | `string` | No | Default permission level members have for organization repositories. |
+| `members_can_create_repositories` | `boolean` | No | Whether of non-admin organization members can create repositories. Note: A parameter can override this parameter. See `members_allowed_repository_creation_type` in this table for details. |
+| `members_can_create_internal_repositories` | `boolean` | No | Whether organization members can create internal repositories, which are visible to all enterprise members. You can only allow members to create internal repositories if your organization is associated with an enterprise account using GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+. For more information, see "[Restricting repository creation in your organization](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/restricting-repository-creation-in-your-organization)" in the GitHub Help documentation. |
+| `members_can_create_private_repositories` | `boolean` | No | Whether organization members can create private repositories, which are visible to organization members with permission. For more information, see "[Restricting repository creation in your organization](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/restricting-repository-creation-in-your-organization)" in the GitHub Help documentation. |
+| `members_can_create_public_repositories` | `boolean` | No | Whether organization members can create public repositories, which are visible to anyone. For more information, see "[Restricting repository creation in your organization](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/restricting-repository-creation-in-your-organization)" in the GitHub Help documentation. |
+| `members_allowed_repository_creation_type` | `string` | No | Specifies which types of repositories non-admin organization members can create. `private` is only available to repositories that are part of an organization on GitHub Enterprise Cloud. Note: This parameter is closing down and will be removed in the future. Its return value ignores internal repositories. Using this parameter overrides values set in `members_can_create_repositories`. See the parameter deprecation notice in the operation description for details. |
+| `members_can_create_pages` | `boolean` | No | Whether organization members can create GitHub Pages sites. Existing published sites will not be impacted. |
+| `members_can_create_public_pages` | `boolean` | No | Whether organization members can create public GitHub Pages sites. Existing published sites will not be impacted. |
+| `members_can_create_private_pages` | `boolean` | No | Whether organization members can create private GitHub Pages sites. Existing published sites will not be impacted. |
+| `members_can_fork_private_repositories` | `boolean` | No | Whether organization members can fork private organization repositories. |
+| `web_commit_signoff_required` | `boolean` | No | Whether contributors to organization repositories are required to sign off on commits they make through GitHub's web interface. |
+| `blog` | `string` | No |  |
+| `advanced_security_enabled_for_new_repositories` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether GitHub Advanced Security is automatically enabled for new repositories and repositories transferred to this organization. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." You can check which security and analysis features are currently enabled by using a `GET /orgs/{org}` request. |
+| `dependabot_alerts_enabled_for_new_repositories` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether Dependabot alerts are automatically enabled for new repositories and repositories transferred to this organization. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." You can check which security and analysis features are currently enabled by using a `GET /orgs/{org}` request. |
+| `dependabot_security_updates_enabled_for_new_repositories` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether Dependabot security updates are automatically enabled for new repositories and repositories transferred to this organization. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." You can check which security and analysis features are currently enabled by using a `GET /orgs/{org}` request. |
+| `dependency_graph_enabled_for_new_repositories` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether dependency graph is automatically enabled for new repositories and repositories transferred to this organization. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." You can check which security and analysis features are currently enabled by using a `GET /orgs/{org}` request. |
+| `secret_scanning_enabled_for_new_repositories` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether secret scanning is automatically enabled for new repositories and repositories transferred to this organization. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." You can check which security and analysis features are currently enabled by using a `GET /orgs/{org}` request. |
+| `secret_scanning_push_protection_enabled_for_new_repositories` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether secret scanning push protection is automatically enabled for new repositories and repositories transferred to this organization. To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)." You can check which security and analysis features are currently enabled by using a `GET /orgs/{org}` request. |
+| `secret_scanning_push_protection_custom_link_enabled` | `boolean` | No | Whether a custom link is shown to contributors who are blocked from pushing a secret by push protection. |
+| `secret_scanning_push_protection_custom_link` | `string` | No | If `secret_scanning_push_protection_custom_link_enabled` is true, the URL that will be displayed to contributors who are blocked from pushing a secret. |
+| `secret_scanning_validity_checks_enabled` | `boolean` | No | Endpoint closing down notice. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. Whether secret scanning automatic validity checks on supported partner tokens is enabled for all repositories under this organization. |
+| `deploy_keys_enabled_for_repositories` | `boolean` | No | Controls whether or not deploy keys may be added and used for repositories in the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `409` | Conflict |
+| `422` | Validation failed |
+
+## Delete an organization
+
+`DELETE /orgs/{org}`
+
+Deletes an organization and all its repositories.
+
+The organization login will be unavailable for 90 days after deletion.
+
+Please review the Terms of Service regarding account deletion before using this endpoint:
+
+[https://docs.github.com/enterprise-cloud@latest/site-policy/github-terms/github-terms-of-service](https://docs.github.com/enterprise-cloud@latest/site-policy/github-terms/github-terms-of-service)
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Get the audit log for an organization
+
+`GET /orgs/{org}/audit-log`
+
+Gets the audit log for an organization. For more information, see "[Reviewing the audit log for your organization](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/reviewing-the-audit-log-for-your-organization)."
+
+By default, the response includes up to 30 events from the past three months. Use the `phrase` parameter to filter results and retrieve older events. For example, use the `phrase` parameter with the `created` qualifier to filter events based on when the events occurred. For more information, see "[Reviewing the audit log for your organization](https://docs.github.com/enterprise-cloud@latest/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/reviewing-the-audit-log-for-your-organization#searching-the-audit-log)."
+
+Use pagination to retrieve fewer or more than 30 events. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api)."
+
+This endpoint has a rate limit of 1,750 queries per hour per user and IP address.  If your integration receives a rate limit error (typically a 403 or 429 response), it should wait before making another request to the GitHub API. For more information, see "[Rate limits for the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/rate-limits-for-the-rest-api)" and "[Best practices for integrators](https://docs.github.com/enterprise-cloud@latest/rest/guides/best-practices-for-integrators)."
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:audit_log` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `phrase` | query | `string` | No | A search phrase. For more information, see [Searching the audit log](https://docs.github.com/enterprise-cloud@latest/github/setting-up-and-managing-organizations-and-teams/reviewing-the-audit-log-for-your-organization#searching-the-audit-log). |
+| `include` | query | `string` | No | The event types to include: `web` - returns web (non-Git) events. `git` - returns Git events. `all` - returns both web and Git events. The default is `web`. |
+| `after` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for events after this cursor. |
+| `before` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for events before this cursor. |
+| `order` | query | `string` | No | The order of audit log events. To list newest events first, specify `desc`. To list oldest events first, specify `asc`. The default is `desc`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List SAML SSO authorizations for an organization
+
+`GET /orgs/{org}/credential-authorizations`
+
+Lists all credential authorizations for an organization that uses SAML single sign-on (SSO). The credentials can be personal access tokens, SSH keys, OAuth app access tokens, or user-to-server tokens from GitHub Apps that organization members have authorized for the organization. For more information, see [About authentication with SAML single sign-on](https://docs.github.com/enterprise-cloud@latest/articles/about-authentication-with-saml-single-sign-on).
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | Page token |
+| `login` | query | `string` | No | Limits the list of credentials authorizations for an organization to a specific login |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Revoke all credential authorizations for an organization
+
+`POST /orgs/{org}/credential-authorizations/revoke-all`
+
+Revokes all SAML SSO credential authorizations for every member of the
+organization. This removes the sign-in authorizations for personal access
+tokens, SSH keys, OAuth app tokens, and user-to-server tokens that members
+have authorized for the organization. Members will need to authorize their
+credentials again to access the organization.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint, that token's
+authorization for the organization may also be revoked as part of this operation.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Revoke a single credential type for an organization
+
+`POST /orgs/{org}/credential-authorizations/revoke-credential-type`
+
+Revokes a single credential type (for example, classic personal access tokens)
+across the organization. This removes the sign-in authorizations for that
+credential type for every member of the organization.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint and revoke classic
+personal access tokens, that token's authorization for the organization may
+also be revoked as part of this operation.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `credential_type` | `string` | Yes | The type of credential to revoke across the organization. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation error - The `credential_type` is missing or invalid |
+
+## Remove a SAML SSO authorization for an organization
+
+`DELETE /orgs/{org}/credential-authorizations/{credential_id}`
+
+Removes a credential authorization for an organization that uses SAML SSO. The credential can be a personal access token, an SSH key, an OAuth app access token, or a user-to-server token from a GitHub App. Once you remove someone's credential authorization, they will need to authorize the credential again for the organization they want to access.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `credential_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+
+## Revoke credential authorizations for a user in an organization
+
+`POST /orgs/{org}/credential-authorizations/{username}/revoke`
+
+Revokes all SAML SSO credential authorizations for a single user within the
+organization. This removes the sign-in authorizations for the user's personal
+access tokens, SSH keys, OAuth app tokens, and user-to-server tokens that they
+have authorized for the organization. The user will need to authorize their
+credentials again to access the organization.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint and target yourself,
+that token's authorization for the organization may also be revoked as part of
+this operation.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Revoke a single credential type for a user in an organization
+
+`POST /orgs/{org}/credential-authorizations/{username}/revoke-credential-type`
+
+Revokes a single credential type (for example, classic personal access tokens)
+for a single user within the organization. This removes the sign-in authorizations
+for that credential type for the user in the organization.
+
+This operation is performed asynchronously. A background job will be queued to process
+the revocations.
+
+Warning
+
+If you use a personal access token to call this endpoint, target yourself, and
+revoke classic personal access tokens, that token's authorization for the
+organization may also be revoked as part of this operation.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `credential_type` | `string` | Yes | The type of credential to revoke for the user. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `202` | Accepted - The revocation request has been queued |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Validation error - The `credential_type` is missing or invalid |
+
+## List app installations for an organization
+
+`GET /orgs/{org}/installations`
+
+Lists all GitHub Apps in an organization. The installation count includes
+all GitHub Apps installed on repositories in the organization.
+
+The authenticated user must be an organization owner to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:read` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get immutable releases settings for an organization
+
+`GET /orgs/{org}/settings/immutable-releases`
+
+Gets the immutable releases policy for repositories in an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Immutable releases settings response |
+
+## Set immutable releases settings for an organization
+
+`PUT /orgs/{org}/settings/immutable-releases`
+
+Sets the immutable releases policy for repositories in an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `enforced_repositories` | `string` | Yes | The policy that controls how immutable releases are enforced in the organization. |
+| `selected_repository_ids` | `array of integers` | No | An array of repository ids for which immutable releases enforcement should be applied. You can only provide a list of repository ids when the `enforced_repositories` is set to `selected`. You can add and remove individual repositories using the [Enable a selected repository for immutable releases in an organization](https://docs.github.com/enterprise-cloud@latest/rest/orgs/orgs#enable-a-selected-repository-for-immutable-releases-in-an-organization) and [Disable a selected repository for immutable releases in an organization](https://docs.github.com/enterprise-cloud@latest/rest/orgs/orgs#disable-a-selected-repository-for-immutable-releases-in-an-organization) endpoints. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List selected repositories for immutable releases enforcement
+
+`GET /orgs/{org}/settings/immutable-releases/repositories`
+
+List all of the repositories that have been selected for immutable releases enforcement in an organization.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set selected repositories for immutable releases enforcement
+
+`PUT /orgs/{org}/settings/immutable-releases/repositories`
+
+Replaces all repositories that have been selected for immutable releases enforcement in an organization. To use this endpoint, the organization immutable releases policy for `enforced_repositories` must be configured to `selected`.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_repository_ids` | `array of integers` | Yes | An array of repository ids for which immutable releases enforcement should be applied. You can only provide a list of repository ids when the `enforced_repositories` is set to `selected`. You can add and remove individual repositories using the [Enable a selected repository for immutable releases in an organization](https://docs.github.com/enterprise-cloud@latest/rest/orgs/orgs#enable-a-selected-repository-for-immutable-releases-in-an-organization) and [Disable a selected repository for immutable releases in an organization](https://docs.github.com/enterprise-cloud@latest/rest/orgs/orgs#disable-a-selected-repository-for-immutable-releases-in-an-organization) endpoints. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Enable a selected repository for immutable releases in an organization
+
+`PUT /orgs/{org}/settings/immutable-releases/repositories/{repository_id}`
+
+Adds a repository to the list of selected repositories that are enforced for immutable releases in an organization. To use this endpoint, the organization immutable releases policy for `enforced_repositories` must be configured to `selected`.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Disable a selected repository for immutable releases in an organization
+
+`DELETE /orgs/{org}/settings/immutable-releases/repositories/{repository_id}`
+
+Removes a repository from the list of selected repositories that are enforced for immutable releases in an organization. To use this endpoint, the organization immutable releases policy for `enforced_repositories` must be configured to `selected`.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `repository_id` | path | `integer` | Yes | The unique identifier of the repository. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Enable or disable a security feature for an organization
+
+`POST /orgs/{org}/{security_product}/{enablement}`
+
+Warning
+
+Closing down notice: The ability to enable or disable a security feature for all eligible repositories in an organization is closing down. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. For more information, see the [changelog](https://github.blog/changelog/2024-07-22-deprecation-of-api-endpoint-to-enable-or-disable-a-security-feature-for-an-organization/).
+
+Enables or disables the specified security feature for all eligible repositories in an organization. For more information, see "[Managing security managers in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization)."
+
+The authenticated user must be an organization owner or be member of a team with the security manager role to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org`, `write:org`, or `repo` scopes to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `security_product` | path | `string` | Yes | The security feature to enable or disable. |
+| `enablement` | path | `string` | Yes | The action to take. `enable_all` means to enable the specified security feature for all repositories in the organization. `disable_all` means to disable the specified security feature for all repositories in the organization. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `query_suite` | `string` | No | CodeQL query suite to be used. If you specify the `query_suite` parameter, the default setup will be configured with this query suite only on all repositories that didn't have default setup already configured. It will not change the query suite on repositories that already have default setup configured. If you don't specify any `query_suite` in your request, the preferred query suite of the organization will be applied. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Action started |
+| `422` | The action could not be taken due to an in progress enablement, or a policy is preventing enablement |
+
+## List organizations for the authenticated user
+
+`GET /user/orgs`
+
+List organizations for the authenticated user.
+
+For OAuth app tokens and personal access tokens (classic), this endpoint only lists organizations that your authorization allows you to operate on in some way (e.g., you can list teams with `read:org` scope, you can publicize your organization membership with `user` scope, etc.). Therefore, this API requires at least `user` or `read:org` scope for OAuth app tokens and personal access tokens (classic). Requests with insufficient scope will receive a `403 Forbidden` response.
+
+Note
+
+Requests using a fine-grained access token will receive a `200 Success` response with an empty list.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `304` | Not modified |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+
+## List organizations for a user
+
+`GET /users/{username}/orgs`
+
+List [public organization memberships](https://docs.github.com/enterprise-cloud@latest/articles/publicizing-or-concealing-organization-membership) for the specified user.
+
+This method only lists public memberships, regardless of authentication. If you need to fetch all of the organization memberships (public and private) for the authenticated user, use the [List organizations for the authenticated user](https://docs.github.com/enterprise-cloud@latest/rest/orgs/orgs#list-organizations-for-the-authenticated-user) API instead.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

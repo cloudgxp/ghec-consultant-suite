@@ -18,3 +18,33 @@ These endpoints are only available to [authenticated](/rest/authentication/authe
 {% data reusables.user-settings.enterprise-admin-api-classic-pat-only %}{% elsif ghec %}{% data reusables.user-settings.enterprise-admin-api-classic-pat-only %}{% endif %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get GitHub Enterprise Server statistics
+
+`GET /enterprise-installation/{enterprise_or_org}/server-statistics`
+
+Returns aggregate usage metrics for your GitHub Enterprise Server 3.5+ instance for a specified time period up to 365 days.
+
+To use this endpoint, your GitHub Enterprise Server instance must be connected to GitHub Enterprise Cloud using GitHub Connect. You must enable Server Statistics, and for the API request provide your enterprise account name or organization name connected to the GitHub Enterprise Server. For more information, see "[Enabling Server Statistics for your enterprise](/admin/configuration/configuring-github-connect/enabling-server-statistics-for-your-enterprise)" in the GitHub Enterprise Server documentation.
+
+OAuth app tokens and personal access tokens (classic) need:
+
+the `read:enterprise` scope if you connected your GitHub Enterprise Server to an enterprise account and enabled Server Statistics
+
+the `read:org` scope if you connected your GitHub Enterprise Server to an organization account and enabled Server Statistics
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise_or_org` | path | `string` | Yes | The slug version of the enterprise name or the login of an organization. |
+| `date_start` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for events after this cursor. |
+| `date_end` | query | `string` | No | A cursor, as given in the [Link header](https://docs.github.com/enterprise-cloud@latest/rest/guides/using-pagination-in-the-rest-api#using-link-headers). If specified, the query only searches for events before this cursor. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
