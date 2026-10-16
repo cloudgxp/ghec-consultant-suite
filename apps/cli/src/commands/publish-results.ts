@@ -248,19 +248,11 @@ export async function executePublishResultsCommand(
       clientOverrides?.targetWriteClient;
 
     if (!targetClient) {
-      const resolvedTargetToken =
-        options.targetToken ?? process.env['GHEC_TARGET_TOKEN'];
-      const resolvedSourceToken =
-        options.sourceToken ?? process.env['GHEC_SOURCE_TOKEN'];
-      const effectiveSourceToken =
-        resolvedSourceToken && resolvedSourceToken !== resolvedTargetToken
-          ? resolvedSourceToken
-          : 'unused-source-token-for-target-publish';
       const configOptions: CliDualConfigOptions = {
         appId: options.appId,
         privateKeyPath: options.privateKeyPath,
         installationId: options.installationId,
-        sourceToken: effectiveSourceToken,
+        sourceToken: options.sourceToken,
         targetToken: options.targetToken,
       };
       const dualConfig = loadDualConfig(configOptions);
@@ -285,10 +277,11 @@ export async function executePublishResultsCommand(
   // 9. Append step summary if requested
   if (options.appendStepSummary) {
     const blobBaseUrl = `${repoUrl}/blob/${options.branch}`;
-    const stepSummaryReadme = (results.files['README.md'] ?? '').replace(
-      /\[([^\]]+)\]\(((?:organization|success|failure|repositories)\/[^)]+\.md)\)/g,
-      `[$1](${blobBaseUrl}/$2)`,
-    );
+    const stepSummaryReadme = (results.files['README.md'] ?? '')
+      .replaceAll('](organization/', `](${blobBaseUrl}/organization/`)
+      .replaceAll('](success/', `](${blobBaseUrl}/success/`)
+      .replaceAll('](failure/', `](${blobBaseUrl}/failure/`)
+      .replaceAll('](repositories/', `](${blobBaseUrl}/repositories/`);
     appendStepSummary(stepSummaryReadme);
   }
 

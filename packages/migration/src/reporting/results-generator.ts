@@ -730,8 +730,9 @@ export function generateMigrationResults(
         if (isOrgMod) {
           const existing = orgWarningsByModule.get(mod.moduleId) ?? [];
           for (const w of mod.warnings) {
-            const bracketMatch = /^\[([^\]]+)\]\s*(.*)$/.exec(w);
-            const cleanWarning = bracketMatch?.[2] || w;
+            const closeIdx = w.startsWith('[') ? w.indexOf(']') : -1;
+            const cleanWarning =
+              closeIdx > 1 ? w.slice(closeIdx + 1).trimStart() || w : w;
             if (!existing.includes(cleanWarning)) {
               existing.push(cleanWarning);
             }
@@ -739,9 +740,11 @@ export function generateMigrationResults(
           orgWarningsByModule.set(mod.moduleId, existing);
         } else {
           for (const w of mod.warnings) {
-            const bracketMatch = /^\[([^\]]+)\]\s*(.*)$/.exec(w);
-            const prefixCandidate = bracketMatch?.[1];
-            const cleanWarning = bracketMatch?.[2] || w;
+            const closeIdx = w.startsWith('[') ? w.indexOf(']') : -1;
+            const prefixCandidate =
+              closeIdx > 1 ? w.slice(1, closeIdx) : undefined;
+            const cleanWarning =
+              closeIdx > 1 ? w.slice(closeIdx + 1).trimStart() || w : w;
             const matchedTargetRepo = prefixCandidate
               ? (resolveCanonicalTargetRepo(prefixCandidate) ?? prefixCandidate)
               : options.scope?.repositories.length === 1
