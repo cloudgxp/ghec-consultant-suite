@@ -21,3 +21,9 @@
 **Vulnerability:** The GraphQL read-only adapter (`packages/github-client/src/adapters/http-read-adapter.ts`) relied on a regex in `assertReadOnlyGraphQL` (`/(?:^|\})\s*(?:mutation|subscription)\b/`) that could be bypassed by non-brace delimiters such as commas (`query { viewer { login } } , mutation { ... }`).
 **Learning:** Regex-based validation of structured query languages like GraphQL is brittle and prone to parser-differential bypasses.
 **Prevention:** Parse GraphQL documents into an AST using `parse` from `graphql` and fail closed if parsing fails or any `OperationDefinition` is a `mutation` or `subscription`.
+
+## 2026-10-13 - [Fix Formula Injection Vulnerability in CSV Export]
+
+**Vulnerability:** Found CSV formula injection where `\n` characters were not included in `FORMULA_TRIGGERS` array and regex for testing.
+**Learning:** `\n` character is an additional spreadsheet formula execution trigger when files are opened in some processors like Excel.
+**Prevention:** Include `\n` as one of the strings alongside `=`, `+`, `-`, `@`, `\t`, `\r` to be sanitized to prevent code injection via spreadsheet cells.
