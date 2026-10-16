@@ -15,3 +15,9 @@
 **Vulnerability:** [Predictable IDs created by Math.random() in SSE clients]
 **Learning:** [Math.random() is predictable. In security-sensitive code paths or when creating non-colliding IDs, robust alternatives like randomUUID() or randomBytes() from node:crypto should be used]
 **Prevention:** [Review new and existing ID generators, especially for connection handles or tokens, to ensure they use a secure PRNG]
+
+## 2026-10-11 - [GraphQL read-only adapter allowed mutations]
+
+**Vulnerability:** The GraphQL read-only adapter (`packages/github-client/src/adapters/http-read-adapter.ts`) relied on a regex in `assertReadOnlyGraphQL` (`/(?:^|\})\s*(?:mutation|subscription)\b/`) that could be bypassed by non-brace delimiters such as commas (`query { viewer { login } } , mutation { ... }`).
+**Learning:** Regex-based validation of structured query languages like GraphQL is brittle and prone to parser-differential bypasses.
+**Prevention:** Parse GraphQL documents into an AST using `parse` from `graphql` and fail closed if parsing fails or any `OperationDefinition` is a `mutation` or `subscription`.
