@@ -208,7 +208,7 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
               tagName: srcRelease.tagName,
               asset: srcAsset,
             },
-            reason: `Asset "${srcAsset.name}" is part of release "${srcRelease.tagName}".`,
+            reason: `Asset "${srcAsset.name}" (${srcAsset.size} bytes) is part of release "${srcRelease.tagName}".`,
           });
         }
       } else {
@@ -219,6 +219,7 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
           operation: 'noop',
           sourceState: srcRelease,
           destinationCurrentState: targetRelease,
+          reason: `Release tag "${srcRelease.tagName}" already exists on target repository.`,
         });
 
         // Compare assets within existing release
@@ -244,8 +245,8 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
                 asset: srcAsset,
               },
               reason: targetAsset
-                ? `Asset "${srcAsset.name}" size mismatch (${srcAsset.size} vs ${targetAsset.size} bytes).`
-                : `Asset "${srcAsset.name}" is missing on target release.`,
+                ? `Asset "${srcAsset.name}" size mismatch (${srcAsset.size} bytes vs ${targetAsset.size} bytes).`
+                : `Asset "${srcAsset.name}" (${srcAsset.size} bytes) is missing on target release.`,
             });
           } else {
             operations.push({
@@ -255,6 +256,7 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
               operation: 'noop',
               sourceState: srcAsset,
               destinationCurrentState: targetAsset,
+              reason: `Asset "${srcAsset.name}" (${srcAsset.size} bytes) already exists on target release.`,
             });
           }
         }
@@ -294,9 +296,21 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
       const completedAt = new Date().toISOString();
 
       if (op.operation === 'noop') {
+        const assetSize =
+          (op.sourceState as MigrationReleaseAsset | undefined)?.size ??
+          (op.payload as { asset?: MigrationReleaseAsset } | undefined)?.asset
+            ?.size;
+        const defaultReason =
+          op.resourceType === 'release-asset' && assetSize !== undefined
+            ? `Asset "${op.resourceName}" (${assetSize} bytes) already exists on target release.`
+            : `Release "${op.resourceName}" already exists on target repository.`;
         results.push({
           operationId: op.id,
           status: 'succeeded',
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          reason: op.reason ?? defaultReason,
           completedAt,
         });
         continue;
@@ -306,6 +320,10 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
         results.push({
           operationId: op.id,
           status: 'skipped',
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           completedAt,
         });
         continue;
@@ -315,10 +333,22 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
         ctx.logger.info(
           `[DRY-RUN] Simulating ${op.operation} on ${op.resourceType} ${op.resourceName}`,
         );
+        const assetSize =
+          (op.payload as { asset?: MigrationReleaseAsset } | undefined)?.asset
+            ?.size ??
+          (op.sourceState as MigrationReleaseAsset | undefined)?.size;
+        const defaultReason =
+          op.resourceType === 'release-asset' && assetSize !== undefined
+            ? `[DRY-RUN] Simulated streaming release asset "${op.resourceName}" (${assetSize} bytes).`
+            : `[DRY-RUN] Simulated ${op.operation} on ${op.resourceType} "${op.resourceName}".`;
         results.push({
           operationId: op.id,
           status: 'succeeded',
           httpStatus: 200,
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          reason: op.reason ?? defaultReason,
           completedAt,
         });
         continue;
@@ -345,6 +375,12 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
               operationId: op.id,
               status: 'succeeded',
               httpStatus: res.status,
+              resourceType: op.resourceType,
+              resourceName: op.resourceName,
+              operationType: op.operation,
+              reason:
+                op.reason ??
+                `Created release "${op.resourceName}" on target repository.`,
               completedAt: new Date().toISOString(),
             });
           } else {
@@ -352,6 +388,10 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
               operationId: op.id,
               status: 'failed',
               httpStatus: res.status,
+              resourceType: op.resourceType,
+              resourceName: op.resourceName,
+              operationType: op.operation,
+              ...(op.reason ? { reason: op.reason } : {}),
               error: `GitHub API error creating release (HTTP ${res.status})`,
               completedAt: new Date().toISOString(),
             });
@@ -373,6 +413,10 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
             results.push({
               operationId: op.id,
               status: 'failed',
+              resourceType: op.resourceType,
+              resourceName: op.resourceName,
+              operationType: op.operation,
+              ...(op.reason ? { reason: op.reason } : {}),
               error: `Target release ID unknown for asset transfer ${payload.asset.name}`,
               completedAt: new Date().toISOString(),
             });
@@ -392,16 +436,26 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
           });
 
           if (transferRes.success) {
+            const streamedBytes =
+              transferRes.bytesStreamed ?? payload.asset.size ?? 0;
             results.push({
               operationId: op.id,
               status: 'succeeded',
               httpStatus: 201,
+              resourceType: op.resourceType,
+              resourceName: op.resourceName,
+              operationType: op.operation,
+              reason: `Streamed release asset "${payload.asset.name}" (${streamedBytes} bytes) to release "${payload.tagName}".`,
               completedAt: new Date().toISOString(),
             });
           } else {
             results.push({
               operationId: op.id,
               status: 'failed',
+              resourceType: op.resourceType,
+              resourceName: op.resourceName,
+              operationType: op.operation,
+              ...(op.reason ? { reason: op.reason } : {}),
               error: transferRes.error ?? 'Asset streaming failed',
               completedAt: new Date().toISOString(),
             });
@@ -412,6 +466,10 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
         results.push({
           operationId: op.id,
           status: 'failed',
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           error: (err as Error).message || 'Unknown network error',
           completedAt: new Date().toISOString(),
         });
@@ -566,7 +624,7 @@ function mapApiAsset(raw: RawApiAsset): MigrationReleaseAsset {
     label: raw.label,
     contentType: raw.content_type ?? 'application/octet-stream',
     size: raw.size ?? 0,
-    downloadUrl: raw.browser_download_url ?? raw.url ?? '',
+    downloadUrl: raw.url ?? raw.browser_download_url ?? '',
   };
 }
 

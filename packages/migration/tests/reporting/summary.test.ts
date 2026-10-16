@@ -577,6 +577,47 @@ describe('Reporting & Step Summary Subsystem', () => {
               },
             ],
           },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'releases',
+            targetIdentifier: 'demogxp-mig2/release-heavy-benchmark',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 1200,
+            results: [
+              {
+                operationId: 'release:release-heavy-benchmark:v1.0.0',
+                status: 'succeeded',
+                resourceType: 'release',
+                resourceName: 'v1.0.0',
+                operationType: 'create',
+                reason: 'Created release "v1.0.0" on target repository.',
+                completedAt: '2026-10-15T18:31:30.000Z',
+              },
+              {
+                operationId:
+                  'release-asset:release-heavy-benchmark:v1.0.0:engine.tar.gz',
+                status: 'succeeded',
+                resourceType: 'release-asset',
+                resourceName: 'v1.0.0/engine.tar.gz',
+                operationType: 'create',
+                reason:
+                  'Streamed release asset "engine.tar.gz" (1073741824 bytes) to release "v1.0.0".',
+                completedAt: '2026-10-15T18:31:40.000Z',
+              },
+              {
+                operationId:
+                  'release-asset:release-heavy-benchmark:v1.0.0:engine.tar.gz.sha256',
+                status: 'succeeded',
+                resourceType: 'release-asset',
+                resourceName: 'v1.0.0/engine.tar.gz.sha256',
+                operationType: 'create',
+                reason:
+                  'Streamed release asset "engine.tar.gz.sha256" (94 bytes) to release "v1.0.0".',
+                completedAt: '2026-10-15T18:31:41.000Z',
+              },
+            ],
+          },
         ],
       };
 
@@ -596,6 +637,11 @@ describe('Reporting & Step Summary Subsystem', () => {
         repositoriesWithLfs: 1,
         objectsTransferred: 2,
         bytesTransferred: 15728640,
+      });
+      assert.deepEqual(summary.coreTransfer?.largeReleases, {
+        repositoriesWithLargeReleases: 1,
+        assetsStreamed: 2,
+        bytesStreamed: 1073741918,
       });
       assert.deepEqual(summary.rehydration?.rulesets, {
         planned: 1,

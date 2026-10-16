@@ -202,11 +202,29 @@ export function buildSummaryFromExecutionReport(
       }
       case 'releases': {
         const prev = coreTransfer.largeReleases;
+        let releaseAssetsStreamed = 0;
+        let releaseBytes = 0;
+        for (const op of filteredResults) {
+          if (
+            op.status === 'succeeded' &&
+            (op.resourceType === 'release-asset' ||
+              op.operationId.startsWith('release-asset:'))
+          ) {
+            releaseAssetsStreamed++;
+            if (op.reason) {
+              const byteMatch = /\((\d+)\s+bytes\b/i.exec(op.reason);
+              if (byteMatch?.[1]) {
+                releaseBytes += Number.parseInt(byteMatch[1], 10);
+              }
+            }
+          }
+        }
         coreTransfer.largeReleases = {
           repositoriesWithLargeReleases:
-            (prev?.repositoriesWithLargeReleases ?? 0) + counts.succeeded,
-          assetsStreamed: prev?.assetsStreamed ?? 0,
-          bytesStreamed: prev?.bytesStreamed ?? 0,
+            (prev?.repositoriesWithLargeReleases ?? 0) +
+            (counts.succeeded > 0 ? 1 : 0),
+          assetsStreamed: (prev?.assetsStreamed ?? 0) + releaseAssetsStreamed,
+          bytesStreamed: (prev?.bytesStreamed ?? 0) + releaseBytes,
         };
         break;
       }

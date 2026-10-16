@@ -322,3 +322,69 @@ test('ReleasesMigrationModule verify detects missing releases and asset mismatch
     /byte size mismatch/,
   );
 });
+
+test('ReleasesMigrationModule discover prioritizes REST API asset url over browser_download_url and apply enriches OperationExecutionResult', async () => {
+  const sampleReleases: RawApiRelease[] = [
+    {
+      id: 1,
+      tag_name: 'v2.19.0',
+      target_commitish: 'main',
+      name: 'Release 2.19.0 (Draft)',
+      draft: true,
+      prerelease: false,
+      assets: [
+        {
+          id: 645826495,
+          name: 'benchmark-v2-v2.19.0.tar.gz',
+          size: 1048576,
+          content_type: 'application/gzip',
+          url: 'https://api.github.com/repos/src-org/test-repo/releases/assets/645826495',
+          browser_download_url:
+            'https://github.com/src-org/test-repo/releases/download/untagged-123/benchmark-v2-v2.19.0.tar.gz',
+        },
+      ],
+    },
+  ];
+
+  const mod = new ReleasesMigrationModule();
+  const ctx: MigrationContext = {
+    runId: 'run-asset-url',
+    scope: {
+      level: 'repository',
+      sourceOrg: 'src-org',
+      sourceRepo: 'test-repo',
+      targetOrg: 'dst-org',
+      targetRepo: 'test-repo',
+    },
+    sourceClient: new MockReleaseReadAdapter(sampleReleases),
+    targetClient: new MockReleaseReadAdapter([]),
+    targetWriteClient: new MockReleaseWriteClient(),
+    signal: new AbortController().signal,
+    dryRun: true,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+
+  const discovered = await mod.discover(ctx);
+  assert.equal(
+    discovered.releases[0]?.assets[0]?.downloadUrl,
+    'https://api.github.com/repos/src-org/test-repo/releases/assets/645826495',
+  );
+
+  const plan = await mod.plan(ctx, discovered);
+  const execRes = await mod.apply(ctx, plan);
+  assert.equal(execRes.status, 'complete');
+  assert.equal(execRes.results.length, 2);
+
+  const releaseOpRes = execRes.results[0];
+  assert.equal(releaseOpRes?.resourceType, 'release');
+  assert.equal(releaseOpRes?.resourceName, 'v2.19.0');
+  assert.equal(releaseOpRes?.operationType, 'create');
+  assert.ok(releaseOpRes?.reason?.includes('v2.19.0'));
+
+  const assetOpRes = execRes.results[1];
+  assert.equal(assetOpRes?.resourceType, 'release-asset');
+  assert.equal(assetOpRes?.resourceName, 'v2.19.0/benchmark-v2-v2.19.0.tar.gz');
+  assert.equal(assetOpRes?.operationType, 'create');
+  assert.match(assetOpRes?.reason ?? '', /\(1048576 bytes\)/);
+});
