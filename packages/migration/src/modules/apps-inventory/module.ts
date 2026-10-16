@@ -283,6 +283,16 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
         const act = targetMap.get(appSlug.toLowerCase());
 
         if (!act) {
+          const isManualInstallAdvisory =
+            op.operation === 'warn' &&
+            typeof (op.payload as { advisory?: unknown } | undefined)
+              ?.advisory === 'string';
+          if (isManualInstallAdvisory && ctx.continueOnError) {
+            ctx.logger.warn(
+              `[Advisory] GitHub App "${appSlug}" requires manual administrator installation on ${targetOrg}.`,
+            );
+            continue;
+          }
           discrepancies.push({
             resourceName: `${targetOrg} (installations.${appSlug})`,
             expected: appSlug,

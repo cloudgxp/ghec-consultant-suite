@@ -19,8 +19,74 @@ import type {
   LfsModuleOptions,
   LfsObject,
   LfsStreamerInterface,
+  LfsTrackedBlob,
   LfsUploadPayload,
 } from './types.js';
+
+function parseGitattributesLfsPatterns(content: string): string[] {
+  const patterns: string[] = [];
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    if (!line.includes('filter=lfs')) continue;
+    const firstToken = line.split(/\s+/)[0];
+    if (firstToken) {
+      patterns.push(firstToken);
+    }
+  }
+  return patterns;
+}
+
+function matchesLfsGlob(
+  filePath: string,
+  patterns: readonly string[],
+): boolean {
+  if (filePath === '.gitattributes') return false;
+  const fileName = filePath.split('/').pop() ?? filePath;
+  for (const pattern of patterns) {
+    if (pattern === filePath || pattern === fileName) {
+      return true;
+    }
+    if (pattern.startsWith('*.') && !pattern.slice(2).includes('/')) {
+      const ext = pattern.slice(1).toLowerCase();
+      if (fileName.toLowerCase().endsWith(ext)) {
+        return true;
+      }
+    }
+    const escaped = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*\*/g, '.*')
+      .replace(/\*/g, '[^/]*')
+      .replace(/\?/g, '[^/]');
+    const regex = new RegExp(`^${escaped}$`, 'i');
+    if (regex.test(filePath) || regex.test(fileName)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function parseGitLfsPointer(
+  content: string,
+): { readonly oid: string; readonly size: number } | undefined {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('version https://git-lfs.github.com/spec/v1')) {
+    return undefined;
+  }
+  const oidMatch = /^oid sha256:([0-9a-fA-F]{64})$/m.exec(trimmed);
+  const sizeMatch = /^size (\d+)$/m.exec(trimmed);
+  if (!oidMatch?.[1] || !sizeMatch?.[1]) {
+    return undefined;
+  }
+  const size = Number(sizeMatch[1]);
+  if (!Number.isFinite(size) || size < 0) {
+    return undefined;
+  }
+  return {
+    oid: oidMatch[1].toLowerCase(),
+    size,
+  };
+}
 
 export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
   readonly id = 'lfs';
@@ -34,6 +100,24 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
   constructor(private readonly options: LfsModuleOptions = {}) {
     this.streamer = options.streamer ?? new LfsStreamer();
     this.concurrency = options.concurrency ?? 4;
+  }
+
+  private resolveSourceToken(): string | undefined {
+    return (
+      this.options.sourceToken ??
+      process.env.GHEC_SOURCE_TOKEN?.trim() ??
+      process.env.GHEC_TOKEN?.trim() ??
+      undefined
+    );
+  }
+
+  private resolveTargetToken(): string | undefined {
+    return (
+      this.options.targetToken ??
+      process.env.GHEC_TARGET_TOKEN?.trim() ??
+      process.env.GHEC_TOKEN?.trim() ??
+      undefined
+    );
   }
 
   /**
@@ -103,6 +187,7 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
     }
 
     // 3. Live check .gitattributes on source repo
+    let lfsPatterns: string[] = [];
     try {
       const res = await ctx.sourceClient.readSingle<{
         content?: string;
@@ -132,6 +217,7 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
         );
         if (decoded.includes('filter=lfs')) {
           hasLfs = true;
+          lfsPatterns = parseGitattributesLfsPatterns(decoded);
         }
       }
     } catch {
@@ -141,10 +227,177 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
       );
     }
 
+    if (!hasLfs) {
+      return {
+        repo,
+        hasLfs: false,
+        objects,
+      };
+    }
+
+    // 4. Walk repository recursive Git tree(s) to discover LFS pointer blobs & tracked files
+    const seenOids = new Map<string, LfsObject>();
+    const trackedBlobsMap = new Map<string, LfsTrackedBlob>();
+    const visitedBlobShas = new Set<string>();
+    const treeRefs: string[] = ['HEAD'];
+
+    try {
+      const branchesRes = await ctx.sourceClient.fetchAll<{
+        name?: string;
+        commit?: { sha?: string };
+      }>(
+        {
+          id: 'rest.repos.listBranches',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/repos/{owner}/{repo}/branches',
+          pathParams: {
+            owner: ctx.scope.sourceOrg,
+            repo,
+          },
+        },
+        ctx.signal,
+      );
+      for (const b of branchesRes.items) {
+        const sha = b.commit?.sha;
+        if (sha && !treeRefs.includes(sha) && treeRefs.length < 15) {
+          treeRefs.push(sha);
+        }
+      }
+    } catch {
+      // Fall back to HEAD only
+    }
+
+    for (const ref of treeRefs) {
+      try {
+        const treeRes = await ctx.sourceClient.readSingle<{
+          tree?: ReadonlyArray<{
+            path?: string;
+            type?: string;
+            sha?: string;
+            size?: number;
+          }>;
+        }>(
+          {
+            id: 'rest.git.getTree',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/git/trees/{tree_sha}',
+            pathParams: {
+              owner: ctx.scope.sourceOrg,
+              repo,
+              tree_sha: ref,
+            },
+            queryParams: {
+              recursive: '1',
+            },
+          },
+          ctx.signal,
+        );
+
+        const treeEntries = treeRes.data?.tree;
+        if (!Array.isArray(treeEntries)) {
+          break;
+        }
+
+        for (const entry of treeEntries) {
+          if (entry.type !== 'blob' || !entry.path || !entry.sha) {
+            continue;
+          }
+          const isMatchedByPattern = matchesLfsGlob(entry.path, lfsPatterns);
+          const isPointerSized =
+            entry.size !== undefined &&
+            entry.size >= 115 &&
+            entry.size <= 250 &&
+            entry.path !== '.gitattributes';
+
+          if (!isMatchedByPattern && !isPointerSized) {
+            continue;
+          }
+          if (visitedBlobShas.has(entry.sha)) {
+            continue;
+          }
+          visitedBlobShas.add(entry.sha);
+
+          if (entry.size !== undefined && entry.size > 1024) {
+            if (isMatchedByPattern && !trackedBlobsMap.has(entry.path)) {
+              trackedBlobsMap.set(entry.path, {
+                path: entry.path,
+                sha: entry.sha,
+                size: entry.size,
+              });
+            }
+            continue;
+          }
+
+          try {
+            const blobRes = await ctx.sourceClient.readSingle<{
+              content?: string;
+              encoding?: string;
+            }>(
+              {
+                id: 'rest.git.getBlob',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/repos/{owner}/{repo}/git/blobs/{file_sha}',
+                pathParams: {
+                  owner: ctx.scope.sourceOrg,
+                  repo,
+                  file_sha: entry.sha,
+                },
+              },
+              ctx.signal,
+            );
+
+            if (
+              blobRes.status === 200 &&
+              blobRes.data?.content &&
+              blobRes.data.encoding === 'base64'
+            ) {
+              const decodedBlob = Buffer.from(
+                blobRes.data.content.replace(/\s+/g, ''),
+                'base64',
+              ).toString('utf8');
+              const parsedPointer = parseGitLfsPointer(decodedBlob);
+              if (parsedPointer) {
+                if (!seenOids.has(parsedPointer.oid)) {
+                  seenOids.set(parsedPointer.oid, {
+                    oid: parsedPointer.oid,
+                    size: parsedPointer.size,
+                    path: entry.path,
+                  });
+                }
+              } else if (
+                isMatchedByPattern &&
+                !trackedBlobsMap.has(entry.path)
+              ) {
+                trackedBlobsMap.set(entry.path, {
+                  path: entry.path,
+                  sha: entry.sha,
+                  size: entry.size ?? Buffer.byteLength(decodedBlob, 'utf8'),
+                });
+              }
+            }
+          } catch {
+            // Ignore unreadable individual blob
+          }
+        }
+      } catch {
+        // Ignore unreadable tree ref
+      }
+    }
+
+    for (const obj of seenOids.values()) {
+      objects.push(obj);
+    }
+
+    const trackedBlobs = Array.from(trackedBlobsMap.values());
+
     return {
       repo,
       hasLfs,
       objects,
+      ...(trackedBlobs.length > 0 ? { trackedBlobs } : {}),
     };
   }
 
@@ -159,8 +412,12 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
     const targetIdentifier = `${ctx.scope.targetOrg}/${targetRepo}`;
     const operations: PlannedOperation[] = [];
     const warnings: string[] = [];
+    const trackedBlobs = sourceData.trackedBlobs ?? [];
 
-    if (!sourceData.hasLfs || sourceData.objects.length === 0) {
+    if (
+      !sourceData.hasLfs ||
+      (sourceData.objects.length === 0 && trackedBlobs.length === 0)
+    ) {
       return {
         moduleId: this.id,
         scopeLevel: this.scopeLevel,
@@ -170,110 +427,174 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
       };
     }
 
-    const targetEndpoint =
-      this.options.targetLfsUrl ??
-      `https://github.com/${ctx.scope.targetOrg}/${targetRepo}.git`;
-    const sourceEndpoint =
-      this.options.sourceLfsUrl ??
-      `https://github.com/${ctx.scope.sourceOrg}/${sourceData.repo}.git`;
+    if (sourceData.objects.length > 0) {
+      const targetEndpoint =
+        this.options.targetLfsUrl ??
+        `https://github.com/${ctx.scope.targetOrg}/${targetRepo}.git`;
+      const sourceEndpoint =
+        this.options.sourceLfsUrl ??
+        `https://github.com/${ctx.scope.sourceOrg}/${sourceData.repo}.git`;
 
-    let targetBatchRes;
-    try {
-      targetBatchRes = await this.streamer.requestBatch(
-        targetEndpoint,
-        'upload',
-        sourceData.objects,
-        ctx.signal,
-      );
-    } catch (err) {
-      warnings.push(
-        `Failed to negotiate LFS batch upload with target ${targetEndpoint}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      return {
-        moduleId: this.id,
-        scopeLevel: this.scopeLevel,
-        targetIdentifier,
-        operations: [],
-        warnings,
-      };
-    }
+      const sourceToken = this.resolveSourceToken();
+      const targetToken = this.resolveTargetToken();
 
-    const missingObjects: LfsObject[] = [];
-    const targetObjectMap = new Map(
-      targetBatchRes.objects.map((obj) => [obj.oid, obj]),
-    );
-
-    for (const srcObj of sourceData.objects) {
-      const targetObj = targetObjectMap.get(srcObj.oid);
-      if (targetObj?.actions?.upload) {
-        missingObjects.push(srcObj);
-      }
-    }
-
-    // If objects are missing on target, request download URLs from source LFS
-    const sourceDownloadMap = new Map<
-      string,
-      { href: string; header?: Record<string, string> }
-    >();
-
-    if (missingObjects.length > 0) {
+      let targetBatchRes;
       try {
-        const sourceBatchRes = await this.streamer.requestBatch(
-          sourceEndpoint,
-          'download',
-          missingObjects,
+        targetBatchRes = await this.streamer.requestBatch(
+          targetEndpoint,
+          'upload',
+          sourceData.objects,
           ctx.signal,
+          targetToken,
         );
-
-        for (const obj of sourceBatchRes.objects) {
-          if (obj.actions?.download) {
-            sourceDownloadMap.set(obj.oid, {
-              href: obj.actions.download.href,
-              ...(obj.actions.download.header
-                ? { header: obj.actions.download.header }
-                : {}),
-            });
-          }
-        }
       } catch (err) {
         warnings.push(
-          `Failed to negotiate LFS batch download with source ${sourceEndpoint}: ${err instanceof Error ? err.message : String(err)}`,
+          `Failed to negotiate LFS batch upload with target ${targetEndpoint}: ${err instanceof Error ? err.message : String(err)}`,
         );
+        return {
+          moduleId: this.id,
+          scopeLevel: this.scopeLevel,
+          targetIdentifier,
+          operations: [],
+          warnings,
+        };
+      }
+
+      const missingObjects: LfsObject[] = [];
+      const targetObjectMap = new Map(
+        targetBatchRes.objects.map((obj) => [obj.oid, obj]),
+      );
+
+      for (const srcObj of sourceData.objects) {
+        const targetObj = targetObjectMap.get(srcObj.oid);
+        if (targetObj?.actions?.upload) {
+          missingObjects.push(srcObj);
+        }
+      }
+
+      // If objects are missing on target, request download URLs from source LFS
+      const sourceDownloadMap = new Map<
+        string,
+        { href: string; header?: Record<string, string> }
+      >();
+
+      if (missingObjects.length > 0) {
+        try {
+          const sourceBatchRes = await this.streamer.requestBatch(
+            sourceEndpoint,
+            'download',
+            missingObjects,
+            ctx.signal,
+            sourceToken,
+          );
+
+          for (const obj of sourceBatchRes.objects) {
+            if (obj.actions?.download) {
+              sourceDownloadMap.set(obj.oid, {
+                href: obj.actions.download.href,
+                ...(obj.actions.download.header
+                  ? { header: obj.actions.download.header }
+                  : {}),
+              });
+            }
+          }
+        } catch (err) {
+          warnings.push(
+            `Failed to negotiate LFS batch download with source ${sourceEndpoint}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+
+      for (const srcObj of sourceData.objects) {
+        const opId = `lfs:${targetRepo}:${srcObj.oid}`;
+        const targetObj = targetObjectMap.get(srcObj.oid);
+
+        if (targetObj?.actions?.upload) {
+          const sourceDownload = sourceDownloadMap.get(srcObj.oid);
+          const payload: LfsUploadPayload = {
+            oid: srcObj.oid,
+            size: srcObj.size,
+            uploadAction: targetObj.actions.upload,
+            verifyAction: targetObj.actions.verify,
+            sourceDownloadUrl: sourceDownload?.href,
+            sourceDownloadHeader: sourceDownload?.header,
+          };
+
+          operations.push({
+            id: opId,
+            resourceType: 'lfs-object',
+            resourceName: srcObj.oid,
+            operation: 'create',
+            sourceState: srcObj,
+            payload,
+            reason: `LFS object "${srcObj.oid}" (${srcObj.size} bytes) is missing on target LFS store.`,
+          });
+        } else {
+          operations.push({
+            id: opId,
+            resourceType: 'lfs-object',
+            resourceName: srcObj.oid,
+            operation: 'noop',
+            sourceState: srcObj,
+            destinationCurrentState: targetObj,
+            reason: `LFS object "${srcObj.oid}" (${srcObj.size} bytes) already exists in target LFS store.`,
+          });
+        }
       }
     }
 
-    for (const srcObj of sourceData.objects) {
-      const opId = `lfs:${targetRepo}:${srcObj.oid}`;
-      const targetObj = targetObjectMap.get(srcObj.oid);
+    if (trackedBlobs.length > 0) {
+      const targetBlobShaByPath = new Map<string, string>();
+      try {
+        const targetTreeRes = await ctx.targetClient.readSingle<{
+          tree?: ReadonlyArray<{
+            path?: string;
+            type?: string;
+            sha?: string;
+          }>;
+        }>(
+          {
+            id: 'rest.git.getTree.target',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/git/trees/{tree_sha}',
+            pathParams: {
+              owner: ctx.scope.targetOrg,
+              repo: targetRepo,
+              tree_sha: 'HEAD',
+            },
+            queryParams: {
+              recursive: '1',
+            },
+          },
+          ctx.signal,
+        );
+        if (Array.isArray(targetTreeRes.data?.tree)) {
+          for (const entry of targetTreeRes.data.tree) {
+            if (entry.type === 'blob' && entry.path && entry.sha) {
+              targetBlobShaByPath.set(entry.path, entry.sha);
+            }
+          }
+        }
+      } catch {
+        // Target repo might not exist yet in dry-run or pre-migration planning
+      }
 
-      if (targetObj?.actions?.upload) {
-        const sourceDownload = sourceDownloadMap.get(srcObj.oid);
-        const payload: LfsUploadPayload = {
-          oid: srcObj.oid,
-          size: srcObj.size,
-          uploadAction: targetObj.actions.upload,
-          verifyAction: targetObj.actions.verify,
-          sourceDownloadUrl: sourceDownload?.href,
-          sourceDownloadHeader: sourceDownload?.header,
-        };
-
+      for (const blob of trackedBlobs) {
+        const targetSha = targetBlobShaByPath.get(blob.path);
+        const matchesTarget = targetSha === blob.sha;
         operations.push({
-          id: opId,
-          resourceType: 'lfs-object',
-          resourceName: srcObj.oid,
-          operation: 'create',
-          sourceState: srcObj,
-          payload,
-          reason: `LFS object "${srcObj.oid}" (${srcObj.size} bytes) is missing on target LFS store.`,
-        });
-      } else {
-        operations.push({
-          id: opId,
-          resourceType: 'lfs-object',
-          resourceName: srcObj.oid,
+          id: `lfs:blob:${targetRepo}:${blob.path}`,
+          resourceType: 'lfs-tracked-blob',
+          resourceName: blob.path,
           operation: 'noop',
-          sourceState: srcObj,
-          destinationCurrentState: targetObj,
+          sourceState: blob,
+          destinationCurrentState: targetSha
+            ? { path: blob.path, sha: targetSha, size: blob.size }
+            : undefined,
+          reason: matchesTarget
+            ? `Tracked by .gitattributes (${blob.size} bytes; stored as direct Git blob with verified SHA ${blob.sha.slice(0, 12)} on target).`
+            : `Tracked by .gitattributes (${blob.size} bytes; stored as direct Git blob in repository tree).`,
         });
       }
     }
@@ -337,7 +658,7 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
       return {
         schemaVersion: MIGRATION_SCHEMA_VERSION,
         moduleId: this.id,
-        status: 'complete',
+        status: results.length > 0 ? 'complete' : 'skipped',
         results,
         durationMs: Date.now() - startTime,
       };
@@ -432,6 +753,7 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
     const discrepancies: VerificationDiscrepancy[] = [];
 
     const expectedObjects: LfsObject[] = [];
+    const expectedTrackedBlobs: LfsTrackedBlob[] = [];
     for (const op of plan.operations) {
       if (op.resourceType === 'lfs-object' && op.operation !== 'skip') {
         const payload = op.payload as LfsUploadPayload | undefined;
@@ -439,10 +761,18 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
         const oid = payload?.oid ?? sourceState?.oid ?? op.resourceName;
         const size = payload?.size ?? sourceState?.size ?? 0;
         expectedObjects.push({ oid, size });
+      } else if (
+        op.resourceType === 'lfs-tracked-blob' &&
+        op.operation !== 'skip'
+      ) {
+        const sourceState = op.sourceState as LfsTrackedBlob | undefined;
+        if (sourceState?.path && sourceState?.sha) {
+          expectedTrackedBlobs.push(sourceState);
+        }
       }
     }
 
-    if (expectedObjects.length === 0) {
+    if (expectedObjects.length === 0 && expectedTrackedBlobs.length === 0) {
       return {
         moduleId: this.id,
         verified: true,
@@ -450,40 +780,106 @@ export class LfsMigrationModule implements MigrationModule<LfsMigrationData> {
       };
     }
 
-    const targetEndpoint =
-      this.options.targetLfsUrl ??
-      `https://github.com/${ctx.scope.targetOrg}/${targetRepo}.git`;
+    if (expectedObjects.length > 0) {
+      const targetEndpoint =
+        this.options.targetLfsUrl ??
+        `https://github.com/${ctx.scope.targetOrg}/${targetRepo}.git`;
+      const targetToken = this.resolveTargetToken();
 
-    try {
-      const verifyBatchRes = await this.streamer.requestBatch(
-        targetEndpoint,
-        'download',
-        expectedObjects,
-        ctx.signal,
-      );
+      try {
+        const verifyBatchRes = await this.streamer.requestBatch(
+          targetEndpoint,
+          'download',
+          expectedObjects,
+          ctx.signal,
+          targetToken,
+        );
 
-      const targetObjectMap = new Map(
-        verifyBatchRes.objects.map((o) => [o.oid, o]),
-      );
+        const targetObjectMap = new Map(
+          verifyBatchRes.objects.map((o) => [o.oid, o]),
+        );
 
-      for (const expected of expectedObjects) {
-        const objRes = targetObjectMap.get(expected.oid);
-        if (!objRes || !objRes.actions?.download) {
-          discrepancies.push({
-            resourceName: expected.oid,
-            expected: 'available',
-            actual: 'missing',
-            message: `LFS object "${expected.oid}" (${expected.size} bytes) is missing or unverified on target repository ${targetIdentifier}.`,
-          });
+        for (const expected of expectedObjects) {
+          const objRes = targetObjectMap.get(expected.oid);
+          if (!objRes || !objRes.actions?.download) {
+            discrepancies.push({
+              resourceName: expected.oid,
+              expected: 'available',
+              actual: 'missing',
+              message: `LFS object "${expected.oid}" (${expected.size} bytes) is missing or unverified on target repository ${targetIdentifier}.`,
+            });
+          }
         }
+      } catch (err) {
+        discrepancies.push({
+          resourceName: targetRepo,
+          expected: 'reachable',
+          actual: 'unreachable',
+          message: `Failed to verify LFS availability on ${targetEndpoint}: ${(err as Error).message}`,
+        });
       }
-    } catch (err) {
-      discrepancies.push({
-        resourceName: targetRepo,
-        expected: 'reachable',
-        actual: 'unreachable',
-        message: `Failed to verify LFS availability on ${targetEndpoint}: ${(err as Error).message}`,
-      });
+    }
+
+    if (expectedTrackedBlobs.length > 0) {
+      try {
+        const targetTreeRes = await ctx.targetClient.readSingle<{
+          tree?: ReadonlyArray<{
+            path?: string;
+            type?: string;
+            sha?: string;
+          }>;
+        }>(
+          {
+            id: 'rest.git.getTree.verify',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/git/trees/{tree_sha}',
+            pathParams: {
+              owner: ctx.scope.targetOrg,
+              repo: targetRepo,
+              tree_sha: 'HEAD',
+            },
+            queryParams: {
+              recursive: '1',
+            },
+          },
+          ctx.signal,
+        );
+        const targetTree = targetTreeRes.data?.tree;
+        if (Array.isArray(targetTree)) {
+          const targetShaByPath = new Map<string, string>();
+          for (const entry of targetTree) {
+            if (entry.type === 'blob' && entry.path && entry.sha) {
+              targetShaByPath.set(entry.path, entry.sha);
+            }
+          }
+          for (const expectedBlob of expectedTrackedBlobs) {
+            const actualSha = targetShaByPath.get(expectedBlob.path);
+            if (!actualSha) {
+              discrepancies.push({
+                resourceName: `${targetRepo}:${expectedBlob.path}`,
+                expected: expectedBlob.sha,
+                actual: 'missing',
+                message: `Tracked .gitattributes file "${expectedBlob.path}" is missing on target repository ${targetIdentifier}.`,
+              });
+            } else if (actualSha !== expectedBlob.sha) {
+              discrepancies.push({
+                resourceName: `${targetRepo}:${expectedBlob.path}`,
+                expected: expectedBlob.sha,
+                actual: actualSha,
+                message: `Tracked .gitattributes file "${expectedBlob.path}" blob SHA mismatch on target repository ${targetIdentifier}.`,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        discrepancies.push({
+          resourceName: targetRepo,
+          expected: 'reachable',
+          actual: 'unreachable',
+          message: `Failed to verify tracked .gitattributes blobs on ${targetIdentifier}: ${(err as Error).message}`,
+        });
+      }
     }
 
     return {

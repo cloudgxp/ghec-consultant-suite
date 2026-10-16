@@ -86,6 +86,51 @@ export async function transferReleaseAsset(
 
       if (!uploadRes.ok && uploadRes.status !== 201) {
         const errorText = await uploadRes.text().catch(() => '');
+        if (uploadRes.status === 422 && targetToken) {
+          try {
+            const assetsListUrl = `https://api.github.com/repos/${encodeURIComponent(targetOrg)}/${encodeURIComponent(targetRepo)}/releases/${targetReleaseId}/assets?per_page=100`;
+            const listRes = await fetchImpl(assetsListUrl, {
+              method: 'GET',
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: `Bearer ${targetToken}`,
+              },
+              ...(signal ? { signal } : {}),
+            });
+            if (listRes.ok) {
+              const existingAssets = (await listRes.json()) as ReadonlyArray<{
+                id?: number;
+                name?: string;
+                size?: number;
+                state?: string;
+              }>;
+              const match = existingAssets.find((a) => a.name === asset.name);
+              if (
+                match &&
+                match.size === asset.size &&
+                match.state !== 'starter'
+              ) {
+                return {
+                  success: true,
+                  bytesStreamed: asset.size,
+                };
+              }
+              if (match?.id) {
+                const delUrl = `https://api.github.com/repos/${encodeURIComponent(targetOrg)}/${encodeURIComponent(targetRepo)}/releases/assets/${match.id}`;
+                await fetchImpl(delUrl, {
+                  method: 'DELETE',
+                  headers: {
+                    Accept: 'application/vnd.github+json',
+                    Authorization: `Bearer ${targetToken}`,
+                  },
+                  ...(signal ? { signal } : {}),
+                });
+              }
+            }
+          } catch {
+            // Fall through to retry
+          }
+        }
         throw new Error(
           `Failed to upload asset ${asset.name}: HTTP ${uploadRes.status} ${errorText}`,
         );

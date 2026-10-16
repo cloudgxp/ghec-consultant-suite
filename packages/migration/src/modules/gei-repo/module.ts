@@ -325,6 +325,9 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           results.push({
             operationId: `gei-repo-preflight-${sourceRepo}`,
             status: 'failed',
+            resourceType: 'repository',
+            resourceName: targetRepo,
+            operationType: 'create',
             error: errMsg.slice(0, 2048),
             completedAt: new Date().toISOString(),
           });
@@ -423,6 +426,10 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         results.push({
           operationId: `gei-repo-mirror-push-${targetRepo}`,
           status: 'succeeded',
+          resourceType: 'repository',
+          resourceName: targetRepo,
+          operationType: 'create',
+          reason: `Transferred repository "${targetRepo}" via direct Git mirror-push (${mirrorResult.durationMs}ms); metadata queued for sidecar rehydration.`,
           completedAt: new Date().toISOString(),
         });
 
@@ -444,6 +451,9 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         results.push({
           operationId: `gei-repo-mirror-push-error-${targetRepo}`,
           status: 'failed',
+          resourceType: 'repository',
+          resourceName: targetRepo,
+          operationType: 'create',
           error: msg.slice(0, 2048),
           completedAt: new Date().toISOString(),
         });
@@ -571,13 +581,23 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         results.push({
           operationId: `gei-repo-metadata-${targetRepo}`,
           status: 'failed',
+          resourceType: 'repository',
+          resourceName: targetRepo,
+          operationType: 'create',
           error: failureReason.slice(0, 2048),
           completedAt: new Date().toISOString(),
         });
       } else {
+        const geiReason = geiResult.skippedReleases
+          ? `Transferred repository "${targetRepo}" via GitHub Enterprise Importer (GEI) with --skip-releases; release assets queued for sidecar streaming.`
+          : `Transferred repository "${targetRepo}" via GitHub Enterprise Importer (GEI).`;
         results.push({
           operationId: `gei-repo-migration-${targetRepo}`,
           status: 'succeeded',
+          resourceType: 'repository',
+          resourceName: targetRepo,
+          operationType: 'create',
+          reason: geiReason,
           completedAt: new Date().toISOString(),
         });
       }
@@ -666,6 +686,10 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           results.push({
             operationId: `gei-repo-mirror-fallback-${targetRepo}`,
             status: 'succeeded',
+            resourceType: 'repository',
+            resourceName: targetRepo,
+            operationType: 'create',
+            reason: `Transferred repository "${targetRepo}" via fallback Git mirror-push (${mirrorResult.durationMs}ms) after GEI archive generation failure; metadata queued for sidecar rehydration.`,
             completedAt: new Date().toISOString(),
           });
 
@@ -696,6 +720,9 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       results.push({
         operationId: `gei-repo-error-${targetRepo}`,
         status: 'failed',
+        resourceType: 'repository',
+        resourceName: targetRepo,
+        operationType: 'create',
         error: msg.slice(0, 2048),
         completedAt: new Date().toISOString(),
       });

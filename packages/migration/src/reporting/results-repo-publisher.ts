@@ -44,7 +44,7 @@ export class MigrationResultsRepoPublisher {
 
   constructor(options: ResultsRepoPublisherOptions) {
     this.targetOrg = options.targetOrg;
-    this.repoName = options.repoName ?? 'gei-migration-results';
+    this.repoName = options.repoName ?? 'migration-audit-results';
     this.targetClient = options.targetClient;
     this.targetWriteClient = options.targetWriteClient;
     this.dryRun = options.dryRun ?? false;
@@ -198,64 +198,99 @@ export class MigrationResultsRepoPublisher {
         // Branch might not have any commits or might be auto-initializing
       }
 
-      // 2. Create blobs for each file
-      const treeEntries: {
-        path: string;
-        mode: '100644';
-        type: 'blob';
-        sha: string;
-      }[] = [];
+      // 2 & 3. Create Blobs & Tree (use inline tree content batching for > 20 files to avoid GitHub secondary rate limits)
+      let treeSha: string | undefined;
+      const entries = Object.entries(files);
 
-      for (const [filePath, content] of Object.entries(files)) {
-        const blobOp: TargetWriteOperation = {
-          id: `create-blob-${filePath.replaceAll('/', '-')}`,
+      if (entries.length > 20) {
+        let currentBaseTree: string | undefined;
+        const chunkSize = 100;
+        for (let i = 0; i < entries.length; i += chunkSize) {
+          const chunk = entries.slice(i, i + chunkSize);
+          const inlineTreeEntries = chunk.map(([filePath, content]) => ({
+            path: filePath,
+            mode: '100644' as const,
+            type: 'blob' as const,
+            content,
+          }));
+          const treeOp: TargetWriteOperation = {
+            id: `create-results-tree-batch-${Math.floor(i / chunkSize) + 1}`,
+            method: 'POST',
+            path: '/repos/{owner}/{repo}/git/trees',
+            pathParams: { owner: this.targetOrg, repo: this.repoName },
+            body: currentBaseTree
+              ? {
+                  base_tree: currentBaseTree,
+                  tree: inlineTreeEntries,
+                }
+              : {
+                  tree: inlineTreeEntries,
+                },
+          };
+          const treeRes = await this.targetWriteClient.mutate<{ sha: string }>(
+            treeOp,
+            this.signal,
+          );
+          if (!treeRes.data?.sha) {
+            throw new Error('Failed to create Git tree for migration results.');
+          }
+          currentBaseTree = treeRes.data.sha;
+          treeSha = treeRes.data.sha;
+        }
+      } else {
+        const treeEntries: {
+          path: string;
+          mode: '100644';
+          type: 'blob';
+          sha: string;
+        }[] = [];
+
+        for (const [filePath, content] of entries) {
+          const blobOp: TargetWriteOperation = {
+            id: `create-blob-${filePath.replaceAll('/', '-')}`,
+            method: 'POST',
+            path: '/repos/{owner}/{repo}/git/blobs',
+            pathParams: { owner: this.targetOrg, repo: this.repoName },
+            body: {
+              content,
+              encoding: 'utf-8',
+            },
+          };
+
+          const blobRes = await this.targetWriteClient.mutate<{
+            sha: string;
+          }>(blobOp, this.signal);
+
+          const sha = blobRes.data?.sha;
+          if (!sha) {
+            throw new Error(`Failed to create Git blob for file: ${filePath}`);
+          }
+
+          treeEntries.push({
+            path: filePath,
+            mode: '100644',
+            type: 'blob',
+            sha,
+          });
+        }
+
+        const treeOp: TargetWriteOperation = {
+          id: 'create-results-tree',
           method: 'POST',
-          path: '/repos/{owner}/{repo}/git/blobs',
+          path: '/repos/{owner}/{repo}/git/trees',
           pathParams: { owner: this.targetOrg, repo: this.repoName },
           body: {
-            content,
-            encoding: 'utf-8',
+            tree: treeEntries,
           },
         };
 
-        const blobRes = await this.targetWriteClient.mutate<{
-          sha: string;
-        }>(blobOp, this.signal);
-
-        const sha = blobRes.data?.sha;
-        if (!sha) {
-          throw new Error(`Failed to create Git blob for file: ${filePath}`);
-        }
-
-        treeEntries.push({
-          path: filePath,
-          mode: '100644',
-          type: 'blob',
-          sha,
-        });
+        const treeRes = await this.targetWriteClient.mutate<{ sha: string }>(
+          treeOp,
+          this.signal,
+        );
+        treeSha = treeRes.data?.sha;
       }
 
-      // 3. Create Tree
-      const treeOp: TargetWriteOperation = {
-        id: 'create-results-tree',
-        method: 'POST',
-        path: '/repos/{owner}/{repo}/git/trees',
-        pathParams: { owner: this.targetOrg, repo: this.repoName },
-        body: parentCommitSha
-          ? {
-              base_tree: parentCommitSha,
-              tree: treeEntries,
-            }
-          : {
-              tree: treeEntries,
-            },
-      };
-
-      const treeRes = await this.targetWriteClient.mutate<{ sha: string }>(
-        treeOp,
-        this.signal,
-      );
-      const treeSha = treeRes.data?.sha;
       if (!treeSha) {
         throw new Error('Failed to create Git tree for migration results.');
       }
@@ -305,7 +340,26 @@ export class MigrationResultsRepoPublisher {
             },
       };
 
-      await this.targetWriteClient.mutate(updateRefOp, this.signal);
+      try {
+        await this.targetWriteClient.mutate(updateRefOp, this.signal);
+      } catch {
+        // Fallback if auto_init created refs/heads/<branch> concurrently or fast-forward required force
+        const forceRefOp: TargetWriteOperation = {
+          id: 'force-update-results-ref',
+          method: 'PATCH',
+          path: '/repos/{owner}/{repo}/git/refs/heads/{branch}',
+          pathParams: {
+            owner: this.targetOrg,
+            repo: this.repoName,
+            branch: this.branch,
+          },
+          body: {
+            sha: newCommitSha,
+            force: true,
+          },
+        };
+        await this.targetWriteClient.mutate(forceRefOp, this.signal);
+      }
 
       this.logger?.info('Published atomic commit for migration results', {
         targetOrg: this.targetOrg,

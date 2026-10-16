@@ -160,7 +160,7 @@ export function formatResultsReadmeMarkdown(
     `> **Execution Mode:** \`${modeDisplay}\`  `,
     `> **Generated At:** \`${manifest.generatedAt}\`  `,
     `> **Duration:** ${durationSec}s (${manifest.summary.durationMs}ms)  `,
-    `> **Audit Repository:** \`${manifest.targetResultsRepo}\`  `,
+    `> **Audit Repository:** [\`${manifest.targetResultsRepo}\`](https://github.com/${manifest.targetOrg}/${manifest.targetResultsRepo})  `,
     '',
     '---',
     '',
@@ -230,13 +230,18 @@ export function formatResultsReadmeMarkdown(
       const modEntries = repo.moduleSummaries
         ? Object.values(repo.moduleSummaries)
         : [];
+      const activeModEntries = modEntries.filter((m) => m.status !== 'skipped');
+      const activeCount =
+        activeModEntries.length > 0
+          ? activeModEntries.length
+          : modEntries.length;
       const totalItems = modEntries.reduce(
         (acc, m) => acc + m.totalOperations,
         0,
       );
       const categoriesSummary =
         modEntries.length > 0
-          ? `${modEntries.length} categories (${totalItems} items)`
+          ? `${activeCount} categories (${totalItems} items)`
           : `${repo.stagesRun.length} stages`;
 
       lines.push(
@@ -506,7 +511,18 @@ export function formatSuccessRepoMarkdown(
     lines.push('| `core-transfer` | ✅ Completed | Executed cleanly |');
   } else {
     for (const stage of record.stagesRun) {
-      lines.push(`| \`${stage}\` | ✅ Completed | Executed cleanly |`);
+      const modSummary = record.moduleSummaries?.[stage];
+      if (modSummary?.status === 'skipped') {
+        lines.push(
+          `| \`${stage}\` | ⏭️ Skipped | No applicable resources in source repository |`,
+        );
+      } else if (modSummary) {
+        lines.push(
+          `| \`${stage}\` | ✅ Completed | Executed cleanly (${modSummary.totalOperations} item${modSummary.totalOperations === 1 ? '' : 's'}) |`,
+        );
+      } else {
+        lines.push(`| \`${stage}\` | ✅ Completed | Executed cleanly |`);
+      }
     }
   }
 

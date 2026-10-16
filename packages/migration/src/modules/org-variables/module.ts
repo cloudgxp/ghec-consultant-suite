@@ -107,8 +107,16 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
       target.map((variable) => [variable.name, variable]),
     );
     const operations: PlannedOperation[] = [];
+    const dynamicMap =
+      Object.keys(this.repositoryIdMap).length === 0 &&
+      source.variables.some(
+        (v) =>
+          v.visibility === 'selected' && v.selectedRepositoryIds.length > 0,
+      )
+        ? await this.resolveDynamicRepositoryIdMap(ctx)
+        : undefined;
     for (const variable of source.variables) {
-      const mapped = this.mapSelected(variable, warnings);
+      const mapped = this.mapSelected(variable, warnings, dynamicMap);
       const desired = {
         ...variable,
         selectedRepositoryIds: mapped.map(String),
@@ -342,11 +350,12 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
   private mapSelected(
     variable: OrganizationVariable,
     warnings: string[],
+    dynamicMap?: Readonly<Record<string, number>> | undefined,
   ): number[] {
     if (variable.visibility !== 'selected') return [];
     const mapped: number[] = [];
     for (const sourceId of variable.selectedRepositoryIds) {
-      const targetId = this.repositoryIdMap[sourceId];
+      const targetId = this.repositoryIdMap[sourceId] ?? dynamicMap?.[sourceId];
       if (targetId === undefined)
         warnings.push(
           `Selected repository ${sourceId} for variable "${variable.name}" has no target repository ID mapping.`,
@@ -354,6 +363,55 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
       else mapped.push(targetId);
     }
     return [...new Set(mapped)].sort((left, right) => left - right);
+  }
+
+  private async resolveDynamicRepositoryIdMap(
+    ctx: MigrationContext,
+  ): Promise<Record<string, number>> {
+    const map: Record<string, number> = {};
+    try {
+      const [srcRes, tgtRes] = await Promise.all([
+        ctx.sourceClient.fetchAll<{ id?: number; name?: string }>(
+          {
+            id: 'rest.repos.listForOrg',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/repos',
+            pathParams: { org: ctx.scope.sourceOrg },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        ),
+        ctx.targetClient.fetchAll<{ id?: number; name?: string }>(
+          {
+            id: 'rest.repos.listForOrg',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/repos',
+            pathParams: { org: ctx.scope.targetOrg },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        ),
+      ]);
+      const targetByName = new Map<string, number>();
+      for (const item of tgtRes?.items ?? []) {
+        if (typeof item.id === 'number' && typeof item.name === 'string') {
+          targetByName.set(item.name.toLowerCase(), item.id);
+        }
+      }
+      for (const item of srcRes?.items ?? []) {
+        if (typeof item.id === 'number' && typeof item.name === 'string') {
+          const targetId = targetByName.get(item.name.toLowerCase());
+          if (targetId !== undefined) {
+            map[String(item.id)] = targetId;
+          }
+        }
+      }
+    } catch {
+      // Ignore if repository listing fails; fallback to empty map
+    }
+    return map;
   }
 
   private payload(variable: OrganizationVariable): Record<string, unknown> {

@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import {
+  MIGRATION_SCHEMA_VERSION,
   type MigrationPlan,
   type MigrationScope,
   type VerificationReport,
@@ -25,6 +26,7 @@ import {
   type CliDualConfigOptions,
 } from '../config/index.js';
 import type { CliOverrides } from '../index.js';
+import { loadExecutionReports } from './agent-review.js';
 
 export interface PublishResultsCommandOptions {
   readonly executionReportPath?: string | undefined;
@@ -45,6 +47,7 @@ export interface PublishResultsCommandOptions {
   readonly installationId?: string | undefined;
   readonly sourceToken?: string | undefined;
   readonly targetToken?: string | undefined;
+  readonly verbose?: boolean | undefined;
 }
 
 export interface PublishResultsCommandResult {
@@ -63,6 +66,7 @@ export function parsePublishResultsOptions(
     allowPositionals: false,
     options: {
       'execution-report': { type: 'string' },
+      'execution-reports': { type: 'string' },
       'verification-report': { type: 'string' },
       report: { type: 'string' },
       'remediation-plan': { type: 'string' },
@@ -70,7 +74,7 @@ export function parsePublishResultsOptions(
       plan: { type: 'string' },
       'target-org': { type: 'string' },
       'source-org': { type: 'string' },
-      'repo-name': { type: 'string', default: 'gei-migration-results' },
+      'repo-name': { type: 'string', default: 'migration-audit-results' },
       'output-dir': { type: 'string', default: './scans/results-repo' },
       'dry-run': { type: 'boolean', default: false },
       'skip-push': { type: 'boolean', default: false },
@@ -81,18 +85,20 @@ export function parsePublishResultsOptions(
       'installation-id': { type: 'string' },
       'source-token': { type: 'string' },
       'target-token': { type: 'string' },
+      verbose: { type: 'boolean', short: 'v', default: false },
     },
   });
 
   return {
-    executionReportPath: values['execution-report'],
+    executionReportPath:
+      values['execution-report'] ?? values['execution-reports'],
     verificationReportPath: values['verification-report'] ?? values.report,
     remediationPlanPath: values['remediation-plan'],
     scopePath: values.scope,
     planPath: values.plan,
     targetOrg: values['target-org'],
     sourceOrg: values['source-org'],
-    repoName: values['repo-name'] || 'gei-migration-results',
+    repoName: values['repo-name'] || 'migration-audit-results',
     outputDir: values['output-dir'] || './scans/results-repo',
     dryRun: values['dry-run'] ?? false,
     skipPush: values['skip-push'] ?? false,
@@ -103,6 +109,7 @@ export function parsePublishResultsOptions(
     installationId: values['installation-id'],
     sourceToken: values['source-token'],
     targetToken: values['target-token'],
+    verbose: values.verbose ?? false,
   };
 }
 
@@ -153,11 +160,37 @@ export async function executePublishResultsCommand(
     );
   }
 
-  // 3. Load Execution Report if provided
+  // 3. Load Execution Report(s) if provided
   let executionReport: MigrationExecutionReport | undefined;
-  if (options.executionReportPath && existsSync(options.executionReportPath)) {
-    const raw = readFileSync(options.executionReportPath, 'utf-8');
-    executionReport = JSON.parse(raw) as MigrationExecutionReport;
+  if (options.executionReportPath) {
+    const isMultiOrDir =
+      options.executionReportPath.includes(',') ||
+      (existsSync(options.executionReportPath) &&
+        statSync(options.executionReportPath).isDirectory());
+    if (isMultiOrDir) {
+      const loaded = loadExecutionReports(options.executionReportPath);
+      if (loaded.reports.length > 0) {
+        const mergedResults = loaded.reports.flatMap((r) => r.results);
+        executionReport = {
+          schemaVersion: MIGRATION_SCHEMA_VERSION,
+          planId: loaded.reports[0]?.planId ?? 'merged-execution-plan',
+          executedAt:
+            loaded.reports[loaded.reports.length - 1]?.executedAt ??
+            new Date().toISOString(),
+          status: loaded.reports.every((r) => r.status === 'complete')
+            ? 'complete'
+            : loaded.reports.some((r) => r.status === 'failed')
+              ? 'failed'
+              : 'partial',
+          exitCode: loaded.reports.every((r) => r.exitCode === 0) ? 0 : 1,
+          dryRun: options.dryRun,
+          results: mergedResults,
+        };
+      }
+    } else if (existsSync(options.executionReportPath)) {
+      const raw = readFileSync(options.executionReportPath, 'utf-8');
+      executionReport = JSON.parse(raw) as MigrationExecutionReport;
+    }
   }
 
   // 4. Load Verification Report if provided
@@ -243,7 +276,13 @@ export async function executePublishResultsCommand(
 
   // 9. Append step summary if requested
   if (options.appendStepSummary) {
-    appendStepSummary(results.files['README.md'] ?? '');
+    const blobBaseUrl = `${repoUrl}/blob/${options.branch}`;
+    const stepSummaryReadme = (results.files['README.md'] ?? '')
+      .replaceAll('](organization/', `](${blobBaseUrl}/organization/`)
+      .replaceAll('](success/', `](${blobBaseUrl}/success/`)
+      .replaceAll('](failure/', `](${blobBaseUrl}/failure/`)
+      .replaceAll('](repositories/', `](${blobBaseUrl}/repositories/`);
+    appendStepSummary(stepSummaryReadme);
   }
 
   // 10. Console output

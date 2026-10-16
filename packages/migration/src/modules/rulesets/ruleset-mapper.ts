@@ -15,15 +15,37 @@ function normalizeArray(arr?: readonly string[]): string[] {
   return arr ? [...arr].sort() : [];
 }
 
+function canonicalizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeValue);
+  }
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(record).sort()) {
+      if (record[key] !== undefined) {
+        sorted[key] = canonicalizeValue(record[key]);
+      }
+    }
+    return sorted;
+  }
+  return value;
+}
+
+function canonicalizeJson(value: unknown): string {
+  return JSON.stringify(canonicalizeValue(value));
+}
+
 export function areConditionsEqual(
   a?: RulesetConditions,
   b?: RulesetConditions,
 ): boolean {
   if (!a && !b) return true;
-  if (!a || !b) return false;
+  const condA = a ?? {};
+  const condB = b ?? {};
 
-  const aInc = normalizeArray(a.ref_name?.include);
-  const bInc = normalizeArray(b.ref_name?.include);
+  const aInc = normalizeArray(condA.ref_name?.include);
+  const bInc = normalizeArray(condB.ref_name?.include);
   if (
     aInc.length !== bInc.length ||
     aInc.some((val, idx) => val !== bInc[idx])
@@ -31,8 +53,8 @@ export function areConditionsEqual(
     return false;
   }
 
-  const aExc = normalizeArray(a.ref_name?.exclude);
-  const bExc = normalizeArray(b.ref_name?.exclude);
+  const aExc = normalizeArray(condA.ref_name?.exclude);
+  const bExc = normalizeArray(condB.ref_name?.exclude);
   if (
     aExc.length !== bExc.length ||
     aExc.some((val, idx) => val !== bExc[idx])
@@ -40,8 +62,8 @@ export function areConditionsEqual(
     return false;
   }
 
-  const aRepoInc = normalizeArray(a.repository_name?.include);
-  const bRepoInc = normalizeArray(b.repository_name?.include);
+  const aRepoInc = normalizeArray(condA.repository_name?.include);
+  const bRepoInc = normalizeArray(condB.repository_name?.include);
   if (
     aRepoInc.length !== bRepoInc.length ||
     aRepoInc.some((val, idx) => val !== bRepoInc[idx])
@@ -49,8 +71,8 @@ export function areConditionsEqual(
     return false;
   }
 
-  const aRepoExc = normalizeArray(a.repository_name?.exclude);
-  const bRepoExc = normalizeArray(b.repository_name?.exclude);
+  const aRepoExc = normalizeArray(condA.repository_name?.exclude);
+  const bRepoExc = normalizeArray(condB.repository_name?.exclude);
   if (
     aRepoExc.length !== bRepoExc.length ||
     aRepoExc.some((val, idx) => val !== bRepoExc[idx])
@@ -59,16 +81,16 @@ export function areConditionsEqual(
   }
 
   if (
-    Boolean(a.repository_name?.protected) !==
-    Boolean(b.repository_name?.protected)
+    Boolean(condA.repository_name?.protected) !==
+    Boolean(condB.repository_name?.protected)
   ) {
     return false;
   }
 
-  const aRepoIds = [...(a.repository_id?.repository_ids ?? [])].sort(
+  const aRepoIds = [...(condA.repository_id?.repository_ids ?? [])].sort(
     (x, y) => x - y,
   );
-  const bRepoIds = [...(b.repository_id?.repository_ids ?? [])].sort(
+  const bRepoIds = [...(condB.repository_id?.repository_ids ?? [])].sort(
     (x, y) => x - y,
   );
   if (
@@ -78,8 +100,8 @@ export function areConditionsEqual(
     return false;
   }
 
-  const aProp = JSON.stringify(a.repository_property ?? null);
-  const bProp = JSON.stringify(b.repository_property ?? null);
+  const aProp = canonicalizeJson(condA.repository_property ?? null);
+  const bProp = canonicalizeJson(condB.repository_property ?? null);
   if (aProp !== bProp) {
     return false;
   }
@@ -95,20 +117,12 @@ export function areRulesEqual(
   const b = bRules ?? [];
   if (a.length !== b.length) return false;
 
-  const aSorted = [...a].sort((x, y) => x.type.localeCompare(y.type));
-  const bSorted = [...b].sort((x, y) => x.type.localeCompare(y.type));
+  const ruleKey = (r: RulesetRule): string =>
+    `${r.type}:${canonicalizeJson(r.parameters ?? {})}`;
+  const aKeys = a.map(ruleKey).sort();
+  const bKeys = b.map(ruleKey).sort();
 
-  for (let i = 0; i < aSorted.length; i++) {
-    const ruleA = aSorted[i]!;
-    const ruleB = bSorted[i]!;
-    if (ruleA.type !== ruleB.type) return false;
-
-    const paramA = JSON.stringify(ruleA.parameters ?? {});
-    const paramB = JSON.stringify(ruleB.parameters ?? {});
-    if (paramA !== paramB) return false;
-  }
-
-  return true;
+  return aKeys.every((k, idx) => k === bKeys[idx]);
 }
 
 export function areBypassActorsEqual(
@@ -119,8 +133,13 @@ export function areBypassActorsEqual(
   const b = bActors ?? [];
   if (a.length !== b.length) return false;
 
-  const key = (act: BypassActor) =>
-    `${act.actor_type}:${act.actor_id ?? ''}:${act.bypass_mode}`;
+  const key = (act: BypassActor) => {
+    const actorId =
+      act.actor_type === 'OrganizationAdmin' || act.actor_type === 'DeployKey'
+        ? '1'
+        : String(act.actor_id ?? '');
+    return `${act.actor_type}:${actorId}:${act.bypass_mode}`;
+  };
   const aKeys = a.map(key).sort();
   const bKeys = b.map(key).sort();
 

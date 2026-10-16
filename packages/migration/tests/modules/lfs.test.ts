@@ -358,3 +358,158 @@ test('LfsMigrationModule verify audits target LFS availability and reports discr
     /missing or unverified/,
   );
 });
+
+test('LfsMigrationModule live discovery walks recursive Git tree to parse LFS pointers and .gitattributes-tracked direct blobs', async () => {
+  const pointerOid = 'a1b2c3d4'.repeat(8);
+  const pointerContent = [
+    'version https://git-lfs.github.com/spec/v1',
+    `oid sha256:${pointerOid}`,
+    'size 52428800',
+    '',
+  ].join('\n');
+
+  const sourceTreeAdapter: GitHubReadAdapter = {
+    queryGraphQL: async () => ({
+      data: {} as never,
+      observedAt: new Date().toISOString(),
+    }),
+    readPage: async () => ({
+      items: [],
+      nextCursor: null,
+      status: 200,
+      observedAt: new Date().toISOString(),
+    }),
+    fetchAll: async <T>(op: { path: string }) => {
+      if (op.path === '/repos/{owner}/{repo}/branches') {
+        return {
+          items: [
+            { name: 'main', commit: { sha: 'sha-main' } },
+            { name: 'lfs-test-2', commit: { sha: 'sha-branch-2' } },
+          ] as unknown as T[],
+          observedAt: new Date().toISOString(),
+          complete: true,
+        };
+      }
+      return {
+        items: [],
+        observedAt: new Date().toISOString(),
+        complete: true,
+      };
+    },
+    readSingle: async <T>(op: {
+      path: string;
+      pathParams?: Record<string, string | number>;
+    }) => {
+      if (op.path === '/repos/{owner}/{repo}/contents/{path}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: {
+            content: Buffer.from(
+              '*.bin filter=lfs diff=lfs merge=lfs -text\n',
+            ).toString('base64'),
+            encoding: 'base64',
+          } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/git/trees/{tree_sha}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: {
+            tree: [
+              {
+                path: '.gitattributes',
+                type: 'blob',
+                sha: 'sha-gitattr',
+                size: 42,
+              },
+              {
+                path: 'lfs-demo/demo.bin',
+                type: 'blob',
+                sha: 'sha-lfs-ptr',
+                size: 133,
+              },
+              {
+                path: 'sample-asset.bin',
+                type: 'blob',
+                sha: 'sha-direct-blob',
+                size: 49,
+              },
+            ],
+          } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/git/blobs/{file_sha}') {
+        const fileSha = op.pathParams?.file_sha;
+        if (fileSha === 'sha-lfs-ptr') {
+          return {
+            status: 200,
+            observedAt: new Date().toISOString(),
+            data: {
+              content: Buffer.from(pointerContent).toString('base64'),
+              encoding: 'base64',
+            } as unknown as T,
+          };
+        }
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: {
+            content: Buffer.from(
+              'SYNTHETIC_LFS_BINARY_PAYLOAD_TEST_DATA_0123456789',
+            ).toString('base64'),
+            encoding: 'base64',
+          } as unknown as T,
+        };
+      }
+      throw new Error(`Unexpected path: ${op.path}`);
+    },
+  };
+
+  const streamer = new MockLfsStreamer(new Set([pointerOid]));
+  const mod = new LfsMigrationModule({ streamer });
+
+  const ctx: MigrationContext = {
+    runId: 'run-live-tree',
+    scope: {
+      level: 'repository',
+      sourceOrg: 'demogxp',
+      sourceRepo: 'demo',
+      targetOrg: 'demogxp-mig2',
+      targetRepo: 'demo',
+    },
+    sourceClient: sourceTreeAdapter,
+    targetClient: sourceTreeAdapter,
+    signal: new AbortController().signal,
+    dryRun: false,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+
+  const discovered = await mod.discover(ctx);
+  assert.equal(discovered.hasLfs, true);
+  assert.equal(discovered.objects.length, 1);
+  assert.equal(discovered.objects[0]?.oid, pointerOid);
+  assert.equal(discovered.objects[0]?.size, 52428800);
+  assert.equal(discovered.trackedBlobs?.length, 1);
+  assert.equal(discovered.trackedBlobs?.[0]?.path, 'sample-asset.bin');
+  assert.equal(discovered.trackedBlobs?.[0]?.sha, 'sha-direct-blob');
+
+  const plan = await mod.plan(ctx, discovered);
+  assert.equal(plan.operations.length, 2);
+  const blobOp = plan.operations.find(
+    (op) => op.resourceType === 'lfs-tracked-blob',
+  );
+  assert.ok(blobOp);
+  assert.equal(blobOp.resourceName, 'sample-asset.bin');
+  assert.equal(blobOp.operation, 'noop');
+
+  const execRes = await mod.apply(ctx, plan);
+  assert.equal(execRes.status, 'complete');
+  assert.equal(execRes.results.length, 2);
+
+  const verifyRes = await mod.verify(ctx, plan);
+  assert.equal(verifyRes.verified, true);
+  assert.equal(verifyRes.discrepancies.length, 0);
+});

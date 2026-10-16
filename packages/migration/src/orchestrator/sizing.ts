@@ -75,29 +75,51 @@ export async function assessRepositorySizing(
     throw error;
   }
 
-  // 2. Query releases and aggregate release asset byte volume
-  let releaseCount = 0;
+  // 2. Query releases across all pages and aggregate release asset byte volume
+  let releaseCount: number;
   let releaseAssetsTotalBytes = 0;
 
   try {
-    const releasesRes = await client.readSingle<readonly ReleaseItem[]>(
-      {
-        id: 'rest.repos.list-releases',
-        transport: 'rest',
-        verifiedReadOnly: true,
-        path: '/repos/{owner}/{repo}/releases',
-        pathParams: { owner, repo },
-      },
-      signal,
-    );
+    let releaseItems: readonly ReleaseItem[] = [];
+    if (typeof client.fetchAll === 'function') {
+      const fetchResult = await client.fetchAll<ReleaseItem>(
+        {
+          id: 'rest.repos.list-releases',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/repos/{owner}/{repo}/releases',
+          pathParams: { owner, repo },
+          queryParams: { per_page: 100 },
+        },
+        signal,
+      );
+      if (fetchResult && Array.isArray(fetchResult.items)) {
+        releaseItems = fetchResult.items;
+      }
+    }
 
-    if (Array.isArray(releasesRes.data)) {
-      releaseCount = releasesRes.data.length;
-      for (const rel of releasesRes.data) {
-        if (Array.isArray(rel.assets)) {
-          for (const asset of rel.assets) {
-            releaseAssetsTotalBytes += asset.size || 0;
-          }
+    if (releaseItems.length === 0) {
+      const releasesRes = await client.readSingle<readonly ReleaseItem[]>(
+        {
+          id: 'rest.repos.list-releases',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/repos/{owner}/{repo}/releases',
+          pathParams: { owner, repo },
+          queryParams: { per_page: 100 },
+        },
+        signal,
+      );
+      if (Array.isArray(releasesRes.data)) {
+        releaseItems = releasesRes.data;
+      }
+    }
+
+    releaseCount = releaseItems.length;
+    for (const rel of releaseItems) {
+      if (Array.isArray(rel.assets)) {
+        for (const asset of rel.assets) {
+          releaseAssetsTotalBytes += asset.size || 0;
         }
       }
     }

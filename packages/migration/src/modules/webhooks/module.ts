@@ -140,11 +140,18 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
         warnings.push(
           `Webhook "${hook.url}" has a source secret but no replacement secret provider.`,
         );
+      const reason =
+        operation === 'create'
+          ? `Creating webhook for "${hook.url}"`
+          : operation === 'update'
+            ? `Reconciling webhook configuration for "${hook.url}"`
+            : `Webhook "${hook.url}" already matches target configuration`;
       return {
         id: `${this.id}:${targetKey}:${hook.url}`,
         resourceType: 'webhook',
         resourceName: hook.url,
         operation,
+        reason,
         sourceState: hook,
         destinationCurrentState: existing,
         payload: operation === 'noop' ? undefined : { hookId: existing?.id },
@@ -227,7 +234,9 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       moduleId: this.id,
       status: results.some((result) => result.status === 'failed')
         ? 'failed'
-        : 'complete',
+        : results.length === 0
+          ? 'skipped'
+          : 'complete',
       results,
       durationMs: Date.now() - startedAt,
     };

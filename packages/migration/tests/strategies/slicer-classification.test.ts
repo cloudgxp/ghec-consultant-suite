@@ -167,4 +167,117 @@ describe('Scale-Adaptive Repository Sizing & Strategy Classification', () => {
     assert.equal(massiveCohort.useMirrorPush, true);
     assert.equal(massiveCohort.requiresHeadroomCheck, true);
   });
+
+  it('isolates large-releases repositories into separate cohorts from standard repositories so skipReleases does not leak', () => {
+    const profiles: RepositorySizingProfile[] = [
+      {
+        repositoryName: 'test-packages',
+        gitDiskUsageBytes: 100 * 1024 * 1024,
+        gitLfsObjectCount: 0,
+        gitLfsTotalBytes: 0,
+        releaseCount: 2,
+        releaseAssetsTotalBytes: 10 * 1024 * 1024,
+        estimatedScratchBytes: 160 * 1024 * 1024,
+        sourceVisibility: 'private',
+      },
+      {
+        repositoryName: 'release-heavy-benchmark',
+        gitDiskUsageBytes: 500 * 1024 * 1024,
+        gitLfsObjectCount: 0,
+        gitLfsTotalBytes: 0,
+        releaseCount: 12,
+        releaseAssetsTotalBytes: TEN_GIB + 500 * 1024 * 1024,
+        estimatedScratchBytes: 750 * 1024 * 1024,
+        sourceVisibility: 'private',
+      },
+    ];
+
+    const matrix = sliceScaleAdaptiveMatrix(profiles, {
+      batchSize: 5,
+      defaultRunnerLabels: ['ubuntu-latest'],
+    });
+
+    assert.equal(matrix.cohortCount, 2);
+    const stdCohort = matrix.matrix.include.find((c) =>
+      c.repositories.includes('test-packages'),
+    );
+    const largeRelCohort = matrix.matrix.include.find((c) =>
+      c.repositories.includes('release-heavy-benchmark'),
+    );
+    assert.ok(stdCohort);
+    assert.ok(largeRelCohort);
+    assert.equal(stdCohort.tier, 'standard');
+    assert.equal(stdCohort.skipReleases, false);
+    assert.equal(largeRelCohort.tier, 'large-releases');
+    assert.equal(largeRelCohort.skipReleases, true);
+    assert.equal(largeRelCohort.useReleaseFallback, true);
+  });
+
+  it('assessRepositorySizing paginates all releases via fetchAll and computes >10 GiB total assets', async () => {
+    const { assessRepositorySizing } =
+      await import('../../src/orchestrator/sizing.js');
+    const ONE_GIB = 1024 * 1024 * 1024;
+    const simulatedReleases = Array.from({ length: 42 }, (_, idx) => ({
+      assets:
+        idx < 11 ? [{ size: ONE_GIB }, { size: 128 }] : [{ size: 1024 * 1024 }],
+    }));
+
+    let fetchAllCalled = false;
+    const mockClient = {
+      async fetchAll<T>(descriptor: {
+        id: string;
+        queryParams?: Record<string, unknown>;
+      }) {
+        if (descriptor.id === 'rest.repos.list-releases') {
+          fetchAllCalled = true;
+          assert.equal(descriptor.queryParams?.per_page, 100);
+          return {
+            items: simulatedReleases as unknown as readonly T[],
+            pageCount: 1,
+            rateLimitRemaining: 4999,
+          };
+        }
+        return {
+          items: [] as readonly T[],
+          pageCount: 0,
+          rateLimitRemaining: 4999,
+        };
+      },
+      async readSingle<T>(descriptor: { id: string }) {
+        if (descriptor.id === 'rest.repos.get') {
+          return {
+            status: 200,
+            headers: {},
+            data: {
+              size: 2048,
+              visibility: 'public',
+              private: false,
+            } as unknown as T,
+          };
+        }
+        return {
+          status: 404,
+          headers: {},
+          data: {} as unknown as T,
+        };
+      },
+    };
+
+    const profile = await assessRepositorySizing(
+      mockClient as unknown as Parameters<typeof assessRepositorySizing>[0],
+      'demogxp',
+      'release-heavy-benchmark',
+    );
+
+    assert.equal(fetchAllCalled, true);
+    assert.equal(profile.repositoryName, 'release-heavy-benchmark');
+    assert.equal(profile.releaseCount, 42);
+    assert.ok(profile.releaseAssetsTotalBytes > TEN_GIB);
+
+    const classified = classifyRepository(profile);
+    assert.equal(classified.tier, 'large-releases');
+    assert.equal(classified.useGei, true);
+    assert.equal(classified.skipReleases, true);
+    assert.equal(classified.useReleaseFallback, true);
+  });
 });

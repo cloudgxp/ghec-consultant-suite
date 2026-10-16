@@ -12,9 +12,10 @@ import type {
 } from '../../core/types.js';
 import { applyFileRepair } from './git-committer.js';
 import { rewriteTeamReferences } from './rewriter.js';
-import { scanCodeownersCandidates } from './scanner.js';
+import { fetchFileContent, scanCodeownersCandidates } from './scanner.js';
 import type {
   CodeownersData,
+  CodeownersFileCandidate,
   CodeownersFileDiff,
   CodeownersModuleOptions,
 } from './types.js';
@@ -50,15 +51,38 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
     const targetOrg = ctx.scope.targetOrg;
     const sourceOrg = ctx.scope.sourceOrg;
 
-    // Scan target repository candidates (reconciling post-GEI state)
-    const targetFiles = await scanCodeownersCandidates(
-      ctx,
-      targetOrg,
-      targetRepo,
-    );
-
-    const candidateFiles =
-      targetFiles.length > 0 ? targetFiles : (sourceData?.files ?? []);
+    let candidateFiles: readonly CodeownersFileCandidate[];
+    if (sourceData?.files && sourceData.files.length > 0) {
+      const resolvedFiles: CodeownersFileCandidate[] = [];
+      for (const srcFile of sourceData.files) {
+        const previewDiff = rewriteTeamReferences(
+          srcFile,
+          sourceOrg,
+          targetOrg,
+          this.options.teamSlugMap,
+        );
+        if (previewDiff.hasChanges) {
+          const targetFile = await fetchFileContent(
+            ctx,
+            targetOrg,
+            targetRepo,
+            srcFile.path,
+          );
+          resolvedFiles.push(targetFile ?? srcFile);
+        } else {
+          resolvedFiles.push(srcFile);
+        }
+      }
+      candidateFiles = resolvedFiles;
+    } else {
+      const targetFiles = await scanCodeownersCandidates(
+        ctx,
+        targetOrg,
+        targetRepo,
+      );
+      candidateFiles =
+        targetFiles.length > 0 ? targetFiles : (sourceData?.files ?? []);
+    }
 
     const operations: PlannedOperation[] = [];
     const warnings: string[] = [];
@@ -71,6 +95,14 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
         this.options.teamSlugMap,
       );
 
+      const isCodeownersFile = /(^|\/)CODEOWNERS$/i.test(diff.path);
+      const hasTeamRefs =
+        diff.hasChanges ||
+        /@[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+/.test(file.decodedContent);
+      if (!isCodeownersFile && !hasTeamRefs) {
+        continue;
+      }
+
       const opType = diff.hasChanges ? 'update' : 'noop';
       if (diff.hasChanges) {
         warnings.push(
@@ -78,11 +110,21 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
         );
       }
 
+      const resourceType = isCodeownersFile
+        ? 'codeowners-file'
+        : diff.path.startsWith('.github/workflows/')
+          ? 'workflow-team-ref'
+          : 'issue-template-team-ref';
+      const reason = diff.hasChanges
+        ? `Rewrote ${diff.matches.length} team reference(s) in ${diff.path}`
+        : `Team ownership references in ${diff.path} already match target organization`;
+
       operations.push({
         id: `codeowners:${targetRepo}:${diff.path}`,
-        resourceType: 'codeowners-file',
+        resourceType,
         resourceName: diff.path,
         operation: opType,
+        reason,
         sourceState: { path: diff.path, matches: diff.matches },
         destinationCurrentState: {
           path: file.path,
@@ -161,7 +203,11 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
     return {
       schemaVersion: MIGRATION_SCHEMA_VERSION,
       moduleId: this.id,
-      status: isFailed ? 'failed' : 'complete',
+      status: isFailed
+        ? 'failed'
+        : results.length === 0
+          ? 'skipped'
+          : 'complete',
       results,
       durationMs: Date.now() - startedAt,
     };
@@ -176,12 +222,6 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
     const sourceOrg = ctx.scope.sourceOrg;
     const sourceOrgPattern = new RegExp(`@${sourceOrg}/`, 'i');
 
-    const targetFiles = await scanCodeownersCandidates(
-      ctx,
-      targetOrg,
-      targetRepo,
-    );
-
     const discrepancies: VerificationDiscrepancy[] = [];
 
     for (const op of plan.operations) {
@@ -190,7 +230,12 @@ export class CodeownersRepairModule implements MigrationModule<CodeownersData> {
         continue;
       }
 
-      const currentFile = targetFiles.find((f) => f.path === diff.path);
+      const currentFile = await fetchFileContent(
+        ctx,
+        targetOrg,
+        targetRepo,
+        diff.path,
+      );
       if (!currentFile) {
         discrepancies.push({
           resourceName: diff.path,

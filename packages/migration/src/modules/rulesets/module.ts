@@ -175,13 +175,79 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
     const warnings: string[] = [];
     const opPrefix = isRepo && targetRepo ? `${targetRepo}-` : '';
 
-    for (const sourceRuleset of sourceData.rulesets) {
+    let sourceIdToName = new Map<number, string>();
+    let targetNameToId = new Map<string, number>();
+    if (
+      !isRepo &&
+      sourceData.rulesets.some(
+        (r) => (r.conditions?.repository_id?.repository_ids?.length ?? 0) > 0,
+      )
+    ) {
+      const repoMaps = await this.resolveOrganizationRepositoryMaps(ctx);
+      sourceIdToName = repoMaps.sourceIdToName;
+      targetNameToId = repoMaps.targetNameToId;
+    }
+
+    for (const rawSourceRuleset of sourceData.rulesets) {
       // Inherited org rulesets cannot be migrated at repo level
-      if (isRepo && isInheritedOrganizationRuleset(sourceRuleset)) {
+      if (isRepo && isInheritedOrganizationRuleset(rawSourceRuleset)) {
         warnings.push(
-          `Ruleset "${sourceRuleset.name}" is inherited from Organization and cannot be migrated at repository level.`,
+          `Ruleset "${rawSourceRuleset.name}" is inherited from Organization and cannot be migrated at repository level.`,
         );
         continue;
+      }
+
+      let sourceRuleset = rawSourceRuleset;
+      const srcRepoIds =
+        rawSourceRuleset.conditions?.repository_id?.repository_ids;
+      if (
+        !isRepo &&
+        srcRepoIds &&
+        srcRepoIds.length > 0 &&
+        sourceIdToName.size > 0
+      ) {
+        const mappedIds: number[] = [];
+        const missingRepoNames: string[] = [];
+        for (const srcId of srcRepoIds) {
+          const repoName = sourceIdToName.get(Number(srcId));
+          if (repoName) {
+            const targetId = targetNameToId.get(repoName.toLowerCase());
+            if (targetId !== undefined) {
+              mappedIds.push(targetId);
+            } else {
+              missingRepoNames.push(repoName);
+            }
+          }
+        }
+
+        if (mappedIds.length === 0 && missingRepoNames.length > 0) {
+          warnings.push(
+            `Ruleset "${rawSourceRuleset.name}" targets repository(${missingRepoNames.join(', ')}) which is not yet present on ${ctx.scope.targetOrg}; deferring ruleset creation until post-cohort reconciliation.`,
+          );
+          operations.push({
+            id: `ruleset-skip-${opPrefix}${rawSourceRuleset.name}`,
+            operation: 'skip',
+            resourceType: 'ruleset',
+            resourceName: rawSourceRuleset.name,
+            sourceState: rawSourceRuleset,
+            reason:
+              'Selected target repositories do not exist on destination yet; deferred to post-cohort reconciliation.',
+          });
+          continue;
+        }
+
+        if (mappedIds.length > 0) {
+          sourceRuleset = {
+            ...rawSourceRuleset,
+            conditions: {
+              ...rawSourceRuleset.conditions,
+              repository_id: {
+                ...rawSourceRuleset.conditions?.repository_id,
+                repository_ids: mappedIds,
+              },
+            },
+          };
+        }
       }
 
       const existingTarget = targetMapByName.get(sourceRuleset.name);
@@ -242,6 +308,55 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
       operations,
       warnings,
     };
+  }
+
+  private async resolveOrganizationRepositoryMaps(
+    ctx: MigrationContext,
+  ): Promise<{
+    sourceIdToName: Map<number, string>;
+    targetNameToId: Map<string, number>;
+  }> {
+    const sourceIdToName = new Map<number, string>();
+    const targetNameToId = new Map<string, number>();
+    try {
+      const [srcRes, tgtRes] = await Promise.all([
+        ctx.sourceClient.fetchAll<{ id?: number; name?: string }>(
+          {
+            id: 'rest.repos.listForOrg',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/repos',
+            pathParams: { org: ctx.scope.sourceOrg },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        ),
+        ctx.targetClient.fetchAll<{ id?: number; name?: string }>(
+          {
+            id: 'rest.repos.listForOrg',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/repos',
+            pathParams: { org: ctx.scope.targetOrg },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        ),
+      ]);
+      for (const item of srcRes?.items ?? []) {
+        if (typeof item.id === 'number' && typeof item.name === 'string') {
+          sourceIdToName.set(item.id, item.name);
+        }
+      }
+      for (const item of tgtRes?.items ?? []) {
+        if (typeof item.id === 'number' && typeof item.name === 'string') {
+          targetNameToId.set(item.name.toLowerCase(), item.id);
+        }
+      }
+    } catch {
+      // Ignore if repository listing fails; fallback to unmapped IDs
+    }
+    return { sourceIdToName, targetNameToId };
   }
 
   async apply(

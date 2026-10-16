@@ -187,18 +187,6 @@ export class AutolinksMigrationModule implements MigrationModule<AutolinksMigrat
       }
     }
 
-    if (operations.length === 0) {
-      operations.push({
-        id: `op-autolink-noop-empty-${targetOrg}-${targetRepo}`,
-        resourceType: 'autolink',
-        resourceName: `${targetOrg}/${targetRepo}`,
-        operation: 'noop',
-        sourceState: {},
-        destinationCurrentState: {},
-        reason: 'No autolinks defined on source repository',
-      });
-    }
-
     return {
       moduleId: this.id,
       scopeLevel: this.scopeLevel,

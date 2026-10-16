@@ -810,3 +810,573 @@ test('formatOrgModuleDetailMarkdown and formatRepoModuleDetailMarkdown escape pi
   assert.ok(repoMd.includes('`REPO_VAR_\\|_PIPE`'));
   assert.ok(repoMd.includes('Updated \\| value'));
 });
+
+test('replaces pre-migration absence/drift planning reasons with post-migration outcome notes when succeeded and verified', () => {
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-notes',
+    executedAt: '2026-10-15T12:00:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: [
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'org-rulesets',
+        targetIdentifier: 'demogxp-mig2',
+        scopeLevel: 'organization',
+        status: 'complete',
+        durationMs: 200,
+        results: [
+          {
+            operationId: 'ruleset:skip-org:demogxp-mig2:demo-ruleset',
+            status: 'skipped',
+            resourceType: 'ruleset',
+            resourceName: 'demo-ruleset',
+            operationType: 'skip',
+            reason:
+              'Selected target repositories have not been migrated yet; deferring.',
+          },
+          {
+            operationId: 'ruleset:create-org:demogxp-mig2:demo-ruleset',
+            status: 'succeeded',
+            resourceType: 'ruleset',
+            resourceName: 'demo-ruleset',
+            operationType: 'create',
+            reason: 'Ruleset is missing on target.',
+          },
+          {
+            operationId: 'ruleset:noop-org:demogxp-mig2:demo-ruleset',
+            status: 'succeeded',
+            resourceType: 'ruleset',
+            resourceName: 'demo-ruleset',
+            operationType: 'noop',
+            reason: 'Ruleset configuration is identical on target.',
+          },
+        ],
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-notes',
+    verifiedAt: '2026-10-15T12:05:00Z',
+    scopeName: 'notes-scope',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    modules: [
+      {
+        moduleId: 'org-rulesets',
+        verified: true,
+        discrepancies: [],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 1,
+      unverifiedModuleCount: 0,
+      discrepancyCount: 0,
+    },
+  };
+
+  const results = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    executionMode: 'live',
+    executionReport,
+    verificationReport,
+  });
+
+  const orgRulesetsMd = results.files['organization/org-rulesets.md'] ?? '';
+  assert.ok(!orgRulesetsMd.includes('Ruleset is missing on target.'));
+  assert.ok(orgRulesetsMd.includes('Created and verified on target.'));
+  assert.equal(
+    results.manifest.summary.orgModulesSummary['org-rulesets']?.totalOperations,
+    1,
+  );
+});
+
+test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped, counts only active categories in README, and renders verification warnings and default noop notes', () => {
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-consistency',
+    executedAt: '2026-10-15T18:30:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: [
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'org-variables',
+        targetIdentifier: 'demogxp-mig2',
+        scopeLevel: 'organization',
+        status: 'complete',
+        durationMs: 120,
+        results: [
+          {
+            operationId: 'org-variables:noop:ORG_SHARED_VAR',
+            status: 'succeeded',
+            resourceType: 'org-variable',
+            resourceName: 'ORG_SHARED_VAR',
+            operationType: 'noop',
+            completedAt: '2026-10-15T18:30:01Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'gei-repo',
+        targetIdentifier: 'demogxp-mig2/demo',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 90,
+        results: [],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'autolinks',
+        targetIdentifier: 'demogxp-mig2/demo',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 40,
+        results: [
+          {
+            operationId: 'op-autolink-noop-empty-demo',
+            status: 'succeeded',
+            resourceType: 'autolink',
+            resourceName: 'demo:autolinks',
+            operationType: 'noop',
+            reason: 'No autolinks defined on source repository',
+            completedAt: '2026-10-15T18:30:02Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'post-migration-codeowners',
+        targetIdentifier: 'demogxp-mig2/demo',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 50,
+        results: [
+          {
+            operationId: 'codeowners:noop:.github/CODEOWNERS',
+            status: 'succeeded',
+            resourceType: 'codeowners-file',
+            resourceName: '.github/CODEOWNERS',
+            operationType: 'noop',
+            completedAt: '2026-10-15T18:30:03Z',
+          },
+          {
+            operationId: 'codeowners:noop:.github/workflows/ci.yml',
+            status: 'succeeded',
+            resourceType: 'codeowners-file',
+            resourceName: '.github/workflows/ci.yml',
+            operationType: 'noop',
+            completedAt: '2026-10-15T18:30:03Z',
+          },
+        ],
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-consistency',
+    verifiedAt: '2026-10-15T18:35:00Z',
+    scopeName: 'consistency-scope',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    modules: [
+      {
+        moduleId: 'org-variables',
+        verified: true,
+        discrepancies: [],
+        warnings: ['Organization variable values are verified by name parity.'],
+      },
+      {
+        moduleId: 'gei-repo',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'autolinks',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'post-migration-codeowners',
+        verified: true,
+        discrepancies: [],
+        warnings: [
+          '[demogxp-mig2/demo] CODEOWNERS verified with pass-through team ownership.',
+        ],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 4,
+      unverifiedModuleCount: 0,
+      discrepancyCount: 0,
+    },
+  };
+
+  const results = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig2',
+    executionMode: 'live',
+    generatedAt: '2026-10-15T19:00:00Z',
+    executionReport,
+    verificationReport,
+    scope: {
+      version: '1.0.0',
+      name: 'consistency-scope',
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'demo',
+          targetOrg: 'demogxp-mig2',
+          targetRepo: 'demo',
+          useGei: true,
+        },
+      ],
+    },
+  });
+
+  // 1. autolinks should have 0 items and status 'skipped'
+  const demoRecord = results.manifest.repositories[0];
+  assert.ok(demoRecord);
+  assert.equal(demoRecord.moduleSummaries?.['autolinks']?.status, 'skipped');
+  assert.equal(demoRecord.moduleSummaries?.['autolinks']?.totalOperations, 0);
+
+  // 2. post-migration-codeowners should keep .github/CODEOWNERS and filter out untouched .github/workflows/ci.yml
+  assert.equal(
+    demoRecord.moduleSummaries?.['post-migration-codeowners']?.status,
+    'complete',
+  );
+  assert.equal(
+    demoRecord.moduleSummaries?.['post-migration-codeowners']?.totalOperations,
+    1,
+  );
+  const codeownersMd =
+    results.files['repositories/demo/post-migration-codeowners.md'] ?? '';
+  assert.ok(codeownersMd.includes('`.github/CODEOWNERS`'));
+  assert.ok(!codeownersMd.includes('.github/workflows/ci.yml'));
+  assert.ok(
+    codeownersMd.includes(
+      'Configuration already matches target; verified parity.',
+    ),
+  );
+  assert.ok(codeownersMd.includes('### Module Warnings'));
+  assert.ok(
+    codeownersMd.includes(
+      'CODEOWNERS verified with pass-through team ownership.',
+    ),
+  );
+
+  // 3. gei-repo should use earliest repo operation timestamp and noop parity note
+  const geiRepoMd = results.files['repositories/demo/gei-repo.md'] ?? '';
+  assert.ok(geiRepoMd.includes('`2026-10-15T18:30:02Z`'));
+  assert.ok(geiRepoMd.includes('`noop`'));
+  assert.ok(
+    geiRepoMd.includes(
+      'Target repository already exists on destination; verified parity.',
+    ),
+  );
+
+  // 4. README should count only active (non-skipped) categories: gei-repo + post-migration-codeowners = 2 categories (2 items)
+  const readmeMd = results.files['README.md'] ?? '';
+  assert.ok(readmeMd.includes('2 categories (2 items)'));
+
+  // 5. Org module detail should include verification warnings and default noop note
+  const orgVarsMd = results.files['organization/org-variables.md'] ?? '';
+  assert.ok(orgVarsMd.includes('### Module Warnings'));
+  assert.ok(
+    orgVarsMd.includes(
+      'Organization variable values are verified by name parity.',
+    ),
+  );
+  assert.ok(
+    orgVarsMd.includes(
+      'Configuration already matches target; verified parity.',
+    ),
+  );
+});
+
+test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI log summaries, strips org/repo prefixes, normalizes past-tense notes, deduplicates reports, and links Audit Repository', () => {
+  const duplicateOrgModule: ModuleExecutionResult = {
+    schemaVersion: '1.0.0',
+    moduleId: 'teams',
+    targetIdentifier: 'demogxp-mig4',
+    scopeLevel: 'organization',
+    status: 'complete',
+    durationMs: 2500,
+    results: [
+      {
+        operationId: 'team:create:platform-team',
+        status: 'succeeded',
+        resourceType: 'team',
+        resourceName: 'platform-team',
+        operationType: 'create',
+        reason: 'Create team platform-team on target organization.',
+        completedAt: '2026-10-16T08:00:00Z',
+      },
+    ],
+  };
+
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-audit-fixes',
+    executedAt: '2026-10-16T08:10:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: [
+      duplicateOrgModule,
+      duplicateOrgModule, // Duplicate entry should be ignored so durationMs is not doubled
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'gei-repo',
+        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 120000,
+        failedMetadataCategories: ['releases'],
+        results: [
+          {
+            operationId: 'gei-repo-migration-release-heavy-benchmark',
+            status: 'succeeded',
+            completedAt: '2026-10-16T08:01:00Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'releases',
+        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 480000,
+        results: [
+          {
+            operationId: 'release:release-heavy-benchmark:v1.0.0',
+            status: 'succeeded',
+            resourceType: 'release',
+            resourceName: 'v1.0.0',
+            operationType: 'create',
+            reason:
+              'Release "v1.0.0" does not exist on target; recreate oldest-first.',
+            completedAt: '2026-10-16T08:05:00Z',
+          },
+          {
+            operationId:
+              'release-asset:release-heavy-benchmark:v1.0.0:engine.tar.gz',
+            status: 'succeeded',
+            resourceType: 'release-asset',
+            resourceName: 'v1.0.0/engine.tar.gz',
+            operationType: 'create',
+            reason:
+              'Streamed release asset "engine.tar.gz" (1073741824 bytes) to release "v1.0.0".',
+            completedAt: '2026-10-16T08:06:00Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'repo-settings',
+        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 500,
+        results: [
+          {
+            operationId:
+              'repo-settings:update:demogxp-mig4/release-heavy-benchmark',
+            status: 'succeeded',
+            resourceType: 'repository-settings',
+            resourceName: 'demogxp-mig4/release-heavy-benchmark',
+            operationType: 'update',
+            reason:
+              'Update repository settings (auto-merge, branch deletion, merge strategies) on target.',
+            completedAt: '2026-10-16T08:06:10Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'gei-repo',
+        targetIdentifier: 'demogxp-mig4/chromium',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 300000,
+        failedMetadataCategories: ['issues', 'pull_requests', 'releases'],
+        results: [
+          {
+            operationId: 'gei-repo-mirror-push-chromium',
+            status: 'succeeded',
+            completedAt: '2026-10-16T08:07:00Z',
+          },
+        ],
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-audit-fixes',
+    verifiedAt: '2026-10-16T08:15:00Z',
+    scopeName: 'audit-fixes-scope',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig4',
+    modules: [
+      {
+        moduleId: 'teams',
+        verified: true,
+        discrepancies: [],
+        warnings: ['[demogxp-mig4] Team IdP group bindings verified.'],
+      },
+      {
+        moduleId: 'gei-repo',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'releases',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'repo-settings',
+        verified: true,
+        discrepancies: [],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 4,
+      unverifiedModuleCount: 0,
+      discrepancyCount: 0,
+    },
+  };
+
+  const results = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig4',
+    targetResultsRepo: 'migration-audit-results',
+    executionMode: 'live',
+    executionReport,
+    verificationReport,
+    scope: {
+      version: '1.0.0',
+      name: 'audit-fixes-scope',
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'release-heavy-benchmark',
+          targetOrg: 'demogxp-mig4',
+          targetRepo: 'release-heavy-benchmark',
+          useGei: true,
+        },
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'chromium',
+          targetOrg: 'demogxp-mig4',
+          targetRepo: 'chromium',
+          useGei: true,
+        },
+      ],
+    },
+  });
+
+  // 1. README has clickable Audit Repository link
+  const readmeMd = results.files['README.md'] ?? '';
+  assert.ok(
+    readmeMd.includes(
+      '> **Audit Repository:** [`migration-audit-results`](https://github.com/demogxp-mig4/migration-audit-results)',
+    ),
+    'README missing clickable Audit Repository link',
+  );
+
+  // 2. Duplicate org module execution is deduplicated (durationMs = 2500, not 5000) and [demogxp-mig4] warning prefix is stripped
+  assert.equal(
+    results.manifest.summary.orgModulesSummary['teams']?.durationMs,
+    2500,
+  );
+  const orgTeamsMd = results.files['organization/teams.md'] ?? '';
+  assert.ok(
+    orgTeamsMd.includes('Created team platform-team on target organization.'),
+    `orgTeamsMd missing past-tense note: ${orgTeamsMd}`,
+  );
+  assert.ok(
+    orgTeamsMd.includes('- Team IdP group bindings verified.'),
+    `orgTeamsMd missing stripped warning: ${orgTeamsMd}`,
+  );
+  assert.ok(
+    !orgTeamsMd.includes('[demogxp-mig4] Team IdP'),
+    'orgTeamsMd still has [demogxp-mig4] prefix',
+  );
+
+  // 3. gei-repo.md parses clean resource name and strategy note
+  const rhmGeiMd =
+    results.files['repositories/release-heavy-benchmark/gei-repo.md'] ?? '';
+  assert.ok(
+    rhmGeiMd.includes(
+      '| `release-heavy-benchmark` | `repository` | `create` | ✅ succeeded | `2026-10-16T08:01:00Z` | ✅ Verified |',
+    ),
+    `rhmGeiMd missing clean row: ${rhmGeiMd}`,
+  );
+  assert.ok(
+    rhmGeiMd.includes('--skip-releases'),
+    `rhmGeiMd missing --skip-releases: ${rhmGeiMd}`,
+  );
+
+  // 4. success/release-heavy-benchmark.md has strategy-aware GEI Log Summary & Notes
+  const rhmSuccessMd =
+    results.files['success/release-heavy-benchmark.md'] ?? '';
+  assert.ok(
+    rhmSuccessMd.includes('`--skip-releases`'),
+    `rhmSuccessMd missing --skip-releases: ${rhmSuccessMd}`,
+  );
+  assert.ok(
+    rhmSuccessMd.includes('1 release and 1 release asset'),
+    `rhmSuccessMd missing release counts: ${rhmSuccessMd}`,
+  );
+
+  // 5. success/chromium.md describes mirror-push transfer
+  const chromiumSuccessMd = results.files['success/chromium.md'] ?? '';
+  assert.ok(
+    chromiumSuccessMd.includes('mirror-push'),
+    `chromiumSuccessMd missing mirror-push: ${chromiumSuccessMd}`,
+  );
+
+  // 6. releases.md replaces "recreate oldest-first" with past-tense "Recreated release ..."
+  const rhmReleasesMd =
+    results.files['repositories/release-heavy-benchmark/releases.md'] ?? '';
+  assert.ok(
+    !rhmReleasesMd.includes('does not exist on target; recreate oldest-first.'),
+    'rhmReleasesMd still has recreate oldest-first',
+  );
+  assert.ok(
+    rhmReleasesMd.includes('Recreated release "v1.0.0" on target repository.'),
+    `rhmReleasesMd missing Recreated release note: ${rhmReleasesMd}`,
+  );
+
+  // 7. repo-settings.md strips demogxp-mig4/ prefix and uses past-tense "Updated repository settings..."
+  const rhmSettingsMd =
+    results.files['repositories/release-heavy-benchmark/repo-settings.md'] ??
+    '';
+  assert.ok(
+    rhmSettingsMd.includes(
+      '| `release-heavy-benchmark` | `repository-settings` | `update` |',
+    ),
+    `rhmSettingsMd missing stripped row: ${rhmSettingsMd}`,
+  );
+  assert.ok(
+    !rhmSettingsMd.includes('`demogxp-mig4/release-heavy-benchmark`'),
+    `rhmSettingsMd still has org prefix: ${rhmSettingsMd}`,
+  );
+  assert.ok(
+    rhmSettingsMd.includes(
+      'Updated repository settings (auto-merge, branch deletion, merge strategies) on target.',
+    ),
+    `rhmSettingsMd missing Updated note: ${rhmSettingsMd}`,
+  );
+});

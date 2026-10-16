@@ -100,6 +100,9 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
     const changed = source.values.filter(
       (value) => !same(value, target.get(value.propertyName)),
     );
+    const nonNullValues = source.values.filter(
+      (value) => value.value !== null && value.value !== undefined,
+    );
     return {
       moduleId: this.id,
       scopeLevel: this.scopeLevel,
@@ -111,6 +114,7 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
               resourceType: 'custom-property-values',
               resourceName: repo,
               operation: 'update',
+              reason: `Updating ${changed.length} custom property value(s) (${changed.map((v) => v.propertyName).join(', ')}) on ${repo}`,
               sourceState: source.values,
               payload: {
                 repository_names: [repo],
@@ -127,6 +131,11 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
               resourceType: 'custom-property-values',
               resourceName: repo,
               operation: 'noop',
+              sourceState: nonNullValues.length > 0 ? source.values : [],
+              reason:
+                nonNullValues.length > 0
+                  ? `Custom property value(s) (${nonNullValues.map((v) => v.propertyName).join(', ')}) already match target configuration`
+                  : 'No custom property values configured on source repository',
             },
           ],
       warnings: [],
@@ -137,14 +146,29 @@ export class RepoCustomPropertiesMigrationModule implements MigrationModule<Repo
     plan: ModulePlan,
   ): Promise<ModuleExecutionResult> {
     const op = plan.operations[0];
-    if (!op || op.operation === 'noop')
+    if (!op || op.operation === 'noop') {
+      const hasConfiguredValues =
+        Array.isArray(op?.sourceState) &&
+        (op.sourceState as readonly { value?: unknown }[]).some(
+          (v) => v?.value !== null && v?.value !== undefined,
+        );
       return {
         schemaVersion: MIGRATION_SCHEMA_VERSION,
         moduleId: this.id,
-        status: 'complete',
-        results: [],
+        status: hasConfiguredValues ? 'complete' : 'skipped',
+        results:
+          hasConfiguredValues && op
+            ? [
+                {
+                  operationId: op.id,
+                  status: 'succeeded',
+                  completedAt: new Date().toISOString(),
+                },
+              ]
+            : [],
         durationMs: 0,
       };
+    }
     if (!ctx.targetWriteClient && !ctx.dryRun)
       throw new Error('TargetWriteClient must be provided.');
     if (ctx.dryRun)

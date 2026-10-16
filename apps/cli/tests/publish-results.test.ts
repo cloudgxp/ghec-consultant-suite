@@ -32,7 +32,7 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
     assert.equal(parsed.executionReportPath, './scans/execution.json');
     assert.equal(parsed.verificationReportPath, './scans/verification.json');
     assert.equal(parsed.targetOrg, 'dest-org');
-    assert.equal(parsed.repoName, 'gei-migration-results');
+    assert.equal(parsed.repoName, 'migration-audit-results');
     assert.equal(parsed.outputDir, './scans/results-repo');
     assert.equal(parsed.dryRun, true);
     assert.equal(parsed.skipPush, false);
@@ -353,6 +353,66 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
         existsSync(join(outDir, 'repositories/payments-api/environments.md')),
       );
     } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rewrites relative links to full GitHub blob URLs when --append-step-summary is used', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'pub-step-summary-'));
+    const prevStepSummary = process.env['GITHUB_STEP_SUMMARY'];
+    const stepSummaryPath = join(tmpDir, 'step-summary.md');
+    process.env['GITHUB_STEP_SUMMARY'] = stepSummaryPath;
+
+    try {
+      const scopePath = join(tmpDir, 'scope.json');
+      writeFileSync(
+        scopePath,
+        JSON.stringify(
+          {
+            version: '1.0.0',
+            name: 'step-summary-scope',
+            organizations: [{ source: 'demogxp', target: 'demogxp-mig4' }],
+            repositories: [
+              {
+                sourceOrg: 'demogxp',
+                sourceRepo: 'release-heavy-benchmark',
+                targetOrg: 'demogxp-mig4',
+                targetRepo: 'release-heavy-benchmark',
+                useGei: true,
+              },
+            ],
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+
+      const outDir = join(tmpDir, 'results-step-summary');
+      const exitCode = await runCli([
+        'publish-results',
+        '--scope',
+        scopePath,
+        '--output-dir',
+        outDir,
+        '--skip-push',
+        '--append-step-summary',
+      ]);
+
+      assert.equal(exitCode, 0);
+      const stepSummaryMd = readFileSync(stepSummaryPath, 'utf-8');
+      assert.ok(
+        stepSummaryMd.includes(
+          '[View Log](https://github.com/demogxp-mig4/migration-audit-results/blob/main/success/release-heavy-benchmark.md)',
+        ),
+      );
+      assert.ok(!stepSummaryMd.includes('](success/'));
+    } finally {
+      if (prevStepSummary === undefined) {
+        delete process.env['GITHUB_STEP_SUMMARY'];
+      } else {
+        process.env['GITHUB_STEP_SUMMARY'] = prevStepSummary;
+      }
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });

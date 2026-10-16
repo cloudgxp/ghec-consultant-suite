@@ -114,16 +114,28 @@ export class HttpTargetWriteClient implements TargetWriteClient {
           // ignore read error
         }
 
+        const lowerBody = bodyText.toLowerCase();
         const isTransientLock =
           res.status === 403 &&
-          bodyText.toLowerCase().includes('repository has been locked');
+          lowerBody.includes('repository has been locked');
+        const isRateLimit =
+          res.status === 429 ||
+          (res.status === 403 &&
+            (lowerBody.includes('secondary rate limit') ||
+              lowerBody.includes('rate limit exceeded') ||
+              lowerBody.includes('abuse detection')));
         const isTransientServerErr = res.status >= 500 && res.status <= 504;
 
         if (
           attempt < maxAttempts &&
-          (isTransientLock || isTransientServerErr)
+          (isTransientLock || isRateLimit || isTransientServerErr)
         ) {
-          const delayMs = retryDelaysMs[attempt - 1] ?? 10000;
+          const retryAfter = res.headers.get('retry-after');
+          const parsedRetryAfter = retryAfter ? parseInt(retryAfter, 10) : NaN;
+          const delayMs =
+            !Number.isNaN(parsedRetryAfter) && parsedRetryAfter > 0
+              ? Math.min(parsedRetryAfter * 1000, 60000)
+              : (retryDelaysMs[attempt - 1] ?? 10000);
           await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
           continue;
         }

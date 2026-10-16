@@ -364,12 +364,37 @@ export function generateRemediationPlan(
     return undefined;
   };
 
+  const healedModuleTargets = new Set<string>();
+  const healedOperationIds = new Set<string>();
+  for (const execReport of executionReports ?? []) {
+    for (const modRes of execReport.results) {
+      const modTarget = modRes.targetIdentifier ?? '';
+      if (modRes.status === 'complete' || modRes.status === 'skipped') {
+        healedModuleTargets.add(`${modRes.moduleId}::${modTarget}`);
+      }
+      for (const op of modRes.results ?? []) {
+        if (op.status === 'succeeded' && op.operationId) {
+          healedOperationIds.add(
+            `${modRes.moduleId}::${op.targetIdentifier ?? modTarget}::${op.operationId}`,
+          );
+        }
+      }
+    }
+  }
+
   const executionFailures: ExtractedExecutionFailure[] = [];
   for (const execReport of executionReports ?? []) {
     for (const modRes of execReport.results) {
       const modTarget = modRes.targetIdentifier;
       const failedOps = (modRes.results ?? []).filter(
-        (op) => op.status === 'failed',
+        (op) =>
+          op.status === 'failed' &&
+          !(
+            op.operationId &&
+            healedOperationIds.has(
+              `${modRes.moduleId}::${op.targetIdentifier ?? modTarget ?? ''}::${op.operationId}`,
+            )
+          ),
       );
 
       if (failedOps.length > 0) {
@@ -403,7 +428,25 @@ export function generateRemediationPlan(
             matched: false,
           });
         }
-      } else if (modRes.status === 'failed' || modRes.status === 'partial') {
+      } else if (
+        (modRes.status === 'failed' || modRes.status === 'partial') &&
+        (modRes.results ?? []).filter((op) => op.status === 'failed').length ===
+          0
+      ) {
+        const isHealedGeiMetadataFallback =
+          modRes.moduleId === 'gei-repo' &&
+          modRes.status === 'partial' &&
+          Array.isArray(modRes.failedMetadataCategories) &&
+          modRes.failedMetadataCategories.length > 0 &&
+          modRes.failedMetadataCategories.every((cat) =>
+            healedModuleTargets.has(`${cat}::${modTarget ?? ''}`),
+          );
+        if (
+          isHealedGeiMetadataFallback ||
+          healedModuleTargets.has(`${modRes.moduleId}::${modTarget ?? ''}`)
+        ) {
+          continue;
+        }
         const repoName = extractRepoFromTarget(modTarget);
         const failedMeta =
           modRes.failedMetadataCategories &&
@@ -510,6 +553,11 @@ export function generateRemediationPlan(
       const sanitizedDiscMessage = sanitizeDiagnostics(disc.message);
 
       if (modId === 'repo-secrets' || modId === 'actions-secrets') {
+        const secretRepo =
+          extractRepoName(disc.resourceName) ??
+          disc.resourceName.split('/')[0] ??
+          '';
+        const repoFlag = secretRepo ? ` --repos "${secretRepo}"` : '';
         actions.push(
           withExecutionAttribution(
             {
@@ -518,7 +566,7 @@ export function generateRemediationPlan(
               moduleId: modId,
               resourceName: disc.resourceName,
               description: `Missing secret "${disc.resourceName}". Provisioning DEC-004 sealed blank placeholder at destination.`,
-              command: `# DEC-004: Reserve sealed blank placeholder footprint without exposing credentials\nprintf "" | gh secret set "${disc.resourceName}" --repo "${report.targetOrg}/${disc.resourceName.split('/')[0] ?? ''}"`,
+              command: `# DEC-004: Reserve sealed blank placeholder footprint without exposing credentials\nghec-consultant-cli migrate --modules "${modId}" --scope "./scopes/${report.scopeName}.json"${repoFlag} || printf "" | gh secret set "${disc.resourceName}" --repo "${report.targetOrg}/${secretRepo}"`,
               severity: 'critical',
             },
             modId,

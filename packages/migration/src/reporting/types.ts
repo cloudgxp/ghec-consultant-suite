@@ -49,6 +49,7 @@ export interface RehydrationSummary {
   readonly orgSettings?: ModuleOpCounts | undefined;
   readonly orgVariables?: ModuleOpCounts | undefined;
   readonly orgSecrets?: ModuleOpCounts | undefined;
+  readonly orgRulesets?: ModuleOpCounts | undefined;
   readonly customRoles?: ModuleOpCounts | undefined;
   readonly orgCustomProperties?: ModuleOpCounts | undefined;
   readonly repoCustomProperties?: ModuleOpCounts | undefined;
