@@ -161,6 +161,7 @@ export function formatStepSummaryMarkdown(
     addModuleRow('Organization Settings', rh.orgSettings);
     addModuleRow('Organization Variables', rh.orgVariables);
     addModuleRow('Organization Secrets (DEC-004)', rh.orgSecrets);
+    addModuleRow('Organization Rulesets', rh.orgRulesets);
     addModuleRow('Custom Repository Roles', rh.customRoles);
     addModuleRow('Organization Custom Properties', rh.orgCustomProperties);
     addModuleRow('Repository Custom Properties', rh.repoCustomProperties);

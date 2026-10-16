@@ -371,6 +371,9 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
             if (res.data?.id) {
               createdReleaseIds.set(op.resourceName, res.data.id);
             }
+            const isDraft = Boolean(
+              (op.payload as { draft?: boolean } | undefined)?.draft,
+            );
             results.push({
               operationId: op.id,
               status: 'succeeded',
@@ -378,9 +381,7 @@ export class ReleasesMigrationModule implements MigrationModule<ReleasesMigratio
               resourceType: op.resourceType,
               resourceName: op.resourceName,
               operationType: op.operation,
-              reason:
-                op.reason ??
-                `Created release "${op.resourceName}" on target repository.`,
+              reason: `Recreated${isDraft ? ' draft' : ''} release "${op.resourceName}" on target repository.`,
               completedAt: new Date().toISOString(),
             });
           } else {

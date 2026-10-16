@@ -488,47 +488,54 @@ export function sliceScaleAdaptiveMatrix(
       : 1;
 
   const standardItems: ClassifiedRepositoryStrategy[] = [];
+  const largeReleaseItems: ClassifiedRepositoryStrategy[] = [];
   const massiveItems: ClassifiedRepositoryStrategy[] = [];
 
   for (const profile of profiles) {
     const strategy = classifyRepository(profile, options);
     if (strategy.tier === 'massive-mirror') {
       massiveItems.push(strategy);
+    } else if (strategy.tier === 'large-releases') {
+      largeReleaseItems.push(strategy);
     } else {
       standardItems.push(strategy);
     }
   }
 
   const cohorts: SlicerCohortItem[] = [];
+  let standardCohortIdx = 0;
 
-  // Partition standard cohorts
-  for (let i = 0; i < standardItems.length; i += standardBatchSize) {
-    const chunk = standardItems.slice(i, i + standardBatchSize);
-    const first = chunk[0];
-    if (!first) continue;
-    const cohortId = `cohort-standard-${String(Math.floor(i / standardBatchSize) + 1).padStart(2, '0')}`;
-    const primaryTier = chunk.some((c) => c.tier === 'large-releases')
-      ? 'large-releases'
-      : chunk.some((c) => c.tier === 'git-lfs')
-        ? 'git-lfs'
-        : 'standard';
+  // Partition standard and large-releases cohorts without mixing skipReleases strategies
+  for (const group of [standardItems, largeReleaseItems]) {
+    for (let i = 0; i < group.length; i += standardBatchSize) {
+      const chunk = group.slice(i, i + standardBatchSize);
+      const first = chunk[0];
+      if (!first) continue;
+      standardCohortIdx += 1;
+      const cohortId = `cohort-standard-${String(standardCohortIdx).padStart(2, '0')}`;
+      const primaryTier = chunk.some((c) => c.tier === 'large-releases')
+        ? 'large-releases'
+        : chunk.some((c) => c.tier === 'git-lfs')
+          ? 'git-lfs'
+          : 'standard';
 
-    cohorts.push({
-      cohortId,
-      runnerLabels: [...first.assignedRunnerLabels],
-      repositories: chunk.map((c) => c.repositoryName),
-      tier: primaryTier,
-      useGei: chunk.some((c) => c.useGei),
-      skipReleases: chunk.some((c) => c.skipReleases),
-      useReleaseFallback: chunk.some((c) => c.useReleaseFallback),
-      useLfsStreamer: chunk.some((c) => c.useLfsStreamer),
-      useMirrorPush: false,
-      requiresHeadroomCheck: false,
-      estimatedScratchBytes: chunk.reduce(
-        (sum, c) => sum + c.estimatedScratchBytes,
-        0,
-      ),
-    });
+      cohorts.push({
+        cohortId,
+        runnerLabels: [...first.assignedRunnerLabels],
+        repositories: chunk.map((c) => c.repositoryName),
+        tier: primaryTier,
+        useGei: chunk.some((c) => c.useGei),
+        skipReleases: chunk.some((c) => c.skipReleases),
+        useReleaseFallback: chunk.some((c) => c.useReleaseFallback),
+        useLfsStreamer: chunk.some((c) => c.useLfsStreamer),
+        useMirrorPush: false,
+        requiresHeadroomCheck: false,
+        estimatedScratchBytes: chunk.reduce(
+          (sum, c) => sum + c.estimatedScratchBytes,
+          0,
+        ),
+      });
+    }
   }
 
   // Partition massive cohorts

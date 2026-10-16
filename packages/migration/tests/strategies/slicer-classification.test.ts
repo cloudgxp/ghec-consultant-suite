@@ -168,6 +168,51 @@ describe('Scale-Adaptive Repository Sizing & Strategy Classification', () => {
     assert.equal(massiveCohort.requiresHeadroomCheck, true);
   });
 
+  it('isolates large-releases repositories into separate cohorts from standard repositories so skipReleases does not leak', () => {
+    const profiles: RepositorySizingProfile[] = [
+      {
+        repositoryName: 'test-packages',
+        gitDiskUsageBytes: 100 * 1024 * 1024,
+        gitLfsObjectCount: 0,
+        gitLfsTotalBytes: 0,
+        releaseCount: 2,
+        releaseAssetsTotalBytes: 10 * 1024 * 1024,
+        estimatedScratchBytes: 160 * 1024 * 1024,
+        sourceVisibility: 'private',
+      },
+      {
+        repositoryName: 'release-heavy-benchmark',
+        gitDiskUsageBytes: 500 * 1024 * 1024,
+        gitLfsObjectCount: 0,
+        gitLfsTotalBytes: 0,
+        releaseCount: 12,
+        releaseAssetsTotalBytes: TEN_GIB + 500 * 1024 * 1024,
+        estimatedScratchBytes: 750 * 1024 * 1024,
+        sourceVisibility: 'private',
+      },
+    ];
+
+    const matrix = sliceScaleAdaptiveMatrix(profiles, {
+      batchSize: 5,
+      defaultRunnerLabels: ['ubuntu-latest'],
+    });
+
+    assert.equal(matrix.cohortCount, 2);
+    const stdCohort = matrix.matrix.include.find((c) =>
+      c.repositories.includes('test-packages'),
+    );
+    const largeRelCohort = matrix.matrix.include.find((c) =>
+      c.repositories.includes('release-heavy-benchmark'),
+    );
+    assert.ok(stdCohort);
+    assert.ok(largeRelCohort);
+    assert.equal(stdCohort.tier, 'standard');
+    assert.equal(stdCohort.skipReleases, false);
+    assert.equal(largeRelCohort.tier, 'large-releases');
+    assert.equal(largeRelCohort.skipReleases, true);
+    assert.equal(largeRelCohort.useReleaseFallback, true);
+  });
+
   it('assessRepositorySizing paginates all releases via fetchAll and computes >10 GiB total assets', async () => {
     const { assessRepositorySizing } =
       await import('../../src/orchestrator/sizing.js');

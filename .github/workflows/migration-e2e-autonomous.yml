@@ -349,10 +349,18 @@ jobs:
                   })
                   .map(r => {
                     if (typeof r !== "object" || !r) return r;
+                    const name = r.sourceRepo || r.name;
+                    const prof = profiles.find(p => p.repositoryName === name);
+                    const repoSkipReleases = Boolean(
+                      r.skipReleases ||
+                      r.options?.skipReleases ||
+                      cohort.useMirrorPush ||
+                      (prof && prof.releaseAssetsTotalBytes > 10 * 1024 * 1024 * 1024)
+                    );
                     return {
                       ...r,
                       ...(cohort.useMirrorPush ? { gitTransferStrategy: "mirror-push" } : {}),
-                      ...(cohort.skipReleases ? { skipReleases: true } : {}),
+                      ...(repoSkipReleases ? { skipReleases: true } : {}),
                     };
                   })
               };
@@ -742,11 +750,6 @@ jobs:
             exit 0
           fi
 
-          if [ -f ./scans/post-cohort-reconcile-report.json ]; then
-            mkdir -p ./downloaded-cohorts/scans
-            cp ./scans/post-cohort-reconcile-report.json ./downloaded-cohorts/scans/cohort-report-zz-post-reconcile.json
-          fi
-
           while [ "$ROUND" -le "$MAX_ROUNDS" ]; do
             echo "=================================================="
             echo "Starting Autonomous Remediation Round $ROUND of $MAX_ROUNDS"
@@ -815,6 +818,9 @@ jobs:
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_SCOPE: ${{ inputs.scope }}
         run: |
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            : > "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f ./scans/verification-report.json ]; then
             EXEC_REPORTS="./downloaded-cohorts"
             if [ -f ./downloaded-slicer/scans/pre-cohort-org-report.json ]; then
@@ -822,6 +828,9 @@ jobs:
             fi
             if [ -f ./scans/post-cohort-reconcile-report.json ]; then
               EXEC_REPORTS="${EXEC_REPORTS},./scans/post-cohort-reconcile-report.json"
+            fi
+            if [ -f ./scans/migration-execution.json ]; then
+              EXEC_REPORTS="${EXEC_REPORTS},./scans/migration-execution.json"
             fi
             echo "Publishing 3-tier migration audit results repository (migration-audit-results) to target organization..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
@@ -863,7 +872,13 @@ jobs:
             for f in ./remediations/*.json; do
               [ -e "$f" ] || continue
               REM_COUNT=$((REM_COUNT + 1))
-              echo "- Produced remediation plan: \`$f\`" >> "$GITHUB_STEP_SUMMARY"
+              ACT_CNT=$(jq '.actionableCount // (.actions | length) // 0' "$f" 2>/dev/null || echo 0)
+              ACT_DESC=$(jq -r '[.actions[]? | "\(.moduleId) (\(.target)): \(.description)"] | join("; ")' "$f" 2>/dev/null || echo "")
+              if [ -n "$ACT_DESC" ]; then
+                echo "- Produced remediation plan: \`$f\` (\`$ACT_CNT\` action(s): $ACT_DESC)" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "- Produced remediation plan: \`$f\` (\`$ACT_CNT\` action(s))" >> "$GITHUB_STEP_SUMMARY"
+              fi
             done
             if [ "$REM_COUNT" -eq 0 ]; then
               echo "- No remediation rounds required (0 discrepancies on initial verification)." >> "$GITHUB_STEP_SUMMARY"

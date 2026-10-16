@@ -1101,3 +1101,282 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
     ),
   );
 });
+
+test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI log summaries, strips org/repo prefixes, normalizes past-tense notes, deduplicates reports, and links Audit Repository', () => {
+  const duplicateOrgModule: ModuleExecutionResult = {
+    schemaVersion: '1.0.0',
+    moduleId: 'teams',
+    targetIdentifier: 'demogxp-mig4',
+    scopeLevel: 'organization',
+    status: 'complete',
+    durationMs: 2500,
+    results: [
+      {
+        operationId: 'team:create:platform-team',
+        status: 'succeeded',
+        resourceType: 'team',
+        resourceName: 'platform-team',
+        operationType: 'create',
+        reason: 'Create team platform-team on target organization.',
+        completedAt: '2026-10-16T08:00:00Z',
+      },
+    ],
+  };
+
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-audit-fixes',
+    executedAt: '2026-10-16T08:10:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: [
+      duplicateOrgModule,
+      duplicateOrgModule, // Duplicate entry should be ignored so durationMs is not doubled
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'gei-repo',
+        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 120000,
+        failedMetadataCategories: ['releases'],
+        results: [
+          {
+            operationId: 'gei-repo-migration-release-heavy-benchmark',
+            status: 'succeeded',
+            completedAt: '2026-10-16T08:01:00Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'releases',
+        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 480000,
+        results: [
+          {
+            operationId: 'release:release-heavy-benchmark:v1.0.0',
+            status: 'succeeded',
+            resourceType: 'release',
+            resourceName: 'v1.0.0',
+            operationType: 'create',
+            reason:
+              'Release "v1.0.0" does not exist on target; recreate oldest-first.',
+            completedAt: '2026-10-16T08:05:00Z',
+          },
+          {
+            operationId:
+              'release-asset:release-heavy-benchmark:v1.0.0:engine.tar.gz',
+            status: 'succeeded',
+            resourceType: 'release-asset',
+            resourceName: 'v1.0.0/engine.tar.gz',
+            operationType: 'create',
+            reason:
+              'Streamed release asset "engine.tar.gz" (1073741824 bytes) to release "v1.0.0".',
+            completedAt: '2026-10-16T08:06:00Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'repo-settings',
+        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 500,
+        results: [
+          {
+            operationId:
+              'repo-settings:update:demogxp-mig4/release-heavy-benchmark',
+            status: 'succeeded',
+            resourceType: 'repository-settings',
+            resourceName: 'demogxp-mig4/release-heavy-benchmark',
+            operationType: 'update',
+            reason:
+              'Update repository settings (auto-merge, branch deletion, merge strategies) on target.',
+            completedAt: '2026-10-16T08:06:10Z',
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'gei-repo',
+        targetIdentifier: 'demogxp-mig4/chromium',
+        scopeLevel: 'repository',
+        status: 'complete',
+        durationMs: 300000,
+        failedMetadataCategories: ['issues', 'pull_requests', 'releases'],
+        results: [
+          {
+            operationId: 'gei-repo-mirror-push-chromium',
+            status: 'succeeded',
+            completedAt: '2026-10-16T08:07:00Z',
+          },
+        ],
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-audit-fixes',
+    verifiedAt: '2026-10-16T08:15:00Z',
+    scopeName: 'audit-fixes-scope',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig4',
+    modules: [
+      {
+        moduleId: 'teams',
+        verified: true,
+        discrepancies: [],
+        warnings: ['[demogxp-mig4] Team IdP group bindings verified.'],
+      },
+      {
+        moduleId: 'gei-repo',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'releases',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'repo-settings',
+        verified: true,
+        discrepancies: [],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 4,
+      unverifiedModuleCount: 0,
+      discrepancyCount: 0,
+    },
+  };
+
+  const results = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig4',
+    targetResultsRepo: 'migration-audit-results',
+    executionMode: 'live',
+    executionReport,
+    verificationReport,
+    scope: {
+      version: '1.0.0',
+      name: 'audit-fixes-scope',
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'release-heavy-benchmark',
+          targetOrg: 'demogxp-mig4',
+          targetRepo: 'release-heavy-benchmark',
+          useGei: true,
+        },
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'chromium',
+          targetOrg: 'demogxp-mig4',
+          targetRepo: 'chromium',
+          useGei: true,
+        },
+      ],
+    },
+  });
+
+  // 1. README has clickable Audit Repository link
+  const readmeMd = results.files['README.md'] ?? '';
+  assert.ok(
+    readmeMd.includes(
+      '> **Audit Repository:** [`migration-audit-results`](https://github.com/demogxp-mig4/migration-audit-results)',
+    ),
+    'README missing clickable Audit Repository link',
+  );
+
+  // 2. Duplicate org module execution is deduplicated (durationMs = 2500, not 5000) and [demogxp-mig4] warning prefix is stripped
+  assert.equal(
+    results.manifest.summary.orgModulesSummary['teams']?.durationMs,
+    2500,
+  );
+  const orgTeamsMd = results.files['organization/teams.md'] ?? '';
+  assert.ok(
+    orgTeamsMd.includes('Created team platform-team on target organization.'),
+    `orgTeamsMd missing past-tense note: ${orgTeamsMd}`,
+  );
+  assert.ok(
+    orgTeamsMd.includes('- Team IdP group bindings verified.'),
+    `orgTeamsMd missing stripped warning: ${orgTeamsMd}`,
+  );
+  assert.ok(
+    !orgTeamsMd.includes('[demogxp-mig4] Team IdP'),
+    'orgTeamsMd still has [demogxp-mig4] prefix',
+  );
+
+  // 3. gei-repo.md parses clean resource name and strategy note
+  const rhmGeiMd =
+    results.files['repositories/release-heavy-benchmark/gei-repo.md'] ?? '';
+  assert.ok(
+    rhmGeiMd.includes(
+      '| `release-heavy-benchmark` | `repository` | `create` | ✅ succeeded | `2026-10-16T08:01:00Z` | ✅ Verified |',
+    ),
+    `rhmGeiMd missing clean row: ${rhmGeiMd}`,
+  );
+  assert.ok(
+    rhmGeiMd.includes('--skip-releases'),
+    `rhmGeiMd missing --skip-releases: ${rhmGeiMd}`,
+  );
+
+  // 4. success/release-heavy-benchmark.md has strategy-aware GEI Log Summary & Notes
+  const rhmSuccessMd =
+    results.files['success/release-heavy-benchmark.md'] ?? '';
+  assert.ok(
+    rhmSuccessMd.includes('`--skip-releases`'),
+    `rhmSuccessMd missing --skip-releases: ${rhmSuccessMd}`,
+  );
+  assert.ok(
+    rhmSuccessMd.includes('1 release and 1 release asset'),
+    `rhmSuccessMd missing release counts: ${rhmSuccessMd}`,
+  );
+
+  // 5. success/chromium.md describes mirror-push transfer
+  const chromiumSuccessMd = results.files['success/chromium.md'] ?? '';
+  assert.ok(
+    chromiumSuccessMd.includes('mirror-push'),
+    `chromiumSuccessMd missing mirror-push: ${chromiumSuccessMd}`,
+  );
+
+  // 6. releases.md replaces "recreate oldest-first" with past-tense "Recreated release ..."
+  const rhmReleasesMd =
+    results.files['repositories/release-heavy-benchmark/releases.md'] ?? '';
+  assert.ok(
+    !rhmReleasesMd.includes('does not exist on target; recreate oldest-first.'),
+    'rhmReleasesMd still has recreate oldest-first',
+  );
+  assert.ok(
+    rhmReleasesMd.includes('Recreated release "v1.0.0" on target repository.'),
+    `rhmReleasesMd missing Recreated release note: ${rhmReleasesMd}`,
+  );
+
+  // 7. repo-settings.md strips demogxp-mig4/ prefix and uses past-tense "Updated repository settings..."
+  const rhmSettingsMd =
+    results.files['repositories/release-heavy-benchmark/repo-settings.md'] ??
+    '';
+  assert.ok(
+    rhmSettingsMd.includes(
+      '| `release-heavy-benchmark` | `repository-settings` | `update` |',
+    ),
+    `rhmSettingsMd missing stripped row: ${rhmSettingsMd}`,
+  );
+  assert.ok(
+    !rhmSettingsMd.includes('`demogxp-mig4/release-heavy-benchmark`'),
+    `rhmSettingsMd still has org prefix: ${rhmSettingsMd}`,
+  );
+  assert.ok(
+    rhmSettingsMd.includes(
+      'Updated repository settings (auto-merge, branch deletion, merge strategies) on target.',
+    ),
+    `rhmSettingsMd missing Updated note: ${rhmSettingsMd}`,
+  );
+});

@@ -160,7 +160,7 @@ export function formatResultsReadmeMarkdown(
     `> **Execution Mode:** \`${modeDisplay}\`  `,
     `> **Generated At:** \`${manifest.generatedAt}\`  `,
     `> **Duration:** ${durationSec}s (${manifest.summary.durationMs}ms)  `,
-    `> **Audit Repository:** \`${manifest.targetResultsRepo}\`  `,
+    `> **Audit Repository:** [\`${manifest.targetResultsRepo}\`](https://github.com/${manifest.targetOrg}/${manifest.targetResultsRepo})  `,
     '',
     '---',
     '',

@@ -15,7 +15,10 @@ import {
   type VerificationReport,
   validateMigrationResultsManifest,
 } from '@ghec/contracts';
-import { ALL_ORGANIZATION_MODULES } from '../orchestrator/module-resolver.js';
+import {
+  ALL_ORGANIZATION_MODULES,
+  ALL_REPOSITORY_MODULES,
+} from '../orchestrator/module-resolver.js';
 import type {
   MigrationExecutionReport,
   RepositoryPipelineResult,
@@ -291,7 +294,14 @@ function parseResourceNameFromOperationId(
   if (!operationId.includes(':')) {
     const prefix = `${moduleId}-`;
     if (operationId.startsWith(prefix) && operationId.length > prefix.length) {
-      return operationId.slice(prefix.length);
+      const rest = operationId.slice(prefix.length);
+      if (moduleId === 'gei-repo') {
+        return rest.replace(
+          /^(mirror-push-error|mirror-push|mirror-fallback|migration|metadata|preflight|error)-/,
+          '',
+        );
+      }
+      return rest;
     }
     return operationId;
   }
@@ -341,8 +351,10 @@ function stripRepoPrefix(
   resourceName: string,
   repoNames: readonly string[],
 ): string {
-  for (const repo of repoNames) {
-    if (!repo) continue;
+  const sortedRepos = [...repoNames]
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+  for (const repo of sortedRepos) {
     for (const sep of [':', '/']) {
       const prefix = `${repo}${sep}`;
       if (resourceName.toLowerCase().startsWith(prefix.toLowerCase())) {
@@ -350,7 +362,33 @@ function stripRepoPrefix(
       }
     }
   }
+  for (const repo of sortedRepos) {
+    if (
+      repo.includes('/') &&
+      resourceName.toLowerCase() === repo.toLowerCase()
+    ) {
+      return repo.slice(repo.lastIndexOf('/') + 1);
+    }
+  }
   return resourceName;
+}
+
+function normalizeSucceededOperationReason(reason: string): string {
+  return reason
+    .replace(/^Recreat(?:e|ing)\b/, 'Recreated')
+    .replace(/^Creat(?:e|ing)\b/, 'Created')
+    .replace(/^Updat(?:e|ing)\b/, 'Updated')
+    .replace(/^Bind(?:ing)?\b/, 'Bound')
+    .replace(/^Reconcil(?:e|ing)\b/, 'Reconciled')
+    .replace(/^Rehydrat(?:e|ing)\b/, 'Rehydrated')
+    .replace(/^Assign(?:ing)?\b/, 'Assigned')
+    .replace(/^Align(?:ing)?\b/, 'Aligned')
+    .replace(/^Migrat(?:e|ing)\b/, 'Migrated')
+    .replace(/^Stream(?:ing)?\b/, 'Streamed')
+    .replace(/^Transfer(?:ring)?\b/, 'Transferred')
+    .replace(/^Enabl(?:e|ing)\b/, 'Enabled')
+    .replace(/^Sync(?:ing)?\b/, 'Synced')
+    .replace(/^Provision(?:ing)?\b/, 'Provisioned');
 }
 
 function formatStateValue(val: unknown): string {
@@ -429,14 +467,27 @@ function buildGranularItemsForModule(params: {
     }
     const reason = op.reason ?? planned?.reason;
     if (reason && !op.error) {
+      const isReleaseRecreatePlanReason =
+        op.status === 'succeeded' &&
+        !matchedDisc &&
+        moduleId === 'releases' &&
+        resourceType === 'release' &&
+        operationType === 'create' &&
+        /\b(recreate oldest-first|is missing|does not exist)\b/i.test(reason);
       const isPreApplyAbsenceOrDriftReason =
         op.status === 'succeeded' &&
         !matchedDisc &&
+        !isReleaseRecreatePlanReason &&
         (operationType === 'create' || operationType === 'update') &&
         /\b(is missing|does not exist|differ(?:s)?|not found on target|missing in destination)\b/i.test(
           reason,
         );
-      if (isPreApplyAbsenceOrDriftReason) {
+      if (isReleaseRecreatePlanReason) {
+        const isDraftRelease = /^draft release\b/i.test(reason);
+        noteParts.push(
+          `Recreated${isDraftRelease ? ' draft' : ''} release "${resourceName}" on target repository.`,
+        );
+      } else if (isPreApplyAbsenceOrDriftReason) {
         if (secretFlag) {
           noteParts.push('[SEALED] Write-only secret placeholder');
         } else {
@@ -450,6 +501,8 @@ function buildGranularItemsForModule(params: {
                 : 'Updated on target.',
           );
         }
+      } else if (op.status === 'succeeded' && !matchedDisc) {
+        noteParts.push(normalizeSucceededOperationReason(reason));
       } else {
         noteParts.push(reason);
       }
@@ -677,8 +730,10 @@ export function generateMigrationResults(
         if (isOrgMod) {
           const existing = orgWarningsByModule.get(mod.moduleId) ?? [];
           for (const w of mod.warnings) {
-            if (!existing.includes(w)) {
-              existing.push(w);
+            const bracketMatch = /^\[([^\]]+)\]\s*(.*)$/.exec(w);
+            const cleanWarning = bracketMatch?.[2] || w;
+            if (!existing.includes(cleanWarning)) {
+              existing.push(cleanWarning);
             }
           }
           orgWarningsByModule.set(mod.moduleId, existing);
@@ -787,6 +842,41 @@ export function generateMigrationResults(
     Map<string, ModuleExecutionResult[]>
   >();
 
+  const isDuplicateModuleExec = (
+    existingList: readonly ModuleExecutionResult[],
+    incoming: ModuleExecutionResult,
+  ): boolean => {
+    const firstOpTs = incoming.results[0]?.completedAt ?? '';
+    const lastOpTs =
+      incoming.results[incoming.results.length - 1]?.completedAt ?? '';
+    return existingList.some((e) => {
+      const eFirstTs = e.results[0]?.completedAt ?? '';
+      const eLastTs = e.results[e.results.length - 1]?.completedAt ?? '';
+      if (
+        e.moduleId === incoming.moduleId &&
+        e.status === incoming.status &&
+        e.durationMs === incoming.durationMs &&
+        e.results.length === incoming.results.length &&
+        eFirstTs === firstOpTs &&
+        eLastTs === lastOpTs
+      ) {
+        return (
+          incoming.results.length > 0 ||
+          (incoming.durationMs !== undefined && incoming.durationMs > 0)
+        );
+      }
+      return false;
+    });
+  };
+
+  const recordOrgModuleExec = (modResult: ModuleExecutionResult): void => {
+    const list = orgExecResultsByModule.get(modResult.moduleId) ?? [];
+    if (!isDuplicateModuleExec(list, modResult)) {
+      list.push(modResult);
+      orgExecResultsByModule.set(modResult.moduleId, list);
+    }
+  };
+
   const recordRepoModuleExec = (
     targetRepo: string,
     modResult: ModuleExecutionResult,
@@ -801,8 +891,10 @@ export function generateMigrationResults(
       repoExecResultsByRepo.set(targetRepo, modMap);
     }
     const list = modMap.get(modResult.moduleId) ?? [];
-    list.push(modResult);
-    modMap.set(modResult.moduleId, list);
+    if (!isDuplicateModuleExec(list, modResult)) {
+      list.push(modResult);
+      modMap.set(modResult.moduleId, list);
+    }
   };
 
   if (options.executionReport?.results) {
@@ -830,9 +922,7 @@ export function generateMigrationResults(
       );
 
       if (isOrg) {
-        const list = orgExecResultsByModule.get(modResult.moduleId) ?? [];
-        list.push(modResult);
-        orgExecResultsByModule.set(modResult.moduleId, list);
+        recordOrgModuleExec(modResult);
       } else {
         let targetRepo = resolveCanonicalTargetRepo(effectiveTargetId);
         if (!targetRepo) {
@@ -869,9 +959,7 @@ export function generateMigrationResults(
             knownRepoNames,
           })
         ) {
-          const list = orgExecResultsByModule.get(modResult.moduleId) ?? [];
-          list.push(modResult);
-          orgExecResultsByModule.set(modResult.moduleId, list);
+          recordOrgModuleExec(modResult);
         } else {
           recordRepoModuleExec(pipeResult.targetRepo, modResult);
         }
@@ -918,7 +1006,20 @@ export function generateMigrationResults(
     const skipped = allOps.filter(
       (o: OperationExecutionResult) => o.status === 'skipped',
     ).length;
-    const durationMs = modExecList.reduce(
+    const activeExecPasses = modExecList.filter((m) =>
+      m.results.some(
+        (r) =>
+          r.operationType === 'create' ||
+          r.operationType === 'update' ||
+          r.status === 'failed' ||
+          (!r.operationType &&
+            !r.operationId.toLowerCase().includes(':noop') &&
+            !r.operationId.toLowerCase().startsWith('noop-')),
+      ),
+    );
+    const passesForDuration =
+      activeExecPasses.length > 0 ? activeExecPasses : modExecList;
+    const durationMs = passesForDuration.reduce(
       (acc, m) => acc + (m.durationMs || 0),
       0,
     );
@@ -982,6 +1083,80 @@ export function generateMigrationResults(
   const repoFailureDetails = new Map<string, RepositoryFailureDetails>();
   const repoModuleDetailModels = new Map<string, RepositoryModuleDetailModel>();
 
+  const synthesizeRepoGeiLogSummary = (params: {
+    readonly targetRepo: string;
+    readonly modMap?: ReadonlyMap<string, ModuleExecutionResult[]> | undefined;
+    readonly moduleSummaries: Readonly<Record<string, RepoModuleResultSummary>>;
+    readonly geiMigrationId?: string | undefined;
+  }): string => {
+    const { modMap, moduleSummaries, geiMigrationId } = params;
+    const geiExecList = modMap?.get('gei-repo') ?? [];
+    const geiOps = geiExecList.flatMap((m) => m.results);
+
+    const usedDirectMirrorPush = geiOps.some((o) =>
+      o.operationId.startsWith('gei-repo-mirror-push-'),
+    );
+    const usedFallbackMirrorPush = geiOps.some((o) =>
+      o.operationId.startsWith('gei-repo-mirror-fallback-'),
+    );
+    const hadSkippedReleases = geiExecList.some((m) =>
+      m.failedMetadataCategories?.includes('releases'),
+    );
+
+    const sidecarParts: string[] = [];
+    for (const sidecarMod of ['releases', 'lfs', 'issues', 'pull-requests']) {
+      const sum = moduleSummaries[sidecarMod];
+      if (sum && sum.succeededOperations > 0) {
+        sidecarParts.push(
+          `\`${sidecarMod}\`: ${sum.succeededOperations} item${sum.succeededOperations === 1 ? '' : 's'}`,
+        );
+      }
+    }
+
+    if (usedDirectMirrorPush) {
+      const sidecarNote =
+        sidecarParts.length > 0
+          ? `Metadata rehydrated and verified via sidecar modules (${sidecarParts.join(', ')}).`
+          : 'Metadata verified with 0 discrepancies on target.';
+      return `Repository Git history transferred via direct Git mirror-push (bypassing GEI archive size limits). ${sidecarNote}`;
+    }
+
+    if (usedFallbackMirrorPush) {
+      const sidecarNote =
+        sidecarParts.length > 0
+          ? `Metadata rehydrated and verified via sidecar modules (${sidecarParts.join(', ')}).`
+          : 'Metadata verified with 0 discrepancies on target.';
+      return `Repository Git history transferred via automatic fallback Git mirror-push after GEI archive generation failure. ${sidecarNote}`;
+    }
+
+    if (hadSkippedReleases) {
+      const releasesExec = modMap?.get('releases') ?? [];
+      const releaseOps = deduplicateOperationResults(
+        releasesExec.flatMap((m) => m.results),
+      ).filter((o) => o.status === 'succeeded');
+      const releaseTagCount = releaseOps.filter(
+        (o) => o.resourceType === 'release',
+      ).length;
+      const releaseAssetCount = releaseOps.filter(
+        (o) => o.resourceType === 'release-asset',
+      ).length;
+      if (releaseOps.length > 0) {
+        const detailText =
+          releaseTagCount > 0 && releaseAssetCount > 0
+            ? `${releaseTagCount} release${releaseTagCount === 1 ? '' : 's'} and ${releaseAssetCount} release asset${releaseAssetCount === 1 ? '' : 's'} (${releaseOps.length} items)`
+            : `${releaseOps.length} item${releaseOps.length === 1 ? '' : 's'}`;
+        return `Repository Git history and core metadata transferred via GitHub Enterprise Importer (GEI) with \`--skip-releases\` enabled for large release payloads. Sidecar \`releases\` module streamed and verified ${detailText} with 0 discrepancies.`;
+      }
+      return 'Repository transferred cleanly via GitHub Enterprise Importer (GEI) with `--skip-releases` flag active (0 source releases present); verified with 0 discrepancies.';
+    }
+
+    if (geiMigrationId) {
+      return `GEI Migration ID: ${geiMigrationId}`;
+    }
+
+    return 'Repository transferred cleanly via GEI without errors or metadata drops.';
+  };
+
   const buildRepoModuleSummariesAndModels = (params: {
     readonly sourceRepo: string;
     readonly targetRepo: string;
@@ -999,9 +1174,9 @@ export function generateMigrationResults(
       repoError,
     } = params;
 
-    const modExecMap =
-      repoExecResultsByRepo.get(targetRepo) ??
-      new Map<string, ModuleExecutionResult[]>();
+    const modExecMap = new Map<string, ModuleExecutionResult[]>(
+      repoExecResultsByRepo.get(targetRepo) ?? [],
+    );
 
     // Ensure any module with verification discrepancies for this repo is represented
     const allRepoDiscs =
@@ -1011,6 +1186,15 @@ export function generateMigrationResults(
     for (const disc of allRepoDiscs) {
       if (disc.moduleId && !modExecMap.has(disc.moduleId)) {
         modExecMap.set(disc.moduleId, []);
+      }
+    }
+
+    // For full-spectrum repository migrations, ensure all verified ALL_REPOSITORY_MODULES are represented
+    if (modExecMap.size >= 10) {
+      for (const repoModId of ALL_REPOSITORY_MODULES) {
+        if (verifiedModulesSet.has(repoModId) && !modExecMap.has(repoModId)) {
+          modExecMap.set(repoModId, []);
+        }
       }
     }
 
@@ -1086,7 +1270,8 @@ export function generateMigrationResults(
       );
       if (moduleId === 'gei-repo' && allOps.length === 0) {
         const geiFailed =
-          execList.every((m) => m.status === 'failed') ||
+          (execList.length > 0 &&
+            execList.every((m) => m.status === 'failed')) ||
           (repoStatus === 'failed' &&
             Boolean(repoError) &&
             allRepoDiscs.length === 0);
@@ -1113,6 +1298,54 @@ export function generateMigrationResults(
             targetIdentifier: `${options.targetOrg}/${targetRepo}`,
           },
         ];
+      } else if (moduleId === 'gei-repo' && allOps.length > 0) {
+        const hadSkippedReleases = execList.some((m) =>
+          m.failedMetadataCategories?.includes('releases'),
+        );
+        const hasSidecarReleases = (modExecMap.get('releases') ?? []).some(
+          (m) =>
+            m.results.some(
+              (r) =>
+                r.status === 'succeeded' &&
+                (r.operationType === 'create' ||
+                  (!r.operationType &&
+                    !r.operationId.toLowerCase().includes(':noop'))),
+            ),
+        );
+        allOps = allOps.map((op) => {
+          if (op.reason) return op;
+          if (op.operationId.startsWith('gei-repo-mirror-push-')) {
+            return {
+              ...op,
+              resourceType: op.resourceType ?? 'repository',
+              resourceName: op.resourceName ?? targetRepo,
+              operationType: op.operationType ?? 'create',
+              reason: `Transferred repository "${targetRepo}" via direct Git mirror-push; metadata rehydrated via sidecar modules.`,
+            };
+          }
+          if (op.operationId.startsWith('gei-repo-mirror-fallback-')) {
+            return {
+              ...op,
+              resourceType: op.resourceType ?? 'repository',
+              resourceName: op.resourceName ?? targetRepo,
+              operationType: op.operationType ?? 'create',
+              reason: `Transferred repository "${targetRepo}" via fallback Git mirror-push after GEI archive generation failure; metadata rehydrated via sidecar modules.`,
+            };
+          }
+          if (op.operationId.startsWith('gei-repo-migration-')) {
+            return {
+              ...op,
+              resourceType: op.resourceType ?? 'repository',
+              resourceName: op.resourceName ?? targetRepo,
+              operationType: op.operationType ?? 'create',
+              reason:
+                hadSkippedReleases && hasSidecarReleases
+                  ? `Transferred repository "${targetRepo}" via GitHub Enterprise Importer (GEI) with --skip-releases; releases and assets streamed via sidecar module.`
+                  : `Transferred repository "${targetRepo}" via GitHub Enterprise Importer (GEI).`,
+            };
+          }
+          return op;
+        });
       }
       const modDiscs = [
         ...(repoModuleDiscrepancies.get(`${targetRepo}::${moduleId}`) ?? []),
@@ -1284,6 +1517,7 @@ export function generateMigrationResults(
       });
 
       if (isClean) {
+        const modMap = repoExecResultsByRepo.get(pipeResult.targetRepo);
         repositories.push({
           sourceRepo: pipeResult.sourceRepo,
           targetRepo: pipeResult.targetRepo,
@@ -1298,9 +1532,12 @@ export function generateMigrationResults(
         });
         repoSuccessDetails.set(pipeResult.targetRepo, {
           name: pipeResult.targetRepo,
-          geiLogSummary: pipeResult.geiResult?.migrationId
-            ? `GEI Migration ID: ${pipeResult.geiResult.migrationId}`
-            : undefined,
+          geiLogSummary: synthesizeRepoGeiLogSummary({
+            targetRepo: pipeResult.targetRepo,
+            modMap,
+            moduleSummaries,
+            geiMigrationId: pipeResult.geiResult?.migrationId,
+          }),
         });
       } else {
         const failedMod = pipeResult.moduleResults.find(
@@ -1413,10 +1650,6 @@ export function generateMigrationResults(
         repoModResults.reduce((acc, m) => acc + (m.durationMs || 0), 0) ||
         10000;
       const executedModIds = Array.from(modMap?.keys() ?? []);
-      const stagesRun =
-        executedModIds.length > 0
-          ? executedModIds
-          : ['preflight', 'gei', 'verification'];
       const repoStatus: 'succeeded' | 'failed' = isClean
         ? 'succeeded'
         : 'failed';
@@ -1428,6 +1661,14 @@ export function generateMigrationResults(
         defaultDurationMs: computedDuration,
         repoError: failedOpError,
       });
+
+      const summaryModIds = Object.keys(moduleSummaries);
+      const stagesRun =
+        summaryModIds.length >= 10
+          ? summaryModIds
+          : executedModIds.length > 0
+            ? executedModIds
+            : ['preflight', 'gei', 'verification'];
 
       if (isClean) {
         repositories.push({
@@ -1444,6 +1685,11 @@ export function generateMigrationResults(
         });
         repoSuccessDetails.set(repoMap.targetRepo, {
           name: repoMap.targetRepo,
+          geiLogSummary: synthesizeRepoGeiLogSummary({
+            targetRepo: repoMap.targetRepo,
+            modMap,
+            moduleSummaries,
+          }),
         });
       } else {
         const failureReason =
@@ -1492,17 +1738,20 @@ export function generateMigrationResults(
     totalRepositories === 0
       ? 100
       : Number(((succeededCount / totalRepositories) * 100).toFixed(2));
+  const orgTotalDurationMs = Object.values(orgModulesSummary).reduce(
+    (acc, m) => acc + (m.durationMs ?? 0),
+    0,
+  );
+  const repoTotalDurationMs = repositories.reduce(
+    (acc: number, r: RepositoryMigrationRecord) => acc + r.durationMs,
+    0,
+  );
   const totalDurationMs =
     options.durationMs ??
     (options.executionReport
-      ? options.executionReport.results.reduce(
-          (acc: number, r: ModuleExecutionResult) => acc + (r.durationMs || 0),
-          0,
-        )
-      : repositories.reduce(
-          (acc: number, r: RepositoryMigrationRecord) => acc + r.durationMs,
-          0,
-        ));
+      ? orgTotalDurationMs +
+        (repoExecResultsByRepo.size > 0 ? repoTotalDurationMs : 0)
+      : repoTotalDurationMs);
 
   const summary: MigrationResultsSummary = {
     totalRepositories,

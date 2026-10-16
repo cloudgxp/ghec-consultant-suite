@@ -643,7 +643,7 @@ describe('Reporting & Step Summary Subsystem', () => {
         assetsStreamed: 2,
         bytesStreamed: 1073741918,
       });
-      assert.deepEqual(summary.rehydration?.rulesets, {
+      assert.deepEqual(summary.rehydration?.orgRulesets, {
         planned: 1,
         succeeded: 1,
         failed: 0,
@@ -705,6 +705,102 @@ describe('Reporting & Step Summary Subsystem', () => {
       assert.ok(
         markdown.includes('[repo-variables] repo-12:VAR_12 missing'),
         '12th discrepancy should be present in collapsible details block',
+      );
+    });
+
+    it('ensures startedAt <= completedAt when executedAt >= latestOpCompletedAt, counts skippedReleases, suppresses healed failedMetadataCategories, and renders Organization Rulesets', () => {
+      const report: MigrationExecutionReport = {
+        schemaVersion: '1.0.0',
+        planId: 'plan-healed-releases',
+        executedAt: '2026-10-16T08:06:16.533Z',
+        status: 'complete',
+        exitCode: 0,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 120000,
+            failedMetadataCategories: ['releases'],
+            recommendations: [
+              'Run `ghec-consultant-cli migrate --modules releases --scope <scope.json>` to rehydrate releases and binary assets via streaming REST fallback.',
+            ],
+            results: [
+              {
+                operationId: 'gei-repo-migration-release-heavy-benchmark',
+                status: 'succeeded',
+                resourceType: 'repository',
+                resourceName: 'release-heavy-benchmark',
+                operationType: 'create',
+                completedAt: '2026-10-16T07:57:40.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'releases',
+            targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 480000,
+            results: [
+              {
+                operationId: 'release:release-heavy-benchmark:v1.0.0',
+                status: 'succeeded',
+                resourceType: 'release',
+                resourceName: 'v1.0.0',
+                operationType: 'create',
+                completedAt: '2026-10-16T08:05:00.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'org-rulesets',
+            targetIdentifier: 'demogxp-mig4',
+            scopeLevel: 'organization',
+            status: 'complete',
+            durationMs: 5000,
+            results: [
+              {
+                operationId: 'ruleset:create-org:demogxp-mig4:demo-ruleset',
+                status: 'succeeded',
+                resourceType: 'ruleset',
+                resourceName: 'demo-ruleset',
+                operationType: 'create',
+                completedAt: '2026-10-16T08:06:10.000Z',
+              },
+            ],
+          },
+        ],
+      };
+
+      const summary = buildSummaryFromExecutionReport(report, {
+        sourceOrg: 'demogxp',
+        targetOrg: 'demogxp-mig4',
+      });
+
+      assert.ok(
+        Date.parse(summary.startedAt) <= Date.parse(summary.completedAt),
+        `Expected startedAt (${summary.startedAt}) <= completedAt (${summary.completedAt})`,
+      );
+      assert.equal(summary.completedAt, '2026-10-16T08:06:16.533Z');
+      assert.equal(summary.coreTransfer?.gei?.skippedReleases, 1);
+      assert.equal(summary.failedMetadataCategories, undefined);
+      assert.equal(summary.recommendations, undefined);
+      assert.deepEqual(summary.rehydration?.orgRulesets, {
+        planned: 1,
+        succeeded: 1,
+        failed: 0,
+      });
+
+      const stepMd = formatStepSummaryMarkdown(summary);
+      assert.ok(
+        stepMd.includes('| **Organization Rulesets** | 1 | 1 | 0 |'),
+        'Expected Organization Rulesets row in Step Summary',
       );
     });
   });
