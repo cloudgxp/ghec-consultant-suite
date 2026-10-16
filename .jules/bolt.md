@@ -27,3 +27,8 @@
 
 **Learning:** When sorting a list of dynamically generated complex data (e.g., aggregated metrics using `.reduce()` and `.filter()`), keeping the generation logic and sorting logic in a single `useMemo` causes the expensive operations to run unnecessarily every time the user just clicks to reverse the sorting direction.
 **Action:** Decouple the sorting block into its own `useMemo` block separate from the array data processing logic, taking the calculated `rawRows` array as a dependency.
+
+## 2024-05-18 - Safe String Nullability in React
+
+**Learning:** Extracting `query.toLowerCase()` outside of `.filter()` to prevent O(N) operations is a great optimization, but be extremely careful with strings that might be implicitly null or undefined. The previous implementation relied on the `!query || ...` short-circuit guard.
+**Action:** When extracting functions out of a loop/filter, always ensure you use optional chaining and null coalescing (e.g. `query?.toLowerCase() ?? ""`) to guarantee safety.
