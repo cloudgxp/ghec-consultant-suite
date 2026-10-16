@@ -32,3 +32,8 @@
 
 **Learning:** Extracting `query.toLowerCase()` outside of `.filter()` to prevent O(N) operations is a great optimization, but be extremely careful with strings that might be implicitly null or undefined. The previous implementation relied on the `!query || ...` short-circuit guard.
 **Action:** When extracting functions out of a loop/filter, always ensure you use optional chaining and null coalescing (e.g. `query?.toLowerCase() ?? ""`) to guarantee safety.
+
+## 2024-05-18 - Optimize Node Lookup in Graph Iteration
+
+**Learning:** React component re-renders that filter over large collections of graph edges repeatedly (e.g. `graph.edges.filter(e => e.toNodeId === id)`) lead to O(E) complexity and noticeable lag on large datasets.
+**Action:** Always precompute lookups or use `buildDependencyIndex` to transform the structure and cache relationships as Maps for O(1) rendering lookups.
