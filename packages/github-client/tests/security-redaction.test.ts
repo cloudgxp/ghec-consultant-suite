@@ -9,6 +9,12 @@ describe('Security & Diagnostic Scrubbing (DEC-004)', () => {
     const sanitized = sanitizeDiagnostics(raw);
     assert.doesNotMatch(sanitized, /ghp_/);
     assert.match(sanitized, /\[REDACTED_TOKEN\]/);
+
+    const rawPat =
+      'Error authenticating with github_pat_11AAAAAAA0000000000000_12345678901234567890123456789012345678901234567890123456789012';
+    const sanitizedPat = sanitizeDiagnostics(rawPat);
+    assert.doesNotMatch(sanitizedPat, /github_pat_/);
+    assert.match(sanitizedPat, /\[REDACTED_TOKEN\]/);
   });
 
   it('redacts URL-embedded access tokens', () => {
