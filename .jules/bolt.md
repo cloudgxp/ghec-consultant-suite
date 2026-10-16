@@ -17,3 +17,8 @@
 
 **Learning:** When generating metrics or aggregating counts from a large dataset for UI cards (like `MetricCard`), performing multiple `.filter(...).length` and `.reduce(...)` passes over the exact same array within the render loop leads to severe performance degradation due to redundant iterations, especially when these computations are triggered repeatedly by state updates like search inputs.
 **Action:** Replace multiple sequential array passes with a single `useMemo` block that iterates through the data once, tracking all necessary metric counters in a single pass (O(N)), avoiding redundant array allocations and operations.
+
+## 2024-05-18 - Optimize Node Lookup in Graph Iteration
+
+**Learning:** React component re-renders that filter over large collections of graph edges repeatedly (e.g. `graph.edges.filter(e => e.toNodeId === id)`) lead to O(E) complexity and noticeable lag on large datasets.
+**Action:** Always precompute lookups or use `buildDependencyIndex` to transform the structure and cache relationships as Maps for O(1) rendering lookups.

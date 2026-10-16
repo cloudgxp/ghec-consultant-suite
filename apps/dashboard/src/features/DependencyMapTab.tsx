@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import {
+  buildDependencyIndex,
   dependencyInsights,
   suggestMigrationCohorts,
   transitiveDependencies,
@@ -199,13 +200,15 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     [filteredGraph.nodes],
   );
 
+  // ⚡ Bolt: Optimize graph edge lookups using precomputed indexes to replace repeated O(E) filters
+  const graphIndex = useMemo(
+    () => buildDependencyIndex(filteredGraph),
+    [filteredGraph],
+  );
+
   const selected = selectedId ? (nodeMap.get(selectedId) ?? null) : null;
-  const outgoing = selected
-    ? filteredGraph.edges.filter((e) => e.fromNodeId === selected.id)
-    : [];
-  const incoming = selected
-    ? filteredGraph.edges.filter((e) => e.toNodeId === selected.id)
-    : [];
+  const outgoing = selected ? (graphIndex.outgoing.get(selected.id) ?? []) : [];
+  const incoming = selected ? (graphIndex.incoming.get(selected.id) ?? []) : [];
   const transitive = selected
     ? transitiveDependencies(filteredGraph, selected.id, depth)
     : [];
@@ -239,13 +242,11 @@ export function DependencyMapTab({ bundle, selectedOrgIds }: Props) {
     },
     {
       header: 'Fan in',
-      cell: (n) =>
-        filteredGraph.edges.filter((e) => e.toNodeId === n.id).length,
+      cell: (n) => graphIndex.incoming.get(n.id)?.length ?? 0,
     },
     {
       header: 'Fan out',
-      cell: (n) =>
-        filteredGraph.edges.filter((e) => e.fromNodeId === n.id).length,
+      cell: (n) => graphIndex.outgoing.get(n.id)?.length ?? 0,
     },
     {
       header: 'Signals',
