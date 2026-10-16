@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 export interface SseClient {
@@ -17,7 +18,7 @@ export class SseManager {
   }
 
   public handleConnection(req: FastifyRequest, reply: FastifyReply): void {
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const id = randomUUID();
 
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');

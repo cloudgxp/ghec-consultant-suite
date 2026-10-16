@@ -9,3 +9,9 @@
 **Vulnerability:** GitHub fine-grained personal access tokens (`github_pat_`) were not being scrubbed from diagnostic messages and logs in `packages/github-client/src/diagnostics.ts`, leading to potential credential leaks.
 **Learning:** Only classic GitHub tokens (`ghp_`, `gho_`, etc.) were being scrubbed. Token sanitization systems must be continuously updated to handle new credential formats introduced by platforms (like `github_pat_`).
 **Prevention:** Ensure all platform-specific token formats are explicitly covered in token redaction regular expressions to prevent credential leaks.
+
+## 2026-10-10 - [Replace Predictable Math.random() with secure randomUUID()]
+
+**Vulnerability:** [Predictable IDs created by Math.random() in SSE clients]
+**Learning:** [Math.random() is predictable. In security-sensitive code paths or when creating non-colliding IDs, robust alternatives like randomUUID() or randomBytes() from node:crypto should be used]
+**Prevention:** [Review new and existing ID generators, especially for connection handles or tokens, to ensure they use a secure PRNG]
