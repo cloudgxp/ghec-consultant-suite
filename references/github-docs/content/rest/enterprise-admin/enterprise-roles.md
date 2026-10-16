@@ -11,3 +11,324 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get all enterprise roles for an enterprise
+
+`GET /enterprises/{enterprise}/enterprise-roles`
+
+Lists the enterprise roles available in this enterprise.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `read_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - list of enterprise roles |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## Remove all enterprise roles from a team
+
+`DELETE /enterprises/{enterprise}/enterprise-roles/teams/{team_slug}`
+
+Removes all assigned enterprise roles from a team in an enterprise.
+
+Warning
+
+This API is not available for Copilot Business for non-GHE.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `write_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `team_slug` | path | `string` | Yes | The slug of the enterprise team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Response if the enterprise roles feature is not enabled for the enterprise, or validation failed. |
+
+## Assign an enterprise role to a team
+
+`PUT /enterprises/{enterprise}/enterprise-roles/teams/{team_slug}/{role_id}`
+
+Assigns an enterprise role to a team in an enterprise.
+
+Warning
+
+This API is not available for Copilot Business for non-GHE.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `write_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `team_slug` | path | `string` | Yes | The slug of the enterprise team name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Response if the enterprise roles feature is not enabled for the enterprise, or validation failed. |
+
+## Remove an enterprise role from a team
+
+`DELETE /enterprises/{enterprise}/enterprise-roles/teams/{team_slug}/{role_id}`
+
+Removes an enterprise role from a team in an enterprise.
+
+Warning
+
+This API is not available for Copilot Business for non-GHE.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `write_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `team_slug` | path | `string` | Yes | The slug of the enterprise team name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Response if the enterprise roles feature is not enabled for the enterprise, or validation failed. |
+
+## Remove all enterprise roles from a user
+
+`DELETE /enterprises/{enterprise}/enterprise-roles/users/{username}`
+
+Removes all enterprise roles from an enterprise user in an enterprise.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `write_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Response if the enterprise roles feature is not enabled for the enterprise, or validation failed. |
+
+## Assign an enterprise role to an enterprise user
+
+`PUT /enterprises/{enterprise}/enterprise-roles/users/{username}/{role_id}`
+
+Assigns an enterprise role to a user in an enterprise.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `write_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Response if the enterprise roles feature is not enabled for the enterprise, or validation failed. |
+
+## Remove enterprise user role assignment
+
+`DELETE /enterprises/{enterprise}/enterprise-roles/users/{username}/{role_id}`
+
+Removes an enterprise role from an enterprise user.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `write_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |
+| `404` | Resource not found |
+| `422` | Response if the enterprise roles feature is not enabled for the enterprise, or validation failed. |
+
+## Get an enterprise role
+
+`GET /enterprises/{enterprise}/enterprise-roles/{role_id}`
+
+Gets a custom enterprise role that is available within the enterprise.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `read_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## List teams that are assigned to an enterprise role
+
+`GET /enterprises/{enterprise}/enterprise-roles/{role_id}/teams`
+
+Lists the teams that are assigned to an enterprise role.
+
+Warning
+
+This API is not available for Copilot Business for non-GHE.
+
+To use this endpoint, the authenticated user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `read_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) require the `read:enterprise` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## List users that are assigned to an enterprise role
+
+`GET /enterprises/{enterprise}/enterprise-roles/{role_id}/users`
+
+Lists enterprise members that are assigned to an enterprise role.
+
+To use this endpoint, a user must be one of:
+
+An administrator for the enterprise.
+
+A user, or a user on a team, with the fine-grained permission `read_enterprise_custom_enterprise_role` in the enterprise.
+
+OAuth app tokens and personal access tokens (classic) require the `enterprise:admin` scope to access this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `role_id` | path | `integer` | Yes | The unique identifier of the role. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Response - List of assigned users |
+| `403` | Forbidden |
+| `404` | Resource not found |

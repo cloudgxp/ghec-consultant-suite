@@ -19,3 +19,100 @@ To help streamline your workflow, you can use the REST API to add autolinks to e
 {% data variables.product.prodname_github_apps %} require repository administration permissions with read or write access to use these endpoints.
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get all autolinks of a repository
+
+`GET /repos/{owner}/{repo}/autolinks`
+
+Gets all autolinks that are configured for a repository.
+
+Information about autolinks are only available to repository administrators.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create an autolink reference for a repository
+
+`POST /repos/{owner}/{repo}/autolinks`
+
+Users with admin access to the repository can create an autolink.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `key_prefix` | `string` | Yes | This prefix appended by certain characters will generate a link any time it is found in an issue, pull request, or commit. |
+| `url_template` | `string` | Yes | The URL must contain `&#x3C;num>` for the reference number. `&#x3C;num>` matches different characters depending on the value of `is_alphanumeric`. |
+| `is_alphanumeric` | `boolean` | No | Whether this autolink reference matches alphanumeric characters. If true, the `&#x3C;num>` parameter of the `url_template` matches alphanumeric characters `A-Z` (case insensitive), `0-9`, and `-`. If false, this autolink reference only matches numeric characters. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get an autolink reference of a repository
+
+`GET /repos/{owner}/{repo}/autolinks/{autolink_id}`
+
+This returns a single autolink reference by ID that was configured for the given repository.
+
+Information about autolinks are only available to repository administrators.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `autolink_id` | path | `integer` | Yes | The unique identifier of the autolink. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Delete an autolink reference from a repository
+
+`DELETE /repos/{owner}/{repo}/autolinks/{autolink_id}`
+
+This deletes a single autolink reference by ID that was configured for the given repository.
+
+Information about autolinks are only available to repository administrators.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `autolink_id` | path | `integer` | Yes | The unique identifier of the autolink. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |

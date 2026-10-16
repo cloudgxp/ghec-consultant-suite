@@ -12,3 +12,154 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/graphql/data/ghec -->
+
+## Input Objects
+
+### `WorkflowFileReferenceInput`
+
+A workflow that must run for this rule to pass.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `path` | `String!` | The path to the workflow file. |
+| `ref` | `String` | The ref (branch or tag) of the workflow file to use. |
+| `repositoryId` | `Int!` | The ID of the repository where the workflow is defined. |
+| `sha` | `String` | The commit SHA of the workflow file to use. |
+
+### `WorkflowRunOrder`
+
+Ways in which lists of workflow runs can be ordered upon return.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `direction` | `OrderDirection!` | The direction in which to order workflow runs by the specified field. |
+| `field` | `WorkflowRunOrderField!` | The field by which to order workflows. |
+
+### `WorkflowsParametersInput`
+
+Require all changes made to a targeted branch to pass the specified workflows before they can be merged.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `doNotEnforceOnCreate` | `Boolean` | Allow repositories and branches to be created if a check would otherwise prohibit it. |
+| `workflows` | `[WorkflowFileReferenceInput!]!` | Workflows that must pass for this rule to pass. |
+
+## Objects
+
+### `Workflow`
+
+A workflow contains meta information about an Actions workflow file.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `databaseId` | `Int` | Identifies the primary key from the database. |
+| `id` | `ID!` | The Node ID of the Workflow object. |
+| `name` | `String!` | The name of the workflow. |
+| `resourcePath` | `URI!` | The HTTP path for this workflow. |
+| `runs` | `WorkflowRunConnection!` | The runs of the workflow. |
+| `state` | `WorkflowState!` | The state of the workflow. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `url` | `URI!` | The HTTP URL for this workflow. |
+
+### `WorkflowFileReference`
+
+A workflow that must run for this rule to pass.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `path` | `String!` | The path to the workflow file. |
+| `ref` | `String` | The ref (branch or tag) of the workflow file to use. |
+| `repositoryId` | `Int!` | The ID of the repository where the workflow is defined. |
+| `sha` | `String` | The commit SHA of the workflow file to use. |
+
+### `WorkflowRun`
+
+A workflow run.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `checkSuite` | `CheckSuite!` | The check suite this workflow run belongs to. |
+| `createdAt` | `DateTime!` | Identifies the date and time when the object was created. |
+| `databaseId` | `Int` | Identifies the primary key from the database. |
+| `deploymentReviews` | `DeploymentReviewConnection!` | The log of deployment reviews. |
+| `displayTitle` | `String` | The human-readable title of the workflow run. |
+| `event` | `String!` | The event that triggered the workflow run. |
+| `file` | `WorkflowRunFile` | The workflow file. |
+| `id` | `ID!` | The Node ID of the WorkflowRun object. |
+| `pendingDeploymentRequests` | `DeploymentRequestConnection!` | The pending deployment requests of all check runs in this workflow run. |
+| `resourcePath` | `URI!` | The HTTP path for this workflow run. |
+| `runAttempt` | `Int!` | The attempt number of this workflow run. |
+| `runNumber` | `Int!` | A number that uniquely identifies this workflow run in its parent workflow. |
+| `updatedAt` | `DateTime!` | Identifies the date and time when the object was last updated. |
+| `url` | `URI!` | The HTTP URL for this workflow run. |
+| `workflow` | `Workflow!` | The workflow executed in this workflow run. |
+
+### `WorkflowRunConnection`
+
+The connection type for WorkflowRun.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `edges` | `[WorkflowRunEdge]` | A list of edges. |
+| `nodes` | `[WorkflowRun]` | A list of nodes. |
+| `pageInfo` | `PageInfo!` | Information to aid in pagination. |
+| `totalCount` | `Int!` | Identifies the total count of items in the connection. |
+
+### `WorkflowRunEdge`
+
+An edge in a connection.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `cursor` | `String!` | A cursor for use in pagination. |
+| `node` | `WorkflowRun` | The item at the end of the edge. |
+
+### `WorkflowRunFile`
+
+An executed workflow file for a workflow run.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `ID!` | The Node ID of the WorkflowRunFile object. |
+| `path` | `String!` | The path of the workflow file relative to its repository. |
+| `repositoryFileUrl` | `URI!` | The direct link to the file in the repository which stores the workflow file. |
+| `repositoryName` | `URI!` | The repository name and owner which stores the workflow file. |
+| `resourcePath` | `URI!` | The HTTP path for this workflow run file. |
+| `run` | `WorkflowRun!` | The parent workflow run execution for this file. |
+| `url` | `URI!` | The HTTP URL for this workflow run file. |
+| `viewerCanPushRepository` | `Boolean!` | If the viewer has permissions to push to the repository which stores the workflow. |
+| `viewerCanReadRepository` | `Boolean!` | If the viewer has permissions to read the repository which stores the workflow. |
+
+### `WorkflowsParameters`
+
+Require all changes made to a targeted branch to pass the specified workflows before they can be merged.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `doNotEnforceOnCreate` | `Boolean!` | Allow repositories and branches to be created if a check would otherwise prohibit it. |
+| `workflows` | `[WorkflowFileReference!]!` | Workflows that must pass for this rule to pass. |
+
+## Enums
+
+### `WorkflowRunOrderField`
+
+Properties by which workflow run connections can be ordered.
+
+| Value | Description |
+| :--- | :--- |
+| `CREATED_AT` | Order workflow runs by most recently created. |
+
+### `WorkflowState`
+
+The possible states for a workflow.
+
+| Value | Description |
+| :--- | :--- |
+| `ACTIVE` | The workflow is active. |
+| `DELETED` | The workflow was deleted from the git repository. |
+| `DISABLED_FORK` | The workflow was disabled by default on a fork. |
+| `DISABLED_INACTIVITY` | The workflow was disabled for inactivity in the repository. |
+| `DISABLED_MANUALLY` | The workflow was disabled manually. |

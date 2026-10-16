@@ -19,3 +19,140 @@ category:
 You can use the REST API to view logs and workflow jobs in {% data variables.product.prodname_actions %}. {% data reusables.actions.about-workflow-jobs %} For more information, see [AUTOTITLE](/actions/reference/workflows-and-actions/workflow-syntax).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get a job for a workflow run
+
+`GET /repos/{owner}/{repo}/actions/jobs/{job_id}`
+
+Gets a specific job in a workflow run.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `job_id` | path | `integer` | Yes | The unique identifier of the job. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Download job logs for a workflow run
+
+`GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs`
+
+Gets a redirect URL to download a plain text file of logs for a workflow job. This link expires after 1 minute. Look
+for `Location:` in the response header to find the URL for the download.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `job_id` | path | `integer` | Yes | The unique identifier of the job. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `302` | Found |
+
+## Download step logs for a workflow run job
+
+`GET /repos/{owner}/{repo}/actions/jobs/{job_id}/steps/{step_number}/logs`
+
+Gets a redirect URL to download a plain text file of logs for a specific step of a workflow job. This link expires after
+1 minute. Look for `Location:` in the response header to find the URL for the download.
+
+This endpoint is intended for selective retrieval of one step. To download complete job logs, use the
+[job logs endpoint](https://docs.github.com/enterprise-cloud@latest/rest/actions/workflow-jobs#download-job-logs-for-a-workflow-run).
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `job_id` | path | `integer` | Yes | The unique identifier of the job. |
+| `step_number` | path | `integer` | Yes | The zero-based position number of the step in the job. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `302` | Found |
+
+## List jobs for a workflow run attempt
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs`
+
+Lists jobs for a specific workflow run attempt. You can use parameters to narrow the list of results. For more information
+about using parameters, see [Parameters](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#parameters).
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint  with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+| `attempt_number` | path | `integer` | Yes | The attempt number of the workflow run. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## List jobs for a workflow run
+
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs`
+
+Lists jobs for a workflow run. You can use parameters to narrow the list of results. For more information
+about using parameters, see [Parameters](https://docs.github.com/enterprise-cloud@latest/rest/guides/getting-started-with-the-rest-api#parameters).
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `run_id` | path | `integer` | Yes | The unique identifier of the workflow run. |
+| `filter` | query | `string` | No | Filters jobs by their `completed_at` timestamp. `latest` returns jobs from the most recent execution of the workflow run. `all` returns all jobs for a workflow run, including from old executions of the workflow run. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |

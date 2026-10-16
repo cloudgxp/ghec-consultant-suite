@@ -13,3 +13,56 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization rule suites
+
+`GET /orgs/{org}/rulesets/rule-suites`
+
+Lists suites of rule evaluations at the organization level.
+For more information, see "[Managing rulesets for repositories in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-organization-settings/managing-rulesets-for-repositories-in-your-organization#viewing-insights-for-rulesets)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `ref` | query | `string` | No | The name of the ref. Cannot contain wildcard characters. Optionally prefix with `refs/heads/` to limit to branches or `refs/tags/` to limit to tags. Omit the prefix to search across all refs. When specified, only rule evaluations triggered for this ref will be returned. |
+| `repository_name` | query | `string` | No | The name of the repository to filter on. |
+| `time_period` | query | `string` | No | The time period to filter by. For example, `day` will filter for rule suites that occurred in the past 24 hours, and `week` will filter for rule suites that occurred in the past 7 days (168 hours). |
+| `actor_name` | query | `string` | No | The handle for the GitHub user account to filter on. When specified, only rule evaluations triggered by this actor will be returned. |
+| `rule_suite_result` | query | `string` | No | The rule suite results to filter on. When specified, only suites with this result will be returned. |
+| `evaluate_status` | query | `string` | No | The evaluate status to filter on. When specified, only rule suites resulting from rulesets with the specified evaluate status will be returned. `all` - all rule suites will be returned. `active` - only rule suites resulting from rulesets in active (non-evaluate) mode will be returned. `evaluate` - only rule suites resulting from rulesets in evaluate mode will be returned. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get an organization rule suite
+
+`GET /orgs/{org}/rulesets/rule-suites/{rule_suite_id}`
+
+Gets information about a suite of rule evaluations from within an organization.
+For more information, see "[Managing rulesets for repositories in your organization](https://docs.github.com/enterprise-cloud@latest/organizations/managing-organization-settings/managing-rulesets-for-repositories-in-your-organization#viewing-insights-for-rulesets)."
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `rule_suite_id` | path | `integer` | Yes | The unique identifier of the rule suite result. To get this ID, you can use [GET /repos/{owner}/{repo}/rulesets/rule-suites](https://docs.github.com/enterprise-cloud@latest/rest/repos/rule-suites#list-repository-rule-suites) for repositories and [GET /orgs/{org}/rulesets/rule-suites](https://docs.github.com/enterprise-cloud@latest/rest/orgs/rule-suites#list-organization-rule-suites) for organizations. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |

@@ -136,6 +136,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       };
     }
 
+    const sourceToken =
+      process.env.GHEC_SOURCE_TOKEN?.trim() ??
+      process.env.GH_SOURCE_PAT?.trim() ??
+      process.env.GHEC_TOKEN?.trim();
+    const targetToken =
+      process.env.GHEC_TARGET_TOKEN?.trim() ?? process.env.GH_PAT?.trim();
+
     // Live mode: check if target already exists at destination
     let targetAlreadyPresent = false;
     try {
@@ -150,7 +157,116 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         ctx.signal,
       );
       if (checkRes.status === 200) {
-        targetAlreadyPresent = true;
+        const targetRepoData = (checkRes.data ?? {}) as {
+          locked?: boolean;
+          isLocked?: boolean;
+          size?: number;
+        };
+        let isRepoLocked =
+          targetRepoData.locked === true || targetRepoData.isLocked === true;
+        if (!isRepoLocked && ctx.targetClient.queryGraphQL) {
+          try {
+            const gqlLockRes = await ctx.targetClient.queryGraphQL<{
+              repository?: { isLocked?: boolean; lockReason?: string | null };
+            }>(
+              `query CheckRepoLock($owner: String!, $repo: String!) {
+                repository(owner: $owner, name: $repo) {
+                  isLocked
+                  lockReason
+                }
+              }`,
+              { owner: targetOrg, repo: targetRepo },
+              ctx.signal,
+            );
+            if (gqlLockRes.data?.repository?.isLocked === true) {
+              isRepoLocked = true;
+            }
+          } catch {
+            // Non-fatal GraphQL lock check
+          }
+        }
+        if (isRepoLocked) {
+          ctx.logger.warn(
+            `[gei-repo] Target repository ${targetOrg}/${targetRepo} is stuck in a locked state (locked=true) from a prior interrupted migration; deleting stale target repository to re-import cleanly...`,
+          );
+          let deleted = false;
+          if (ctx.targetWriteClient) {
+            try {
+              await ctx.targetWriteClient.mutate(
+                {
+                  id: 'rest.repos.deleteLockedTarget',
+                  method: 'DELETE',
+                  path: '/repos/{owner}/{repo}',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                },
+                ctx.signal,
+              );
+              deleted = true;
+            } catch {
+              deleted = false;
+            }
+          }
+          if (!deleted && targetToken) {
+            try {
+              const delRes = await fetch(
+                `https://api.github.com/repos/${targetOrg}/${targetRepo}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    Authorization: `Bearer ${targetToken}`,
+                    Accept: 'application/vnd.github+json',
+                  },
+                  signal: ctx.signal,
+                },
+              );
+              deleted = delRes.ok || delRes.status === 204;
+            } catch {
+              deleted = false;
+            }
+          }
+          if (deleted) {
+            await new Promise((r) => setTimeout(r, 2000));
+            targetAlreadyPresent = false;
+          } else {
+            targetAlreadyPresent = true;
+          }
+        } else if (
+          typeof targetRepoData.size === 'number' &&
+          ctx.scope.options?.gitTransferStrategy === 'mirror-push'
+        ) {
+          let hasBranches = targetRepoData.size > 0;
+          if (hasBranches) {
+            try {
+              const branchesRes = await ctx.targetClient.readPage<
+                readonly unknown[]
+              >(
+                {
+                  id: 'rest.repos.listBranches',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/repos/{owner}/{repo}/branches',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                  queryParams: { per_page: 1 },
+                },
+                null,
+                ctx.signal,
+              );
+              hasBranches = (branchesRes.items?.length ?? 0) > 0;
+            } catch {
+              hasBranches = false;
+            }
+          }
+          if (!hasBranches) {
+            ctx.logger.warn(
+              `[gei-repo] Target repository ${targetOrg}/${targetRepo} exists as an empty shell (0 branches); proceeding with mirror-push transfer.`,
+            );
+            targetAlreadyPresent = false;
+          } else {
+            targetAlreadyPresent = true;
+          }
+        } else {
+          targetAlreadyPresent = true;
+        }
       }
     } catch {
       targetAlreadyPresent = false;
@@ -160,21 +276,26 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       ctx.logger.info(
         `[gei-repo] Target repository ${targetOrg}/${targetRepo} already exists on destination; skipping live GEI import.`,
       );
+      const isMirrorPushRepo =
+        ctx.scope.options?.gitTransferStrategy === 'mirror-push';
       return {
         schemaVersion: MIGRATION_SCHEMA_VERSION,
         moduleId: this.id,
         status: 'complete',
         durationMs: Date.now() - startTime,
         results: [],
+        ...(isMirrorPushRepo
+          ? {
+              metadataState: 'partial' as const,
+              failedMetadataCategories: [
+                'issues',
+                'pull-requests',
+                'releases',
+              ] as const,
+            }
+          : {}),
       };
     }
-
-    const sourceToken =
-      process.env.GHEC_SOURCE_TOKEN?.trim() ??
-      process.env.GH_SOURCE_PAT?.trim() ??
-      process.env.GHEC_TOKEN?.trim();
-    const targetToken =
-      process.env.GHEC_TARGET_TOKEN?.trim() ?? process.env.GH_PAT?.trim();
 
     if (!this.geiRunner && !this.gitRunner && (!sourceToken || !targetToken)) {
       ctx.logger.info(
@@ -284,11 +405,16 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           ...(sourceToken ? { sourceToken } : {}),
           ...(targetToken ? { targetToken } : {}),
           estimatedSizeBytes: repoSizeBytes > 0 ? repoSizeBytes : undefined,
+          mirrorPushMode: repoOptions?.mirrorPushMode,
           skipDiskCheck: repoOptions?.skipDiskCheck,
           targetClient: ctx.targetClient,
           targetWriteClient: ctx.targetWriteClient,
           signal: ctx.signal,
           ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+          onStdout: (line: string) =>
+            ctx.logger.info(`[gei-repo][git] ${line}`),
+          onStderr: (line: string) =>
+            ctx.logger.info(`[gei-repo][git] ${line}`),
         });
 
         ctx.logger.info(
@@ -456,6 +582,35 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         });
       }
 
+      if (!this.geiRunner) {
+        for (let poll = 0; poll < 10; poll++) {
+          try {
+            const repoCheck = await ctx.targetClient.readSingle<{
+              locked?: boolean;
+            }>(
+              {
+                id: 'rest.repos.getLockState',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: targetOrg, repo: targetRepo },
+              },
+              ctx.signal,
+            );
+            if (repoCheck.data && repoCheck.data.locked === true) {
+              ctx.logger.info(
+                `[gei-repo] Target repository ${targetOrg}/${targetRepo} is still locked post-GEI; waiting 3s before downstream modules...`,
+              );
+              await new Promise<void>((resolve) => setTimeout(resolve, 3000));
+              continue;
+            }
+            break;
+          } catch {
+            break;
+          }
+        }
+      }
+
       ctx.logger.info(
         `[gei-repo] Successfully migrated ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo} via GEI.`,
       );
@@ -474,11 +629,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       const msg = err instanceof Error ? err.message : String(err);
       const isGeiArchiveFailure =
         msg.includes('Git repository data failed to be generated') ||
-        msg.includes('exceeds GitHub platform limit of 40 GiB');
+        msg.includes('exceeds GitHub platform limit of 40 GiB') ||
+        msg.includes('spawn gh ENOENT') ||
+        !this.geiRunner;
 
       if (gitTransferStrategy === 'auto' && isGeiArchiveFailure) {
         ctx.logger.warn(
-          `[gei-repo] GEI archive generation failed (${msg}); automatically falling back to mirror-push strategy...`,
+          `[gei-repo] GEI migration failed (${msg}); automatically falling back to mirror-push strategy...`,
         );
         const mirrorExecutor = new GitMirrorPushExecutor(this.gitRunner);
         try {
@@ -491,11 +648,16 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
             ...(sourceToken ? { sourceToken } : {}),
             ...(targetToken ? { targetToken } : {}),
             estimatedSizeBytes: repoSizeBytes > 0 ? repoSizeBytes : undefined,
+            mirrorPushMode: repoOptions?.mirrorPushMode,
             skipDiskCheck: repoOptions?.skipDiskCheck,
             targetClient: ctx.targetClient,
             targetWriteClient: ctx.targetWriteClient,
             signal: ctx.signal,
             ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+            onStdout: (line: string) =>
+              ctx.logger.info(`[gei-repo][git] ${line}`),
+            onStderr: (line: string) =>
+              ctx.logger.info(`[gei-repo][git] ${line}`),
           });
 
           ctx.logger.info(
@@ -572,10 +734,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
     }
 
     const report = await RepositoryParityInspector.inspect(ctx);
+    const hasReadErrors =
+      (report.source.readErrors?.length ?? 0) > 0 ||
+      (report.target.readErrors?.length ?? 0) > 0;
     const hasTokens = Boolean(
       process.env.GHEC_TARGET_TOKEN || process.env.GH_PAT || this.geiRunner,
     );
-    if (!hasTokens && !report.target.exists) {
+    if (!hasTokens && !report.target.exists && !hasReadErrors) {
       return {
         moduleId: this.id,
         verified: true,

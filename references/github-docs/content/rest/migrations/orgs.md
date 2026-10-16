@@ -25,3 +25,176 @@ These endpoints are only available to authenticated organization owners. For mor
 {% ifversion ghec %}{% data variables.migrations.enterprise_cloud_with_data_residency %}{% endif %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization migrations
+
+`GET /orgs/{org}/migrations`
+
+Lists the most recent migrations, including both exports (which can be started through the REST API) and imports (which cannot be started using the REST API).
+
+A list of `repositories` is only returned for export migrations.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `exclude` | query | `array` | No | Exclude attributes from the API response to improve performance |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Start an organization migration
+
+`POST /orgs/{org}/migrations`
+
+Initiates the generation of a migration archive.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `repositories` | `array of strings` | Yes | A list of arrays indicating which repositories should be migrated. |
+| `lock_repositories` | `boolean` | No | Indicates whether repositories should be locked (to prevent manipulation) while migrating data. |
+| `exclude_metadata` | `boolean` | No | Indicates whether metadata should be excluded and only git source should be included for the migration. |
+| `exclude_git_data` | `boolean` | No | Indicates whether the repository git data should be excluded from the migration. |
+| `exclude_attachments` | `boolean` | No | Indicates whether attachments should be excluded from the migration (to reduce migration archive file size). |
+| `exclude_releases` | `boolean` | No | Indicates whether releases should be excluded from the migration (to reduce migration archive file size). |
+| `exclude_owner_projects` | `boolean` | No | Indicates whether projects owned by the organization or users should be excluded. from the migration. |
+| `org_metadata_only` | `boolean` | No | Indicates whether this should only include organization metadata (repositories array should be empty and will ignore other flags). |
+| `exclude` | `array of strings` | No | Exclude related items from being returned in the response in order to improve performance of the request. Supported values are: `repositories` |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Get an organization migration status
+
+`GET /orgs/{org}/migrations/{migration_id}`
+
+Fetches the status of a migration.
+
+The `state` of a migration can be one of the following values:
+
+`pending`, which means the migration hasn't started yet.
+
+`exporting`, which means the migration is in progress.
+
+`exported`, which means the migration finished successfully.
+
+`failed`, which means the migration failed.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+| `exclude` | query | `array` | No | Exclude attributes from the API response to improve performance |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | `pending`, which means the migration hasn't started yet. `exporting`, which means the migration is in progress. `exported`, which means the migration finished successfully. `failed`, which means the migration failed. |
+| `404` | Resource not found |
+
+## Download an organization migration archive
+
+`GET /orgs/{org}/migrations/{migration_id}/archive`
+
+Fetches the URL to a migration archive.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `302` | Found |
+| `404` | Resource not found |
+
+## Delete an organization migration archive
+
+`DELETE /orgs/{org}/migrations/{migration_id}/archive`
+
+Deletes a previous migration archive. Migration archives are automatically deleted after seven days.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+
+## Unlock an organization repository
+
+`DELETE /orgs/{org}/migrations/{migration_id}/repos/{repo_name}/lock`
+
+Unlocks a repository that was locked for migration. You should unlock each migrated repository and [delete them](https://docs.github.com/enterprise-cloud@latest/rest/repos/repos#delete-a-repository) when the migration is complete and you no longer need the source data.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+| `repo_name` | path | `string` | Yes | repo_name parameter |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+
+## List repositories in an organization migration
+
+`GET /orgs/{org}/migrations/{migration_id}/repositories`
+
+List all the repositories for this organization migration.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `migration_id` | path | `integer` | Yes | The unique identifier of the migration. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |

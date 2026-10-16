@@ -335,4 +335,213 @@ describe('Task 035: Agentic Automation & Remediation Integration', () => {
     );
     assert.match(plan.script, /ghec-consultant-cli migrate --modules releases/);
   });
+
+  it('correlates cohort execution reports (--execution-reports), attaches sanitized apply() errors, and synthesizes actions for unverified apply() failures', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'agent-review-exec-'), {
+      mode: 0o700,
+    });
+    try {
+      const cohortsDir = join(dir, 'downloaded-cohorts', 'scans');
+      const emptyDir = join(dir, 'empty-cohorts');
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(cohortsDir, { recursive: true });
+      mkdirSync(emptyDir, { recursive: true });
+
+      const parsedOpts = parseAgentReviewOptions([
+        '--report',
+        './scans/verification-report.json',
+        '--execution-reports',
+        cohortsDir,
+      ]);
+      assert.equal(parsedOpts.executionReportsPath, cohortsDir);
+
+      // Cohort 1: rulesets failed on api-service (matches verification discrepancy) with embedded token
+      const cohort1 = {
+        schemaVersion: MIGRATION_SCHEMA_VERSION,
+        executionId: 'exec-cohort-1',
+        planId: 'plan-cohort-1',
+        executedAt: new Date().toISOString(),
+        dryRun: false,
+        overallStatus: 'partial',
+        durationMs: 1200,
+        results: [
+          {
+            schemaVersion: MIGRATION_SCHEMA_VERSION,
+            moduleId: 'rulesets',
+            status: 'failed',
+            targetIdentifier: 'corp-target-emu/api-service',
+            scopeLevel: 'repository',
+            durationMs: 450,
+            results: [
+              {
+                operationId: 'ruleset-main-branch-protection',
+                status: 'failed',
+                httpStatus: 422,
+                error:
+                  'Validation Failed: bypass_actors invalid at https://x-access-token:ghp_1234567890abcdefghijklmnopqrstuv@api.github.com/repos/corp-target-emu/api-service/rulesets',
+                completedAt: new Date().toISOString(),
+                targetIdentifier: 'corp-target-emu/api-service',
+              },
+            ],
+          },
+        ],
+      };
+
+      // Cohort 2: discussions failed during apply() on payment-service, but VerificationReport has 0 discrepancies for discussions
+      const cohort2 = {
+        schemaVersion: MIGRATION_SCHEMA_VERSION,
+        executionId: 'exec-cohort-2',
+        planId: 'plan-cohort-2',
+        executedAt: new Date().toISOString(),
+        dryRun: false,
+        overallStatus: 'failed',
+        durationMs: 900,
+        results: [
+          {
+            schemaVersion: MIGRATION_SCHEMA_VERSION,
+            moduleId: 'discussions',
+            status: 'failed',
+            targetIdentifier: 'corp-target-emu/payment-service',
+            scopeLevel: 'repository',
+            durationMs: 900,
+            results: [
+              {
+                operationId: 'discussion-transfer-1',
+                status: 'failed',
+                httpStatus: 403,
+                error:
+                  'GraphQL error: Discussions are disabled on target repository payment-service (Bearer github_pat_11AABBCCDDEEFF00112233445566778899)',
+                completedAt: new Date().toISOString(),
+                targetIdentifier: 'corp-target-emu/payment-service',
+              },
+            ],
+          },
+        ],
+      };
+
+      const cohort1Path = join(cohortsDir, 'cohort-report-1.json');
+      const cohort2Path = join(cohortsDir, 'cohort-report-2.json');
+      writeFileSync(cohort1Path, JSON.stringify(cohort1, null, 2));
+      writeFileSync(cohort2Path, JSON.stringify(cohort2, null, 2));
+
+      const reportPath = join(dir, 'verification-report.json');
+      const jsonOutPath = join(dir, 'remediation-plan.json');
+      const mdOutPath = join(dir, 'remediation-plan.md');
+      writeFileSync(reportPath, JSON.stringify(sampleReport, null, 2));
+
+      // Test directory scanning via executeAgentReviewCommand
+      const res = await executeAgentReviewCommand({
+        reportPath,
+        executionReportsPath: join(dir, 'downloaded-cohorts'),
+        outputPath: jsonOutPath,
+        outputMarkdownPath: mdOutPath,
+        appendStepSummary: false,
+      });
+
+      // 3 from VerificationReport + 1 synthesized from cohort-2 discussions failure
+      assert.equal(res.plan.totalDiscrepancies, 3);
+      assert.equal(res.plan.unverifiedExecutionFailures, 1);
+      assert.equal(res.plan.actionableCount, 4);
+      assert.ok(res.plan.warnings && res.plan.warnings.length === 1);
+      assert.match(res.plan.warnings[0] ?? '', /Unverified apply\(\) failure/);
+      assert.match(res.plan.warnings[0] ?? '', /discussions/);
+
+      // Matched rulesets action should include HTTP 422 root cause and redact ghp_ token
+      const rulesetAction = res.plan.actions.find(
+        (a) => a.moduleId === 'rulesets',
+      );
+      assert.ok(rulesetAction);
+      assert.ok(rulesetAction.executionError);
+      assert.match(rulesetAction.executionError, /HTTP 422/);
+      assert.match(rulesetAction.executionError, /Validation Failed/);
+      assert.doesNotMatch(rulesetAction.executionError, /ghp_1234567890/);
+      assert.equal(rulesetAction.synthesizedFromExecution, undefined);
+
+      // Unverified discussions failure should be synthesized with synthesizedFromExecution: true and redacted token
+      const synthAction = res.plan.actions.find(
+        (a) => a.moduleId === 'discussions',
+      );
+      assert.ok(synthAction);
+      assert.equal(synthAction.synthesizedFromExecution, true);
+      assert.equal(synthAction.severity, 'high');
+      assert.ok(synthAction.executionError);
+      assert.match(synthAction.executionError, /HTTP 403/);
+      assert.doesNotMatch(synthAction.executionError, /github_pat_/);
+      assert.match(
+        res.plan.script,
+        /ghec-consultant-cli migrate --modules "discussions" --scope "\.\/scopes\/test-wave-scope\.json" --repos "payment-service"/,
+      );
+
+      // Markdown output includes warnings section, execution error, and synthesized tag
+      const md = readFileSync(mdOutPath, 'utf8');
+      assert.match(md, /### ⚠️ Execution & Observability Warnings/);
+      assert.match(md, /\*\*\[SYNTHESIZED FROM APPLY FAILURE\]\*\*/);
+      assert.match(md, /HTTP 422/);
+      assert.doesNotMatch(md, /ghp_1234567890/);
+      assert.doesNotMatch(md, /github_pat_/);
+
+      // Test comma-separated file paths and empty directory warning
+      const commaRes = await executeAgentReviewCommand({
+        reportPath,
+        executionReportsPath: `${cohort1Path},${emptyDir}`,
+        outputPath: jsonOutPath,
+        outputMarkdownPath: mdOutPath,
+        appendStepSummary: false,
+      });
+      assert.equal(commaRes.plan.actionableCount, 3);
+      assert.ok(
+        commaRes.plan.warnings?.some((w) =>
+          w.includes('No cohort execution reports'),
+        ),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('surfaces module verification warnings and generates org-level remediation for org-rulesets without --repos flag', () => {
+    const reportWithOrgRulesets = {
+      ...sampleReport,
+      modules: [
+        {
+          moduleId: 'org-rulesets',
+          verified: false,
+          warnings: [
+            '[corp-target-emu] Bypass actor ID 42 could not be mapped.',
+          ],
+          discrepancies: [
+            {
+              resourceName: 'org-default-branch-policy',
+              expected: 'active ruleset',
+              actual: 'missing',
+              message:
+                'Ruleset "org-default-branch-policy" is missing on target.',
+            },
+          ],
+        },
+      ],
+      summary: {
+        verifiedModuleCount: 0,
+        unverifiedModuleCount: 1,
+        discrepancyCount: 1,
+      },
+    };
+
+    const plan = generateRemediationPlan(reportWithOrgRulesets);
+    assert.equal(plan.actionableCount, 1);
+    assert.equal(plan.actions[0]?.moduleId, 'org-rulesets');
+    assert.equal(plan.actions[0]?.category, 'security-and-policies');
+    assert.equal(
+      plan.actions[0]?.command,
+      'ghec-consultant-cli migrate --modules "org-rulesets" --scope "./scopes/test-wave-scope.json"',
+    );
+    assert.doesNotMatch(plan.script, /--repos/);
+    assert.ok(
+      plan.warnings?.some((w) =>
+        w.includes(
+          'Module "org-rulesets" warning: [corp-target-emu] Bypass actor ID 42 could not be mapped.',
+        ),
+      ),
+    );
+  });
 });

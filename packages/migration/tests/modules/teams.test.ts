@@ -557,12 +557,17 @@ test('TeamsMigrationModule: migrates team organization roles (Security Manager &
   ];
 
   const sourceHandlers = new Map<string, unknown>();
-  // Source Security Managers list
-  sourceHandlers.set('/security-managers', [{ slug: 'sec-ops' }]);
-  // Source Custom Organization Roles list
+  // Source Organization Roles list (predefined security_manager + custom role)
+  sourceHandlers.set('/organization-roles/500/teams', [{ slug: 'sec-ops' }]);
   sourceHandlers.set('/organization-roles/501/teams', [{ slug: 'auditors' }]);
   sourceHandlers.set('/organization-roles', {
     roles: [
+      {
+        id: 500,
+        name: 'security_manager',
+        teams_url:
+          'https://api.github.com/orgs/src-org/organization-roles/500/teams',
+      },
       {
         id: 501,
         name: 'compliance-auditor',
@@ -575,18 +580,21 @@ test('TeamsMigrationModule: migrates team organization roles (Security Manager &
   sourceHandlers.set('auditors/repos', []);
 
   const targetHandlers = new Map<string, unknown>();
-  // Target Custom Organization Roles list (role ID is 701 on target)
+  // Target Organization Roles list (role IDs 700 and 701 on target)
+  targetHandlers.set('/organization-roles/700/teams', [{ slug: 'sec-ops' }]);
   targetHandlers.set('/organization-roles/701/teams', [{ slug: 'auditors' }]);
   targetHandlers.set('/organization-roles', {
     roles: [
+      {
+        id: 700,
+        name: 'security_manager',
+      },
       {
         id: 701,
         name: 'compliance-auditor',
       },
     ],
   });
-  // Target Security Managers list
-  targetHandlers.set('/security-managers', [{ slug: 'sec-ops' }]);
 
   const ctx: MigrationContext = {
     runId: 'teams-org-roles-run',
@@ -641,8 +649,9 @@ test('TeamsMigrationModule: migrates team organization roles (Security Manager &
 
   const secMutate = writeClient.calls.find(
     (c) =>
-      c.path === '/orgs/{org}/security-managers/teams/{team_slug}' &&
-      c.pathParams?.team_slug === 'sec-ops',
+      c.path === '/orgs/{org}/organization-roles/teams/{team_slug}/{role_id}' &&
+      c.pathParams?.team_slug === 'sec-ops' &&
+      c.pathParams?.role_id === '700',
   );
   assert.ok(secMutate);
 

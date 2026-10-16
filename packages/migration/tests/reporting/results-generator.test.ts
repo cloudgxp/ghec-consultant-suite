@@ -1,16 +1,24 @@
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { test } from 'node:test';
 import type {
   MigrationExecutionReport,
   MigrationResultsManifest,
+  ModuleExecutionResult,
+  ModulePlan,
   RepositoryMigrationRecord,
   VerificationReport,
 } from '@ghec/contracts';
 import {
+  ALL_ORGANIZATION_MODULES,
+  enrichModuleExecutionResult,
+} from '../../src/orchestrator/index.js';
+import {
   formatFailureRepoMarkdown,
+  formatOrgModuleDetailMarkdown,
+  formatRepoModuleDetailMarkdown,
   formatResultsReadmeMarkdown,
   formatSuccessRepoMarkdown,
   generateMigrationResults,
@@ -360,4 +368,445 @@ test('writeResultsToDirectory persists files to temporary directory', () => {
   } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test('enrichModuleExecutionResult attaches planned operation metadata and sanitizes diagnostics', () => {
+  const rawResult: ModuleExecutionResult = {
+    schemaVersion: '1.0.0',
+    moduleId: 'repo-variables',
+    status: 'complete',
+    results: [
+      {
+        operationId: 'var-op-1',
+        status: 'succeeded',
+        completedAt: '2026-10-08T12:00:00Z',
+      },
+      {
+        operationId: 'var-op-2',
+        status: 'failed',
+        error: 'Auth error with token ghp_1234567890abcdefghijklmnopqrstuv',
+      },
+    ],
+    durationMs: 250,
+  };
+
+  const plan: ModulePlan = {
+    schemaVersion: '1.0.0',
+    moduleId: 'repo-variables',
+    operations: [
+      {
+        id: 'var-op-1',
+        operation: 'create',
+        resourceType: 'repo-variable',
+        resourceName: 'API_BASE_URL',
+        reason: 'Create repository variable API_BASE_URL',
+      },
+      {
+        id: 'var-op-2',
+        operation: 'update',
+        resourceType: 'repo-variable',
+        resourceName: 'RETRY_COUNT',
+        reason: 'Update repository variable RETRY_COUNT',
+      },
+    ],
+    summary: {
+      totalOperations: 2,
+      createCount: 1,
+      updateCount: 1,
+      noopCount: 0,
+      skipCount: 0,
+    },
+  };
+
+  const enriched = enrichModuleExecutionResult(rawResult, plan, {
+    targetIdentifier: 'src-org/core-service',
+    scopeLevel: 'repository',
+  });
+
+  assert.equal(enriched.targetIdentifier, 'src-org/core-service');
+  assert.equal(enriched.scopeLevel, 'repository');
+  assert.equal(enriched.results[0]?.resourceName, 'API_BASE_URL');
+  assert.equal(enriched.results[0]?.resourceType, 'repo-variable');
+  assert.equal(enriched.results[0]?.operationType, 'create');
+  assert.equal(
+    enriched.results[0]?.reason,
+    'Create repository variable API_BASE_URL',
+  );
+  assert.equal(enriched.results[1]?.resourceName, 'RETRY_COUNT');
+  assert.equal(enriched.results[1]?.operationType, 'update');
+  assert.ok(
+    !enriched.results[1]?.error?.includes(
+      'ghp_1234567890abcdefghijklmnopqrstuv',
+    ),
+  );
+  assert.ok(enriched.results[1]?.error?.includes('[REDACTED_TOKEN]'));
+});
+
+test('recognizes all ALL_ORGANIZATION_MODULES plus org-scoped rulesets and generates Tier 2 organization/<module>.md pages', () => {
+  const orgModuleIds = [...ALL_ORGANIZATION_MODULES, 'rulesets'];
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-org-all',
+    executedAt: '2026-10-08T12:00:00Z',
+    status: 'complete',
+    exitCode: 0,
+    dryRun: false,
+    results: orgModuleIds.map((moduleId) => ({
+      schemaVersion: '1.0.0',
+      moduleId,
+      targetIdentifier: 'org:source-org',
+      scopeLevel: 'organization' as const,
+      status: 'complete' as const,
+      results: [
+        {
+          operationId: `${moduleId}-op-1`,
+          status: 'succeeded' as const,
+          resourceType: moduleId,
+          resourceName:
+            moduleId === 'org-secrets'
+              ? 'ORG_DEPLOY_TOKEN'
+              : `${moduleId}-item-1`,
+          operationType: 'create' as const,
+          reason: `Provision ${moduleId} resource`,
+          completedAt: '2026-10-08T12:00:01Z',
+        },
+      ],
+      durationMs: 500,
+    })),
+  };
+
+  const results = generateMigrationResults({
+    runId: 'run-org-all',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org',
+    executionMode: 'live',
+    executionReport,
+    scope: {
+      version: '1.0.0',
+      name: 'org-scope',
+      repositories: [],
+    },
+  });
+
+  const orgSummary = results.manifest.summary.orgModulesSummary;
+  assert.ok(orgSummary);
+
+  for (const moduleId of orgModuleIds) {
+    assert.ok(
+      orgSummary[moduleId],
+      `Expected orgModulesSummary to include ${moduleId}`,
+    );
+    assert.equal(
+      orgSummary[moduleId]?.relativeFilePath,
+      `organization/${moduleId}.md`,
+    );
+    const pageContent = results.files[`organization/${moduleId}.md`];
+    assert.ok(
+      pageContent,
+      `Expected results.files to contain organization/${moduleId}.md`,
+    );
+    assert.ok(pageContent.includes('[← Back to Overview](../README.md)'));
+    assert.ok(pageContent.includes('## Granular Organization Items'));
+  }
+
+  // Verify DEC-004 [SEALED] placeholder on org-secrets
+  const orgSecretsMd = results.files['organization/org-secrets.md'] ?? '';
+  assert.ok(orgSecretsMd.includes('`ORG_DEPLOY_TOKEN` `[SEALED]`'));
+});
+
+test('generates full 3-tier hierarchy with standalone executionReport, secret sealing, and valid relative Markdown links', () => {
+  const executionReport: MigrationExecutionReport = {
+    schemaVersion: '1.0.0',
+    planId: 'plan-3tier',
+    executedAt: '2026-10-08T12:00:00Z',
+    status: 'failed',
+    exitCode: 1,
+    dryRun: false,
+    results: [
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'teams',
+        targetIdentifier: 'org:source-org',
+        scopeLevel: 'organization',
+        status: 'complete',
+        results: [
+          {
+            operationId: 'team-platform',
+            status: 'succeeded',
+            resourceType: 'team',
+            resourceName: 'platform-eng',
+            operationType: 'create',
+            reason: 'Create team platform-eng',
+            completedAt: '2026-10-08T12:00:01Z',
+          },
+        ],
+        durationMs: 1200,
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'repo-variables',
+        targetIdentifier: 'source-org/alpha-api',
+        scopeLevel: 'repository',
+        status: 'complete',
+        results: [
+          {
+            operationId: 'alpha-var-1',
+            status: 'succeeded',
+            resourceType: 'repo-variable',
+            resourceName: 'NODE_ENV',
+            operationType: 'create',
+            reason: 'Create variable NODE_ENV',
+            completedAt: '2026-10-08T12:00:02Z',
+          },
+        ],
+        durationMs: 800,
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'repo-secrets',
+        targetIdentifier: 'source-org/alpha-api',
+        scopeLevel: 'repository',
+        status: 'complete',
+        results: [
+          {
+            operationId: 'alpha-sec-1',
+            status: 'succeeded',
+            resourceType: 'repo-secret',
+            resourceName: 'DATABASE_PASSWORD',
+            operationType: 'create',
+            reason: 'Create sealed placeholder for DATABASE_PASSWORD',
+            completedAt: '2026-10-08T12:00:03Z',
+          },
+        ],
+        durationMs: 600,
+      },
+      {
+        schemaVersion: '1.0.0',
+        moduleId: 'webhooks',
+        targetIdentifier: 'source-org/beta-worker',
+        scopeLevel: 'repository',
+        status: 'failed',
+        results: [
+          {
+            operationId: 'beta-hook-1',
+            status: 'failed',
+            resourceType: 'webhook',
+            resourceName: 'https://hooks.example.com/notify',
+            operationType: 'create',
+            error:
+              'Webhook creation failed with token ghp_secret1234567890abcdefghijklmnop',
+          },
+        ],
+        durationMs: 950,
+      },
+    ],
+  };
+
+  const verificationReport: VerificationReport = {
+    schemaVersion: '1.0.0',
+    reportId: 'ver-3tier',
+    verifiedAt: '2026-10-08T12:05:00Z',
+    scopeName: '3tier-scope',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org',
+    modules: [
+      {
+        moduleId: 'teams',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'repo-variables',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'repo-secrets',
+        verified: true,
+        discrepancies: [],
+      },
+      {
+        moduleId: 'webhooks',
+        verified: false,
+        discrepancies: [
+          {
+            resourceName: 'beta-worker:https://hooks.example.com/notify',
+            expected: 'active',
+            actual: 'missing',
+            message: 'Webhook missing at destination',
+          },
+        ],
+      },
+    ],
+    summary: {
+      verifiedModuleCount: 3,
+      unverifiedModuleCount: 1,
+      discrepancyCount: 1,
+    },
+  };
+
+  const results = generateMigrationResults({
+    runId: 'run-3tier',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org',
+    executionMode: 'live',
+    executionReport,
+    verificationReport,
+    scope: {
+      version: '1.0.0',
+      name: '3tier-scope',
+      repositories: [
+        {
+          sourceOrg: 'source-org',
+          sourceRepo: 'alpha-api',
+          targetOrg: 'target-org',
+          targetRepo: 'alpha-api',
+          useGei: true,
+        },
+        {
+          sourceOrg: 'source-org',
+          sourceRepo: 'beta-worker',
+          targetOrg: 'target-org',
+          targetRepo: 'beta-worker',
+          useGei: true,
+        },
+      ],
+    },
+  });
+
+  // Verify Tier 1 README
+  const readme = results.files['README.md'] ?? '';
+  assert.ok(readme.includes('[View Details](organization/teams.md)'));
+  assert.ok(readme.includes('2 categories (2 items)'));
+  assert.ok(readme.includes('1 categories (1 items)'));
+
+  // Verify Tier 2 Org page
+  const orgTeamsMd = results.files['organization/teams.md'] ?? '';
+  assert.ok(orgTeamsMd.includes('[← Back to Overview](../README.md)'));
+  assert.ok(orgTeamsMd.includes('`platform-eng`'));
+
+  // Verify Tier 2 Repo pages contain Migrated Items Summary & links to Tier 3
+  const alphaMd = results.files['success/alpha-api.md'] ?? '';
+  assert.ok(alphaMd.includes('[← Back to Overview](../README.md)'));
+  assert.ok(alphaMd.includes('## Migrated Items Summary'));
+  assert.ok(
+    alphaMd.includes(
+      '[View Items](../repositories/alpha-api/repo-variables.md)',
+    ),
+  );
+  assert.ok(
+    alphaMd.includes('[View Items](../repositories/alpha-api/repo-secrets.md)'),
+  );
+
+  const betaMd = results.files['failure/beta-worker.md'] ?? '';
+  assert.ok(betaMd.includes('[← Back to Overview](../README.md)'));
+  assert.ok(betaMd.includes('## Migrated Items Summary'));
+  assert.ok(
+    betaMd.includes('[View Items](../repositories/beta-worker/webhooks.md)'),
+  );
+
+  // Verify Tier 3 Repo Module pages
+  const alphaVarsMd =
+    results.files['repositories/alpha-api/repo-variables.md'] ?? '';
+  assert.ok(
+    alphaVarsMd.includes(
+      '[← Back to alpha-api](../../success/alpha-api.md) | [Overview](../../README.md)',
+    ),
+  );
+  assert.ok(alphaVarsMd.includes('`NODE_ENV`'));
+
+  const alphaSecretsMd =
+    results.files['repositories/alpha-api/repo-secrets.md'] ?? '';
+  assert.ok(alphaSecretsMd.includes('`DATABASE_PASSWORD` `[SEALED]`'));
+
+  const betaHooksMd =
+    results.files['repositories/beta-worker/webhooks.md'] ?? '';
+  assert.ok(
+    betaHooksMd.includes(
+      '[← Back to beta-worker](../../failure/beta-worker.md) | [Overview](../../README.md)',
+    ),
+  );
+  assert.ok(
+    !betaHooksMd.includes('ghp_secret1234567890abcdefghijklmnop'),
+    'Token must be redacted in Tier 3 page',
+  );
+  assert.ok(betaHooksMd.includes('[REDACTED_TOKEN]'));
+  assert.ok(betaHooksMd.includes('Webhook missing at destination'));
+
+  // Verify every relative Markdown link across all generated files resolves to an existing key in results.files
+  const markdownLinkRegex = /\[[^\]]+\]\(([^)]+\.md)\)/g;
+  for (const [filePath, content] of Object.entries(results.files)) {
+    if (!filePath.endsWith('.md')) continue;
+    const dir = posix.dirname(filePath);
+    let match: RegExpExecArray | null;
+    while ((match = markdownLinkRegex.exec(content)) !== null) {
+      const relativeTarget = match[1];
+      assert.ok(relativeTarget);
+      const resolvedPath = posix.normalize(posix.join(dir, relativeTarget));
+      assert.ok(
+        results.files[resolvedPath] !== undefined,
+        `Broken link in ${filePath}: (${relativeTarget}) resolved to "${resolvedPath}" which does not exist in results.files`,
+      );
+    }
+  }
+});
+
+test('formatOrgModuleDetailMarkdown and formatRepoModuleDetailMarkdown escape pipe characters in table cells', () => {
+  const orgMd = formatOrgModuleDetailMarkdown({
+    moduleId: 'org-variables',
+    sourceOrg: 'src-org',
+    targetOrg: 'tgt-org',
+    summary: {
+      status: 'complete',
+      totalOperations: 1,
+      succeededOperations: 1,
+      failedOperations: 0,
+      skippedOperations: 0,
+      durationMs: 100,
+    },
+    items: [
+      {
+        operationId: 'op-1',
+        resourceName: 'VAR_WITH_|_PIPE',
+        resourceType: 'org-variable',
+        operationType: 'create',
+        status: 'succeeded',
+        verificationStatus: 'verified',
+        notes: 'Note with | pipe\nand newline',
+      },
+    ],
+  });
+  assert.ok(orgMd.includes('`VAR_WITH_\\|_PIPE`'));
+  assert.ok(orgMd.includes('Note with \\| pipe and newline'));
+
+  const repoMd = formatRepoModuleDetailMarkdown({
+    moduleId: 'repo-variables',
+    sourceRepo: 'my-repo',
+    targetRepo: 'my-repo',
+    repoStatus: 'succeeded',
+    summary: {
+      moduleId: 'repo-variables',
+      status: 'complete',
+      totalOperations: 1,
+      succeededOperations: 1,
+      failedOperations: 0,
+      skippedOperations: 0,
+      discrepancyCount: 0,
+      durationMs: 100,
+      relativeFilePath: 'repositories/my-repo/repo-variables.md',
+    },
+    items: [
+      {
+        operationId: 'op-2',
+        resourceName: 'REPO_VAR_|_PIPE',
+        resourceType: 'repo-variable',
+        operationType: 'update',
+        status: 'succeeded',
+        verificationStatus: 'verified',
+        notes: 'Updated | value',
+      },
+    ],
+  });
+  assert.ok(repoMd.includes('`REPO_VAR_\\|_PIPE`'));
+  assert.ok(repoMd.includes('Updated \\| value'));
 });

@@ -243,4 +243,117 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('generates 3-tier organization and repository module detail pages from standalone --execution-report', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'pub-3tier-cli-'));
+
+    try {
+      const scopePath = join(tmpDir, 'scope.json');
+      writeFileSync(
+        scopePath,
+        JSON.stringify(
+          {
+            version: '1.0.0',
+            name: 'cli-3tier-scope',
+            organizations: [{ source: 'acme-src', target: 'acme-tgt' }],
+            repositories: [
+              {
+                sourceOrg: 'acme-src',
+                sourceRepo: 'payments-api',
+                targetOrg: 'acme-tgt',
+                targetRepo: 'payments-api',
+                useGei: true,
+              },
+            ],
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+
+      const executionPath = join(tmpDir, 'migration-execution.json');
+      writeFileSync(
+        executionPath,
+        JSON.stringify(
+          {
+            schemaVersion: '1.0.0',
+            planId: 'plan-cli-3tier',
+            executedAt: '2026-10-08T12:00:00Z',
+            status: 'complete',
+            exitCode: 0,
+            dryRun: false,
+            results: [
+              {
+                schemaVersion: '1.0.0',
+                moduleId: 'org-custom-properties',
+                targetIdentifier: 'org:acme-src',
+                scopeLevel: 'organization',
+                status: 'complete',
+                results: [
+                  {
+                    operationId: 'prop-1',
+                    status: 'succeeded',
+                    resourceType: 'custom-property',
+                    resourceName: 'cost_center',
+                    operationType: 'create',
+                    reason: 'Create custom property cost_center',
+                    completedAt: '2026-10-08T12:00:01Z',
+                  },
+                ],
+                durationMs: 300,
+              },
+              {
+                schemaVersion: '1.0.0',
+                moduleId: 'environments',
+                targetIdentifier: 'acme-src/payments-api',
+                scopeLevel: 'repository',
+                status: 'complete',
+                results: [
+                  {
+                    operationId: 'env-prod',
+                    status: 'succeeded',
+                    resourceType: 'environment',
+                    resourceName: 'production',
+                    operationType: 'create',
+                    reason: 'Create production environment',
+                    completedAt: '2026-10-08T12:00:02Z',
+                  },
+                ],
+                durationMs: 450,
+              },
+            ],
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+
+      const outDir = join(tmpDir, 'results-3tier');
+      const exitCode = await runCli([
+        'publish-results',
+        '--scope',
+        scopePath,
+        '--execution-report',
+        executionPath,
+        '--output-dir',
+        outDir,
+        '--skip-push',
+      ]);
+
+      assert.equal(exitCode, 0);
+      assert.ok(existsSync(join(outDir, 'README.md')));
+      assert.ok(existsSync(join(outDir, 'manifest.json')));
+      assert.ok(
+        existsSync(join(outDir, 'organization/org-custom-properties.md')),
+      );
+      assert.ok(existsSync(join(outDir, 'success/payments-api.md')));
+      assert.ok(
+        existsSync(join(outDir, 'repositories/payments-api/environments.md')),
+      );
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

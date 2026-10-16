@@ -209,7 +209,12 @@ export class OrgSettingsMigrationModule implements MigrationModule<OrgSettingsDa
       if (srcVal === undefined) continue;
 
       // Handle EMU constraint: public repo creation is prohibited in EMU organizations
-      if (key === 'members_can_create_public_repositories' && srcVal === true) {
+      const isEmuTarget = ctx.scope.targetType !== 'ghec';
+      if (
+        isEmuTarget &&
+        key === 'members_can_create_public_repositories' &&
+        srcVal === true
+      ) {
         warnings.push(
           'Source allows members to create public repositories, but EMU organizations disallow public repositories. Setting will be omitted or set to false.',
         );
@@ -309,7 +314,36 @@ export class OrgSettingsMigrationModule implements MigrationModule<OrgSettingsDa
           body: payload,
         };
 
-        const res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+        let res: { status: number; data?: unknown };
+        try {
+          res = await ctx.targetWriteClient.mutate(writeOp, ctx.signal);
+        } catch (patchErr: unknown) {
+          const patchMsg =
+            patchErr instanceof Error ? patchErr.message : String(patchErr);
+          if (
+            patchMsg.includes('409') &&
+            patchMsg.includes('default_repository_permission')
+          ) {
+            const {
+              default_repository_permission: _omitted,
+              ...remainingPayload
+            } = payload;
+            void _omitted;
+            if (Object.keys(remainingPayload).length > 0) {
+              res = await ctx.targetWriteClient.mutate(
+                {
+                  ...writeOp,
+                  body: remainingPayload,
+                },
+                ctx.signal,
+              );
+            } else {
+              res = { status: 200 };
+            }
+          } else {
+            throw patchErr;
+          }
+        }
         results.push({
           operationId: op.id,
           status: 'succeeded',

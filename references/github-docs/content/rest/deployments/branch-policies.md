@@ -19,3 +19,139 @@ You can use the REST API to specify custom name patterns that branches must matc
 For more information about restricting environment deployments to certain branches, see [AUTOTITLE](/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List deployment branch policies
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies`
+
+Lists the deployment branch policies for an environment.
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a deployment branch policy
+
+`POST /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies`
+
+Creates a deployment branch or tag policy for an environment.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name pattern that branches or tags must match in order to deploy to the environment. Wildcard characters will not match `/`. For example, to match branches that begin with `release/` and contain an additional single slash, use `release/*/*`. For more information about pattern matching syntax, see the [Ruby File.fnmatch documentation](https://ruby-doc.org/core-2.5.1/File.html#method-c-fnmatch). |
+| `type` | `string` | No | Whether this rule targets a branch or tag |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `303` | Response if the same branch name pattern already exists |
+| `404` | Not Found or `deployment_branch_policy.custom_branch_policies` property for the environment is set to false |
+
+## Get a deployment branch policy
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}`
+
+Gets a deployment branch or tag policy for an environment.
+
+Anyone with read access to the repository can use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint with a private repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `branch_policy_id` | path | `integer` | Yes | The unique identifier of the branch policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a deployment branch policy
+
+`PUT /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}`
+
+Updates a deployment branch or tag policy for an environment.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `branch_policy_id` | path | `integer` | Yes | The unique identifier of the branch policy. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name pattern that branches must match in order to deploy to the environment. Wildcard characters will not match `/`. For example, to match branches that begin with `release/` and contain an additional single slash, use `release/*/*`. For more information about pattern matching syntax, see the [Ruby File.fnmatch documentation](https://ruby-doc.org/core-2.5.1/File.html#method-c-fnmatch). |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a deployment branch policy
+
+`DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}`
+
+Deletes a deployment branch or tag policy for an environment.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `branch_policy_id` | path | `integer` | Yes | The unique identifier of the branch policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

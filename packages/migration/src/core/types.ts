@@ -25,6 +25,14 @@ export interface MigrationScopeTarget {
   readonly targetOrg: string;
   readonly sourceRepo?: string;
   readonly targetRepo?: string;
+  readonly targetType?: 'ghec' | 'emu' | undefined;
+  readonly identityMapping?:
+    | {
+        readonly strategy: 'emu-saml' | 'manual' | 'pass-through';
+        readonly suffix?: string | undefined;
+        readonly mappings?: Readonly<Record<string, string>> | undefined;
+      }
+    | undefined;
   readonly options?: RepositoryOptions | undefined;
 }
 

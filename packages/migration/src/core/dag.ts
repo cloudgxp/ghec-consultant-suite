@@ -33,6 +33,11 @@ export interface TopologicalSortOptions {
    * Default: true.
    */
   readonly autoIncludeDependencies?: boolean;
+  /**
+   * Optional list of module IDs explicitly excluded by the operator.
+   * Excluded modules are omitted from the execution plan and are not auto-included as dependencies.
+   */
+  readonly excludeModules?: readonly string[] | undefined;
 }
 
 /**
@@ -50,9 +55,13 @@ export function sortModulesTopologically(
   options: TopologicalSortOptions = {},
 ): MigrationModule[] {
   const autoInclude = options.autoIncludeDependencies ?? true;
+  const excludeSet = new Set(options.excludeModules ?? []);
 
   // Validate initial selection exists in registry
   for (const id of selectedModuleIds) {
+    if (excludeSet.has(id)) {
+      continue;
+    }
     if (!availableModules.has(id)) {
       throw new Error(
         `Module "${id}" is not registered in the ModuleRegistry.`,
@@ -64,6 +73,9 @@ export function sortModulesTopologically(
   const nodesToOrder = new Set<string>();
 
   function collectNodes(id: string, visitedPath: string[] = []) {
+    if (excludeSet.has(id)) {
+      return;
+    }
     if (visitedPath.includes(id)) {
       const cyclePath = [...visitedPath.slice(visitedPath.indexOf(id)), id];
       throw new ModuleCycleError(cyclePath);
@@ -82,6 +94,9 @@ export function sortModulesTopologically(
     nodesToOrder.add(id);
 
     for (const depId of mod.dependencies) {
+      if (excludeSet.has(depId)) {
+        continue;
+      }
       if (autoInclude || selectedModuleIds.includes(depId)) {
         collectNodes(depId, [...visitedPath, id]);
       } else {
@@ -91,7 +106,9 @@ export function sortModulesTopologically(
   }
 
   for (const id of selectedModuleIds) {
-    collectNodes(id);
+    if (!excludeSet.has(id)) {
+      collectNodes(id);
+    }
   }
 
   // Tarjan's / DFS topological sort (post-order reversal)

@@ -123,7 +123,7 @@ export function loadDualConfig(options?: CliDualConfigOptions): CliDualConfig {
     process.env.GHEC_TOKEN?.trim() ||
     undefined;
 
-  let targetToken =
+  const targetToken =
     options?.targetToken || process.env.GHEC_TARGET_TOKEN?.trim() || undefined;
 
   const sourceBaseUrl =
@@ -154,13 +154,6 @@ export function loadDualConfig(options?: CliDualConfigOptions): CliDualConfig {
 
   if (!sourceToken && !baseConfig.app) {
     sourceToken = resolveAmbientGhToken();
-  }
-
-  if (!targetToken) {
-    const emuTargetToken = resolveAmbientGhToken('homer-simpson_gxp');
-    if (emuTargetToken && emuTargetToken !== sourceToken) {
-      targetToken = emuTargetToken;
-    }
   }
 
   const source: TenantClientConfig = {

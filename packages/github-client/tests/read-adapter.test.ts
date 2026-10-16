@@ -100,3 +100,50 @@ test('retries transient 429 and 503 responses before succeeding', async () => {
     assert.equal(requests, 2, `HTTP ${status}`);
   }
 });
+
+test('readSingle preserves both JSON array and JSON object responses without unwrapping arrays', async () => {
+  const arrayAdapter = new HttpGitHubReadAdapter({
+    fetchImpl: async () =>
+      new Response(
+        JSON.stringify([
+          { id: 101, name: 'ruleset-a' },
+          { id: 102, name: 'ruleset-b' },
+        ]),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+  });
+
+  const arrayRes = await arrayAdapter.readSingle<
+    Array<{ id: number; name: string }>
+  >(
+    {
+      id: 'rest.rulesets.list-repository',
+      transport: 'rest',
+      verifiedReadOnly: true,
+      path: '/repos/acme/api/rulesets',
+    },
+    signal,
+  );
+  assert.equal(arrayRes.status, 200);
+  assert.equal(Array.isArray(arrayRes.data), true);
+  assert.equal(arrayRes.data.length, 2);
+  assert.equal(arrayRes.data[0]?.name, 'ruleset-a');
+  assert.equal(arrayRes.data[1]?.name, 'ruleset-b');
+
+  const emptyArrayAdapter = new HttpGitHubReadAdapter({
+    fetchImpl: async () =>
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+  });
+  const emptyRes = await emptyArrayAdapter.readSingle<unknown[]>(
+    operation,
+    signal,
+  );
+  assert.equal(emptyRes.status, 200);
+  assert.deepEqual(emptyRes.data, []);
+});

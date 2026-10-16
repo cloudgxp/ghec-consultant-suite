@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import {
   GitMirrorPushExecutor,
   checkScratchDiskSpace,
+  runGitCommand,
   type GitCommandRunner,
 } from '../../src/strategies/mirror-push/index.js';
 import type { GitHubReadAdapter } from '@ghec/github-client';
@@ -202,5 +203,171 @@ describe('GitMirrorPushExecutor', () => {
     const check = checkScratchDiskSpace(tmpdir(), 1024 * 1024);
     assert.equal(typeof check.freeBytes, 'number');
     assert.equal(check.sufficient, true);
+  });
+
+  it('defaults to fast-snapshot shallow clone for repositories > 2 GiB', async () => {
+    const executedArgs: (readonly string[])[] = [];
+    const mockRunner: GitCommandRunner = async (_cmd, args) => {
+      executedArgs.push(args);
+      return { exitCode: 0, stdout: 'ok', stderr: '' };
+    };
+
+    const executor = new GitMirrorPushExecutor(mockRunner);
+    await executor.execute({
+      sourceOrg: 'src-org',
+      sourceRepo: 'chromium',
+      targetOrg: 'tgt-org',
+      targetRepo: 'chromium',
+      estimatedSizeBytes: 55 * 1024 * 1024 * 1024,
+      skipDiskCheck: true,
+    });
+
+    assert.equal(executedArgs.length, 2);
+    assert.equal(executedArgs[0]?.includes('--depth'), true);
+    assert.equal(executedArgs[0]?.includes('--single-branch'), true);
+    assert.equal(executedArgs[1]?.includes('--all'), true);
+  });
+
+  it('uses full clone and windowed commit + tag batch fallback when mirrorPushMode is full-history', async () => {
+    const executedArgs: (readonly string[])[] = [];
+    const mockRunner: GitCommandRunner = async (_cmd, args) => {
+      executedArgs.push(args);
+      if (args.includes('--mirror')) {
+        return {
+          exitCode: 1,
+          stdout: '',
+          stderr:
+            'error: RPC failed; HTTP 500 curl 22 The requested URL returned error: 500',
+        };
+      }
+      if (args.includes('symbolic-ref')) {
+        return { exitCode: 0, stdout: 'refs/heads/main\n', stderr: '' };
+      }
+      if (args.includes('rev-list')) {
+        return {
+          exitCode: 0,
+          stdout: `${'a'.repeat(40)}\n${'b'.repeat(40)}\n`,
+          stderr: '',
+        };
+      }
+      if (args.includes('for-each-ref')) {
+        return {
+          exitCode: 0,
+          stdout: 'refs/tags/v1.0.0\nrefs/tags/v1.1.0\n',
+          stderr: '',
+        };
+      }
+      return { exitCode: 0, stdout: 'ok', stderr: '' };
+    };
+
+    const executor = new GitMirrorPushExecutor(mockRunner);
+    await executor.execute({
+      sourceOrg: 'src-org',
+      sourceRepo: 'chromium',
+      targetOrg: 'tgt-org',
+      targetRepo: 'chromium',
+      estimatedSizeBytes: 55 * 1024 * 1024 * 1024,
+      mirrorPushMode: 'full-history',
+      skipDiskCheck: true,
+    });
+
+    // 1. Full clone (no --depth)
+    assert.equal(executedArgs[0]?.includes('--depth'), false);
+    // 2. Initial push --mirror
+    assert.equal(executedArgs[1]?.includes('--mirror'), true);
+    // 3. Fallback push --all + batched tag push
+    assert.equal(
+      executedArgs.some((a) => a.includes('--all')),
+      true,
+    );
+    assert.equal(
+      executedArgs.some(
+        (a) => a.includes('refs/tags/v1.0.0') && a.includes('refs/tags/v1.1.0'),
+      ),
+      true,
+    );
+  });
+
+  it('streams redacted stdout and stderr lines in real time and forwards callbacks via GitMirrorPushExecutor', async () => {
+    const stdoutLines: string[] = [];
+    const stderrLines: string[] = [];
+
+    const res = await runGitCommand(
+      process.execPath,
+      [
+        '-e',
+        'console.log("Cloning with token ghp_liveSecretToken123"); console.error("Receiving objects: 50% (Bearer ghp_liveSecretToken123)");',
+      ],
+      {
+        secrets: ['ghp_liveSecretToken123'],
+        onStdout: (line) => stdoutLines.push(line),
+        onStderr: (line) => stderrLines.push(line),
+      },
+    );
+
+    assert.equal(res.exitCode, 0);
+    assert.equal(stdoutLines.length, 1);
+    assert.equal(stderrLines.length, 1);
+    assert.ok(!stdoutLines[0]!.includes('ghp_liveSecretToken123'));
+    assert.ok(!stderrLines[0]!.includes('ghp_liveSecretToken123'));
+
+    // Also verify GitMirrorPushExecutor forwards onStdout and onStderr to its runner
+    const forwardedStdout: string[] = [];
+    const forwardedStderr: string[] = [];
+    const forwardingRunner: GitCommandRunner = async (_cmd, _args, opts) => {
+      opts?.onStdout?.('clone progress line');
+      opts?.onStderr?.('push progress line');
+      return {
+        exitCode: 0,
+        stdout: 'clone progress line',
+        stderr: 'push progress line',
+      };
+    };
+    const executor = new GitMirrorPushExecutor(forwardingRunner);
+    await executor.execute({
+      sourceOrg: 'src-org',
+      sourceRepo: 'stream-repo',
+      targetOrg: 'tgt-org',
+      targetRepo: 'stream-repo',
+      onStdout: (line) => forwardedStdout.push(line),
+      onStderr: (line) => forwardedStderr.push(line),
+    });
+
+    assert.ok(forwardedStdout.includes('clone progress line'));
+    assert.ok(forwardedStderr.includes('push progress line'));
+  });
+
+  it('attaches bounded, redacted partial stdout/stderr tail when runGitCommand times out', async () => {
+    const streamedStderr: string[] = [];
+
+    await assert.rejects(
+      async () => {
+        await runGitCommand(
+          process.execPath,
+          [
+            '-e',
+            'console.error("Counting objects: 42% using token ghp_timeoutSecret789"); setTimeout(() => {}, 5000);',
+          ],
+          {
+            timeoutMs: 800,
+            secrets: ['ghp_timeoutSecret789'],
+            onStderr: (line) => streamedStderr.push(line),
+          },
+        );
+      },
+      (err: Error) => {
+        assert.match(
+          err.message,
+          /Git command timed out after 800 milliseconds/,
+        );
+        assert.match(err.message, /Partial output before termination:/);
+        assert.match(err.message, /Counting objects: 42%/);
+        assert.equal(err.message.includes('ghp_timeoutSecret789'), false);
+        return true;
+      },
+    );
+
+    assert.equal(streamedStderr.length, 1);
+    assert.equal(streamedStderr[0]!.includes('ghp_timeoutSecret789'), false);
   });
 });

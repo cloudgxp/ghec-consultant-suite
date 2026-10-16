@@ -9,6 +9,11 @@ import {
   type VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  assertReadResponseOk,
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -82,6 +87,10 @@ export class BranchProtectionReconciliationModule implements MigrationModule<Bra
         },
         ctx.signal,
       );
+      assertReadResponseOk(
+        branchesRes,
+        `/repos/${ctx.scope.sourceOrg}/${repo}/branches`,
+      );
 
       const branchItems = Array.isArray(branchesRes.data)
         ? branchesRes.data.filter((b) => b.protected)
@@ -112,14 +121,25 @@ export class BranchProtectionReconciliationModule implements MigrationModule<Bra
               >),
             });
           }
-        } catch {
-          // branch might not have full protection configuration
+        } catch (branchErr: unknown) {
+          if (!isExpectedFeatureAbsentError(branchErr)) {
+            throw branchErr;
+          }
         }
       }
-    } catch (err) {
-      ctx.logger.warn(
-        `Failed to discover branch protections: ${err instanceof Error ? err.message : String(err)}`,
+    } catch (err: unknown) {
+      if (isExpectedFeatureAbsentError(err)) {
+        ctx.logger.warn(
+          `Branch protections not available for ${ctx.scope.sourceOrg}/${repo}: ${formatSanitizedReadError(err)}`,
+        );
+        return { protections: [] };
+      }
+      const msg = formatSanitizedReadError(
+        `Failed to discover branch protections for ${ctx.scope.sourceOrg}/${repo}`,
+        err,
       );
+      ctx.logger.error(msg);
+      throw new Error(msg, { cause: err });
     }
 
     return { protections };

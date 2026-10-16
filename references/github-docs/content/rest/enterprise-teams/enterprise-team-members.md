@@ -18,3 +18,164 @@ category:
 {% data reusables.enterprise.enterprise-team-api %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List enterprise teams for a user
+
+`GET /enterprises/{enterprise}/members/{username}/teams`
+
+Lists all enterprise teams that a user is a member of. This endpoint is available only for
+enterprises using the new enterprise teams experience.
+
+The authenticated user must be an enterprise owner or have the `enterprise_teams:read` permission.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `401` | Requires authentication |
+| `403` | Forbidden |
+| `404` | Resource not found |
+
+## List members in an enterprise team
+
+`GET /enterprises/{enterprise}/teams/{enterprise-team}/memberships`
+
+Lists all team members in an enterprise team.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Bulk add team members
+
+`POST /enterprises/{enterprise}/teams/{enterprise-team}/memberships/add`
+
+Add multiple team members to an enterprise team.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `usernames` | `array of strings` | Yes | The GitHub user handles to add to the team. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Successfully added team members. |
+
+## Bulk remove team members
+
+`POST /enterprises/{enterprise}/teams/{enterprise-team}/memberships/remove`
+
+Remove multiple team members from an enterprise team.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `usernames` | `array of strings` | Yes | The GitHub user handles to be removed from the team. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Successfully removed team members. |
+
+## Get enterprise team membership
+
+`GET /enterprises/{enterprise}/teams/{enterprise-team}/memberships/{username}`
+
+Returns whether the user is a member of the enterprise team.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | User is a member of the enterprise team. |
+
+## Add team member
+
+`PUT /enterprises/{enterprise}/teams/{enterprise-team}/memberships/{username}`
+
+Add a team member to an enterprise team.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Successfully added team member |
+
+## Remove team membership
+
+`DELETE /enterprises/{enterprise}/teams/{enterprise-team}/memberships/{username}`
+
+Remove membership of a specific user from a particular team in an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `enterprise-team` | path | `string` | Yes | The slug version of the enterprise team name. You can also substitute this value with the enterprise team id. |
+| `username` | path | `string` | Yes | The handle for the GitHub user account. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `403` | Forbidden |

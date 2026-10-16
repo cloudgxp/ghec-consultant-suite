@@ -167,3 +167,445 @@ To use other IdPs for SAML, {% data variables.product.company_short %} will use 
 {% endif %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List provisioned SCIM groups for an enterprise
+
+`GET /scim/v2/enterprises/{enterprise}/Groups`
+
+Lists provisioned SCIM groups in an enterprise.
+
+You can improve query search time by using the `excludedAttributes` query parameter with a value of `members` to exclude members from the response.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `filter` | query | `string` | No | If specified, only results that match the specified filter will be returned. Multiple filters are not supported. Possible filters are `externalId`, `id`, and `displayName`. For example, `?filter=externalId eq "9138790-10932-109120392-12321"`. |
+| `excludedAttributes` | query | `string` | No | Excludes the specified attribute from being returned in the results. Using this parameter can speed up response time. |
+| `startIndex` | query | `integer` | No | Used for pagination: the starting index of the first result to return when paginating through values. |
+| `count` | query | `integer` | No | Used for pagination: the number of results to return per page. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success, either groups were found or not found |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Provision a SCIM enterprise group
+
+`POST /scim/v2/enterprises/{enterprise}/Groups`
+
+Creates a SCIM group for an enterprise.
+
+When members are part of the group provisioning payload, they're designated as external group members. Providers are responsible for maintaining a mapping between the `externalId` and `id` for each user.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `schemas` | `array of strings` | Yes | The URIs that are used to indicate the namespaces of the SCIM schemas. Supported values are: `urn:ietf:params:scim:schemas:core:2.0:Group` |
+| `externalId` | `string` | Yes | A unique identifier for the resource as defined by the provisioning client. |
+| `displayName` | `string` | Yes | A human-readable name for a security group. |
+| `members` | `array of objects` | No | The group members. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Group has been created |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `409` | Duplicate record detected |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Get SCIM provisioning information for an enterprise group
+
+`GET /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}`
+
+Gets information about a SCIM group.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_group_id` | path | `string` | Yes | A unique identifier of the SCIM group. |
+| `excludedAttributes` | query | `string` | No | Excludes the specified attribute from being returned in the results. Using this parameter can speed up response time. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success, a group was found |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Set SCIM information for a provisioned enterprise group
+
+`PUT /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}`
+
+Replaces an existing provisioned group’s information.
+
+You must provide all the information required for the group as if you were provisioning it for the first time. Any existing group information that you don't provide will be removed, including group membership. If you want to only update a specific attribute, use the [Update an attribute for a SCIM enterprise group](#update-an-attribute-for-a-scim-enterprise-group) endpoint instead.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_group_id` | path | `string` | Yes | A unique identifier of the SCIM group. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `schemas` | `array of strings` | Yes | The URIs that are used to indicate the namespaces of the SCIM schemas. Supported values are: `urn:ietf:params:scim:schemas:core:2.0:Group` |
+| `externalId` | `string` | Yes | A unique identifier for the resource as defined by the provisioning client. |
+| `displayName` | `string` | Yes | A human-readable name for a security group. |
+| `members` | `array of objects` | No | The group members. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Group was updated |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `409` | Duplicate record detected |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Update an attribute for a SCIM enterprise group
+
+`PATCH /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}`
+
+Update a provisioned group’s individual attributes.
+
+To modify a group's values, you'll need to use a specific Operations JSON format which must include at least one of the following operations: add, remove, or replace. For examples and more information on this SCIM format, consult the [SCIM specification](https://tools.ietf.org/html/rfc7644#section-3.5.2). The update function can also be used to add group memberships.
+
+You can submit group memberships individually or in batches for improved efficiency.
+
+Note
+
+Memberships are referenced via a local user id. Ensure users are created before referencing them here.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_group_id` | path | `string` | Yes | A unique identifier of the SCIM group. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `Operations` | `array of objects` | Yes | patch operations list |
+| `schemas` | `array of strings` | Yes | undefinedSupported values are: `urn:ietf:params:scim:api:messages:2.0:PatchOp` |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success, group was updated |
+| `204` | No Content |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `409` | Duplicate record detected |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Delete a SCIM group from an enterprise
+
+`DELETE /scim/v2/enterprises/{enterprise}/Groups/{scim_group_id}`
+
+Deletes a SCIM group from an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_group_id` | path | `string` | Yes | A unique identifier of the SCIM group. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Group was deleted, no content |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## List SCIM provisioned identities for an enterprise
+
+`GET /scim/v2/enterprises/{enterprise}/Users`
+
+Lists provisioned SCIM enterprise members.
+
+When you remove a user with a SCIM-provisioned external identity from an enterprise using a `patch` with `active` flag to `false`, the user's metadata remains intact. This means they can potentially re-join the enterprise later. Although, while suspended, the user can't sign in. If you want to ensure the user can't re-join in the future, use the delete request. Only users who weren't permanently deleted will appear in the result list.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `filter` | query | `string` | No | If specified, only results that match the specified filter will be returned. Multiple filters are not supported. Possible filters are `userName`, `externalId`, `id`, and `displayName`. For example, `?filter=externalId eq "9138790-10932-109120392-12321"`. |
+| `startIndex` | query | `integer` | No | Used for pagination: the starting index of the first result to return when paginating through values. |
+| `count` | query | `integer` | No | Used for pagination: the number of results to return per page. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success, either users were found or not found |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Provision a SCIM enterprise user
+
+`POST /scim/v2/enterprises/{enterprise}/Users`
+
+Creates an external identity for a new SCIM enterprise user.
+
+SCIM is responsible for user provisioning, not authentication. The actual user authentication is handled by SAML. However, with SCIM enabled, users must first be provisioned via SCIM before they can sign in through SAML.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `schemas` | `array of strings` | Yes | The URIs that are used to indicate the namespaces of the SCIM schemas. Supported values are: `urn:ietf:params:scim:schemas:core:2.0:User` |
+| `externalId` | `string` | Yes | A unique identifier for the resource as defined by the provisioning client. |
+| `active` | `boolean` | Yes | Whether the user active in the IdP. |
+| `userName` | `string` | Yes | The username for the user. |
+| `name` | `object` | No |  |
+| `displayName` | `string` | Yes | A human-readable name for the user. |
+| `emails` | `array of objects` | Yes | The emails for the user. |
+| `roles` | `array of objects` | No | The roles assigned to the user. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | User has been created |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `409` | Duplicate record detected |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Get SCIM provisioning information for an enterprise user
+
+`GET /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}`
+
+Gets information about a SCIM user.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_user_id` | path | `string` | Yes | The unique identifier of the SCIM user. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success, a user was found |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Set SCIM information for a provisioned enterprise user
+
+`PUT /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}`
+
+Replaces an existing provisioned user's information.
+
+You must supply complete user information, just as you would when provisioning them initially. Any previously existing data not provided will be deleted. To update only a specific attribute, refer to the [Update an attribute for a SCIM user](#update-an-attribute-for-a-scim-enterprise-user) endpoint.
+
+Warning
+
+Setting `active: false` will suspend a user. As a result, their handle and primary email address will be obfuscated.
+
+{
+ "schemas": [
+   "urn:ietf:params:scim:schemas:core:2.0:User"
+ ],
+ "externalId": "E012345",
+ "active": false,
+ "userName": "E012345",
+ "name": {
+   "familyName": "Octocat",
+   "givenName": "Mona",
+   "middleName": "Lisa"
+ },
+ "displayName": "Mona Lisa",
+ "emails": [
+   {
+     "value": "mlisa@example.com",
+     "type": "work",
+     "primary": true
+   }
+ ],
+ "roles": [
+   {
+     "value": "User"
+   }
+ ]
+}
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_user_id` | path | `string` | Yes | The unique identifier of the SCIM user. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `schemas` | `array of strings` | Yes | The URIs that are used to indicate the namespaces of the SCIM schemas. Supported values are: `urn:ietf:params:scim:schemas:core:2.0:User` |
+| `externalId` | `string` | Yes | A unique identifier for the resource as defined by the provisioning client. |
+| `active` | `boolean` | Yes | Whether the user active in the IdP. |
+| `userName` | `string` | Yes | The username for the user. |
+| `name` | `object` | No |  |
+| `displayName` | `string` | Yes | A human-readable name for the user. |
+| `emails` | `array of objects` | Yes | The emails for the user. |
+| `roles` | `array of objects` | No | The roles assigned to the user. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | User was updated |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `409` | Duplicate record detected |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Update an attribute for a SCIM enterprise user
+
+`PATCH /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}`
+
+Update a provisioned user's individual attributes.
+
+To modify a user's attributes, you'll need to provide a `Operations` JSON formatted request that includes at least one of the following actions: add, remove, or replace. For specific examples and more information on the SCIM operations format, please refer to the [SCIM specification](https://tools.ietf.org/html/rfc7644#section-3.5.2).
+
+Note
+
+Complex SCIM `path` selectors that include filters are not supported. For example, a `path` selector defined as `"path": "emails[type eq \"work\"]"` will be ineffective.
+
+Warning
+
+Setting `active: false` will suspend a user. As a result, their handle and primary email address will be obfuscated.
+
+{
+  "schemas": [
+    "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+  ],
+  "Operations": [
+    {
+      "op": "replace",
+      "value": {
+        "active": false
+      }
+    }
+  ]
+}
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_user_id` | path | `string` | Yes | The unique identifier of the SCIM user. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `Operations` | `array of objects` | Yes | patch operations list |
+| `schemas` | `array of strings` | Yes | undefinedSupported values are: `urn:ietf:params:scim:api:messages:2.0:PatchOp` |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | Success, user was updated |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `409` | Duplicate record detected |
+| `429` | Too many requests |
+| `500` | Internal server error |
+
+## Delete a SCIM user from an enterprise
+
+`DELETE /scim/v2/enterprises/{enterprise}/Users/{scim_user_id}`
+
+Suspends a SCIM user permanently from an enterprise. This action will: remove all the user's data,  anonymize their login, email, and display name, erase all external identity SCIM attributes, delete the user's emails, avatar, PATs, SSH keys, OAuth authorizations, GPG keys, and SAML mappings. This action is irreversible.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `scim_user_id` | path | `string` | Yes | The unique identifier of the SCIM user. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | User was deleted, no content |
+| `400` | Bad request |
+| `401` | Authorization failure |
+| `403` | Permission denied |
+| `404` | Resource not found |
+| `429` | Too many requests |
+| `500` | Internal server error |

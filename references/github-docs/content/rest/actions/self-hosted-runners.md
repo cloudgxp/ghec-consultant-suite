@@ -19,3 +19,1036 @@ category:
 You can use the REST API to register, view, and delete self-hosted runners in {% data variables.product.prodname_actions %}. {% data reusables.actions.about-self-hosted-runners %} For more information, see [AUTOTITLE](/actions/how-tos/manage-runners/self-hosted-runners).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List self-hosted runners for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runners`
+
+Lists all self-hosted runners configured for an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `name` | query | `string` | No | The name of a self-hosted runner. |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get runner version end-of-life schedule for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runners/deprecations/{version}`
+
+Gets the end-of-life schedule for a specific runner version in an enterprise. Returns the runner version
+and the dates when registration and runtime support will end.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `version` | path | `string` | Yes | The runner version to look up. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List runner applications for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runners/downloads`
+
+Lists binaries for the runner application that you can download and run.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create configuration for a just-in-time runner for an Enterprise
+
+`POST /enterprises/{enterprise}/actions/runners/generate-jitconfig`
+
+Generates a configuration that can be passed to the runner application at startup.
+
+OAuth tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the new runner. |
+| `runner_group_id` | `integer` | Yes | The ID of the runner group to register the runner to. |
+| `labels` | `array of strings` | Yes | The names of the custom labels to add to the runner. Minimum items: 1. Maximum items: 100. |
+| `work_folder` | `string` | No | The working directory to be used for job execution, relative to the runner install directory. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create a registration token for an enterprise
+
+`POST /enterprises/{enterprise}/actions/runners/registration-token`
+
+Returns a token that you can pass to the `config` script. The token expires after one hour.
+
+Example using registration token:
+
+Configure your self-hosted runner, replacing `TOKEN` with the registration token provided by this endpoint.
+
+./config.sh --url https://github.com/enterprises/octo-enterprise --token TOKEN
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Create a remove token for an enterprise
+
+`POST /enterprises/{enterprise}/actions/runners/remove-token`
+
+Returns a token that you can pass to the `config` script to remove a self-hosted runner from an enterprise. The token expires after one hour.
+
+Example using remove token:
+
+To remove your self-hosted runner from an enterprise, replace `TOKEN` with the remove token provided by this
+endpoint.
+
+./config.sh remove --token TOKEN
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a self-hosted runner for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runners/{runner_id}`
+
+Gets a specific self-hosted runner configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a self-hosted runner from an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/runners/{runner_id}`
+
+Forces the removal of a self-hosted runner from an enterprise. You can use this endpoint to completely remove the runner when the machine you were using no longer exists.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List labels for a self-hosted runner for an enterprise
+
+`GET /enterprises/{enterprise}/actions/runners/{runner_id}/labels`
+
+Lists all labels for a self-hosted runner configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Add custom labels to a self-hosted runner for an enterprise
+
+`POST /enterprises/{enterprise}/actions/runners/{runner_id}/labels`
+
+Add custom labels to a self-hosted runner configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `labels` | `array of strings` | Yes | The names of the custom labels to add to the runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Set custom labels for a self-hosted runner for an enterprise
+
+`PUT /enterprises/{enterprise}/actions/runners/{runner_id}/labels`
+
+Remove all previous custom labels and set the new custom labels for a specific
+self-hosted runner configured in an enterprise.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `labels` | `array of strings` | Yes | The names of the custom labels to set for the runner. You can pass an empty array to remove all custom labels. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove all custom labels from a self-hosted runner for an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/runners/{runner_id}/labels`
+
+Remove all custom labels from a self-hosted runner configured in an
+enterprise. Returns the remaining read-only labels from the runner.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove a custom label from a self-hosted runner for an enterprise
+
+`DELETE /enterprises/{enterprise}/actions/runners/{runner_id}/labels/{name}`
+
+Remove a custom label from a self-hosted runner configured
+in an enterprise. Returns the remaining labels from the runner.
+
+This endpoint returns a `404 Not Found` status if the custom label is not
+present on the runner.
+
+OAuth app tokens and personal access tokens (classic) need the `manage_runners:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+| `name` | path | `string` | Yes | The name of a self-hosted runner's custom label. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List self-hosted runners for an organization
+
+`GET /orgs/{org}/actions/runners`
+
+Lists all self-hosted runners configured in an organization.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `name` | query | `string` | No | The name of a self-hosted runner. |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get runner version end-of-life schedule for an organization
+
+`GET /orgs/{org}/actions/runners/deprecations/{version}`
+
+Gets the end-of-life schedule for a specific runner version in an organization. Returns the runner version
+and the dates when registration and runtime support will end.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `version` | path | `string` | Yes | The runner version to look up. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List runner applications for an organization
+
+`GET /orgs/{org}/actions/runners/downloads`
+
+Lists binaries for the runner application that you can download and run.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.  If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create configuration for a just-in-time runner for an organization
+
+`POST /orgs/{org}/actions/runners/generate-jitconfig`
+
+Generates a configuration that can be passed to the runner application at startup.
+
+The authenticated user must have admin access to the organization.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the new runner. |
+| `runner_group_id` | `integer` | Yes | The ID of the runner group to register the runner to. |
+| `labels` | `array of strings` | Yes | The names of the custom labels to add to the runner. Minimum items: 1. Maximum items: 100. |
+| `work_folder` | `string` | No | The working directory to be used for job execution, relative to the runner install directory. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create a registration token for an organization
+
+`POST /orgs/{org}/actions/runners/registration-token`
+
+Returns a token that you can pass to the `config` script. The token expires after one hour.
+
+For example, you can replace `TOKEN` in the following example with the registration token provided by this endpoint to configure your self-hosted runner:
+
+./config.sh --url https://github.com/octo-org --token TOKEN
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Create a remove token for an organization
+
+`POST /orgs/{org}/actions/runners/remove-token`
+
+Returns a token that you can pass to the `config` script to remove a self-hosted runner from an organization. The token expires after one hour.
+
+For example, you can replace `TOKEN` in the following example with the registration token provided by this endpoint to remove your self-hosted runner from an organization:
+
+./config.sh remove --token TOKEN
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a self-hosted runner for an organization
+
+`GET /orgs/{org}/actions/runners/{runner_id}`
+
+Gets a specific self-hosted runner configured in an organization.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a self-hosted runner from an organization
+
+`DELETE /orgs/{org}/actions/runners/{runner_id}`
+
+Forces the removal of a self-hosted runner from an organization. You can use this endpoint to completely remove the runner when the machine you were using no longer exists.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List labels for a self-hosted runner for an organization
+
+`GET /orgs/{org}/actions/runners/{runner_id}/labels`
+
+Lists all labels for a self-hosted runner configured in an organization.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Add custom labels to a self-hosted runner for an organization
+
+`POST /orgs/{org}/actions/runners/{runner_id}/labels`
+
+Adds custom labels to a self-hosted runner configured in an organization.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `labels` | `array of strings` | Yes | The names of the custom labels to add to the runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Set custom labels for a self-hosted runner for an organization
+
+`PUT /orgs/{org}/actions/runners/{runner_id}/labels`
+
+Remove all previous custom labels and set the new custom labels for a specific
+self-hosted runner configured in an organization.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `labels` | `array of strings` | Yes | The names of the custom labels to set for the runner. You can pass an empty array to remove all custom labels. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove all custom labels from a self-hosted runner for an organization
+
+`DELETE /orgs/{org}/actions/runners/{runner_id}/labels`
+
+Remove all custom labels from a self-hosted runner configured in an
+organization. Returns the remaining read-only labels from the runner.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Remove a custom label from a self-hosted runner for an organization
+
+`DELETE /orgs/{org}/actions/runners/{runner_id}/labels/{name}`
+
+Remove a custom label from a self-hosted runner configured
+in an organization. Returns the remaining labels from the runner.
+
+This endpoint returns a `404 Not Found` status if the custom label is not
+present on the runner.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+| `name` | path | `string` | Yes | The name of a self-hosted runner's custom label. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List self-hosted runners for a repository
+
+`GET /repos/{owner}/{repo}/actions/runners`
+
+Lists all self-hosted runners configured in a repository.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `name` | query | `string` | No | The name of a self-hosted runner. |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get runner version end-of-life schedule for a repository
+
+`GET /repos/{owner}/{repo}/actions/runners/deprecations/{version}`
+
+Gets the end-of-life schedule for a specific runner version in a repository. Returns the runner version
+and the dates when registration and runtime support will end.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `version` | path | `string` | Yes | The runner version to look up. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List runner applications for a repository
+
+`GET /repos/{owner}/{repo}/actions/runners/downloads`
+
+Lists binaries for the runner application that you can download and run.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create configuration for a just-in-time runner for a repository
+
+`POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig`
+
+Generates a configuration that can be passed to the runner application at startup.
+
+The authenticated user must have admin access to the repository.
+
+OAuth tokens and personal access tokens (classic) need the`repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the new runner. |
+| `runner_group_id` | `integer` | Yes | The ID of the runner group to register the runner to. |
+| `labels` | `array of strings` | Yes | The names of the custom labels to add to the runner. Minimum items: 1. Maximum items: 100. |
+| `work_folder` | `string` | No | The working directory to be used for job execution, relative to the runner install directory. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `409` | Conflict |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Create a registration token for a repository
+
+`POST /repos/{owner}/{repo}/actions/runners/registration-token`
+
+Returns a token that you can pass to the `config` script. The token expires after one hour.
+
+For example, you can replace `TOKEN` in the following example with the registration token provided by this endpoint to configure your self-hosted runner:
+
+./config.sh --url https://github.com/octo-org --token TOKEN
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Create a remove token for a repository
+
+`POST /repos/{owner}/{repo}/actions/runners/remove-token`
+
+Returns a token that you can pass to the `config` script to remove a self-hosted runner from an repository. The token expires after one hour.
+
+For example, you can replace `TOKEN` in the following example with the registration token provided by this endpoint to remove your self-hosted runner from an organization:
+
+./config.sh remove --token TOKEN
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a self-hosted runner for a repository
+
+`GET /repos/{owner}/{repo}/actions/runners/{runner_id}`
+
+Gets a specific self-hosted runner configured in a repository.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Delete a self-hosted runner from a repository
+
+`DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}`
+
+Forces the removal of a self-hosted runner from a repository. You can use this endpoint to completely remove the runner when the machine you were using no longer exists.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## List labels for a self-hosted runner for a repository
+
+`GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels`
+
+Lists all labels for a self-hosted runner configured in a repository.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Add custom labels to a self-hosted runner for a repository
+
+`POST /repos/{owner}/{repo}/actions/runners/{runner_id}/labels`
+
+Adds custom labels to a self-hosted runner configured in a repository.
+
+Authenticated users must have admin access to the organization to use this endpoint.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `labels` | `array of strings` | Yes | The names of the custom labels to add to the runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Set custom labels for a self-hosted runner for a repository
+
+`PUT /repos/{owner}/{repo}/actions/runners/{runner_id}/labels`
+
+Remove all previous custom labels and set the new custom labels for a specific
+self-hosted runner configured in a repository.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `labels` | `array of strings` | Yes | The names of the custom labels to set for the runner. You can pass an empty array to remove all custom labels. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+
+## Remove all custom labels from a self-hosted runner for a repository
+
+`DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels`
+
+Remove all custom labels from a self-hosted runner configured in a
+repository. Returns the remaining read-only labels from the runner.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Remove a custom label from a self-hosted runner for a repository
+
+`DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels/{name}`
+
+Remove a custom label from a self-hosted runner configured
+in a repository. Returns the remaining labels from the runner.
+
+This endpoint returns a `404 Not Found` status if the custom label is not
+present on the runner.
+
+Authenticated users must have admin access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `runner_id` | path | `integer` | Yes | Unique identifier of the self-hosted runner. |
+| `name` | path | `string` | Yes | The name of a self-hosted runner's custom label. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |

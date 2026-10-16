@@ -14,3 +14,102 @@ category:
 {% data reusables.user-settings.enterprise-admin-api-classic-pat-only %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get code security and analysis features for an enterprise
+
+`GET /enterprises/{enterprise}/code_security_and_analysis`
+
+Warning
+
+Closing down notice: The ability to fetch code security and analysis settings for an enterprise is closing down. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. For more information, see the [changelog](https://github.blog/changelog/2024-09-27-upcoming-replacement-of-enterprise-code-security-enablement-ui-and-apis).
+
+Gets code security and analysis settings for the specified enterprise.
+
+The authenticated user must be an administrator of the enterprise in order to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `read:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+
+## Update code security and analysis features for an enterprise
+
+`PATCH /enterprises/{enterprise}/code_security_and_analysis`
+
+Warning
+
+Closing down notice: The ability to update code security and analysis settings for an enterprise is closing down. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. For more information, see the [changelog](https://github.blog/changelog/2024-09-27-upcoming-replacement-of-enterprise-code-security-enablement-ui-and-apis).
+
+Updates the settings for advanced security, Dependabot alerts, secret scanning, and push protection for new repositories in an enterprise.
+
+The authenticated user must be an administrator of the enterprise to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `advanced_security_enabled_for_new_repositories` | `boolean` | No | Whether GitHub Advanced Security is automatically enabled for new repositories. For more information, see "[About GitHub Advanced Security](https://docs.github.com/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security)." |
+| `advanced_security_enabled_new_user_namespace_repos` | `boolean` | No | Whether GitHub Advanced Security is automatically enabled for new user namespace repositories. For more information, see "[About GitHub Advanced Security](https://docs.github.com/enterprise-cloud@latest/get-started/learning-about-github/about-github-advanced-security)." |
+| `dependabot_alerts_enabled_for_new_repositories` | `boolean` | No | Whether Dependabot alerts are automatically enabled for new repositories. For more information, see "[About Dependabot alerts](https://docs.github.com/enterprise-cloud@latest/code-security/dependabot/dependabot-alerts/about-dependabot-alerts)." |
+| `secret_scanning_enabled_for_new_repositories` | `boolean` | No | Whether secret scanning is automatically enabled for new repositories. For more information, see "[About secret scanning](https://docs.github.com/enterprise-cloud@latest/code-security/secret-scanning/about-secret-scanning)." |
+| `secret_scanning_push_protection_enabled_for_new_repositories` | `boolean` | No | Whether secret scanning push protection is automatically enabled for new repositories. For more information, see "[Protecting pushes with secret scanning](https://docs.github.com/enterprise-cloud@latest/code-security/secret-scanning/protecting-pushes-with-secret-scanning)." |
+| `secret_scanning_push_protection_custom_link` | `string or null` | No | The URL that will be displayed to contributors who are blocked from pushing a secret. For more information, see "[Protecting pushes with secret scanning](https://docs.github.com/enterprise-cloud@latest/code-security/secret-scanning/protecting-pushes-with-secret-scanning)." To disable this functionality, set this field to `null`. |
+| `secret_scanning_non_provider_patterns_enabled_for_new_repositories` | `boolean or null` | No | Whether secret scanning of non-provider patterns is enabled for new repositories under this enterprise. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Action started |
+| `404` | Resource not found |
+| `422` | The action could not be taken due to an in progress enablement, or a policy is preventing enablement |
+
+## Enable or disable a security feature
+
+`POST /enterprises/{enterprise}/{security_product}/{enablement}`
+
+Warning
+
+Closing down notice: The ability to enable or disable a security feature for an enterprise is closing down. Please use [code security configurations](https://docs.github.com/enterprise-cloud@latest/rest/code-security/configurations) instead. For more information, see the [changelog](https://github.blog/changelog/2024-09-27-upcoming-replacement-of-enterprise-code-security-enablement-ui-and-apis).
+
+Enables or disables the specified security feature for all repositories in an enterprise.
+
+The authenticated user must be an administrator of the enterprise to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:enterprise` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `security_product` | path | `string` | Yes | The security feature to enable or disable. |
+| `enablement` | path | `string` | Yes | The action to take. `enable_all` means to enable the specified security feature for all repositories in the enterprise. `disable_all` means to disable the specified security feature for all repositories in the enterprise. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Action started |
+| `404` | Resource not found |
+| `422` | The action could not be taken due to an in progress enablement, or a policy is preventing enablement |

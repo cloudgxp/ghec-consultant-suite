@@ -17,3 +17,548 @@ category:
 You can use the REST API to create, update, delete, and retrieve information about variables that can be used in workflows in {% data variables.product.prodname_actions %}. {% data reusables.actions.about-variables %} For more information, see [AUTOTITLE](/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables) in the {% data variables.product.prodname_actions %} documentation.
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization variables
+
+`GET /orgs/{org}/actions/variables`
+
+Lists all organization variables.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 30). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create an organization variable
+
+`POST /orgs/{org}/actions/variables`
+
+Creates an organization variable that you can reference in a GitHub Actions workflow.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the variable. |
+| `value` | `string` | Yes | The value of the variable. |
+| `visibility` | `string` | Yes | The type of repositories in the organization that can access the variable. `selected` means only the repositories specified by `selected_repository_ids` can access the variable. |
+| `selected_repository_ids` | `array of integers` | No | An array of repository ids that can access the organization variable. You can only provide a list of repository ids when the `visibility` is set to `selected`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Response when creating a variable |
+
+## Get an organization variable
+
+`GET /orgs/{org}/actions/variables/{name}`
+
+Gets a specific variable in an organization.
+
+The authenticated user must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update an organization variable
+
+`PATCH /orgs/{org}/actions/variables/{name}`
+
+Updates an organization variable that you can reference in a GitHub Actions workflow.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the variable. |
+| `value` | `string` | No | The value of the variable. |
+| `visibility` | `string` | No | The type of repositories in the organization that can access the variable. `selected` means only the repositories specified by `selected_repository_ids` can access the variable. |
+| `selected_repository_ids` | `array of integers` | No | An array of repository ids that can access the organization variable. You can only provide a list of repository ids when the `visibility` is set to `selected`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Delete an organization variable
+
+`DELETE /orgs/{org}/actions/variables/{name}`
+
+Deletes an organization variable using the variable name.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List selected repositories for an organization variable
+
+`GET /orgs/{org}/actions/variables/{name}/repositories`
+
+Lists all repositories that can access an organization variable
+that is available to selected repositories.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `409` | Response when the visibility of the variable is not set to `selected` |
+
+## Set selected repositories for an organization variable
+
+`PUT /orgs/{org}/actions/variables/{name}/repositories`
+
+Replaces all repositories for an organization variable that is available
+to selected repositories. Organization variables that are available to selected
+repositories have their `visibility` field set to `selected`.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_repository_ids` | `array of integers` | Yes | The IDs of the repositories that can access the organization variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `409` | Response when the visibility of the variable is not set to `selected` |
+
+## Add selected repository to an organization variable
+
+`PUT /orgs/{org}/actions/variables/{name}/repositories/{repository_id}`
+
+Adds a repository to an organization variable that is available to selected repositories.
+Organization variables that are available to selected repositories have their `visibility` field set to `selected`.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+| `repository_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `409` | Response when the visibility of the variable is not set to `selected` |
+
+## Remove selected repository from an organization variable
+
+`DELETE /orgs/{org}/actions/variables/{name}/repositories/{repository_id}`
+
+Removes a repository from an organization variable that is
+available to selected repositories. Organization variables that are available to
+selected repositories have their `visibility` field set to `selected`.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+| `repository_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `409` | Response when the visibility of the variable is not set to `selected` |
+
+## List repository organization variables
+
+`GET /repos/{owner}/{repo}/actions/organization-variables`
+
+Lists all organization variables shared with a repository.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 30). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List repository variables
+
+`GET /repos/{owner}/{repo}/actions/variables`
+
+Lists all repository variables.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 30). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create a repository variable
+
+`POST /repos/{owner}/{repo}/actions/variables`
+
+Creates a repository variable that you can reference in a GitHub Actions workflow.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the variable. |
+| `value` | `string` | Yes | The value of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get a repository variable
+
+`GET /repos/{owner}/{repo}/actions/variables/{name}`
+
+Gets a specific variable in a repository.
+
+The authenticated user must have collaborator access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update a repository variable
+
+`PATCH /repos/{owner}/{repo}/actions/variables/{name}`
+
+Updates a repository variable that you can reference in a GitHub Actions workflow.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the variable. |
+| `value` | `string` | No | The value of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Delete a repository variable
+
+`DELETE /repos/{owner}/{repo}/actions/variables/{name}`
+
+Deletes a repository variable using the variable name.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List environment variables
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/variables`
+
+Lists all environment variables.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 30). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create an environment variable
+
+`POST /repos/{owner}/{repo}/environments/{environment_name}/variables`
+
+Create an environment variable that you can reference in a GitHub Actions workflow.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the variable. |
+| `value` | `string` | Yes | The value of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+
+## Get an environment variable
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}`
+
+Gets a specific variable in an environment.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `name` | path | `string` | Yes | The name of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Update an environment variable
+
+`PATCH /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}`
+
+Updates an environment variable that you can reference in a GitHub Actions workflow.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the variable. |
+| `value` | `string` | No | The value of the variable. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Delete an environment variable
+
+`DELETE /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}`
+
+Deletes an environment variable using the variable name.
+
+Authenticated users must have collaborator access to a repository to create, update, or read variables.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `name` | path | `string` | Yes | The name of the variable. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

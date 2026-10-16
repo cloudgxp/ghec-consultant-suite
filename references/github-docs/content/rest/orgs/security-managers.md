@@ -17,3 +17,67 @@ category:
 {% data reusables.organizations.about-security-managers %}
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List security manager teams
+
+`GET /orgs/{org}/security-managers`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed starting January 1, 2026. Please use the "[Organization Roles](https://docs.github.com/enterprise-cloud@latest/rest/orgs/organization-roles)" endpoints instead.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Add a security manager team
+
+`PUT /orgs/{org}/security-managers/teams/{team_slug}`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed starting January 1, 2026. Please use the "[Organization Roles](https://docs.github.com/enterprise-cloud@latest/rest/orgs/organization-roles)" endpoints instead.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Remove a security manager team
+
+`DELETE /orgs/{org}/security-managers/teams/{team_slug}`
+
+Warning
+
+Closing down notice: This operation is closing down and will be removed starting January 1, 2026. Please use the "[Organization Roles](https://docs.github.com/enterprise-cloud@latest/rest/orgs/organization-roles)" endpoints instead.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `team_slug` | path | `string` | Yes | The slug of the team name. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |

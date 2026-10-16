@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { MigrationPlan, VerificationReport } from '@ghec/contracts';
+import { sanitizeDiagnostics } from '@ghec/github-client';
 import type { MigrationExecutionReport } from '../orchestrator/types.js';
 import type {
   MigrationRunSummary,
@@ -36,6 +37,20 @@ function countOperations(
   };
 }
 
+function accumulateCounts(
+  existing: ModuleOpCounts | undefined,
+  delta: ModuleOpCounts,
+): ModuleOpCounts {
+  if (!existing) {
+    return delta;
+  }
+  return {
+    planned: existing.planned + delta.planned,
+    succeeded: existing.succeeded + delta.succeeded,
+    failed: existing.failed + delta.failed,
+  };
+}
+
 /**
  * Builds a standardized MigrationRunSummary from a MigrationExecutionReport.
  */
@@ -60,20 +75,34 @@ export function buildSummaryFromExecutionReport(
     }
   }
 
-  // Module maps
-  const rehydration: RehydrationSummary = {};
-  const coreTransfer: CoreTransferSummary = {};
-  const postMigration: PostMigrationSummary = {};
+  // Mutable accumulators
+  const rehydration: {
+    -readonly [K in keyof RehydrationSummary]?: ModuleOpCounts;
+  } = {};
+  const coreTransfer: {
+    -readonly [K in keyof CoreTransferSummary]?: CoreTransferSummary[K];
+  } = {};
+  const postMigration: {
+    -readonly [K in keyof PostMigrationSummary]?: PostMigrationSummary[K];
+  } = {};
+  const moduleBreakdown: Record<string, ModuleOpCounts> = {};
   const metadataFailures: MetadataFailureSummary[] = [];
 
   for (const modResult of report.results) {
     const counts = countOperations(modResult.results);
+    moduleBreakdown[modResult.moduleId] = accumulateCounts(
+      moduleBreakdown[modResult.moduleId],
+      counts,
+    );
 
     if (
       modResult.failedMetadataCategories &&
       modResult.failedMetadataCategories.length > 0
     ) {
       metadataFailures.push({
+        ...(modResult.targetIdentifier
+          ? { repository: modResult.targetIdentifier }
+          : {}),
         categories: modResult.failedMetadataCategories,
         fallbackCommands: modResult.failedMetadataCategories.map(
           (cat) =>
@@ -82,98 +111,205 @@ export function buildSummaryFromExecutionReport(
       });
     }
 
-    // Collect errors
+    // Collect errors with target attribution and DEC-004 sanitization
     for (const opResult of modResult.results) {
       if (opResult.status === 'failed' && opResult.error) {
-        errors.push(`[${modResult.moduleId}] ${opResult.error}`);
+        const targetId =
+          modResult.targetIdentifier || opResult.targetIdentifier;
+        const prefix = targetId
+          ? `[${modResult.moduleId} @ ${targetId}]`
+          : `[${modResult.moduleId}]`;
+        errors.push(sanitizeDiagnostics(`${prefix} ${opResult.error}`));
       }
     }
 
     switch (modResult.moduleId) {
-      case 'gei-repo':
-        (
-          coreTransfer as {
-            gei?: {
-              total: number;
-              succeeded: number;
-              failed: number;
-              skippedReleases: number;
-            };
-          }
-        ).gei = {
-          total: counts.planned,
-          succeeded: counts.succeeded,
-          failed: counts.failed,
-          skippedReleases: 0,
+      case 'gei-repo': {
+        const prev = coreTransfer.gei;
+        coreTransfer.gei = {
+          total: (prev?.total ?? 0) + counts.planned,
+          succeeded: (prev?.succeeded ?? 0) + counts.succeeded,
+          failed: (prev?.failed ?? 0) + counts.failed,
+          skippedReleases: prev?.skippedReleases ?? 0,
         };
         break;
-      case 'git-lfs':
-        (
-          coreTransfer as {
-            lfs?: {
-              repositoriesWithLfs: number;
-              objectsTransferred: number;
-              bytesTransferred: number;
-            };
-          }
-        ).lfs = {
-          repositoriesWithLfs: counts.succeeded,
-          objectsTransferred: 0,
-          bytesTransferred: 0,
+      }
+      case 'lfs':
+      case 'git-lfs': {
+        const prev = coreTransfer.lfs;
+        coreTransfer.lfs = {
+          repositoriesWithLfs:
+            (prev?.repositoriesWithLfs ?? 0) + counts.succeeded,
+          objectsTransferred: prev?.objectsTransferred ?? 0,
+          bytesTransferred: prev?.bytesTransferred ?? 0,
         };
         break;
-      case 'releases':
-        (
-          coreTransfer as {
-            largeReleases?: {
-              repositoriesWithLargeReleases: number;
-              assetsStreamed: number;
-              bytesStreamed: number;
-            };
-          }
-        ).largeReleases = {
-          repositoriesWithLargeReleases: counts.succeeded,
-          assetsStreamed: 0,
-          bytesStreamed: 0,
+      }
+      case 'releases': {
+        const prev = coreTransfer.largeReleases;
+        coreTransfer.largeReleases = {
+          repositoriesWithLargeReleases:
+            (prev?.repositoriesWithLargeReleases ?? 0) + counts.succeeded,
+          assetsStreamed: prev?.assetsStreamed ?? 0,
+          bytesStreamed: prev?.bytesStreamed ?? 0,
         };
         break;
+      }
       case 'repo-variables':
-        (rehydration as { variables?: ModuleOpCounts }).variables = counts;
+        rehydration.variables = accumulateCounts(rehydration.variables, counts);
         break;
       case 'repo-secrets':
-        (rehydration as { secrets?: ModuleOpCounts }).secrets = counts;
+        rehydration.secrets = accumulateCounts(rehydration.secrets, counts);
         break;
       case 'environments':
-        (rehydration as { environments?: ModuleOpCounts }).environments =
-          counts;
+        rehydration.environments = accumulateCounts(
+          rehydration.environments,
+          counts,
+        );
         break;
       case 'rulesets':
-        (rehydration as { rulesets?: ModuleOpCounts }).rulesets = counts;
+        rehydration.rulesets = accumulateCounts(rehydration.rulesets, counts);
         break;
       case 'branch-protection':
-        (
-          rehydration as { branchProtection?: ModuleOpCounts }
-        ).branchProtection = counts;
+        rehydration.branchProtection = accumulateCounts(
+          rehydration.branchProtection,
+          counts,
+        );
         break;
       case 'teams':
-        (rehydration as { teams?: ModuleOpCounts }).teams = counts;
+        rehydration.teams = accumulateCounts(rehydration.teams, counts);
         break;
-      case 'post-migration-mannequins':
-        (
-          postMigration as {
-            mannequins?: { total: number; reclaimed: number; unmapped: number };
-          }
-        ).mannequins = {
-          total: counts.planned,
-          reclaimed: counts.succeeded,
-          unmapped: counts.failed,
+      case 'repo-settings':
+        rehydration.repoSettings = accumulateCounts(
+          rehydration.repoSettings,
+          counts,
+        );
+        break;
+      case 'org-settings':
+        rehydration.orgSettings = accumulateCounts(
+          rehydration.orgSettings,
+          counts,
+        );
+        break;
+      case 'org-variables':
+        rehydration.orgVariables = accumulateCounts(
+          rehydration.orgVariables,
+          counts,
+        );
+        break;
+      case 'org-secrets':
+        rehydration.orgSecrets = accumulateCounts(
+          rehydration.orgSecrets,
+          counts,
+        );
+        break;
+      case 'custom-roles':
+        rehydration.customRoles = accumulateCounts(
+          rehydration.customRoles,
+          counts,
+        );
+        break;
+      case 'org-custom-properties':
+        rehydration.orgCustomProperties = accumulateCounts(
+          rehydration.orgCustomProperties,
+          counts,
+        );
+        break;
+      case 'repo-custom-properties':
+        rehydration.repoCustomProperties = accumulateCounts(
+          rehydration.repoCustomProperties,
+          counts,
+        );
+        break;
+      case 'collaborators':
+        rehydration.collaborators = accumulateCounts(
+          rehydration.collaborators,
+          counts,
+        );
+        break;
+      case 'deploy-keys':
+        rehydration.deployKeys = accumulateCounts(
+          rehydration.deployKeys,
+          counts,
+        );
+        break;
+      case 'autolinks':
+        rehydration.autolinks = accumulateCounts(rehydration.autolinks, counts);
+        break;
+      case 'discussions':
+        rehydration.discussions = accumulateCounts(
+          rehydration.discussions,
+          counts,
+        );
+        break;
+      case 'issues':
+        rehydration.issues = accumulateCounts(rehydration.issues, counts);
+        break;
+      case 'pull-requests':
+        rehydration.pullRequests = accumulateCounts(
+          rehydration.pullRequests,
+          counts,
+        );
+        break;
+      case 'projects-v2':
+        rehydration.projectsV2 = accumulateCounts(
+          rehydration.projectsV2,
+          counts,
+        );
+        break;
+      case 'actions-policies':
+        rehydration.actionsPolicies = accumulateCounts(
+          rehydration.actionsPolicies,
+          counts,
+        );
+        break;
+      case 'actions-runners':
+        rehydration.actionsRunners = accumulateCounts(
+          rehydration.actionsRunners,
+          counts,
+        );
+        break;
+      case 'ip-allow-lists':
+        rehydration.ipAllowLists = accumulateCounts(
+          rehydration.ipAllowLists,
+          counts,
+        );
+        break;
+      case 'apps-inventory':
+        rehydration.appsInventory = accumulateCounts(
+          rehydration.appsInventory,
+          counts,
+        );
+        break;
+      case 'packages':
+        rehydration.packages = accumulateCounts(rehydration.packages, counts);
+        break;
+      case 'codeowners':
+        rehydration.codeowners = accumulateCounts(
+          rehydration.codeowners,
+          counts,
+        );
+        break;
+      case 'security':
+        rehydration.security = accumulateCounts(rehydration.security, counts);
+        break;
+      case 'mannequins':
+      case 'post-migration-mannequins': {
+        const prev = postMigration.mannequins;
+        postMigration.mannequins = {
+          total: (prev?.total ?? 0) + counts.planned,
+          reclaimed: (prev?.reclaimed ?? 0) + counts.succeeded,
+          unmapped: (prev?.unmapped ?? 0) + counts.failed,
         };
         break;
-      case 'webhooks':
-        (postMigration as { webhooks?: { reEnabled: number } }).webhooks = {
-          reEnabled: counts.succeeded,
+      }
+      case 'webhooks': {
+        const prev = postMigration.webhooks;
+        postMigration.webhooks = {
+          reEnabled: (prev?.reEnabled ?? 0) + counts.succeeded,
         };
         break;
+      }
     }
   }
 
@@ -204,6 +340,8 @@ export function buildSummaryFromExecutionReport(
     rehydration: Object.keys(rehydration).length > 0 ? rehydration : undefined,
     postMigration:
       Object.keys(postMigration).length > 0 ? postMigration : undefined,
+    moduleBreakdown:
+      Object.keys(moduleBreakdown).length > 0 ? moduleBreakdown : undefined,
     metadataFailures:
       metadataFailures.length > 0 ? metadataFailures : undefined,
     warnings,

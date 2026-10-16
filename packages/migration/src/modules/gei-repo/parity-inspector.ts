@@ -2,6 +2,11 @@ import type { VerificationDiscrepancy } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import type { MigrationContext } from '../../core/types.js';
 import {
+  extractErrorHttpStatus,
+  formatSanitizedReadError,
+  isExpectedFeatureAbsentError,
+} from '../../core/read-error-classifier.js';
+import {
   parseMigrationLogErrors,
   parseMigrationLogWarnings,
 } from '../../gei/logs.js';
@@ -27,11 +32,13 @@ export interface RepositoryStats {
   readonly defaultBranch?: string | undefined;
   readonly issues: ParityEntityCounts;
   readonly pullRequests: ParityEntityCounts;
+  readonly hasPrArchiveIssue?: boolean | undefined;
   readonly releases: {
     readonly total: number;
     readonly assetCount: number;
   };
   readonly settings: ParitySettings;
+  readonly readErrors?: readonly string[] | undefined;
 }
 
 export interface RepositoryParityReport {
@@ -76,10 +83,12 @@ async function collectStats(
   owner: string,
   repo: string,
   signal: AbortSignal,
+  side: 'source' | 'target' = 'target',
 ): Promise<RepositoryStats> {
   let exists = false;
   let defaultBranch: string | undefined;
   let settings: ParitySettings = {};
+  const readErrors: string[] = [];
 
   try {
     const repoRes = await client.readSingle<RawRepoResponse>(
@@ -103,14 +112,38 @@ async function collectStats(
         allowMergeCommit: repoRes.data.allow_merge_commit,
         allowRebaseMerge: repoRes.data.allow_rebase_merge,
       };
+    } else if (repoRes.status >= 400 && repoRes.status !== 404) {
+      readErrors.push(
+        formatSanitizedReadError(
+          `${side} repository metadata (/repos/${owner}/${repo})`,
+          new Error(`HTTP ${repoRes.status}`),
+        ),
+      );
     }
-  } catch {
+  } catch (err: unknown) {
+    const status = extractErrorHttpStatus(err);
+    if (status === 404) {
+      return {
+        exists: false,
+        issues: { total: 0 },
+        pullRequests: { total: 0 },
+        releases: { total: 0, assetCount: 0 },
+        settings: {},
+      };
+    }
+    readErrors.push(
+      formatSanitizedReadError(
+        `${side} repository metadata (/repos/${owner}/${repo})`,
+        err,
+      ),
+    );
     return {
-      exists: false,
+      exists: side === 'source',
       issues: { total: 0 },
       pullRequests: { total: 0 },
       releases: { total: 0, assetCount: 0 },
       settings: {},
+      readErrors,
     };
   }
 
@@ -121,12 +154,14 @@ async function collectStats(
       pullRequests: { total: 0 },
       releases: { total: 0, assetCount: 0 },
       settings: {},
+      ...(readErrors.length > 0 ? { readErrors } : {}),
     };
   }
 
   let issuesCount = 0;
   let issuesOpen = 0;
   let issuesClosed = 0;
+  let hasPrArchiveIssue = false;
   try {
     const issuesRes = await client.readPage<RawIssueResponse[]>(
       {
@@ -141,16 +176,29 @@ async function collectStats(
       signal,
     );
     const items = (issuesRes.items ?? []) as readonly RawIssueResponse[];
+    hasPrArchiveIssue = items.some(
+      (item) =>
+        !item.pull_request &&
+        item.title?.trim().toLowerCase() === 'historical pull requests archive',
+    );
     const realIssues = items.filter(
       (item) =>
         !item.pull_request &&
-        item.title?.trim().toLowerCase() !== 'migration log',
+        item.title?.trim().toLowerCase() !== 'migration log' &&
+        item.title?.trim().toLowerCase() !== 'historical pull requests archive',
     );
     issuesCount = realIssues.length;
     issuesOpen = realIssues.filter((i) => i.state === 'open').length;
     issuesClosed = realIssues.filter((i) => i.state === 'closed').length;
-  } catch {
-    // optional query failure
+  } catch (err: unknown) {
+    if (!isExpectedFeatureAbsentError(err)) {
+      readErrors.push(
+        formatSanitizedReadError(
+          `${side} issues (/repos/${owner}/${repo}/issues)`,
+          err,
+        ),
+      );
+    }
   }
 
   let prCount = 0;
@@ -175,8 +223,15 @@ async function collectStats(
     prOpen = prs.filter((p) => p.state === 'open').length;
     prClosed = prs.filter((p) => p.state === 'closed' && !p.merged_at).length;
     prMerged = prs.filter((p) => Boolean(p.merged_at)).length;
-  } catch {
-    // optional query failure
+  } catch (err: unknown) {
+    if (!isExpectedFeatureAbsentError(err)) {
+      readErrors.push(
+        formatSanitizedReadError(
+          `${side} pull requests (/repos/${owner}/${repo}/pulls)`,
+          err,
+        ),
+      );
+    }
   }
 
   let releaseCount = 0;
@@ -200,8 +255,15 @@ async function collectStats(
       (acc, r) => acc + (r.assets?.length ?? 0),
       0,
     );
-  } catch {
-    // optional query failure
+  } catch (err: unknown) {
+    if (!isExpectedFeatureAbsentError(err)) {
+      readErrors.push(
+        formatSanitizedReadError(
+          `${side} releases (/repos/${owner}/${repo}/releases)`,
+          err,
+        ),
+      );
+    }
   }
 
   return {
@@ -214,8 +276,10 @@ async function collectStats(
       closed: prClosed,
       merged: prMerged,
     },
+    hasPrArchiveIssue,
     releases: { total: releaseCount, assetCount: releaseAssetCount },
     settings,
+    ...(readErrors.length > 0 ? { readErrors } : {}),
   };
 }
 
@@ -289,6 +353,7 @@ export class RepositoryParityInspector {
       targetOrg,
       targetRepo,
       ctx.signal,
+      'target',
     );
     const warningsPromise = collectMigrationLogWarnings(
       ctx.targetClient,
@@ -297,7 +362,13 @@ export class RepositoryParityInspector {
       ctx.signal,
     );
     const sourcePromise = ctx.sourceClient
-      ? collectStats(ctx.sourceClient, sourceOrg, sourceRepo, ctx.signal)
+      ? collectStats(
+          ctx.sourceClient,
+          sourceOrg,
+          sourceRepo,
+          ctx.signal,
+          'source',
+        )
       : Promise.resolve<RepositoryStats>({
           exists: true,
           issues: { total: 0 },
@@ -325,13 +396,28 @@ export class RepositoryParityInspector {
   ): readonly VerificationDiscrepancy[] {
     const discrepancies: VerificationDiscrepancy[] = [];
 
-    if (!report.target.exists) {
+    const allReadErrors = [
+      ...(report.source.readErrors ?? []),
+      ...(report.target.readErrors ?? []),
+    ];
+    if (allReadErrors.length > 0) {
       discrepancies.push({
-        resourceName: targetRepo,
-        expected: 'present',
-        actual: 'absent',
-        message: `Target repository ${targetRepo} does not exist at destination.`,
+        resourceName: 'verification-read-error',
+        expected: 'readable repository metadata',
+        actual: 'api_read_error',
+        message: `Failed to read repository state during verification: ${allReadErrors.join('; ')}`,
       });
+    }
+
+    if (!report.target.exists) {
+      if ((report.target.readErrors ?? []).length === 0) {
+        discrepancies.push({
+          resourceName: targetRepo,
+          expected: 'present',
+          actual: 'absent',
+          message: `Target repository ${targetRepo} does not exist at destination.`,
+        });
+      }
       return discrepancies;
     }
 
@@ -361,9 +447,13 @@ export class RepositoryParityInspector {
     }
 
     // Pull request count parity
+    const closedPrsArchivedOnTarget =
+      Boolean(report.target.hasPrArchiveIssue) &&
+      (report.source.pullRequests.open ?? 0) === 0;
     if (
       report.source.pullRequests.total > 0 &&
-      report.target.pullRequests.total === 0
+      report.target.pullRequests.total === 0 &&
+      !closedPrsArchivedOnTarget
     ) {
       discrepancies.push({
         resourceName: 'pull-requests',

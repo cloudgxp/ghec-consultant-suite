@@ -19,3 +19,537 @@ category:
 You can use the REST API to create, update, delete, and retrieve information about secrets that can be used in workflows in {% data variables.product.prodname_actions %}. {% data reusables.actions.about-secrets %} For more information, see [AUTOTITLE](/actions/concepts/security/secrets).
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List organization secrets
+
+`GET /orgs/{org}/actions/secrets`
+
+Lists all secrets available in an organization without revealing their
+encrypted values.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an organization public key
+
+`GET /orgs/{org}/actions/secrets/public-key`
+
+Gets your public key, which you need to encrypt secrets. You need to
+encrypt a secret before you can create or update secrets.
+
+The authenticated user must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an organization secret
+
+`GET /orgs/{org}/actions/secrets/{secret_name}`
+
+Gets a single organization secret without revealing its encrypted value.
+
+The authenticated user must have collaborator access to a repository to create, update, or read secrets
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create or update an organization secret
+
+`PUT /orgs/{org}/actions/secrets/{secret_name}`
+
+Creates or updates an organization secret with an encrypted value. Encrypt your secret using
+[LibSodium](https://libsodium.gitbook.io/doc/bindings_for_other_languages). For more information, see "[Encrypting secrets for the REST API](https://docs.github.com/enterprise-cloud@latest/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `encrypted_value` | `string` | Yes | Value for your secret, encrypted with [LibSodium](https://libsodium.gitbook.io/doc/bindings_for_other_languages) using the public key retrieved from the [Get an organization public key](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#get-an-organization-public-key) endpoint. |
+| `key_id` | `string` | Yes | ID of the key you used to encrypt the secret. |
+| `visibility` | `string` | Yes | Which type of organization repositories have access to the organization secret. `selected` means only the repositories specified by `selected_repository_ids` can access the secret. |
+| `selected_repository_ids` | `array of integers` | No | An array of repository ids that can access the organization secret. You can only provide a list of repository ids when the `visibility` is set to `selected`. You can manage the list of selected repositories using the [List selected repositories for an organization secret](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#list-selected-repositories-for-an-organization-secret), [Set selected repositories for an organization secret](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#set-selected-repositories-for-an-organization-secret), and [Remove selected repository from an organization secret](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#remove-selected-repository-from-an-organization-secret) endpoints. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Response when creating a secret |
+| `204` | Response when updating a secret |
+
+## Delete an organization secret
+
+`DELETE /orgs/{org}/actions/secrets/{secret_name}`
+
+Deletes a secret in an organization using the secret name.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the`admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List selected repositories for an organization secret
+
+`GET /orgs/{org}/actions/secrets/{secret_name}/repositories`
+
+Lists all repositories that have been selected when the `visibility`
+for repository access to a secret is set to `selected`.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Set selected repositories for an organization secret
+
+`PUT /orgs/{org}/actions/secrets/{secret_name}/repositories`
+
+Replaces all repositories for an organization secret when the `visibility`
+for repository access is set to `selected`. The visibility is set when you Create
+or update an organization secret.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `selected_repository_ids` | `array of integers` | Yes | An array of repository ids that can access the organization secret. You can only provide a list of repository ids when the `visibility` is set to `selected`. You can add and remove individual repositories using the [Add selected repository to an organization secret](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#add-selected-repository-to-an-organization-secret) and [Remove selected repository from an organization secret](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#remove-selected-repository-from-an-organization-secret) endpoints. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## Add selected repository to an organization secret
+
+`PUT /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}`
+
+Adds a repository to an organization secret when the `visibility` for
+repository access is set to `selected`. For more information about setting the visibility, see Create or
+update an organization secret.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+| `repository_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content when repository was added to the selected list |
+| `409` | Conflict when visibility type is not set to selected |
+
+## Remove selected repository from an organization secret
+
+`DELETE /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}`
+
+Removes a repository from an organization secret when the `visibility`
+for repository access is set to `selected`. The visibility is set when you Create
+or update an organization secret.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `admin:org` scope to use this endpoint. If the repository is private, the `repo` scope is also required.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+| `repository_id` | path | `integer` | Yes |  |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Response when repository was removed from the selected list |
+| `409` | Conflict when visibility type not set to selected |
+
+## List repository organization secrets
+
+`GET /repos/{owner}/{repo}/actions/organization-secrets`
+
+Lists all organization secrets shared with a repository without revealing their encrypted
+values.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## List repository secrets
+
+`GET /repos/{owner}/{repo}/actions/secrets`
+
+Lists all secrets available in a repository without revealing their encrypted
+values.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get a repository public key
+
+`GET /repos/{owner}/{repo}/actions/secrets/public-key`
+
+Gets your public key, which you need to encrypt secrets. You need to
+encrypt a secret before you can create or update secrets.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get a repository secret
+
+`GET /repos/{owner}/{repo}/actions/secrets/{secret_name}`
+
+Gets a single repository secret without revealing its encrypted value.
+
+The authenticated user must have collaborator access to the repository to use this endpoint.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create or update a repository secret
+
+`PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}`
+
+Creates or updates a repository secret with an encrypted value. Encrypt your secret using
+[LibSodium](https://libsodium.gitbook.io/doc/bindings_for_other_languages). For more information, see "[Encrypting secrets for the REST API](https://docs.github.com/enterprise-cloud@latest/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `encrypted_value` | `string` | Yes | Value for your secret, encrypted with [LibSodium](https://libsodium.gitbook.io/doc/bindings_for_other_languages) using the public key retrieved from the [Get a repository public key](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#get-a-repository-public-key) endpoint. |
+| `key_id` | `string` | Yes | ID of the key you used to encrypt the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Response when creating a secret |
+| `204` | Response when updating a secret |
+
+## Delete a repository secret
+
+`DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}`
+
+Deletes a secret in a repository using the secret name.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+
+## List environment secrets
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/secrets`
+
+Lists all secrets available in an environment without revealing their
+encrypted values.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth app tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an environment public key
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key`
+
+Get the public key for an environment, which you need to encrypt environment
+secrets. You need to encrypt a secret before you can create or update secrets.
+
+Anyone with read access to the repository can use this endpoint.
+
+If the repository is private, OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get an environment secret
+
+`GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}`
+
+Gets a single environment secret without revealing its encrypted value.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Create or update an environment secret
+
+`PUT /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}`
+
+Creates or updates an environment secret with an encrypted value. Encrypt your secret using
+[LibSodium](https://libsodium.gitbook.io/doc/bindings_for_other_languages). For more information, see "[Encrypting secrets for the REST API](https://docs.github.com/enterprise-cloud@latest/rest/guides/encrypting-secrets-for-the-rest-api)."
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `encrypted_value` | `string` | Yes | Value for your secret, encrypted with [LibSodium](https://libsodium.gitbook.io/doc/bindings_for_other_languages) using the public key retrieved from the [Get an environment public key](https://docs.github.com/enterprise-cloud@latest/rest/actions/secrets#get-an-environment-public-key) endpoint. |
+| `key_id` | `string` | Yes | ID of the key you used to encrypt the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Response when creating a secret |
+| `204` | Response when updating a secret |
+
+## Delete an environment secret
+
+`DELETE /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}`
+
+Deletes a secret in an environment using the secret name.
+
+Authenticated users must have collaborator access to a repository to create, update, or read secrets.
+
+OAuth tokens and personal access tokens (classic) need the `repo` scope to use this endpoint.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `environment_name` | path | `string` | Yes | The name of the environment. The name must be URL encoded. For example, any slashes in the name must be replaced with `%2F`. |
+| `secret_name` | path | `string` | Yes | The name of the secret. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | Default response |

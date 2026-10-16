@@ -12,3 +12,393 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## List enterprise Actions policies
+
+`GET /enterprises/{enterprise}/actions/policies`
+
+List all Actions policies for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Create an enterprise Actions policy
+
+`POST /enterprises/{enterprise}/actions/policies`
+
+Create an Actions policy for an enterprise.
+Omitting `workflow_path` targets all workflows without storing an explicit condition.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the policy. |
+| `enforcement` | `string` | Yes | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `conditions` | `object` | No | Conditions for an enterprise Actions policy. The conditions object supports one organization target (`organization_name`, `organization_id`, or `organization_property`) combined with one repository target (`repository_name` or `repository_property`), and may also contain `workflow_path`. |
+| `rules` | `array of objects` | No | An array of rules within the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Get an enterprise Actions policy
+
+`GET /enterprises/{enterprise}/actions/policies/{policy_id}`
+
+Get a specific Actions policy for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Update an enterprise Actions policy
+
+`PUT /enterprises/{enterprise}/actions/policies/{policy_id}`
+
+Update an Actions policy for an enterprise.
+Omitting `workflow_path` preserves the policy's existing workflow targeting.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the policy. |
+| `enforcement` | `string` | No | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `conditions` | `object` | No | Conditions for an enterprise Actions policy. The conditions object supports one organization target (`organization_name`, `organization_id`, or `organization_property`) combined with one repository target (`repository_name` or `repository_property`), and may also contain `workflow_path`. |
+| `rules` | `array of objects` | No | An array of rules within the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Delete an enterprise Actions policy
+
+`DELETE /enterprises/{enterprise}/actions/policies/{policy_id}`
+
+Delete an Actions policy for an enterprise.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `enterprise` | path | `string` | Yes | The slug version of the enterprise name. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## List organization Actions policies
+
+`GET /orgs/{org}/actions/policies`
+
+List all Actions policies for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `has_parents` | query | `boolean` | No | Include policies configured at higher levels that apply to this organization |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Create an organization Actions policy
+
+`POST /orgs/{org}/actions/policies`
+
+Create an Actions policy for an organization.
+Omitting `workflow_path` targets all workflows without storing an explicit condition.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the policy. |
+| `enforcement` | `string` | Yes | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `conditions` | `object` | No | Conditions for an organization Actions policy. The conditions object should contain one of `repository_name`, `repository_id`, or `repository_property`, and may also contain `workflow_path`. |
+| `rules` | `array of objects` | No | An array of rules within the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Get an organization Actions policy
+
+`GET /orgs/{org}/actions/policies/{policy_id}`
+
+Get a specific Actions policy for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Update an organization Actions policy
+
+`PUT /orgs/{org}/actions/policies/{policy_id}`
+
+Update an Actions policy for an organization.
+Omitting `workflow_path` preserves the policy's existing workflow targeting.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the policy. |
+| `enforcement` | `string` | No | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `conditions` | `object` | No | Conditions for an organization Actions policy. The conditions object should contain one of `repository_name`, `repository_id`, or `repository_property`, and may also contain `workflow_path`. |
+| `rules` | `array of objects` | No | An array of rules within the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Delete an organization Actions policy
+
+`DELETE /orgs/{org}/actions/policies/{policy_id}`
+
+Delete an Actions policy for an organization.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `org` | path | `string` | Yes | The organization name. The name is not case sensitive. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## List repository Actions policies
+
+`GET /repos/{owner}/{repo}/actions/policies`
+
+List all Actions policies for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `has_parents` | query | `boolean` | No | Include policies configured at higher levels that apply to this repository |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Create a repository Actions policy
+
+`POST /repos/{owner}/{repo}/actions/policies`
+
+Create an Actions policy for a repository.
+Omitting `workflow_path` targets all workflows without storing an explicit condition.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the policy. |
+| `enforcement` | `string` | Yes | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `conditions` | `object` | No | Conditions for a repository Actions policy. The object may be empty to preserve or use the default workflow targeting, or contain only `workflow_path`. |
+| `rules` | `array of objects` | No | An array of rules within the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Get a repository Actions policy
+
+`GET /repos/{owner}/{repo}/actions/policies/{policy_id}`
+
+Get a specific Actions policy for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Update a repository Actions policy
+
+`PUT /repos/{owner}/{repo}/actions/policies/{policy_id}`
+
+Update an Actions policy for a repository.
+Omitting `workflow_path` preserves the policy's existing workflow targeting.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the policy. |
+| `enforcement` | `string` | No | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `conditions` | `object` | No | Conditions for a repository Actions policy. The object may be empty to preserve or use the default workflow targeting, or contain only `workflow_path`. |
+| `rules` | `array of objects` | No | An array of rules within the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Delete a repository Actions policy
+
+`DELETE /repos/{owner}/{repo}/actions/policies/{policy_id}`
+
+Delete an Actions policy for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `policy_id` | path | `integer` | Yes | The ID of the policy. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `500` | Internal Error |

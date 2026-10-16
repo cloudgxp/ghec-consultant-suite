@@ -17,3 +17,217 @@ category:
 ---
 
 <!-- Content after this section is automatically generated -->
+
+<!-- Hydrated from github/docs src/rest/data/ghec-2022-11-28 -->
+
+## Get rules for a branch
+
+`GET /repos/{owner}/{repo}/rules/branches/{branch}`
+
+Returns all active rules that apply to the specified branch. The branch does not need to exist; rules that would apply
+to a branch with that name will be returned. All active rules that apply will be returned, regardless of the level
+at which they are configured (e.g. repository or organization). Rules in rulesets with "evaluate" or "disabled"
+enforcement statuses are not returned.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `branch` | path | `string` | Yes | The name of the branch. Cannot contain wildcard characters. To use wildcard characters in branch names, use [the GraphQL API](https://docs.github.com/enterprise-cloud@latest/graphql). |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+
+## Get all repository rulesets
+
+`GET /repos/{owner}/{repo}/rulesets`
+
+Get all the rulesets for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `includes_parents` | query | `boolean` | No | Include rulesets configured at higher levels that apply to this repository |
+| `targets` | query | `string` | No | A comma-separated list of rule targets to filter by. If provided, only rulesets that apply to the specified targets will be returned. For example, `branch,tag,push`. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Create a repository ruleset
+
+`POST /repos/{owner}/{repo}/rulesets`
+
+Create a ruleset for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | Yes | The name of the ruleset. |
+| `target` | `string` | No | The target of the ruleset |
+| `enforcement` | `string` | Yes | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `bypass_actors` | `array of objects` | No | The actors that can bypass the rules in this ruleset |
+| `conditions` | `object` | No | Parameters for a repository ruleset ref name condition |
+| `rules` | `array of objects` | No | An array of rules within the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `201` | Created |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Get a repository ruleset
+
+`GET /repos/{owner}/{repo}/rulesets/{ruleset_id}`
+
+Get a ruleset for a repository.
+
+Note: To prevent leaking sensitive information, the `bypass_actors` property is only returned if the user
+making the API request has write access to the ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+| `includes_parents` | query | `boolean` | No | Include rulesets configured at higher levels that apply to this repository |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Update a repository ruleset
+
+`PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}`
+
+Update a ruleset for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### Body Parameters
+
+| Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | No | The name of the ruleset. |
+| `target` | `string` | No | The target of the ruleset |
+| `enforcement` | `string` | No | The enforcement level of the ruleset. `evaluate` allows admins to test rules before enforcing them. Admins can view insights on the Rule Insights page. `evaluate` is not available for the `repository` target. |
+| `bypass_actors` | `array of objects` | No | The actors that can bypass the rules in this ruleset |
+| `conditions` | `object` | No | Parameters for a repository ruleset ref name condition |
+| `rules` | `array of objects` | No | An array of rules within the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `422` | Validation failed, or the endpoint has been spammed. |
+| `500` | Internal Error |
+
+## Delete a repository ruleset
+
+`DELETE /repos/{owner}/{repo}/rulesets/{ruleset_id}`
+
+Delete a ruleset for a repository.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `204` | No Content |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get repository ruleset history
+
+`GET /repos/{owner}/{repo}/rulesets/{ruleset_id}/history`
+
+Get the history of a repository ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `per_page` | query | `integer` | No | The number of results per page (max 100). For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `page` | query | `integer` | No | The page number of the results to fetch. For more information, see "[Using pagination in the REST API](https://docs.github.com/enterprise-cloud@latest/rest/using-the-rest-api/using-pagination-in-the-rest-api)." |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
+
+## Get repository ruleset version
+
+`GET /repos/{owner}/{repo}/rulesets/{ruleset_id}/history/{version_id}`
+
+Get a version of a repository ruleset.
+
+### Parameters
+
+| Name | In | Type | Required | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `owner` | path | `string` | Yes | The account owner of the repository. The name is not case sensitive. |
+| `repo` | path | `string` | Yes | The name of the repository without the `.git` extension. The name is not case sensitive. |
+| `ruleset_id` | path | `integer` | Yes | The ID of the ruleset. |
+| `version_id` | path | `integer` | Yes | The ID of the version |
+
+### HTTP Response Status Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `200` | OK |
+| `404` | Resource not found |
+| `500` | Internal Error |
