@@ -148,6 +148,14 @@ function formatVerificationBadge(
   }
 }
 
+function formatHumanBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
 export interface ResultsReadmeOptions {
   readonly nextSteps?: readonly string[] | undefined;
   readonly operationalMode?: 'discovery' | 'dry-run' | 'live' | undefined;
@@ -161,6 +169,44 @@ export interface ResultsReadmeOptions {
         readonly otherCount: number;
       }
     | undefined;
+  readonly verificationSummary?:
+    | {
+        readonly verifiedModuleCount: number;
+        readonly unverifiedModuleCount: number;
+        readonly discrepancyCount: number;
+      }
+    | undefined;
+  readonly operationTotals?:
+    | {
+        readonly total: number;
+        readonly succeeded: number;
+        readonly mutated: number;
+        readonly noop: number;
+        readonly skipped: number;
+        readonly failed: number;
+      }
+    | undefined;
+  readonly transferStrategies?:
+    | {
+        readonly largeReleases?:
+          | {
+              readonly repos: readonly string[];
+              readonly releasesCount: number;
+              readonly assetsStreamed: number;
+              readonly bytesStreamed: number;
+            }
+          | undefined;
+        readonly lfs?:
+          | {
+              readonly repos: readonly string[];
+              readonly objectsTransferred: number;
+              readonly bytesTransferred: number;
+            }
+          | undefined;
+        readonly mirrorPushRepos?: readonly string[] | undefined;
+      }
+    | undefined;
+  readonly repoStrategyBadges?: Readonly<Record<string, string>> | undefined;
 }
 
 /**
@@ -199,6 +245,46 @@ export function formatResultsReadmeMarkdown(
     `| Success Rate | ${manifest.summary.successRatePercent}% |`,
   ];
 
+  if (options.verificationSummary) {
+    const v = options.verificationSummary;
+    const totalMods = v.verifiedModuleCount + v.unverifiedModuleCount;
+    lines.push(
+      `| Verified Modules | ${v.verifiedModuleCount} / ${totalMods} (${v.discrepancyCount} Discrepancies) |`,
+    );
+  }
+  if (options.operationTotals) {
+    const ops = options.operationTotals;
+    lines.push(
+      `| Total Operations | ${ops.total} (${ops.succeeded} succeeded [${ops.mutated} mutated, ${ops.noop} noop], ${ops.skipped} skipped, ${ops.failed} failed) |`,
+    );
+  }
+  if (
+    options.transferStrategies?.largeReleases &&
+    options.transferStrategies.largeReleases.repos.length > 0
+  ) {
+    const lr = options.transferStrategies.largeReleases;
+    lines.push(
+      `| Large-Release Asset Streaming | \`${lr.repos.join('`, `')}\`: ${lr.releasesCount} release${lr.releasesCount === 1 ? '' : 's'}, ${lr.assetsStreamed} asset${lr.assetsStreamed === 1 ? '' : 's'} streamed (${formatHumanBytes(lr.bytesStreamed)} / ${lr.bytesStreamed.toLocaleString('en-US')} bytes) |`,
+    );
+  }
+  if (
+    options.transferStrategies?.lfs &&
+    options.transferStrategies.lfs.repos.length > 0
+  ) {
+    const lfs = options.transferStrategies.lfs;
+    lines.push(
+      `| Git LFS Object Streaming | \`${lfs.repos.join('`, `')}\`: ${lfs.objectsTransferred} object${lfs.objectsTransferred === 1 ? '' : 's'} (${formatHumanBytes(lfs.bytesTransferred)} / ${lfs.bytesTransferred.toLocaleString('en-US')} bytes) |`,
+    );
+  }
+  if (
+    options.transferStrategies?.mirrorPushRepos &&
+    options.transferStrategies.mirrorPushRepos.length > 0
+  ) {
+    const mp = options.transferStrategies.mirrorPushRepos;
+    lines.push(
+      `| Direct Git Mirror-Push | \`${mp.join('`, `')}\` (bypassed GEI archive size limits) |`,
+    );
+  }
   if (options.postCareSummary) {
     lines.push(
       `| Customer Post-Care Items | [${options.postCareSummary.totalItems} items (View Checklist)](POST-CARE-CHECKLIST.md) |`,
@@ -270,10 +356,14 @@ export function formatResultsReadmeMarkdown(
         (acc, m) => acc + m.totalOperations,
         0,
       );
-      const categoriesSummary =
+      const baseCategoriesSummary =
         modEntries.length > 0
           ? `${activeCount} categories (${totalItems} items)`
           : `${repo.stagesRun.length} stages`;
+      const strategyBadge = options.repoStrategyBadges?.[repo.targetRepo];
+      const categoriesSummary = strategyBadge
+        ? `${baseCategoriesSummary} · ${strategyBadge}`
+        : baseCategoriesSummary;
 
       lines.push(
         `| \`${repo.targetRepo}\` | ${statusBadge} | ${categoriesSummary} | ${duration} | ${repo.discrepancyCount} | ${link} |`,
@@ -610,9 +700,12 @@ export function formatSuccessRepoMarkdown(
     for (const stage of record.stagesRun) {
       const modSummary = record.moduleSummaries?.[stage];
       if (modSummary?.status === 'skipped') {
-        lines.push(
-          `| \`${stage}\` | ⏭️ Skipped | No applicable resources in source repository |`,
-        );
+        const skippedCount = modSummary.skippedOperations ?? 0;
+        const skipNote =
+          skippedCount > 0
+            ? `Skipped (${skippedCount} item${skippedCount === 1 ? '' : 's'} deferred to post-care; see module details)`
+            : 'No applicable resources in source repository';
+        lines.push(`| \`${stage}\` | ⏭️ Skipped | ${skipNote} |`);
       } else if (modSummary) {
         lines.push(
           `| \`${stage}\` | ✅ Completed | Executed cleanly (${modSummary.totalOperations} item${modSummary.totalOperations === 1 ? '' : 's'}) |`,

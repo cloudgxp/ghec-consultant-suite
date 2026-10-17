@@ -1514,4 +1514,177 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
       'https://github.com/dest-emu/billing-api/settings/secrets/codespaces/CS_PAT',
     ),
   );
+
+  // Verify skipped post-care stage note and existing-target strategy preservation
+  const postCareSkipResults = generateMigrationResults({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig5',
+    targetResultsRepo: 'migration-audit-results',
+    executionMode: 'live',
+    scope: {
+      version: '1.0.0',
+      name: 'strategy-scope',
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'demo',
+          targetOrg: 'demogxp-mig5',
+          targetRepo: 'demo',
+          useGei: true,
+        },
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'chromium',
+          targetOrg: 'demogxp-mig5',
+          targetRepo: 'chromium',
+          useGei: false,
+          gitTransferStrategy: 'mirror-push',
+        },
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'release-heavy-benchmark',
+          targetOrg: 'demogxp-mig5',
+          targetRepo: 'release-heavy-benchmark',
+          useGei: true,
+          skipReleases: true,
+        },
+      ],
+    },
+    executionReport: {
+      schemaVersion: '1.0.0',
+      planId: 'plan-strategy-noop',
+      executedAt: '2026-10-17T14:00:00Z',
+      status: 'complete',
+      exitCode: 0,
+      dryRun: false,
+      results: [
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'gei-repo',
+          targetIdentifier: 'demogxp-mig5/demo',
+          scopeLevel: 'repository',
+          status: 'complete',
+          durationMs: 100,
+          results: [],
+        },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'deploy-keys',
+          targetIdentifier: 'demogxp-mig5/demo',
+          scopeLevel: 'repository',
+          status: 'skipped',
+          durationMs: 50,
+          results: [
+            {
+              operationId: 'deploy-key:create:demo:1',
+              status: 'skipped',
+              resourceType: 'deploy-key',
+              resourceName: 'CI Deploy Key',
+              operationType: 'skip',
+              reason:
+                'SSH public key for deploy key "CI Deploy Key" is already bound to source repository.',
+              completedAt: '2026-10-17T13:59:00Z',
+            },
+          ],
+        },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'gei-repo',
+          targetIdentifier: 'demogxp-mig5/chromium',
+          scopeLevel: 'repository',
+          status: 'complete',
+          durationMs: 100,
+          failedMetadataCategories: ['issues', 'pull-requests', 'releases'],
+          results: [],
+        },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'gei-repo',
+          targetIdentifier: 'demogxp-mig5/release-heavy-benchmark',
+          scopeLevel: 'repository',
+          status: 'complete',
+          durationMs: 100,
+          failedMetadataCategories: ['releases'],
+          results: [],
+        },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'releases',
+          targetIdentifier: 'demogxp-mig5/release-heavy-benchmark',
+          scopeLevel: 'repository',
+          status: 'complete',
+          durationMs: 200,
+          results: [
+            {
+              operationId: 'release:release-heavy-benchmark:v1.0.0',
+              status: 'succeeded',
+              resourceType: 'release',
+              resourceName: 'v1.0.0',
+              operationType: 'noop',
+              reason:
+                'Release tag "v1.0.0" already exists on target repository.',
+              completedAt: '2026-10-17T13:59:10Z',
+            },
+            {
+              operationId:
+                'release-asset:release-heavy-benchmark:v1.0.0:bench.tar.gz',
+              status: 'succeeded',
+              resourceType: 'release-asset',
+              resourceName: 'v1.0.0/bench.tar.gz',
+              operationType: 'noop',
+              reason:
+                'Asset "bench.tar.gz" (1048576 bytes) already exists on target release.',
+              completedAt: '2026-10-17T13:59:11Z',
+            },
+          ],
+        },
+      ],
+    },
+    verificationReport: {
+      schemaVersion: '1.0.0',
+      reportId: 'ver-strategy',
+      verifiedAt: '2026-10-17T14:01:00Z',
+      scopeName: 'strategy-scope',
+      sourceOrg: 'demogxp',
+      targetOrg: 'demogxp-mig5',
+      modules: [],
+      summary: {
+        verifiedModuleCount: 34,
+        unverifiedModuleCount: 0,
+        discrepancyCount: 0,
+      },
+    },
+  });
+
+  const strategyReadme = postCareSkipResults.files['README.md'] ?? '';
+  assert.ok(
+    strategyReadme.includes('| Verified Modules | 34 / 34 (0 Discrepancies) |'),
+    `Expected Verified Modules in README:\n${strategyReadme}`,
+  );
+  assert.ok(
+    strategyReadme.includes('Large-Release Asset Streaming'),
+    `Expected Large-Release Asset Streaming in README:\n${strategyReadme}`,
+  );
+  assert.ok(
+    strategyReadme.includes('🔄 `mirror-push`'),
+    `Expected mirror-push badge in README:\n${strategyReadme}`,
+  );
+  const demoSuccessMd = postCareSkipResults.files['success/demo.md'] ?? '';
+  assert.ok(
+    demoSuccessMd.includes(
+      '| `deploy-keys` | ⏭️ Skipped | Skipped (1 item deferred to post-care; see module details) |',
+    ),
+    `Expected deferred post-care note in success/demo.md:\n${demoSuccessMd}`,
+  );
+  const chromSuccessMd = postCareSkipResults.files['success/chromium.md'] ?? '';
+  assert.ok(
+    chromSuccessMd.includes('direct Git mirror-push'),
+    `Expected direct Git mirror-push in success/chromium.md:\n${chromSuccessMd}`,
+  );
+  const rhmSkipSuccessMd =
+    postCareSkipResults.files['success/release-heavy-benchmark.md'] ?? '';
+  assert.ok(
+    rhmSkipSuccessMd.includes('`--skip-releases`'),
+    `Expected --skip-releases in success/release-heavy-benchmark.md:\n${rhmSkipSuccessMd}`,
+  );
 });

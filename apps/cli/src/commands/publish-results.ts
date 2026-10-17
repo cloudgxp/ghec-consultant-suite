@@ -15,6 +15,7 @@ import {
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import {
   appendStepSummary,
+  deduplicateExecutionReportResults,
   generateMigrationResults,
   type GeneratedResults,
   type MigrationExecutionReport,
@@ -260,7 +261,9 @@ export async function executePublishResultsCommand(
     if (isMultiOrDir) {
       const loaded = loadExecutionReports(options.executionReportPath);
       if (loaded.reports.length > 0) {
-        const mergedResults = loaded.reports.flatMap((r) => r.results);
+        const mergedResults = deduplicateExecutionReportResults(
+          loaded.reports.flatMap((r) => r.results),
+        );
         executionReport = {
           schemaVersion: MIGRATION_SCHEMA_VERSION,
           planId: loaded.reports[0]?.planId ?? 'merged-execution-plan',

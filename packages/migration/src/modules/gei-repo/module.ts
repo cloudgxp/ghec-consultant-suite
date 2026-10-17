@@ -278,6 +278,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       );
       const isMirrorPushRepo =
         ctx.scope.options?.gitTransferStrategy === 'mirror-push';
+      const isSkipReleasesRepo = Boolean(ctx.scope.options?.skipReleases);
       return {
         schemaVersion: MIGRATION_SCHEMA_VERSION,
         moduleId: this.id,
@@ -293,7 +294,12 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
                 'releases',
               ] as const,
             }
-          : {}),
+          : isSkipReleasesRepo
+            ? {
+                metadataState: 'partial' as const,
+                failedMetadataCategories: ['releases'] as const,
+              }
+            : {}),
       };
     }
 

@@ -803,5 +803,122 @@ describe('Reporting & Step Summary Subsystem', () => {
         'Expected Organization Rulesets row in Step Summary',
       );
     });
+
+    it('deduplicates multi-pass organization modules, separates mirror-push from skippedReleases, and renders ⏭️ Skipped badge for post-care skipped modules', () => {
+      const report: MigrationExecutionReport = {
+        schemaVersion: '1.0.0',
+        planId: 'plan-dedup-org',
+        executedAt: '2026-10-17T14:00:00.000Z',
+        status: 'complete',
+        exitCode: 0,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'teams',
+            targetIdentifier: 'demogxp-mig5',
+            scopeLevel: 'organization',
+            status: 'complete',
+            durationMs: 3000,
+            results: [
+              {
+                operationId: 'team:create:platform',
+                status: 'succeeded',
+                resourceType: 'team',
+                resourceName: 'platform',
+                operationType: 'create',
+                completedAt: '2026-10-17T13:50:00.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'teams',
+            targetIdentifier: 'demogxp-mig5',
+            scopeLevel: 'organization',
+            status: 'complete',
+            durationMs: 1000,
+            results: [
+              {
+                operationId: 'team:noop:platform',
+                status: 'succeeded',
+                resourceType: 'team',
+                resourceName: 'platform',
+                operationType: 'noop',
+                completedAt: '2026-10-17T13:59:00.000Z',
+              },
+            ],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            targetIdentifier: 'demogxp-mig5/chromium',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 500,
+            failedMetadataCategories: ['issues', 'pull-requests', 'releases'],
+            results: [],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            targetIdentifier: 'demogxp-mig5/release-heavy-benchmark',
+            scopeLevel: 'repository',
+            status: 'complete',
+            durationMs: 500,
+            failedMetadataCategories: ['releases'],
+            results: [],
+          },
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'deploy-keys',
+            targetIdentifier: 'demogxp-mig5/demo',
+            scopeLevel: 'repository',
+            status: 'skipped',
+            durationMs: 200,
+            results: [
+              {
+                operationId: 'deploy-key:create:demo:1',
+                status: 'skipped',
+                resourceType: 'deploy-key',
+                resourceName: 'CI Deploy Key',
+                operationType: 'skip',
+                reason:
+                  'SSH public key for deploy key "CI Deploy Key" is already bound to source repository.',
+                completedAt: '2026-10-17T13:55:00.000Z',
+              },
+            ],
+          },
+        ],
+      };
+
+      const summary = buildSummaryFromExecutionReport(report, {
+        sourceOrg: 'demogxp',
+        targetOrg: 'demogxp-mig5',
+      });
+
+      assert.deepEqual(summary.rehydration?.teams, {
+        planned: 1,
+        succeeded: 1,
+        failed: 0,
+      });
+      assert.deepEqual(summary.coreTransfer?.gei, {
+        total: 2,
+        succeeded: 2,
+        failed: 0,
+        skippedReleases: 1,
+      });
+      assert.deepEqual(summary.rehydration?.deployKeys, {
+        planned: 1,
+        succeeded: 0,
+        failed: 0,
+      });
+
+      const stepMd = formatStepSummaryMarkdown(summary);
+      assert.ok(
+        stepMd.includes('| **Deploy Keys** | 1 | 0 | 0 | ⏭️ Skipped |'),
+        `Expected ⏭️ Skipped badge for Deploy Keys in:\n${stepMd}`,
+      );
+    });
   });
 });

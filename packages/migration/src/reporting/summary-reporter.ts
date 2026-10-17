@@ -1,7 +1,13 @@
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { MigrationPlan, VerificationReport } from '@ghec/contracts';
+import type {
+  MigrationPlan,
+  ModuleExecutionResult,
+  OperationExecutionResult,
+  VerificationReport,
+} from '@ghec/contracts';
 import { sanitizeDiagnostics } from '@ghec/github-client';
+import { ALL_ORGANIZATION_MODULES } from '../orchestrator/module-resolver.js';
 import type { MigrationExecutionReport } from '../orchestrator/types.js';
 import type {
   MigrationRunSummary,
@@ -19,6 +25,134 @@ export interface BuildSummaryOptions {
   readonly plan?: MigrationPlan | undefined;
   readonly durationMs?: number | undefined;
   readonly warnings?: readonly string[] | undefined;
+}
+
+const KNOWN_ORG_MODULE_IDS = new Set<string>([
+  ...ALL_ORGANIZATION_MODULES,
+  'custom-properties',
+  'rulesets-org',
+  'org-custom-roles',
+  'org-projects-v2',
+  'actions-secrets',
+  'mannequins',
+]);
+
+function getCanonicalOperationDedupKey(op: OperationExecutionResult): string {
+  if (op.resourceType && op.resourceName) {
+    return `${(op.targetIdentifier ?? '').toLowerCase()}::${op.resourceType.toLowerCase()}::${op.resourceName.toLowerCase()}`;
+  }
+  return op.operationId.replace(
+    /:(create|update|noop|skip|warn)(-org|-repo)?:/i,
+    ':op$2:',
+  );
+}
+
+function deduplicateOperations(
+  ops: readonly OperationExecutionResult[],
+): OperationExecutionResult[] {
+  const byKey = new Map<string, OperationExecutionResult>();
+  for (const op of ops) {
+    const key = getCanonicalOperationDedupKey(op);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, op);
+      continue;
+    }
+    if (op.status === 'succeeded' && existing.status !== 'succeeded') {
+      byKey.set(key, op);
+      continue;
+    }
+    if (existing.status === 'succeeded' && op.status !== 'succeeded') {
+      continue;
+    }
+    if (existing.status === 'succeeded' && op.status === 'succeeded') {
+      const existingAct =
+        existing.operationType === 'create' ||
+        existing.operationType === 'update';
+      const incomingNoop = op.operationType === 'noop';
+      if (existingAct && incomingNoop) {
+        continue;
+      }
+      byKey.set(key, op);
+      continue;
+    }
+    byKey.set(key, op);
+  }
+  return Array.from(byKey.values());
+}
+
+/**
+ * Deduplicates ModuleExecutionResult entries across multiple execution passes
+ * (e.g. pre-cohort org setup, cohort workers, post-cohort org reconciliation)
+ * by (moduleId, targetIdentifier) so organization and repository operations
+ * are never double-counted.
+ */
+export function deduplicateExecutionReportResults(
+  results: readonly ModuleExecutionResult[],
+): ModuleExecutionResult[] {
+  const grouped = new Map<string, ModuleExecutionResult[]>();
+  for (let i = 0; i < results.length; i++) {
+    const modResult = results[i]!;
+    const isOrg =
+      modResult.scopeLevel === 'organization' ||
+      KNOWN_ORG_MODULE_IDS.has(modResult.moduleId) ||
+      modResult.moduleId.startsWith('org-');
+    const groupKey = modResult.targetIdentifier
+      ? `${modResult.moduleId}::${modResult.targetIdentifier.toLowerCase()}`
+      : isOrg
+        ? `${modResult.moduleId}::org`
+        : `${modResult.moduleId}::anon-${i}`;
+    const list = grouped.get(groupKey) ?? [];
+    list.push(modResult);
+    grouped.set(groupKey, list);
+  }
+
+  const merged: ModuleExecutionResult[] = [];
+  for (const execList of grouped.values()) {
+    if (execList.length === 1) {
+      merged.push(execList[0]!);
+      continue;
+    }
+    const lastPass = execList[execList.length - 1]!;
+    const dedupedOps = deduplicateOperations(
+      execList.flatMap((m) => m.results),
+    );
+    const activeExecPasses = execList.filter((m) =>
+      m.results.some(
+        (r) =>
+          r.operationType === 'create' ||
+          r.operationType === 'update' ||
+          r.status === 'failed' ||
+          (!r.operationType &&
+            !r.operationId.toLowerCase().includes(':noop') &&
+            !r.operationId.toLowerCase().startsWith('noop-')),
+      ),
+    );
+    const durationMs =
+      activeExecPasses.length > 0
+        ? activeExecPasses.reduce((acc, m) => acc + (m.durationMs || 0), 0)
+        : (lastPass.durationMs ?? 0);
+    const failedCategories = Array.from(
+      new Set(execList.flatMap((m) => m.failedMetadataCategories ?? [])),
+    );
+    const hasFailedOp = dedupedOps.some((o) => o.status === 'failed');
+    const status =
+      !hasFailedOp && execList.some((m) => m.status === 'complete')
+        ? 'complete'
+        : lastPass.status;
+
+    merged.push({
+      ...lastPass,
+      status,
+      durationMs,
+      results: dedupedOps,
+      ...(failedCategories.length > 0
+        ? { failedMetadataCategories: failedCategories }
+        : {}),
+    });
+  }
+
+  return merged;
 }
 
 function countOperations(
@@ -58,12 +192,13 @@ export function buildSummaryFromExecutionReport(
   report: MigrationExecutionReport,
   options: BuildSummaryOptions = {},
 ): MigrationRunSummary {
+  const dedupedResults = deduplicateExecutionReportResults(report.results);
   const totalDurationMs =
     options.durationMs ??
-    report.results.reduce((acc, r) => acc + (r.durationMs || 0), 0);
+    dedupedResults.reduce((acc, r) => acc + (r.durationMs || 0), 0);
 
   let latestOpCompletedAt: string | undefined;
-  for (const modResult of report.results) {
+  for (const modResult of dedupedResults) {
     for (const op of modResult.results) {
       if (
         op.completedAt &&
@@ -124,7 +259,7 @@ export function buildSummaryFromExecutionReport(
   const metadataFailures: MetadataFailureSummary[] = [];
   const healedFallbackCategories = new Set<string>();
 
-  for (const modResult of report.results) {
+  for (const modResult of dedupedResults) {
     const filteredResults = modResult.results.filter((op) => {
       if (
         op.operationId.startsWith('op-autolink-noop-empty-') ||
@@ -165,7 +300,7 @@ export function buildSummaryFromExecutionReport(
     ) {
       const unhealedCategories = modResult.failedMetadataCategories.filter(
         (cat) => {
-          const healed = report.results.some(
+          const healed = dedupedResults.some(
             (r) =>
               r.moduleId === cat &&
               (!modResult.targetIdentifier ||
@@ -208,8 +343,28 @@ export function buildSummaryFromExecutionReport(
     switch (modResult.moduleId) {
       case 'gei-repo': {
         const prev = coreTransfer.gei;
+        const isMirrorPushMeta =
+          modResult.failedMetadataCategories?.includes('issues') ||
+          modResult.failedMetadataCategories?.includes('pull-requests') ||
+          modResult.failedMetadataCategories?.includes('pull_requests');
+        const hasReleaseAssetsForRepo =
+          Boolean(modResult.targetIdentifier) &&
+          dedupedResults.some(
+            (r) =>
+              r.moduleId === 'releases' &&
+              r.targetIdentifier === modResult.targetIdentifier &&
+              r.results.some(
+                (op) =>
+                  op.resourceType === 'release-asset' ||
+                  op.operationId.startsWith('release-asset:'),
+              ),
+          );
         const repoSkippedReleases =
-          modResult.failedMetadataCategories?.includes('releases') ? 1 : 0;
+          !isMirrorPushMeta &&
+          (modResult.failedMetadataCategories?.includes('releases') ||
+            hasReleaseAssetsForRepo)
+            ? 1
+            : 0;
         coreTransfer.gei = {
           total: (prev?.total ?? 0) + counts.planned,
           succeeded: (prev?.succeeded ?? 0) + counts.succeeded,
