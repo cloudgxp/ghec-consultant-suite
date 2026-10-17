@@ -145,7 +145,9 @@ export function formatStepSummaryMarkdown(
           ? '❌ Failed'
           : counts.succeeded > 0
             ? '✅ Complete'
-            : '⚪ None';
+            : counts.planned > 0
+              ? '⏭️ Skipped'
+              : '⚪ None';
       lines.push(
         `| **${name}** | ${counts.planned} | ${counts.succeeded} | ${counts.failed} | ${statusIcon} |`,
       );

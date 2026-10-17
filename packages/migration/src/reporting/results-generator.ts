@@ -1215,19 +1215,36 @@ export function generateMigrationResults(
     readonly moduleSummaries: Readonly<Record<string, RepoModuleResultSummary>>;
     readonly geiMigrationId?: string | undefined;
   }): string => {
-    const { modMap, moduleSummaries, geiMigrationId } = params;
+    const { targetRepo, modMap, moduleSummaries, geiMigrationId } = params;
     const geiExecList = modMap?.get('gei-repo') ?? [];
     const geiOps = geiExecList.flatMap((m) => m.results);
-
-    const usedDirectMirrorPush = geiOps.some((o) =>
-      o.operationId.startsWith('gei-repo-mirror-push-'),
+    const scopeRepo = options.scope?.repositories.find(
+      (r) =>
+        r.targetRepo.toLowerCase() === targetRepo.toLowerCase() ||
+        r.sourceRepo.toLowerCase() === targetRepo.toLowerCase(),
     );
+
+    const usedDirectMirrorPush =
+      geiOps.some((o) => o.operationId.startsWith('gei-repo-mirror-push-')) ||
+      geiExecList.some(
+        (m) =>
+          (m.failedMetadataCategories?.includes('issues') ||
+            m.failedMetadataCategories?.includes('pull-requests') ||
+            m.failedMetadataCategories?.includes('pull_requests')) &&
+          m.failedMetadataCategories?.includes('releases'),
+      ) ||
+      scopeRepo?.gitTransferStrategy === 'mirror-push' ||
+      scopeRepo?.options?.gitTransferStrategy === 'mirror-push';
     const usedFallbackMirrorPush = geiOps.some((o) =>
       o.operationId.startsWith('gei-repo-mirror-fallback-'),
     );
-    const hadSkippedReleases = geiExecList.some((m) =>
-      m.failedMetadataCategories?.includes('releases'),
-    );
+    const hadSkippedReleases =
+      !usedDirectMirrorPush &&
+      !usedFallbackMirrorPush &&
+      (geiExecList.some((m) =>
+        m.failedMetadataCategories?.includes('releases'),
+      ) ||
+        Boolean(scopeRepo?.skipReleases || scopeRepo?.options?.skipReleases));
 
     const sidecarParts: string[] = [];
     for (const sidecarMod of ['releases', 'lfs', 'issues', 'pull-requests']) {
@@ -1403,6 +1420,29 @@ export function generateMigrationResults(
             allRepoDiscs.length === 0);
         const alreadyPresent =
           execList.length > 0 && !geiMigrationId && !geiFailed;
+        const scopeRepo = options.scope?.repositories.find(
+          (r) =>
+            r.targetRepo.toLowerCase() === targetRepo.toLowerCase() ||
+            r.sourceRepo.toLowerCase() === targetRepo.toLowerCase(),
+        );
+        const isMirrorPush =
+          execList.some(
+            (m) =>
+              (m.failedMetadataCategories?.includes('issues') ||
+                m.failedMetadataCategories?.includes('pull-requests') ||
+                m.failedMetadataCategories?.includes('pull_requests')) &&
+              m.failedMetadataCategories?.includes('releases'),
+          ) ||
+          scopeRepo?.gitTransferStrategy === 'mirror-push' ||
+          scopeRepo?.options?.gitTransferStrategy === 'mirror-push';
+        const isSkipReleases =
+          !isMirrorPush &&
+          (execList.some((m) =>
+            m.failedMetadataCategories?.includes('releases'),
+          ) ||
+            Boolean(
+              scopeRepo?.skipReleases || scopeRepo?.options?.skipReleases,
+            ));
         allOps = [
           {
             operationId: alreadyPresent
@@ -1419,7 +1459,11 @@ export function generateMigrationResults(
             reason: geiMigrationId
               ? `GEI Migration ID: ${geiMigrationId}`
               : alreadyPresent
-                ? 'Target repository already exists on destination; verified parity.'
+                ? isMirrorPush
+                  ? 'Target repository already exists on destination (direct Git mirror-push strategy; metadata rehydrated via sidecar modules); verified parity.'
+                  : isSkipReleases
+                    ? 'Target repository already exists on destination (GEI --skip-releases strategy; releases and assets verified via sidecar module); verified parity.'
+                    : 'Target repository already exists on destination; verified parity.'
                 : 'Core Git repository transfer',
             targetIdentifier: `${options.targetOrg}/${targetRepo}`,
           },
@@ -1959,6 +2003,136 @@ export function generateMigrationResults(
   const otherCount =
     postCare.items.length - secretCount - appCount - webhookCount - runnerCount;
 
+  const allGranularItems = [
+    ...Array.from(orgModuleDetailModels.values()).flatMap((m) => m.items),
+    ...Array.from(repoModuleDetailModels.values()).flatMap((m) => m.items),
+  ];
+  const operationTotals =
+    allGranularItems.length > 0
+      ? {
+          total: allGranularItems.length,
+          succeeded: allGranularItems.filter((i) => i.status === 'succeeded')
+            .length,
+          mutated: allGranularItems.filter(
+            (i) => i.status === 'succeeded' && i.operationType !== 'noop',
+          ).length,
+          noop: allGranularItems.filter(
+            (i) => i.status === 'succeeded' && i.operationType === 'noop',
+          ).length,
+          skipped: allGranularItems.filter((i) => i.status === 'skipped')
+            .length,
+          failed: allGranularItems.filter((i) => i.status === 'failed').length,
+        }
+      : undefined;
+
+  const largeReleaseRepos: string[] = [];
+  let totalReleasesCount = 0;
+  let totalReleaseAssetsStreamed = 0;
+  let totalReleaseBytesStreamed = 0;
+  const lfsRepos: string[] = [];
+  let totalLfsObjectsTransferred = 0;
+  let totalLfsBytesTransferred = 0;
+  const mirrorPushRepos: string[] = [];
+  const repoStrategyBadges: Record<string, string> = {};
+
+  for (const repo of manifest.repositories) {
+    const targetRepo = repo.targetRepo;
+    const scopeRepo = options.scope?.repositories.find(
+      (r) =>
+        r.targetRepo.toLowerCase() === targetRepo.toLowerCase() ||
+        r.sourceRepo.toLowerCase() === targetRepo.toLowerCase(),
+    );
+    const modMap = repoExecResultsByRepo.get(targetRepo);
+    const geiExecList = modMap?.get('gei-repo') ?? [];
+    const geiOps = geiExecList.flatMap((m) => m.results);
+
+    const isMirrorPush =
+      geiOps.some((o) => o.operationId.startsWith('gei-repo-mirror-push-')) ||
+      geiExecList.some(
+        (m) =>
+          (m.failedMetadataCategories?.includes('issues') ||
+            m.failedMetadataCategories?.includes('pull-requests') ||
+            m.failedMetadataCategories?.includes('pull_requests')) &&
+          m.failedMetadataCategories?.includes('releases'),
+      ) ||
+      scopeRepo?.gitTransferStrategy === 'mirror-push' ||
+      scopeRepo?.options?.gitTransferStrategy === 'mirror-push';
+    const isFallbackMirrorPush = geiOps.some((o) =>
+      o.operationId.startsWith('gei-repo-mirror-fallback-'),
+    );
+    const isSkipReleases =
+      !isMirrorPush &&
+      !isFallbackMirrorPush &&
+      (geiExecList.some((m) =>
+        m.failedMetadataCategories?.includes('releases'),
+      ) ||
+        Boolean(scopeRepo?.skipReleases || scopeRepo?.options?.skipReleases));
+
+    const badgeParts: string[] = [];
+    if (isMirrorPush) {
+      mirrorPushRepos.push(targetRepo);
+      badgeParts.push('🔄 `mirror-push`');
+    } else if (isFallbackMirrorPush) {
+      mirrorPushRepos.push(targetRepo);
+      badgeParts.push('🔄 `mirror-fallback`');
+    } else if (isSkipReleases) {
+      badgeParts.push('📦 `--skip-releases` + `releases`');
+    }
+
+    const releasesModel = repoModuleDetailModels.get(
+      `repositories/${targetRepo}/releases.md`,
+    );
+    if (
+      releasesModel &&
+      (isSkipReleases ||
+        releasesModel.items.some((i) => i.resourceType === 'release-asset'))
+    ) {
+      const relCount = releasesModel.items.filter(
+        (i) => i.resourceType === 'release' && i.status === 'succeeded',
+      ).length;
+      const assetItems = releasesModel.items.filter(
+        (i) => i.resourceType === 'release-asset' && i.status === 'succeeded',
+      );
+      if (relCount > 0 || assetItems.length > 0) {
+        largeReleaseRepos.push(targetRepo);
+        totalReleasesCount += relCount;
+        totalReleaseAssetsStreamed += assetItems.length;
+        for (const item of assetItems) {
+          if (item.notes) {
+            const m = /\((\d+)\s+bytes\b/i.exec(item.notes);
+            if (m?.[1]) {
+              totalReleaseBytesStreamed += Number.parseInt(m[1], 10);
+            }
+          }
+        }
+      }
+    }
+
+    const lfsModel = repoModuleDetailModels.get(
+      `repositories/${targetRepo}/lfs.md`,
+    );
+    if (lfsModel) {
+      const lfsItems = lfsModel.items.filter((i) => i.status === 'succeeded');
+      if (lfsItems.length > 0) {
+        lfsRepos.push(targetRepo);
+        totalLfsObjectsTransferred += lfsItems.length;
+        for (const item of lfsItems) {
+          if (item.notes) {
+            const m = /\((\d+)\s+bytes\b/i.exec(item.notes);
+            if (m?.[1]) {
+              totalLfsBytesTransferred += Number.parseInt(m[1], 10);
+            }
+          }
+        }
+        badgeParts.push('🗄️ `lfs`');
+      }
+    }
+
+    if (badgeParts.length > 0) {
+      repoStrategyBadges[targetRepo] = badgeParts.join(' · ');
+    }
+  }
+
   const files: Record<string, string> = {};
   files['README.md'] = formatResultsReadmeMarkdown(manifest, {
     nextSteps: options.nextSteps,
@@ -1971,6 +2145,44 @@ export function generateMigrationResults(
       runnerCount,
       otherCount,
     },
+    ...(options.verificationReport?.summary
+      ? {
+          verificationSummary: {
+            verifiedModuleCount:
+              options.verificationReport.summary.verifiedModuleCount,
+            unverifiedModuleCount:
+              options.verificationReport.summary.unverifiedModuleCount,
+            discrepancyCount:
+              options.verificationReport.summary.discrepancyCount,
+          },
+        }
+      : {}),
+    ...(operationTotals ? { operationTotals } : {}),
+    transferStrategies: {
+      ...(largeReleaseRepos.length > 0
+        ? {
+            largeReleases: {
+              repos: largeReleaseRepos,
+              releasesCount: totalReleasesCount,
+              assetsStreamed: totalReleaseAssetsStreamed,
+              bytesStreamed: totalReleaseBytesStreamed,
+            },
+          }
+        : {}),
+      ...(lfsRepos.length > 0
+        ? {
+            lfs: {
+              repos: lfsRepos,
+              objectsTransferred: totalLfsObjectsTransferred,
+              bytesTransferred: totalLfsBytesTransferred,
+            },
+          }
+        : {}),
+      ...(mirrorPushRepos.length > 0 ? { mirrorPushRepos } : {}),
+    },
+    ...(Object.keys(repoStrategyBadges).length > 0
+      ? { repoStrategyBadges }
+      : {}),
   });
   files['manifest.json'] = JSON.stringify(manifest, null, 2);
   files['POST-CARE-CHECKLIST.md'] = postCare.checklistMarkdown;
