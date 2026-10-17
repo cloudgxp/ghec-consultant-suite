@@ -54,8 +54,6 @@ jobs:
 
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
-        with:
-          build: 'false'
 
       - name: Preflight Secret Check
         shell: bash
@@ -68,10 +66,6 @@ jobs:
             exit 1
           fi
           echo "✓ Authentication secret '${{ inputs.pat_secret_name }}' verified."
-
-      - name: Compile Suite Packages
-        shell: bash
-        run: npm run build:packages
 
       - name: Execute Demo Content Seeding
         id: seed_step
@@ -96,7 +90,7 @@ jobs:
             ARGS+=(--cleanup)
           fi
 
-          node --import tsx scripts/seed-demo-content.ts "${ARGS[@]}"
+          node ./apps/cli/bin/ghec-consultant-cli.mjs seed-demo "${ARGS[@]}"
 
       - name: Generate Actions Step Summary
         if: always()

@@ -4,58 +4,66 @@ description: >-
   Use this skill when scaffolding, implementing, or adding a new migration module adhering to the 4-stage lifecycle (discover, plan, apply, verify) in @ghec/migration.
 ---
 
-# Migration Module Scaffolding
+# Creating a New Migration Module (`migration-module-scaffolding`)
 
-This skill guides the scaffolding and implementation of modular migration components in `packages/migration/src/modules/`.
-
-## 4-Stage Lifecycle Contract
-
-Every module implements `MigrationModule` from `@ghec/migration`:
-
-1. **`discover(context: MigrationContext)`**: Query source resources and construct raw metadata inventory.
-2. **`plan(context: MigrationContext, sourceData: T)`**: Diff source resources against target state and calculate discrete migration actions.
-3. **`apply(context: MigrationContext, plan: PlanT, options: ApplyOptions)`**: Execute creation/update mutations against the target organization or repository (with full support for `options.dryRun = true`).
-4. **`verify(context: MigrationContext, expected: T)`**: Inspect target state post-migration, compare with source expectations, and return a structured discrepancy list.
+This skill shows you how to generate, register, and test a new migration module in `packages/migration/src/modules/`.
 
 ---
 
-## Scaffolding Procedure
+## Generating a new migration module
 
-### 1. Run Scaffolding Helper Script
+By default, every module implements the `MigrationModule` interface from `@ghec/migration` with four methods (`discover`, `plan`, `apply`, and `verify`), and the generator script creates the starter files and unit test for you:
 
-Execute the bundled generator:
+1. **`discover(context: MigrationContext)`**: Reads settings from the source organization or repository.
+2. **`plan(context: MigrationContext, sourceData: T)`**: Compares source items with the target organization and lists what needs to be created or updated.
+3. **`apply(context: MigrationContext, plan: PlanT, options: ApplyOptions)`**: Creates or updates items in the target organization (and supports `options.dryRun = true` for safe previews).
+4. **`verify(context: MigrationContext, expected: T)`**: Checks the target organization after migration and returns any differences.
+
+```text
+packages/migration/
+├── src/modules/<module-id>/
+│   ├── index.ts
+│   ├── module.ts
+│   └── types.ts
+└── tests/modules/
+    └── <module-id>.test.ts
+```
+
+To create the starter files and test file for a new module:
 
 ```bash
 node .agents/skills/migration-module-scaffolding/scripts/scaffold-module.mjs <module-id> "<Display Name>"
 ```
 
-This creates:
+---
 
-- `packages/migration/src/modules/<module-id>/module.ts`: Core lifecycle class.
-- `packages/migration/src/modules/<module-id>/types.ts`: Domain payload definitions.
-- `packages/migration/src/modules/<module-id>/index.ts`: Module exports.
-- `packages/migration/tests/modules/<module-id>.test.ts`: Lifecycle unit test suite.
+## Registering the module and supporting preview mode
 
-### 2. Register Module in `ModuleRegistry`
+By default, `ModuleRegistry` in `packages/migration/src/core/registry.ts` controls the order in which modules run based on their `dependencies` list (such as `dependencies: ['gei-repo']`).
 
-Register the new module in `packages/migration/src/core/registry.ts`:
+To register your new module in `packages/migration/src/core/registry.ts`, import the module class, add it to the standard module catalog, and list any prerequisite module IDs:
 
-- Import the module class.
-- Add to standard module catalog.
-- Declare prerequisites in the topological dependency graph (e.g. `dependencies: ['gei-repo']`).
+```ts
+registry.register(new MyCustomModule());
+```
 
-### 3. Implement Dry-Run Logic
+> [!NOTE]
+> Make sure your `apply()` method checks `options.dryRun === true`. When preview mode is turned on, your module must record the planned results without sending `POST`, `PUT`, `PATCH`, or `DELETE` requests.
 
-Ensure that when `options.dryRun === true`:
+---
 
-- No mutating HTTP calls (`POST`, `PUT`, `PATCH`, `DELETE`) are performed.
-- Simulated action outputs are emitted to the summary.
+## Running unit tests for the new module
 
-### 4. Verify & Test
+By default, module unit tests run completely offline using Node's built-in test runner.
 
-Run the isolated unit test:
+To run the unit test for your new module:
 
 ```bash
 node --import tsx --test packages/migration/tests/modules/<module-id>.test.ts
+```
+
+Once your unit test passes, run the full workspace check:
+
+```bash
 npm run check
 ```

@@ -1,325 +1,166 @@
-# GHEC to GHEC-EMU Test Migration Setup Guide & Execution Playbook
+# Setting up a GHEC to GHEC-EMU test migration
 
-This authoritative guide details the exact prerequisites, credentials, scopes, test data, and execution procedures required to execute an end-to-end dry-run and live test migration from GitHub Enterprise Cloud (GHEC) to GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU) using `@ghec/migration` and `ghec-consultant-cli`.
+This guide walks you through setting up tokens, sample repositories, and scope files to run a safe end-to-end test migration from **GitHub Enterprise Cloud (GHEC)** to **GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU)**.
 
 ---
 
-## 1. Secrets & Security Architecture (Zero-Local-Secrets Boundary)
+## Saving your source and target tokens in GitHub Secrets
 
-> [!IMPORTANT]
-> **Zero-Local-Secrets Security Boundary:**
-> To guarantee complete credential isolation and protect sensitive migration tokens, Antigravity and operators **never** request, receive, or store GitHub Personal Access Tokens or migration credentials in local `.env` files, shell variables, or chat messages.
-> All migration credentials must reside exclusively in **GitHub Repository / Organization Secrets** (`${{ secrets.GHEC_SOURCE_TOKEN }}`, `${{ secrets.GHEC_TARGET_TOKEN }}`).
-> All test executions, dry-runs, and live mutations are executed strictly within isolated GitHub Actions runners (`ubuntu-latest` or `self-hosted`).
+By default, all test migrations run inside GitHub Actions runners so you never have to save Personal Access Tokens in `.env` files on your computer. You need two separate Classic Personal Access Tokens:
 
-### GitHub Repository Secrets Matrix
+- `GHEC_SOURCE_TOKEN`: Classic PAT with read access to your source organization (`repo`, `read:org`, `read:org_hook`, `read:repo_hook`).
+- `GHEC_TARGET_TOKEN`: Classic PAT created by an **Enterprise Managed User (EMU)** Organization Owner in your target organization (`repo`, `admin:org`, `admin:org_hook`, `admin:repo_hook`, `workflow`).
 
-Configure the following secrets in your repository settings (`Settings > Secrets and variables > Actions`) or using the GitHub CLI:
-
-| Secret Name         | Required | Scope / Justification                                                                |
-| :------------------ | :------: | :----------------------------------------------------------------------------------- |
-| `GHEC_SOURCE_TOKEN` | **Yes**  | Classic PAT with read access to source organization (`repo`, `read:org`, hook read). |
-| `GHEC_TARGET_TOKEN` | **Yes**  | Classic PAT under EMU account with Org Owner privileges in destination org.          |
-
-> [!CAUTION]
-> **Strict Tenant Credential Isolation Enforcement (SEC-CRED-001):**
-> The dual client (`createGitHubDualClient`) strictly checks that `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` are distinct. If both point to the same token, client initialization immediately throws:
-> `Error: Source and target tenants must not share the same credential.`
-> Ensure you generate two independent Personal Access Tokens from their respective organizations.
-
-### Configuring Secrets via GitHub CLI
-
-To set repository secrets securely without saving them to local files:
+To save your source and target tokens into your repository's GitHub Actions secrets:
 
 ```bash
-# Set source token
 gh secret set GHEC_SOURCE_TOKEN
-
-# Set destination EMU target token
 gh secret set GHEC_TARGET_TOKEN
 ```
 
-### Specifying Source & Target Organizations (Migration Scopes)
-
-Unlike credentials (which belong in GitHub Secrets), organization slugs are non-sensitive declarative boundary metadata. In the GHEC Consultant Suite architecture, **source and target organizations are specified directly inside the Migration Scope JSON files** committed in `scopes/`:
-
-- `scopes/test-org-wave.json`: Contains the organization mapping:
-  ```json
-  "organizations": [
-    {
-      "source": "cloudgxp-source",
-      "target": "cloudgxp-emu-target",
-      "modules": ["org-variables", "org-secrets", "teams", "org-custom-properties", "webhooks"]
-    }
-  ]
-  ```
-- `scopes/test-repo-wave.json`: Contains repository mappings between source and target:
-  ```json
-  "repositories": [
-    {
-      "sourceOrg": "cloudgxp-source",
-      "sourceRepo": "dummy-repo-public",
-      "targetOrg": "cloudgxp-emu-target",
-      "targetRepo": "dummy-repo-public",
-      "useGei": true, ...
-    }
-  ]
-  ```
-
-> [!TIP]
-> **Using Custom Test Organizations:**
-> The repository's default test scopes target `cloudgxp-source` and `cloudgxp-emu-target`. If your test environment uses different organizations (e.g., `my-source-org` and `my-target-emu-org`), update the `source`, `target`, `sourceOrg`, and `targetOrg` fields in `scopes/test-*.json`, or create a custom scope file (e.g., `scopes/my-wave.json`).
-
----
-
-## 2. Token Permissions & Scopes (Classic PAT vs. Fine-Grained PAT)
-
-### Classic PAT vs. Fine-Grained PAT Guidance
-
-> [!IMPORTANT]
-> **Classic PATs are required for end-to-end migration orchestration.**
-> While Fine-Grained PATs support repository-level operations, they currently exhibit severe restrictions in enterprise migration contexts:
+> [!WARNING]
+> **Use two separate tokens and authorize SAML Single Sign-On (SSO):**
 >
-> 1. Fine-Grained PATs cannot span multiple organizations belonging to separate enterprise accounts.
-> 2. Fine-Grained PATs do not support organization-level Actions secrets encryption keys or ruleset bypass inspection.
-> 3. GitHub Enterprise Importer (`gh-gei`) commands require classic PAT scopes (`admin:org`, `repo`).
-
-### Source GHEC PAT (Read-Only Extraction)
-
-Create a **Classic Personal Access Token** in your source account with these minimal scopes:
-
-| Classic Scope                        | Required By Modules                                                                        | Justification                                                                                            |
-| :----------------------------------- | :----------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------- |
-| `repo`                               | `repos`, `repo-variables`, `repo-secrets`, `environments`, `rulesets`, `branch-protection` | Reading private repositories, Actions configuration metadata, deployment environments, and branch rules. |
-| `read:org`                           | `orgs`, `teams`, `users`, `org-variables`, `org-secrets`, `org-custom-properties`          | Enumerating organization membership, team hierarchy, organization variables, and custom properties.      |
-| `admin:org_hook` / `read:org_hook`   | `webhooks`, `integrations`                                                                 | Reading organization-level webhooks.                                                                     |
-| `admin:repo_hook` / `read:repo_hook` | `webhooks`                                                                                 | Reading repository-level webhooks.                                                                       |
-
-### Target GHEC-EMU PAT (Apply & Mutations)
-
-Create a **Classic Personal Access Token** under an **Enterprise Managed User (EMU)** account with Organization Owner privileges in the target organization:
-
-| Classic Scope     | Required By Modules                                                                                | Justification                                                                                     |
-| :---------------- | :------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
-| `repo`            | `repo-variables`, `repo-secrets`, `repo-settings`, `rulesets`, `branch-protection`, `environments` | Rehydrating variables, secrets, branch protections, PR templates, and environments.               |
-| `admin:org`       | `org-variables`, `org-secrets`, `teams`, `org-custom-properties`                                   | Creating teams, establishing parentage, assigning EMU members, and setting org secrets/variables. |
-| `admin:org_hook`  | `webhooks`                                                                                         | Creating organization webhooks.                                                                   |
-| `admin:repo_hook` | `webhooks`                                                                                         | Creating repository webhooks.                                                                     |
-| `workflow`        | `rulesets`, `environments`                                                                         | Updating repository configurations referencing Actions workflow files.                            |
-
-### Enterprise Managed Users (EMU) Specific Constraints
-
-1. **SAML Single Sign-On Authorization:**
-   - After generating the Classic PAT under your EMU account, you **must** click `Configure SSO` next to the token in GitHub Settings and click `Authorize` for the target enterprise and organization.
-   - If not authorized, all target API requests will fail with HTTP 403:
-     `Resource protected by organization SAML enforcement. You must grant your Personal Access Token access to this organization.`
-2. **EMU Username Format:**
-   - EMU accounts have strict username formatting provisioned via SCIM: `<idp_user>_<enterprise_shortcode>` (e.g. `jdoe_cloudgxp`).
-   - Personal accounts cannot be invited to an EMU organization.
-3. **Mannequin Reclamation (`--skip-invitation`):**
-   - Because EMU users cannot accept standard external email invitations, historical commits/PRs mapped via `post-migration-mannequins` require the `--skip-invitation` flag on `gh gei reclaim-mannequin`. This immediately reattributes history without sending email notifications.
-4. **Ruleset Bypass Rights:**
-   - The EMU migration administrator account must be added to ruleset bypass lists in the target organization so automated mutations do not trip default branch restrictions.
+> 1. `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` must be two different tokens. If they are the same, the tool stops immediately to protect your source organization.
+> 2. Fine-Grained PATs do not support GitHub Enterprise Importer (`gh-gei`) or organization-level secret keys across enterprises—always use **Classic PATs**.
+> 3. After creating your target EMU token in GitHub Settings, click **Configure SSO** next to the token and click **Authorize** for your target organization, or GitHub will block API calls with `HTTP 403`.
 
 ---
 
-## 3. Dummy Source Resources Checklist
+## Preparing sample data in your source test organization
 
-To thoroughly exercise all 12 modules and 2 strategies during test migration without affecting production assets, create the following dummy resources in your source test organization (e.g., `cloudgxp-source` or your configured source organization):
+Before running a test migration, you need sample repositories, teams, variables, and rulesets in your source test organization so every migration module has real items to copy.
 
-### Repositories (2 total)
+By default, you can create all 32 sample items automatically using the `seed-demo` workflow instead of clicking through the GitHub UI by hand.
 
-1. **`dummy-repo-public` (Standard Public Repository):**
-   - Visibility: `Public`
-   - Default Branch: `main`
-   - Content: Standard README, 1 sample GitHub Actions workflow (`.github/workflows/test.yml`).
-   - Actions Variables (2):
-     - `APP_ENV = "staging"`
-     - `LOG_LEVEL = "debug"`
-   - Actions Secrets (1):
-     - `DEPLOY_TOKEN = "synthetic-dummy-value-12345"`
-   - Deployment Environments (1):
-     - Name: `production`
-     - Wait Timer: 5 minutes
-     - Protection Rule: 1 required reviewer
-     - Environment Variable: `PROD_ENDPOINT = "https://api.example.com"`
-     - Environment Secret: `PROD_API_KEY = "env-secret-synthetic"`
-   - Ruleset (1):
-     - Name: `default-branch-protection`
-     - Enforcement: `Active`
-     - Targets: Default branch (`~DEFAULT_BRANCH`)
-     - Rules: Require pull request review (1 approval), require linear history.
-   - Webhook (1):
-     - Payload URL: `https://httpbin.org/post`
-     - Events: `push`, `pull_request`
-     - Active: `true`
-   - PR Settings:
-     - Allow squash merge: `true`
-     - Squash merge commit title: `PR_TITLE`
-     - Squash merge commit message: `PR_BODY`
-   - Custom Property Value:
-     - `environment = "staging"`
-
-2. **`dummy-repo-private-lfs` (Private Repository with LFS & Release):**
-   - Visibility: `Private`
-   - Git LFS Content:
-     - `.gitattributes` containing `*.bin filter=lfs diff=lfs merge=lfs -text`
-     - 1 committed binary file `sample-asset.bin` (e.g. 50 KB tracked via Git LFS).
-   - GitHub Release (1):
-     - Tag: `v1.0.0`
-     - Name: `v1.0.0 Initial Release`
-     - Attached Asset: `test-artifact.tar.gz` (mock binary file).
-
-### Organization-Level Resources
-
-1. **Organization Custom Property Schemas (2):**
-   - `environment`: Type `single_select`, allowed values: `["development", "staging", "production"]`.
-   - `cost_center`: Type `string`, description: `Financial billing code`.
-2. **Organization Actions Variables (2):**
-   - `GLOBAL_REGION = "us-east-1"`
-   - `ENABLE_MAINTENANCE_MODE = "false"`
-3. **Organization Actions Secrets (1):**
-   - `CORP_SEALED_SECRET = "synthetic-org-secret-67890"`
-4. **Team Hierarchy (2 teams):**
-   - Parent Team: `engineering` (Privacy: `closed`)
-   - Child Team: `platform-infra` (Parent: `engineering`, Privacy: `closed`)
-   - Membership: At least 1 test user assigned as maintainer.
-5. **Organization Webhook (1):**
-   - Payload URL: `https://httpbin.org/post`
-   - Subscribed Events: `team`, `repository`
-   - Secret: `org-test-webhook-secret`
-
----
-
-## 4. Execution Playbook: Actions-Driven Migration Testing (Zero-Local-Secrets)
-
-Follow this lifecycle to validate migration planning, execution, and verification safely without handling or exposing credentials locally. **All API calls and simulations execute within GitHub Actions runners.**
-
-### Step 1: Select Committed Scope Artifact
-
-Select one of the pre-committed scope definitions in `scopes/`:
-
-- `scopes/test-org-wave.json`: Organization-level wave (`org-variables`, `org-secrets`, `teams`, `org-custom-properties`, `webhooks`).
-- `scopes/test-repo-wave.json`: Repository-level wave (`dummy-repo-public`, `dummy-repo-private-lfs`).
-- `scopes/test-all-wave.json`: Unified full test wave.
-
-Validate the scope structure locally without credentials:
+To populate your source test organization with sample teams, repositories, rulesets, LFS files, and releases via GitHub Actions:
 
 ```bash
-node --input-type=module -e '
-  import { validateMigrationScope } from "./packages/contracts/dist/index.js";
-  import fs from "fs";
-  const parsed = JSON.parse(fs.readFileSync("scopes/test-org-wave.json", "utf8"));
-  const res = validateMigrationScope(parsed);
-  if (!res.success) throw new Error("Scope invalid");
-  console.log("Scope artifact valid.");
-'
+gh workflow run seed-demo-content.yml \
+  -f organization="cloudgxp-source" \
+  -f repository="dummy-repo-public"
 ```
 
-> [!NOTE]
-> **Customizing Source & Target Organizations:**
-> The committed scopes map `source: "cloudgxp-source"` to `target: "cloudgxp-emu-target"`. If your test environment uses different organizations, edit the slugs in `scopes/test-*.json` (or commit a custom scope `scopes/my-wave.json`) prior to triggering the workflow:
->
-> ```bash
-> # Example: Adapt scope to your own test org slugs
-> sed -i 's/cloudgxp-source/my-source-org/g' scopes/test-org-wave.json
-> sed -i 's/cloudgxp-emu-target/my-target-emu-org/g' scopes/test-org-wave.json
-> ```
+If you prefer to see what the pre-configured test wave expects, the test scopes in `scopes/` look for these sample items:
 
-### Step 2: Trigger Workflow Dispatch via `gh workflow run`
+- **Repositories (2):**
+  - `dummy-repo-public`: Public repo with `main` branch, sample workflow (`.github/workflows/test.yml`), variables (`APP_ENV`, `LOG_LEVEL`), secret (`DEPLOY_TOKEN`), `production` environment, active branch ruleset (`default-branch-protection`), webhook, squash-merge settings, and custom property `environment = "staging"`.
+  - `dummy-repo-private-lfs`: Private repo tracking `*.bin` with Git LFS (`sample-asset.bin`) and a `v1.0.0` release with `test-artifact.tar.gz`.
+- **Organization Items:**
+  - Custom property schemas (`environment` and `cost_center`), organization variables (`GLOBAL_REGION`, `ENABLE_MAINTENANCE_MODE`), secret (`CORP_SEALED_SECRET`), nested teams (`engineering` $\rightarrow$ `platform-infra`), and an organization webhook.
 
-Trigger testing on GitHub Actions runners (`ubuntu-latest`). All migration credentials are automatically injected from repository secrets:
+---
 
-#### Option A: Dedicated Fast-Test Dispatch (`test-migration-dispatch.yml`)
+## Selecting and customizing a migration scope file
+
+By default, the repository includes three ready-to-use test scope files inside the `scopes/` folder:
+
+```text
+scopes/
+├── test-org-wave.json    # Organization settings, teams, variables, secrets, and webhooks
+├── test-repo-wave.json   # Repository migration (GEI, LFS, releases, rulesets, environments)
+└── test-all-wave.json    # Complete organization + repository test wave
+```
+
+To check that a scope file is valid JSON and matches our schema without needing any GitHub tokens:
 
 ```bash
-gh workflow run test-migration-dispatch.yml \
-  -f scope=scopes/test-org-wave.json \
-  -f modules=org-variables,org-secrets,teams \
-  -f dry_run=true \
-  -f runner_labels=ubuntu-latest
+node ./apps/cli/bin/ghec-consultant-cli.mjs validate-scope --scope scopes/test-org-wave.json
 ```
 
-#### Option B: Parallel Wave Slicer Dispatch (`migration-execute-wave.yml`)
+By default, `scopes/test-*.json` map `cloudgxp-source` to `cloudgxp-emu-target`. To update a scope file to use your own source and target organization names:
+
+```bash
+sed -i 's/cloudgxp-source/my-source-org/g' scopes/test-org-wave.json
+sed -i 's/cloudgxp-emu-target/my-target-emu-org/g' scopes/test-org-wave.json
+```
+
+---
+
+## Running a dry-run test migration in GitHub Actions
+
+Always run a dry-run preview (`dry_run=true`) first. In dry-run mode, the tool reads your source organization and checks your target organization, but makes zero changes to the target.
+
+To start a fast dry-run test for organization teams, variables, and secrets without even editing a scope file:
 
 ```bash
 gh workflow run migration-execute-wave.yml \
-  -f scope=scopes/test-org-wave.json \
-  -f modules=org-variables,org-secrets,teams \
-  -f dry_run=true \
-  -f runner_labels=ubuntu-latest
+  -f source_org="cloudgxp-source" \
+  -f target_org="cloudgxp-emu-target" \
+  -f include_org_resources="true" \
+  -f modules="org-variables,org-secrets,teams" \
+  -f dry_run="true" \
+  -f runner_labels="ubuntu-latest"
 ```
 
-### Step 3: Monitor Workflow Progress
-
-Track execution in real time:
+To test the parallel batch runner workflow using a scope file in dry-run mode:
 
 ```bash
-RUN_ID=$(gh run list --workflow=test-migration-dispatch.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh workflow run migration-execute-wave.yml \
+  -f scope="scopes/test-org-wave.json" \
+  -f modules="org-variables,org-secrets,teams" \
+  -f dry_run="true" \
+  -f runner_labels="ubuntu-latest"
+```
+
+To watch your workflow run live in your terminal:
+
+```bash
+RUN_ID=$(gh run list --workflow=migration-execute-wave.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 gh run watch "$RUN_ID"
 ```
 
-If the run encounters any unexpected failures, inspect failed step logs directly:
+If any step fails, view the failed step logs directly:
 
 ```bash
 gh run view "$RUN_ID" --log-failed
 ```
 
-### Step 4: Download and Audit Artifacts
+---
 
-Download the verified plan, execution report, and verification summary:
+## Downloading and checking the dry-run report
+
+Once the workflow finishes, you can download the generated JSON reports from GitHub Actions to confirm the dry-run completed cleanly.
+
+```text
+scans/downloads/
+└── migration-final-audit-<RUN_ID>/
+    ├── verification-report.json
+    └── remediation-plan.json
+```
+
+To download the workflow artifacts to `./scans/downloads`:
 
 ```bash
 mkdir -p ./scans/downloads
 gh run download "$RUN_ID" --dir ./scans/downloads
-
-# Verify zero mutations and status complete
-node -e '
-  const exec = JSON.parse(require("fs").readFileSync("./scans/downloads/test-migration-artifacts-" + process.env.RUN_ID + "/test-migration-execution.json", "utf8"));
-  console.log("Status:", exec.status);
-  console.log("DryRun Flag:", exec.dryRun);
-  if (exec.dryRun !== true || exec.status !== "complete") {
-    console.error("Dry-run audit failed!");
-    process.exit(1);
-  }
-  console.log("Dry-run verified successfully with zero write mutations.");
-'
 ```
 
-### Step 5: Review Actions Step Summary
-
-Every workflow run emits a rich GitHub Actions Step Summary table containing:
-
-- Planned operations breakdown (`creates`, `updates`, `no-ops`, `warnings`).
-- Cohort execution status and duration.
-- Post-migration target verification discrepancy count.
-
-### Step 6: Mandatory Dry-Run Gate before Live Apply
-
-A clean, passing `dry_run: true` workflow run is mandatory before any live mutations are performed. Once the plan and simulation have been reviewed and approved, trigger live apply:
+To verify that the run finished with zero discrepancies:
 
 ```bash
-gh workflow run test-migration-dispatch.yml \
-  -f scope=scopes/test-org-wave.json \
-  -f modules=org-variables,org-secrets,teams \
-  -f dry_run=false \
-  -f runner_labels=ubuntu-latest
+jq '.summary' ./scans/downloads/migration-final-audit-"$RUN_ID"/verification-report.json
 ```
 
 ---
 
-## 5. Summary of Audit Findings & Quality Gates
+## Running the live test migration
 
-The codebase audit verified the following status across `@ghec/migration` and `apps/cli`:
+After your dry-run passes and you have reviewed the **GitHub Actions Step Summary** table, you are ready to run the live migration into your target EMU organization.
 
-- **Universal Dry-Run Support:**
-  - All 12 core migration modules (`org-variables`, `org-secrets`, `teams`, `org-custom-properties`, `repo-variables`, `repo-secrets`, `repo-custom-properties`, `repo-settings`, `branch-protection`, `rulesets`, `environments`, `webhooks`) strictly honor `ctx.dryRun === true` and skip HTTP mutations.
-  - In dry-run mode, `MigrationOrchestrator` does not require a write token or `TargetWriteClient`.
-- **Prerequisite Code Tasks:**
-  - `prereq-dryrun-git-lfs.md`: Adding `dryRun` directly to `GitLfsMigrationStrategy`.
-  - `prereq-dryrun-releases.md`: Adding `dryRun` directly to `LargeReleasesMigrationStrategy`.
-  - `prereq-pipeline-module-identifiers-drift.md`: Aligning `'repo-settings'` module ID in `pipeline.ts` Stage 6 and decoupling whole-org mannequin reclamation from the per-repository loop.
-- **Root Quality Gate:**
-  - Root TypeScript typecheck (`npm run typecheck`) is clean across all 7 monorepo workspaces.
-  - ESLint, Prettier, and AST style quality gates (`npm run lint`) pass with 0 warnings.
-  - All 350+ unit and integration tests are verified green.
+To run the live test migration (`dry_run=false`):
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope="scopes/test-org-wave.json" \
+  -f modules="org-variables,org-secrets,teams" \
+  -f dry_run="false" \
+  -f runner_labels="ubuntu-latest"
+```
+
+> [!NOTE]
+> Remember four special rules for Enterprise Managed Users (EMU) target organizations:
+>
+> 1. **Usernames include your enterprise shortcode:** EMU accounts look like `jdoe_cloudgxp`. Personal GitHub accounts cannot be invited to an EMU organization.
+> 2. **Skip invitations when reclaiming mannequins:** Always pass `--skip-invitation` to `gh gei reclaim-mannequin` because EMU users cannot accept external email invites.
+> 3. **Add your migration owner to ruleset bypass lists:** Make sure the EMU owner account is allowed to bypass branch rulesets while migrating repositories.

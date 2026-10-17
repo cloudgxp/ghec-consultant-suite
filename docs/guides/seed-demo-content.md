@@ -1,88 +1,60 @@
-# Guide: Synthetic Demo Content Seeder
+# Creating sample data for a demo
 
-The Synthetic Demo Content Seeder provisions realistic source assets across all 32 items and modules migrated by the GHEC Consultant Suite. It provides an automated, push-button mechanism for pre-sales demonstrations, client migration rehearsals, and end-to-end integration testing without manual administrative setup.
-
----
-
-## 1. Overview & Capabilities
-
-The seeder can populate both organization-level and repository-level assets across 4 major functional domains:
-
-- **Core Governance (8 items)**: Base organization policies, nested team hierarchy (`engineering` $\rightarrow$ `platform-infra`, `frontend-guild`), custom repository roles, IP allow list entries, custom property schemas, repository settings, repository property values, and collaborator mappings.
-- **Actions & Security (10 items)**: Organization Actions policies, self-hosted runner groups, organization variables, sealed organization secrets, repository variables, sealed repository secrets, deployment environments (`production`, `staging`), classic branch protections, modern repository rulesets, and GHAS security configurations.
-- **Collaboration (7 items)**: Projects v2 migration tracking boards, sample issues with milestones and labels, active and merged pull requests with review comments, Discussions with Q&A categories, autolinks (`JIRA-`), `.github/CODEOWNERS`, and mock mannequin attributions.
-- **Artifacts & Code (7 items)**: Releases with git tags and binary assets, Git LFS tracking configuration and pointer files, GitHub Package references, deploy keys, organization webhooks, repository webhooks, and GitHub Apps inventory.
+You can use the `seed-demo` command to fill a test GitHub organization with 32 realistic sample items—including teams, repositories, branch rules, pull requests, and Actions secrets. This gives you a ready-to-use environment for live demos or practice migrations without setting everything up by hand.
 
 ---
 
-## 2. GitHub Actions Workflow Dispatch
+## Creating demo content from the command line
 
-The on-demand workflow is located at `.github/workflows/seed-demo-content.yml`.
+By default, `seed-demo` reads your GitHub token from the `GHEC_TOKEN` environment variable and creates all 32 sample items. If the target repository does not exist yet, the tool creates and initializes it for you.
 
-### Dispatch Inputs
+Before you start, make sure you have Node.js `22.13.0` or newer, you have built the project (`npm run build:packages`), and your GitHub token has `admin:org`, `repo`, `delete_repo`, and `workflow` permissions.
 
-| Input              |   Type    |       Default       | Description                                                                                                                                                                  |
-| :----------------- | :-------: | :-----------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `organization`     | `string`  |    _(Required)_     | Target GitHub organization name to provision.                                                                                                                                |
-| `repository`       | `string`  |    `(optional)`     | Target repository name. If missing, it will be automatically created and initialized with an initial commit.                                                                 |
-| `scope_level`      | `choice`  |       `both`        | Selection of `both`, `organization`, or `repository`.                                                                                                                        |
-| `content_type`     | `string`  |        `all`        | Preset (`all`, `core-governance`, `actions-and-security`, `collaboration`, `artifacts-and-code`) or comma-separated list of module IDs (e.g. `teams,rulesets,environments`). |
-| `pat_secret_name`  | `string`  | `GHEC_SOURCE_TOKEN` | Name of secret in repository secrets containing Personal Access Token.                                                                                                       |
-| `dry_run`          | `boolean` |       `false`       | When true, validates permissions and previews planned operations without making remote changes.                                                                              |
-| `cleanup_existing` | `boolean` |       `false`       | When true, purges existing demo assets matching the prefix (`demo-`) in reverse topological dependency order before seeding.                                                 |
-
-### How to Trigger in GitHub Actions
-
-1. Go to the **Actions** tab in the repository.
-2. Select **Seed Demo Content** from the workflow sidebar.
-3. Click **Run workflow**.
-4. Enter the target organization and optional repository name.
-5. Choose your desired scope level and content preset.
-6. Click **Run workflow**.
-7. Review the generated Markdown report in the **Job Summary**.
-
----
-
-## 3. Local CLI & Automation Script Execution
-
-The seeder can also be run locally using the CLI binary or the direct runner script.
-
-### Prerequisites
-
-- Node.js `>=22.13.0`
-- Monorepo packages compiled: `npm run build:packages`
-- A Personal Access Token (PAT) with `admin:org`, `repo`, `delete_repo`, and `workflow` scopes.
-
-### Running via CLI Subcommand
+To create all 32 sample items in your organization and repository:
 
 ```bash
 export GHEC_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
-
-# Provision all 32 items across org and repo
 npm run dev:cli -- seed-demo \
   --org "octodemo-migration" \
   --repo "demo-ecommerce-monorepo"
+```
 
-# Targeted run for governance items only
-npm run dev:cli -- seed-demo \
-  --org "octodemo-migration" \
-  --scope "organization" \
-  --preset "core-governance"
+To preview what the command will create without making any changes on GitHub, add the `--dry-run` option:
 
-# Non-mutating dry-run simulation
+```bash
 npm run dev:cli -- seed-demo \
   --org "octodemo-migration" \
   --repo "demo-ecommerce-monorepo" \
   --dry-run
+```
 
-# Clean teardown of existing demo assets
+To create only one category of sample items (such as organization teams and settings), use `--scope` and `--preset`:
+
+```bash
+npm run dev:cli -- seed-demo \
+  --org "octodemo-migration" \
+  --scope "organization" \
+  --preset "core-governance"
+```
+
+You can pick from any of these `--preset` categories:
+
+- `all`: Creates all 32 sample items. This is the default.
+- `core-governance`: Organization settings, teams (`engineering`, `platform-infra`, `frontend-guild`), custom roles, IP allow lists, custom properties, and outside collaborators.
+- `actions-and-security`: Actions rules, runner groups, variables, secrets, environments (`production`, `staging`), branch rules, and security settings.
+- `collaboration`: Project boards, issues, milestones, labels, pull requests with comments, Discussions, Jira links, and a `CODEOWNERS` file.
+- `artifacts-and-code`: Releases with attached files, Git LFS files, Packages, deploy keys, webhooks, and a list of installed GitHub Apps.
+
+To create just a few specific items instead of a whole category, pass a comma-separated list:
+
+```bash
 npm run dev:cli -- seed-demo \
   --org "octodemo-migration" \
   --repo "demo-ecommerce-monorepo" \
-  --cleanup
+  --preset "teams,rulesets,environments"
 ```
 
-### Running via Standalone Script
+You can also run the standalone script directly without the CLI wrapper:
 
 ```bash
 node --import tsx scripts/seed-demo-content.ts \
@@ -91,12 +63,74 @@ node --import tsx scripts/seed-demo-content.ts \
   --preset "actions-and-security"
 ```
 
+> [!NOTE]
+> This command is safe to run more than once. If the sample items already exist, the tool updates them instead of failing or creating duplicates.
+
 ---
 
-## 4. Security & Safety Invariants
+## Creating demo content with GitHub Actions
 
-1. **Zero-Exposure Secret Boundary (DEC-004)**: Write-only secrets are encrypted using `libsodium-wrappers` sealed-box against organization and repository public keys. Plaintext credentials are never written to disk or logs.
-2. **Diagnostic Scrubbing**: All logs, error messages, and summary outputs automatically pass through `sanitizeDiagnostics` to redact authentication tokens (`ghp_*`, `github_pat_*`) and authorization headers.
-3. **Idempotency**: All operations perform check-or-create or update-in-place logic. Rerunning the seeder produces zero 409 Conflict errors.
-4. **Namespace Safety**: All created resources use the designated prefix (`demo-`). Cleanup routines only target demo-prefixed resources and never touch customer production repositories or teams.
-5. **Non-Fatal Degradation**: Enterprise-only features (such as IP allow lists, runner groups, and custom repository roles) gracefully log diagnostic warnings and skip if the target organization lacks an Enterprise plan.
+If you prefer not to run commands on your computer, you can run the **Seed Demo Content** workflow directly in GitHub Actions (`.github/workflows/seed-demo-content.yml`). By default, the workflow uses the `GHEC_SOURCE_TOKEN` secret stored in your repository and posts a summary table when it finishes.
+
+To run the workflow from the GitHub website:
+
+1. Open the **Actions** tab in your repository and click **Seed Demo Content** on the left.
+2. Click **Run workflow**.
+3. Type your target **organization** name and optional **repository** name, then click **Run workflow**.
+
+To start the same workflow from your terminal using the GitHub CLI (`gh`):
+
+```bash
+gh workflow run seed-demo-content.yml \
+  -f organization="octodemo-migration" \
+  -f repository="demo-ecommerce-monorepo"
+```
+
+To preview an organization-only run using a different secret name:
+
+```bash
+gh workflow run seed-demo-content.yml \
+  -f organization="octodemo-migration" \
+  -f scope_level="organization" \
+  -f content_type="core-governance" \
+  -f pat_secret_name="CUSTOM_DEMO_PAT" \
+  -f dry_run="true"
+```
+
+> [!NOTE]
+> If your test organization does not have a GitHub Enterprise plan, the tool automatically skips Enterprise-only settings (like IP allow lists and runner groups) and prints a short note in the summary.
+
+---
+
+## Deleting demo content
+
+When you finish your demo or want a fresh start, you can remove the sample items. Every item created by the tool starts with `demo-`, and the cleanup command only deletes items with that `demo-` prefix.
+
+To delete existing demo items from the command line, add the `--cleanup` option:
+
+```bash
+npm run dev:cli -- seed-demo \
+  --org "octodemo-migration" \
+  --repo "demo-ecommerce-monorepo" \
+  --cleanup
+```
+
+To delete existing demo items and recreate them in GitHub Actions, set `cleanup_existing` to `true`:
+
+```bash
+gh workflow run seed-demo-content.yml \
+  -f organization="octodemo-migration" \
+  -f repository="demo-ecommerce-monorepo" \
+  -f cleanup_existing="true"
+```
+
+---
+
+## How the demo tool keeps your organization safe
+
+You can run the demo tool in a test organization without worrying about breaking existing work or leaking passwords:
+
+- **Safe to run more than once:** If the sample items already exist, the tool updates them instead of failing or making duplicates.
+- **Only touches demo items:** Every item the tool creates starts with `demo-`. When you run `--cleanup`, it only deletes items that start with `demo-` and leaves your real repositories and teams alone.
+- **Keeps tokens and secrets private:** Sample secrets are encrypted before they are sent to GitHub (DEC-004), and your personal access token is automatically hidden in all logs and reports.
+- **Skips missing Enterprise features automatically:** If your test organization does not have a GitHub Enterprise plan, the tool skips Enterprise-only settings and prints a friendly note instead of crashing.

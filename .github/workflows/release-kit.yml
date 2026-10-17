@@ -1,0 +1,84 @@
+name: Build Customer Migration Release Kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      create_github_release:
+        description: 'Create or update a GitHub Release with the standalone Customer Migration Kit archive'
+        required: false
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Release tag name (e.g. "v0.1.0") when create_github_release is true'
+        required: false
+        type: string
+        default: 'v0.1.0'
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-kit:
+    name: Bundle Zero-Source Customer Release Kit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies & Build Release Kit
+        run: |
+          npm ci
+          npm run build:release-kit
+
+      - name: Verify Standalone CLI Bundle
+        run: |
+          node ./dist/release-kit/bin/ghec-consultant-cli.mjs --version
+          node ./dist/release-kit/bin/ghec-consultant-cli.mjs --help
+
+      - name: Upload Customer Migration Release Kit Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghec-migration-kit
+          path: |
+            dist/ghec-migration-kit-*.tar.gz
+            dist/release-kit/
+          retention-days: 90
+
+      - name: Publish GitHub Release
+        if: ${{ github.event_name == 'push' || inputs.create_github_release == true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || 'v0.1.0' }}
+        run: |
+          TARBALL=$(ls dist/ghec-migration-kit-*.tar.gz | head -n 1)
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "$TARBALL" --clobber
+          else
+            gh release create "$TAG_NAME" "$TARBALL" \
+              --title "GHEC Migration Kit ($TAG_NAME)" \
+              --notes "Zero-source Customer Migration Release Kit containing pre-compiled CLI bundle, GitHub Actions workflows, Consultant Operator's Manual, and Customer Migration Handbook."
+          fi
+
+      - name: Generate Step Summary
+        if: always()
+        run: |
+          cat << 'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## 📦 Customer Migration Release Kit Built
+
+          The zero-source **Customer Migration Release Kit** has been bundled and uploaded as the `ghec-migration-kit` workflow artifact.
+
+          ### Included in the Release Kit
+          - `bin/ghec-consultant-cli.mjs` — Pre-compiled standalone CLI bundle (no `npm ci` or TypeScript source required)
+          - `.github/workflows/` — Ready-to-run GitHub Actions workflows for Discovery, Scope Generation, Dry-Run, Live Wave Migration, Resumption, and Remediation
+          - `docs/guides/consultant-operators-manual.md` — End-to-end Consultant Operator's Manual & Argument Reference
+          - `docs/guides/customer-migration-handbook.md` — Plain-English Customer Migration Handbook
+          EOF

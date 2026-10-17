@@ -1,5 +1,10 @@
 import type { DiscoveryBundle } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
+import type {
+  GitHubAppClassification,
+  GitHubAppManifestPayload,
+  RecommendedAppStrategy,
+} from '../modules/apps-inventory/types.js';
 
 /**
  * Information regarding an installed GitHub App on the source organization.
@@ -15,6 +20,11 @@ export interface GitHubAppInstallationInfo {
   readonly events: readonly string[];
   readonly htmlUrl: string;
   readonly destinationInstallUrl: string;
+  readonly classification?: GitHubAppClassification | undefined;
+  readonly recommendedStrategy?: RecommendedAppStrategy | undefined;
+  readonly recreatedSlug?: string | undefined;
+  readonly recreateAppUrl?: string | undefined;
+  readonly manifest?: GitHubAppManifestPayload | undefined;
 }
 
 /**

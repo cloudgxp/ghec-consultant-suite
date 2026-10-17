@@ -1,5 +1,26 @@
-import type { MigrationScope } from '@ghec/contracts';
+import type { MigrationScope, OrgItemsMode } from '@ghec/contracts';
 import type { ClassifiedRepositoryStrategy } from './slicer.js';
+
+export const GLOBAL_SINGLETON_ORGANIZATION_MODULES = [
+  'org-settings',
+  'actions-policies',
+  'ip-allow-lists',
+  'org-webhooks',
+] as const;
+
+export const REPO_ASSOCIATED_ORGANIZATION_MODULES = [
+  'org-variables',
+  'org-secrets',
+  'org-custom-properties',
+  'teams',
+  'post-migration-mannequins',
+  'packages',
+  'custom-roles',
+  'org-rulesets',
+  'actions-runners',
+  'apps-inventory',
+  'projects-v2',
+] as const;
 
 export const ALL_ORGANIZATION_MODULES = [
   'org-variables',
@@ -164,13 +185,22 @@ export function isAutoModuleSelection(
 
 /**
  * Resolves organization-level apply and verify module sets under `--modules auto`,
- * honoring any excluded modules.
+ * honoring any excluded modules and the active `orgItemsMode` (`all`, `associated-only`, `none`).
  */
 export function resolveAutoOrganizationModules(
   org?: MigrationScope['organizations'][number] | undefined,
   baseModules?: readonly string[] | undefined,
   excludeModules?: readonly string[] | undefined,
+  scopeOrgItemsMode?: OrgItemsMode | undefined,
 ): AutoModuleResolutionResult {
+  const effectiveMode = org?.orgItemsMode ?? scopeOrgItemsMode ?? 'all';
+  if (effectiveMode === 'none') {
+    return {
+      applyModules: [],
+      verifyModules: [],
+    };
+  }
+
   const parsed = parseModuleSelectionFlags(
     baseModules ?? org?.modules,
     excludeModules,
@@ -189,6 +219,13 @@ export function resolveAutoOrganizationModules(
       !excludeSet.has(trimmed)
     );
   });
+
+  if (effectiveMode === 'associated-only' && filtered.length === 0) {
+    for (const singletonId of GLOBAL_SINGLETON_ORGANIZATION_MODULES) {
+      excludeSet.add(singletonId);
+    }
+  }
+
   const resolved = (
     filtered.length > 0 ? filtered : [...ALL_ORGANIZATION_MODULES]
   ).filter((id) => !excludeSet.has(id));

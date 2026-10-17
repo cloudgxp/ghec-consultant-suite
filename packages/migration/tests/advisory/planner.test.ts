@@ -142,8 +142,19 @@ describe('Migration Advisory & Non-Migrated Items Planner', () => {
 
       const csv = planner.generateAppsMatrixCsv(apps);
       assert.match(csv, /App Name,App ID,App Slug,Target Type/);
+      assert.match(
+        csv,
+        /Destination Install URL,Classification,Recommended Strategy,Recreate App URL/,
+      );
       assert.match(csv, /sonarcloud,1001,sonarcloud/);
       assert.match(csv, /issues:write/);
+      assert.match(csv, /custom_private,recreate_app/);
+      assert.ok(apps[0]?.manifest);
+      assert.equal(apps[0]?.manifest?.name, 'sonarcloud-target-org');
+      assert.match(
+        apps[0]?.recreateAppUrl ?? '',
+        /^https:\/\/github\.com\/organizations\/target-org\/settings\/apps\/new\?/,
+      );
     });
   });
 

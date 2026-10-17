@@ -1,27 +1,23 @@
 # @ghec/discovery
 
-Headless discovery engine extracted from `apps/cli`. It runs the collectors,
-permission preflight, checkpointing, and bundle publishing without any CLI
-concerns, so both `ghec-consultant-cli discover` and the future
-`@ghec/migration` package can reuse it.
+`@ghec/discovery` runs the 11 discovery collectors, checks permissions, saves progress checkpoints, and writes validated discovery bundles for `ghec-consultant-cli discover` and `@ghec/migration`.
 
-Dependencies: `@ghec/contracts` (schemas) and `@ghec/github-client`
-(transport). The package never reads environment variables or argv; the host
-app resolves credentials into a `DiscoveryConfig` and flags into a
-`DiscoveryPlan`.
+---
 
-## Public exports
+## Running discovery collectors in code
 
-| Area         | Exports                                                                                                                                                                                                                       |
+By default, `@ghec/discovery` receives its settings (`DiscoveryConfig`) and module list (`DiscoveryPlan`) from the caller without reading environment variables or command-line flags directly.
+
+| Area         | Exported symbols                                                                                                                                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Orchestrator | `DiscoveryOrchestrator`, `DiscoveryPlan`, `DiscoveryConfig`, `DiscoveryResult`, preflight/enumeration GraphQL query constants                                                                                                 |
+| Orchestrator | `DiscoveryOrchestrator`, `DiscoveryPlan`, `DiscoveryConfig`, `DiscoveryResult`, preflight and enumeration GraphQL query constants                                                                                             |
 | Collectors   | `collectors` (ordered list of the 11 baseline collectors), `Collector`, `CollectorContext`, `CollectorResult`, `DiscoveredState`, `DiscoveredPolicyItem`, and each collector by name (`orgsCollector`, `reposCollector`, ...) |
 | Aggregators  | `OrgMetadataAggregator`, `RepositoryDeepDiscoveryAggregator`, `TeamHierarchyAndAccessAggregator`                                                                                                                              |
 | Checkpoints  | `CheckpointManager`, `writeAtomicJson`, `CheckpointManifest`                                                                                                                                                                  |
 | Permissions  | `PermissionChecker`, `PreflightPermissionError`, module permission matrix helpers                                                                                                                                             |
 | Output       | `publishBundle`, `generateBundleFilename`, pseudonymization and secret-redaction helpers                                                                                                                                      |
 
-## Usage
+To run a discovery scan in code with a `DiscoveryPlan` and `DiscoveryConfig`:
 
 ```ts
 import { DiscoveryOrchestrator, type DiscoveryPlan } from '@ghec/discovery';
@@ -30,12 +26,26 @@ const orchestrator = new DiscoveryOrchestrator(plan, config);
 const result = await orchestrator.run(signal);
 ```
 
-## Development
+> [!NOTE]
+> `@ghec/discovery` uses `@ghec/contracts` to validate output bundles and `@ghec/github-client` to make read-only GitHub API calls.
+
+---
+
+## Building and testing the discovery package
+
+By default, building `@ghec/discovery` compiles all collectors, aggregators, and bundle helpers.
+
+To compile `@ghec/discovery`:
 
 ```bash
 npm run build -w @ghec/discovery
+```
+
+To check TypeScript types in `@ghec/discovery`:
+
+```bash
 npm run typecheck -w @ghec/discovery
 ```
 
-Tests currently live with the CLI suite (`apps/cli/tests`) and import through
-compatibility shims in `apps/cli/src` (see DEC-017).
+> [!NOTE]
+> Tests for `@ghec/discovery` run offline with the CLI test suite (`apps/cli/tests`) using compatibility exports in `apps/cli/src` (see `DEC-017`).

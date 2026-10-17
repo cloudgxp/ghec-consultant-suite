@@ -8,6 +8,12 @@ import {
   type VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  getScopedSourceRepoNames,
+  getScopedTargetRepoName,
+  isAssociatedOnlyOrgMode,
+  isPublicOnlyTargetScope,
+} from '../../core/org-item-filter.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -124,7 +130,20 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
       targetGroupMap.set(tg.name.toLowerCase(), tg);
     }
 
+    const associatedOnly = isAssociatedOnlyOrgMode(ctx);
+    const publicOnlyTarget = isPublicOnlyTargetScope(ctx);
+    const scopedSourceNames = getScopedSourceRepoNames(ctx);
+
     for (const group of source.runner_groups) {
+      if (associatedOnly) {
+        if (group.default && ctx.scope.isMultiOrgConsolidation) {
+          continue;
+        }
+        if (publicOnlyTarget && !group.allows_public_repositories) {
+          continue;
+        }
+      }
+
       const groupKey = group.name.toLowerCase();
       const existing = targetGroupMap.get(groupKey);
 
@@ -141,11 +160,54 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
       const sourceOrgPrefix = ctx.scope.sourceOrg
         ? `${ctx.scope.sourceOrg}/`
         : '';
-      const mappedWorkflows = (group.selected_workflows ?? []).map((wf) =>
-        sourceOrgPrefix && wf.startsWith(sourceOrgPrefix)
-          ? `${targetOrg}/${wf.slice(sourceOrgPrefix.length)}`
-          : wf,
-      );
+      let rawWorkflows = group.selected_workflows ?? [];
+      if (
+        associatedOnly &&
+        group.restricted_to_workflows &&
+        rawWorkflows.length > 0 &&
+        scopedSourceNames.size > 0
+      ) {
+        rawWorkflows = rawWorkflows.filter((wf) => {
+          const withoutOrg =
+            sourceOrgPrefix && wf.startsWith(sourceOrgPrefix)
+              ? wf.slice(sourceOrgPrefix.length)
+              : wf;
+          const repoName = withoutOrg.split('/')[0];
+          return repoName
+            ? scopedSourceNames.has(repoName.toLowerCase())
+            : false;
+        });
+        if (rawWorkflows.length === 0) {
+          continue;
+        }
+      }
+
+      let mappedWorkflows = rawWorkflows.map((wf) => {
+        if (sourceOrgPrefix && wf.startsWith(sourceOrgPrefix)) {
+          const rest = wf.slice(sourceOrgPrefix.length);
+          const slashIdx = rest.indexOf('/');
+          if (slashIdx > 0) {
+            const srcRepo = rest.slice(0, slashIdx);
+            const targetRepo = getScopedTargetRepoName(ctx, srcRepo);
+            return `${targetOrg}/${targetRepo}${rest.slice(slashIdx)}`;
+          }
+          return `${targetOrg}/${rest}`;
+        }
+        return wf;
+      });
+
+      if (
+        existing &&
+        (associatedOnly || ctx.scope.isMultiOrgConsolidation) &&
+        (existing.selected_workflows?.length ?? 0) > 0
+      ) {
+        mappedWorkflows = [
+          ...new Set([
+            ...(existing.selected_workflows ?? []),
+            ...mappedWorkflows,
+          ]),
+        ];
+      }
 
       const desiredPayload = {
         ...(existing?.id ? { id: existing.id } : {}),

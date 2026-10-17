@@ -3,6 +3,7 @@ import type {
   ModulePlan,
   ModuleVerificationResult,
   OperationExecutionResult,
+  OrgItemsMode,
   PlannedOperation,
   RepositoryOptions,
   VerificationDiscrepancy,
@@ -19,6 +20,14 @@ export interface StructuredLogger {
   debug?(message: string, meta?: Record<string, unknown>): void;
 }
 
+export interface ScopedRepositoryMapping {
+  readonly sourceOrg: string;
+  readonly sourceRepo: string;
+  readonly targetOrg: string;
+  readonly targetRepo: string;
+  readonly targetRepoVisibility?: 'private' | 'internal' | 'public' | undefined;
+}
+
 export interface MigrationScopeTarget {
   readonly level: MigrationScopeLevel;
   readonly sourceOrg: string;
@@ -26,6 +35,9 @@ export interface MigrationScopeTarget {
   readonly sourceRepo?: string;
   readonly targetRepo?: string;
   readonly targetType?: 'ghec' | 'emu' | undefined;
+  readonly orgItemsMode?: OrgItemsMode | undefined;
+  readonly scopedRepositories?: readonly ScopedRepositoryMapping[] | undefined;
+  readonly isMultiOrgConsolidation?: boolean | undefined;
   readonly identityMapping?:
     | {
         readonly strategy: 'emu-saml' | 'manual' | 'pass-through';

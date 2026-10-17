@@ -4,87 +4,91 @@
 **Date**: 2026-10-12
 **Status**: Draft
 
-This guide outlines runnable scenarios to validate the capability gap ledger, verify schema conformance, audit documentation references, and inspect roadmap sequencing.
+This guide shows you how to validate the migration capability gap ledger, check documentation links, confirm module registration, and test wave dependencies offline.
 
 ---
 
-## 1. Prerequisites
+## Building the workspace packages before testing
 
-- Node.js `>=22.13.0` and npm `>=10`
-- Monorepo packages built: `npm run build:packages`
-- Local GitHub documentation synced in `references/github-docs/`
+By default, the validation scripts require Node.js `>=22.13.0`, npm `>=10`, built workspace packages, and the local GitHub documentation in `references/github-docs/`.
 
----
+```text
+specs/001-migration-gap-analysis/
+├── contracts/
+│   ├── gap-ledger.contract.json
+│   └── module-blueprint.contract.json
+├── data-model.md
+├── quickstart.md
+├── research.md
+└── spec.md
+```
 
-## 2. Validation Scenarios
-
-### Scenario 1: Validate Schema Conformance of Gap Ledger Manifest
-
-Validates that the gap ledger conforms strictly to [`gap-ledger.contract.json`](./contracts/gap-ledger.contract.json) and `schemaVersion: 1.0.0`.
+To build the shared workspace packages before running the checks:
 
 ```bash
-# Execute schema validation script (runs offline)
+npm run build:packages
+```
+
+---
+
+## Checking the gap ledger schema
+
+By default, `scripts/validate-gap-ledger.ts` checks offline that the gap ledger matches [`gap-ledger.contract.json`](./contracts/gap-ledger.contract.json) (`schemaVersion: 1.0.0`), includes all 42+ `CapabilityGapEntry` items, and has matching summary totals.
+
+To validate the gap ledger against its JSON schema contract:
+
+```bash
 node --import tsx scripts/validate-gap-ledger.ts
 ```
 
-**Expected Outcome**:
-
-- Validation succeeds with exit code `0`.
-- All 42+ resources conform to the `CapabilityGapEntry` schema.
-- Summary counts match the exact number of entries in `resources`.
+> [!NOTE]
+> The script exits with code `0` when every entry and summary count matches [`gap-ledger.contract.json`](./contracts/gap-ledger.contract.json).
 
 ---
 
-### Scenario 2: Verify Local GitHub Docs Citations
+## Verifying local GitHub documentation links
 
-Validates that every `docsRef` path defined in the gap ledger corresponds to a real markdown documentation file in `references/github-docs/`.
+By default, `scripts/verify-doc-references.ts` checks that every `docsRef` path in the gap ledger points to a real markdown file inside `references/github-docs/`.
+
+To check all `docsRef` links offline against `references/github-docs/`:
 
 ```bash
-# Audit doc references offline against references/github-docs/
 node --import tsx scripts/verify-doc-references.ts
 ```
 
-**Expected Outcome**:
-
-- 100% of `docsRef` citations resolve to existing files.
-- Zero broken documentation links or dangling references.
-
 ---
 
-### Scenario 3: Verify Existing Module Registry Coverage
+## Checking registered migration modules
 
-Validates that every `existingModuleId` referenced in the ledger matches a registered module class in [`packages/migration/src/core/registry.ts`](file:///home/madmin/Documents/GitHub/ghec-consultant-suite/packages/migration/src/core/registry.ts).
+By default, the registry alignment test checks that every `existingModuleId` marked as `implemented` in the ledger is registered in [`packages/migration/src/core/registry.ts`](../../packages/migration/src/core/registry.ts).
+
+To verify that all 24 registered modules match the gap ledger:
 
 ```bash
-# Run unit test checking registry cross-referencing
 node --import tsx --test packages/migration/tests/core/gap-registry-alignment.test.ts
 ```
 
-**Expected Outcome**:
-
-- All 24 registered modules are mapped in the ledger.
-- Zero unregistered module IDs flagged as `implemented`.
-
 ---
 
-### Scenario 4: Validate Topological Roadmap Wave Dependencies
+## Verifying roadmap wave dependencies
 
-Validates that modules scheduled in Wave $N$ do not depend on modules scheduled in Wave $> N$, ensuring clean DAG resolution.
+By default, the roadmap order test confirms that modules in an earlier wave never depend on modules in a later wave:
+
+- **Wave 1** (`org-settings`, `actions-policies`, `autolinks`): Needs only the base contracts.
+- **Wave 2** (`actions-runners`, `ip-allow-lists`, `apps-inventory`): Builds on Wave 1.
+- **Wave 3** (`discussions`, `projects-v2`): Builds on Waves 1 and 2 without circular dependencies.
+
+To test the wave dependency order offline:
 
 ```bash
-# Validate topological sort order for planned modules
 node --import tsx --test packages/migration/tests/core/roadmap-dag.test.ts
 ```
 
-**Expected Outcome**:
-
-- Wave 1 modules (`org-settings`, `actions-policies`, `autolinks`) require only base contracts.
-- Wave 2 modules (`actions-runners`, `ip-allow-lists`, `apps-inventory`) cleanly layer on Wave 1.
-- Wave 3 modules (`discussions`, `projects-v2`) layer on Wave 1 and 2 without cycles.
-
 ---
 
-## 3. Related Design Artifacts
+## Reviewing related design files
+
+By default, all design documents and JSON contracts for `001-migration-gap-analysis` are stored in this feature folder:
 
 - [Feature Specification](./spec.md)
 - [Technical Research & Boundary Matrix](./research.md)

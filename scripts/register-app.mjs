@@ -2,6 +2,7 @@
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { execFile, execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export function isValidManifestCode(code) {
@@ -15,9 +16,180 @@ export function buildConversionUrl(code) {
   return `https://api.github.com/app-manifests/${encodeURIComponent(code)}/conversions`;
 }
 
-const PORT = 3000;
-const INITIAL_ORG =
-  process.argv[2]?.trim() || process.env.TARGET_ORG?.trim() || '';
+export function parseRegisterAppArgs(argv = process.argv.slice(2)) {
+  let targetOrg = '';
+  let manifestFile = '';
+  let appSlug = '';
+  let port = 3000;
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]?.trim() ?? '';
+    if (!arg) continue;
+
+    if (arg === '--org' && argv[i + 1]) {
+      targetOrg = argv[++i].trim();
+    } else if (arg === '--manifest-file' && argv[i + 1]) {
+      manifestFile = argv[++i].trim();
+    } else if (arg === '--app' && argv[i + 1]) {
+      appSlug = argv[++i].trim();
+    } else if (arg === '--port' && argv[i + 1]) {
+      const parsedPort = Number.parseInt(argv[++i].trim(), 10);
+      if (Number.isFinite(parsedPort) && parsedPort > 0) {
+        port = parsedPort;
+      }
+    } else if (!arg.startsWith('--') && !targetOrg) {
+      targetOrg = arg;
+    }
+  }
+
+  if (!targetOrg && process.env.TARGET_ORG?.trim()) {
+    targetOrg = process.env.TARGET_ORG.trim();
+  }
+
+  return { targetOrg, manifestFile, appSlug, port };
+}
+
+export function extractManifestFromArtifact(parsedJson, appSlug = '') {
+  if (!parsedJson || typeof parsedJson !== 'object') {
+    throw new Error('Manifest artifact must be a valid JSON object');
+  }
+
+  const normalizedSlug = appSlug.trim().toLowerCase();
+
+  // Case 1: Direct GitHub App Manifest JSON
+  if (
+    typeof parsedJson.name === 'string' &&
+    parsedJson.default_permissions &&
+    typeof parsedJson.default_permissions === 'object'
+  ) {
+    return {
+      manifest: parsedJson,
+      targetOrg: undefined,
+      sourceSlug: appSlug.trim() || parsedJson.name,
+    };
+  }
+
+  // Case 2: MigrationAdvisoryReport JSON (`apps` array)
+  if (Array.isArray(parsedJson.apps)) {
+    const candidates = parsedJson.apps.filter(
+      (a) => a && typeof a === 'object' && a.manifest,
+    );
+    const matched = normalizedSlug
+      ? candidates.find(
+          (a) =>
+            String(a.slug ?? '').toLowerCase() === normalizedSlug ||
+            String(a.recreatedSlug ?? '').toLowerCase() === normalizedSlug ||
+            String(a.name ?? '').toLowerCase() === normalizedSlug,
+        )
+      : candidates[0];
+
+    if (!matched || !matched.manifest) {
+      throw new Error(
+        normalizedSlug
+          ? `Could not find GitHub App manifest for "${appSlug}" in advisory report`
+          : 'No GitHub App manifests found in advisory report',
+      );
+    }
+
+    return {
+      manifest: matched.manifest,
+      targetOrg:
+        typeof parsedJson.targetOrg === 'string'
+          ? parsedJson.targetOrg
+          : undefined,
+      sourceSlug: String(matched.slug ?? matched.manifest.name),
+    };
+  }
+
+  // Case 3: MigrationPlan JSON (`modulePlans` array with `apps-inventory`)
+  if (Array.isArray(parsedJson.modulePlans)) {
+    const appsPlan = parsedJson.modulePlans.find(
+      (m) => m && typeof m === 'object' && m.moduleId === 'apps-inventory',
+    );
+    const operations = Array.isArray(appsPlan?.operations)
+      ? appsPlan.operations
+      : [];
+    const candidates = operations.filter(
+      (op) => op && typeof op === 'object' && op.payload?.manifest,
+    );
+    const matched = normalizedSlug
+      ? candidates.find(
+          (op) =>
+            String(op.resourceName ?? '').toLowerCase() === normalizedSlug ||
+            String(op.payload?.app_slug ?? '').toLowerCase() ===
+              normalizedSlug ||
+            String(op.payload?.recreated_app_slug ?? '').toLowerCase() ===
+              normalizedSlug,
+        )
+      : candidates[0];
+
+    if (!matched || !matched.payload?.manifest) {
+      throw new Error(
+        normalizedSlug
+          ? `Could not find GitHub App manifest for "${appSlug}" in migration plan`
+          : 'No GitHub App manifests found in migration plan',
+      );
+    }
+
+    return {
+      manifest: matched.payload.manifest,
+      targetOrg:
+        typeof appsPlan?.targetIdentifier === 'string'
+          ? appsPlan.targetIdentifier
+          : typeof parsedJson.targetOrg === 'string'
+            ? parsedJson.targetOrg
+            : undefined,
+      sourceSlug: String(
+        matched.payload.app_slug ??
+          matched.resourceName ??
+          matched.payload.manifest.name,
+      ),
+    };
+  }
+
+  throw new Error(
+    'Unrecognized manifest file format. Expected a raw GitHub App Manifest JSON, migration-advisory-report.json, or migration-plan.json.',
+  );
+}
+
+export function buildSecretNamesForApp(customSourceSlug = '') {
+  const cleaned = customSourceSlug
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  if (!cleaned) {
+    return {
+      idSecret: 'GHEC_APP_ID',
+      keySecret: 'GHEC_APP_PRIVATE_KEY',
+    };
+  }
+
+  return {
+    idSecret: `GHEC_APP_${cleaned}_ID`,
+    keySecret: `GHEC_APP_${cleaned}_PRIVATE_KEY`,
+  };
+}
+
+const cliArgs = parseRegisterAppArgs();
+const PORT = cliArgs.port;
+let loadedCustomManifest = null;
+let loadedSourceSlug = '';
+let inferredTargetOrg = '';
+
+if (cliArgs.manifestFile) {
+  const rawContent = readFileSync(cliArgs.manifestFile, 'utf8');
+  const parsed = JSON.parse(rawContent);
+  const extracted = extractManifestFromArtifact(parsed, cliArgs.appSlug);
+  loadedCustomManifest = extracted.manifest;
+  loadedSourceSlug = extracted.sourceSlug;
+  if (extracted.targetOrg) {
+    inferredTargetOrg = extracted.targetOrg;
+  }
+}
+
+const INITIAL_ORG = cliArgs.targetOrg || inferredTargetOrg || '';
 const STATE = randomBytes(16).toString('hex');
 
 // Dynamically determine repository homepage URL from git remote
@@ -35,10 +207,42 @@ try {
   // Use fallback
 }
 
+const defaultManifestTemplate = loadedCustomManifest ?? {
+  name: `ghec-discovery-${Date.now().toString(36)}`,
+  url: repoHomepage,
+  description: 'Automated discovery scanner for GHEC Consultant Suite',
+  hook_attributes: {
+    url: 'https://example.com/unused',
+    active: false,
+  },
+  public: true,
+  default_permissions: {
+    organization_administration: 'read',
+    members: 'read',
+    organization_custom_properties: 'read',
+    secrets: 'read',
+    metadata: 'read',
+    administration: 'read',
+    actions: 'read',
+    security_events: 'read',
+    packages: 'read',
+  },
+  default_events: [],
+};
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname === '/') {
+    const permissionsSummary = Object.entries(
+      defaultManifestTemplate.default_permissions ?? {},
+    )
+      .map(([k, v]) => `<li><code>${k}</code>: ${v}</li>`)
+      .join('');
+    const titleText = loadedCustomManifest
+      ? `Recreate Custom GitHub App (${loadedSourceSlug})`
+      : 'Register GHEC Discovery App';
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -59,17 +263,17 @@ const server = createServer(async (req, res) => {
   </style>
 </head>
 <body>
-  <h2>Register GHEC Discovery App</h2>
+  <h2>${titleText}</h2>
   <p class="subtitle">Automated setup via GitHub App Manifest</p>
 
   <form id="setup-form" method="post">
     <label>Account Type:</label>
     <div class="radio-group">
       <label style="font-weight: normal; margin: 0; cursor: pointer;">
-        <input type="radio" name="accountType" value="org" ${INITIAL_ORG ? 'checked' : 'checked'}> Organization
+        <input type="radio" name="accountType" value="org" checked> Organization
       </label>
       <label style="font-weight: normal; margin: 0; cursor: pointer;">
-        <input type="radio" name="accountType" value="personal" ${!INITIAL_ORG ? '' : ''}> Personal Account
+        <input type="radio" name="accountType" value="personal"> Personal Account
       </label>
     </div>
 
@@ -78,16 +282,15 @@ const server = createServer(async (req, res) => {
       <input type="text" id="orgInput" placeholder="e.g. acme-corp" value="${INITIAL_ORG}" required>
     </div>
 
-    <label for="appNameInput">App Name:</label>
-    <input type="text" id="appNameInput" placeholder="ghec-discovery-app" value="ghec-discovery-${Date.now().toString(36)}">
+    <label for="appNameInput">App Name (max 34 chars):</label>
+    <input type="text" id="appNameInput" maxlength="34" placeholder="ghec-discovery-app" value="${defaultManifestTemplate.name}">
 
     <div class="box">
-      <strong>Preconfigured Read-Only Permissions:</strong>
+      <strong>Preconfigured Manifest Permissions:</strong>
       <ul>
-        <li>Organization: Administration, Members, Custom Properties, Secrets (metadata)</li>
-        <li>Repository: Metadata, Administration, Actions, Security Events, Packages</li>
+        ${permissionsSummary || '<li><em>No special permissions requested</em></li>'}
       </ul>
-      <em>Webhooks will be disabled automatically.</em>
+      <em>Events: ${(defaultManifestTemplate.default_events ?? []).join(', ') || 'none'}</em>
     </div>
 
     <input type="hidden" name="manifest" id="manifestInput">
@@ -95,6 +298,7 @@ const server = createServer(async (req, res) => {
   </form>
 
   <script>
+    const baseManifest = ${JSON.stringify(defaultManifestTemplate)};
     const form = document.getElementById('setup-form');
     const orgGroup = document.getElementById('orgGroup');
     const orgInput = document.getElementById('orgInput');
@@ -115,7 +319,7 @@ const server = createServer(async (req, res) => {
       e.preventDefault();
       const isOrg = document.querySelector('input[name="accountType"]:checked').value === 'org';
       const org = orgInput.value.trim();
-      const appName = appNameInput.value.trim() || 'ghec-discovery-app';
+      const appName = (appNameInput.value.trim() || baseManifest.name || 'ghec-discovery-app').slice(0, 34);
 
       if (isOrg && !org) {
         alert('Please enter an organization name.');
@@ -123,27 +327,9 @@ const server = createServer(async (req, res) => {
       }
 
       const manifest = {
+        ...baseManifest,
         name: appName,
-        url: '${repoHomepage}',
-        description: 'Automated discovery scanner for GHEC Consultant Suite',
-        hook_attributes: {
-          url: 'https://example.com/unused',
-          active: false,
-        },
         redirect_url: 'http://localhost:${PORT}/callback',
-        public: true,
-        default_permissions: {
-          organization_administration: 'read',
-          members: 'read',
-          organization_custom_properties: 'read',
-          secrets: 'read',
-          metadata: 'read',
-          administration: 'read',
-          actions: 'read',
-          security_events: 'read',
-          packages: 'read',
-        },
-        default_events: [],
       };
 
       manifestInput.value = JSON.stringify(manifest);
@@ -202,22 +388,23 @@ const server = createServer(async (req, res) => {
       const appData = await response.json();
       const { id, slug, pem, owner } = appData;
       const ownerLogin = owner?.login || 'your organization';
+      const { idSecret, keySecret } = buildSecretNamesForApp(loadedSourceSlug);
 
       console.log(
         `\n✔ GitHub App "${slug}" (ID: ${id}) successfully registered!`,
       );
 
-      // Automatically store secrets in GitHub repo using gh CLI
+      // Automatically store secrets in GitHub repo using gh CLI (DEC-004: never write pem to disk)
       let secretsSaved = false;
       try {
         console.log(
-          'Configuring repository secrets (GHEC_APP_ID and GHEC_APP_PRIVATE_KEY)...',
+          `Configuring repository secrets (${idSecret} and ${keySecret})...`,
         );
-        execFileSync('gh', ['secret', 'set', 'GHEC_APP_ID'], {
+        execFileSync('gh', ['secret', 'set', idSecret], {
           input: String(id),
           stdio: ['pipe', 'inherit', 'inherit'],
         });
-        execFileSync('gh', ['secret', 'set', 'GHEC_APP_PRIVATE_KEY'], {
+        execFileSync('gh', ['secret', 'set', keySecret], {
           input: pem,
           stdio: ['pipe', 'inherit', 'inherit'],
         });
@@ -225,7 +412,7 @@ const server = createServer(async (req, res) => {
         console.log('✔ Repository secrets successfully set!');
       } catch {
         console.warn(
-          '⚠️ Could not automatically set secrets via gh CLI. You can set them manually in repository settings.',
+          `⚠️ Could not automatically set secrets via gh CLI. You can set ${idSecret} and ${keySecret} manually in repository settings.`,
         );
       }
 
@@ -250,7 +437,7 @@ const server = createServer(async (req, res) => {
   <div class="badge">✔ Registration Complete</div>
   <h2>GitHub App Registered: <code>${slug}</code></h2>
   <p>App ID: <strong>${id}</strong></p>
-  <p>${secretsSaved ? '✔ Repository secrets <code>GHEC_APP_ID</code> and <code>GHEC_APP_PRIVATE_KEY</code> were configured automatically.' : 'Please configure <code>GHEC_APP_ID</code> and <code>GHEC_APP_PRIVATE_KEY</code> in repository settings.'}</p>
+  <p>${secretsSaved ? `✔ Repository secrets <code>${idSecret}</code> and <code>${keySecret}</code> were configured automatically.` : `Please configure <code>${idSecret}</code> and <code>${keySecret}</code> in repository settings.`}</p>
   
   <h3>Final Step:</h3>
   <p>Install the app on your organization or account:</p>
@@ -287,6 +474,11 @@ export function startServer(port = PORT) {
     console.log(`🚀 GitHub App Manifest Setup Helper`);
     if (INITIAL_ORG) {
       console.log(`Pre-selected Organization: ${INITIAL_ORG}`);
+    }
+    if (loadedCustomManifest) {
+      console.log(
+        `Loaded Custom App Manifest: ${loadedCustomManifest.name} (from ${loadedSourceSlug})`,
+      );
     }
     console.log(`Opening setup page in your browser: ${localUrl}`);
     console.log(`======================================================\n`);

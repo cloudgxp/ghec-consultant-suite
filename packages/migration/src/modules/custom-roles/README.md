@@ -1,39 +1,56 @@
-# Custom Roles Migration Module (`custom-roles`)
+# Migrating Custom Repository and Organization Roles (`custom-roles`)
 
-The `custom-roles` module discovers, plans, applies, and verifies **Custom Repository Roles** and **Custom Organization Roles** in GitHub Enterprise Cloud (GHEC) and GHEC-EMU organizations.
+By default, the `custom-roles` module copies both custom repository roles and custom organization roles from your source organization to your target organization. It runs at the organization level before teams and outside collaborators are assigned roles on repositories.
 
----
+## Migrating custom roles to your target organization
 
-## Background & Architecture
+By default, this module reads custom roles from `/orgs/{org}/custom-repository-roles` and `/orgs/{org}/organization-roles`, creates missing roles on the target organization, and updates any existing roles whose permissions or base role have changed.
 
-In GHEC and GHEC-EMU:
+To migrate custom roles for your organization:
 
-1. **Custom Repository Roles**: Built on top of base repository roles (`read`, `triage`, `write`, `maintain`, `admin`) with additional fine-grained permissions. Managed via `GET /orgs/{org}/custom-repository-roles` and `POST /orgs/{org}/custom-repository-roles`.
-2. **Custom Organization Roles**: Organization-level permissions granting access to specific organization settings, audit logs, or repository management functions. Managed via `GET /orgs/{org}/organization-roles` and `POST /orgs/{org}/organization-roles`.
-3. **Role Binding Prerequisite**: Recreating custom roles at the organization level is a hard dependency before teams or outside collaborators can be assigned these roles on repositories or organization scopes.
-
----
-
-## 4-Stage Lifecycle
-
-```
-[ Discover ] ---> [ Plan ] ---> [ Apply ] ---> [ Verify ]
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --modules "custom-roles"
 ```
 
-1. **Discover**:
-   - Queries source organization custom repository roles via `GET /orgs/{org}/custom-repository-roles`.
-   - Queries source organization custom organization roles via `GET /orgs/{org}/organization-roles`.
-   - Normalizes base roles and permission arrays.
-2. **Plan**:
-   - Queries target organization for existing custom repository and organization roles.
-   - Computes planned operations:
-     - `create`: Missing roles at destination.
-     - `update`: Existing roles where permissions, base role, or description differ.
-     - `noop`: Existing roles that already match target configuration.
-3. **Apply**:
-   - Creates or updates custom repository roles on target organization.
-   - Creates or updates custom organization roles on target organization.
-   - Respects `dryRun` and `--continue-on-error`.
-4. **Verify**:
-   - Audits destination custom repository and organization roles.
-   - Compares permission arrays and base roles, reporting structured `VerificationDiscrepancy` entries on mismatch or absence.
+To preview which custom roles will be created or updated without making changes on GitHub, add the `--dry-run` option:
+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --modules "custom-roles" \
+  --dry-run
+```
+
+To migrate custom roles as part of an organization scope file:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "enabledModules": ["custom-roles"]
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/org-governance.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> Always run `custom-roles` before assigning custom roles to teams or outside collaborators. This module is safe to run more than once without creating duplicate roles.
+
+## Testing this module offline
+
+By default, the unit tests verify creating, updating, and checking both repository and organization custom roles offline.
+
+To run the custom roles unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/custom-roles.test.ts
+```

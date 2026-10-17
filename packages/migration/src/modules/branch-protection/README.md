@@ -1,19 +1,59 @@
-# `branch-protection` Migration Module (DEC-009)
+# Restoring Branch Protection Rules (`branch-protection`)
 
-## Overview
+By default, GitHub Enterprise Importer (GEI) copies basic branch protection rules, but it drops 7 specific settings such as bypass allowances, last-push approval, required deployments, branch locks, and dismissal restrictions. The `branch-protection` module compares your source and target branches after GEI finishes and restores any dropped settings without overwriting the rest of your rule.
 
-GitHub Enterprise Importer (GEI) automatically migrates repository branch protections, but systematically drops 7 specific settings and exceptions:
+## Migrating missing branch protection settings
 
-1. `bypass_pull_request_allowances`: Users, teams, or apps allowed to bypass required PRs.
-2. `require_last_push_approval`: Requiring the most recent commit to receive an approving review.
-3. `required_deployments`: Requiring deployments to specified environments before merging.
-4. `lock_branch`: Making branches read-only.
-5. `block_creations`: Restricting branch creations matching patterns.
-6. `allow_force_pushes`: When enabled in "Specify who can force push" mode.
-7. `dismissal_restrictions`: Exceptions allowing specific actors to dismiss PR reviews.
+By default, this module inspects protected branches on your source and target repositories and updates `PUT /repos/{owner}/{repo}/branches/{branch}/protection` with the missing rules.
 
-This module inspects destination branch protections post-GEI, calculates the missing settings, and applies an in-place merge via `PUT /repos/{owner}/{repo}/branches/{branch}/protection` without clobbering existing settings.
+To restore branch protection settings for a repository:
 
-## Conversion to Rulesets
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "branch-protection"
+```
 
-The module also provides `convertBranchProtectionToRuleset`, adhering to official GitHub migration guidance to convert legacy branch protections into modern repository rulesets.
+To preview which branch protection settings will be updated without changing GitHub, add the `--dry-run` option:
+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "branch-protection" \
+  --dry-run
+```
+
+To restore branch protection rules across multiple repositories using a scope file:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["branch-protection"]
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> This module is safe to run more than once. You can also use the `convertBranchProtectionToRuleset` helper if you want to upgrade legacy branch protection rules into modern GitHub repository rulesets.
+
+## Testing this module offline
+
+By default, the unit tests check all 7 GEI-dropped branch protection settings and ruleset conversion using local fixtures.
+
+To run the branch protection unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/branch-protection.test.ts
+```

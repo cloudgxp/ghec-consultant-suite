@@ -3,49 +3,52 @@
 **Feature**: `004-granular-results-hierarchy`
 **Created**: 2026-10-14
 
----
-
-## 1. Prerequisites
-
-- Node.js `>=22.13.0` and npm workspaces installed (`npm install` at repository root).
-- All packages built via `npm run build`.
+This guide shows you how to test the 3-tier migration results generator offline and create a local results folder (`scans/results-repo`) from the command line.
 
 ---
 
-## 2. Running Contract & Generator Unit Tests Offline
+## Installing and building the workspace
 
-Validate the enriched Zod contracts (`OperationExecutionResultSchema`, `ModuleExecutionResultSchema`, `MigrationResultsManifestSchema`), orchestrator metadata propagation, and 3-tier Markdown generation 100% offline:
+By default, the tests and CLI commands require Node.js `>=22.13.0` and built workspace packages.
+
+To install dependencies and compile all packages from the repository root:
 
 ```bash
-# 1. Validate @ghec/contracts schemas
-node --import tsx --test packages/contracts/tests/results-repo-manifest.test.ts
+npm install
+npm run build
+```
 
-# 2. Validate @ghec/migration 3-tier generator and publisher
+---
+
+## Running the results schema and generator tests offline
+
+By default, the unit tests check `OperationExecutionResultSchema`, `ModuleExecutionResultSchema`, `MigrationResultsManifestSchema`, the 3-tier Markdown generator, and the `publish-results` CLI command completely offline.
+
+To test the results manifest schemas in `@ghec/contracts`:
+
+```bash
+node --import tsx --test packages/contracts/tests/results-repo-manifest.test.ts
+```
+
+To test the 3-tier Markdown generator and repository publisher in `@ghec/migration`:
+
+```bash
 node --import tsx --test \
   packages/migration/tests/reporting/results-generator.test.ts \
   packages/migration/tests/reporting/results-repo-publisher.test.ts
+```
 
-# 3. Validate CLI publish-results command
+To test the `publish-results` CLI command:
+
+```bash
 node --import tsx --test apps/cli/tests/publish-results.test.ts
 ```
 
 ---
 
-## 3. End-to-End Dry-Run CLI Verification
+## Generating a 3-tier results folder locally
 
-Generate a 3-tier results repository locally without pushing to GitHub using `--skip-push`:
-
-```bash
-npm run dev:cli -- publish-results \
-  --scope scopes/demo-wave-1.json \
-  --execution-report ./scans/migration-execution.json \
-  --verification-report ./scans/verification-report.json \
-  --output-dir ./scans/results-repo \
-  --skip-push \
-  --dry-run
-```
-
-### Expected Generated Directory Structure
+By default, `publish-results` builds a 3-tier Markdown report tree and `manifest.json` (`MigrationResultsManifest` `v1.0.0`) inside `./scans/results-repo`.
 
 ```text
 scans/results-repo/
@@ -71,19 +74,26 @@ scans/results-repo/
         └── webhooks.md
 ```
 
+To generate the 3-tier results folder locally without pushing to GitHub, use `--skip-push` and `--dry-run`:
+
+```bash
+npm run dev:cli -- publish-results \
+  --scope scopes/demo-wave-1.json \
+  --execution-report ./scans/migration-execution.json \
+  --verification-report ./scans/verification-report.json \
+  --output-dir ./scans/results-repo \
+  --skip-push \
+  --dry-run
+```
+
 ---
 
-## 4. Primary Quality Gate
+## Running the full repository quality check
 
-Run the repository quality gate before completing any task:
+By default, `npm run check` runs `npm run lint`, `npm run typecheck`, `npm run build:apps`, and `npm run test:unit` across all workspaces.
+
+To run the full quality check before finishing your changes:
 
 ```bash
 npm run check
 ```
-
-Expected outcome:
-
-- `npm run lint` passes with zero ESLint or Prettier errors.
-- `npm run typecheck` passes across all packages and apps.
-- `npm run build:apps` compiles `@ghec/cli` and `@ghec/dashboard`.
-- `npm run test:unit` passes all unit and integration suites offline.

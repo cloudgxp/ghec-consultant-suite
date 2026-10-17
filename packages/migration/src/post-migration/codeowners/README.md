@@ -1,24 +1,59 @@
-# CODEOWNERS & Team References Repair Module
+# Updating Team Names in CODEOWNERS and Workflows (`post-migration-codeowners`)
 
-`CodeownersRepairModule` (`id = 'post-migration-codeowners'`) discovers team references (`@source-org/team-slug`) inside `.github/CODEOWNERS`, `docs/CODEOWNERS`, root `CODEOWNERS`, issue templates, and workflow files, translating them to target organization and team slugs post-GEI.
+By default, GitHub Enterprise Importer (GEI) copies your repository files as-is, which leaves old `@source-org/team-slug` mentions inside `CODEOWNERS`, issue templates, and GitHub Actions workflows. This module scans those files and updates every team mention to match your new target organization and team names.
 
-## Background
+## Updating `@org/team` mentions after a repository migration
 
-GitHub documentation explicitly notes: references to teams like `@octo-org/octo-team` are **not updated** during organization or repository migrations. This breaks `CODEOWNERS` rules, review routing, and issue template assignments. This module repairs these references in Stage 6 of the migration pipeline.
+By default, the module checks `.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`, `.github/ISSUE_TEMPLATE/*`, and `.github/workflows/*.yml`, and commits the updated team names to your default branch.
 
-## Capabilities
+To update team references in a migrated repository:
 
-1. **Scanning:**
-   - Static paths: `.github/CODEOWNERS`, `docs/CODEOWNERS`, `CODEOWNERS`
-   - Issue templates: `.github/ISSUE_TEMPLATE/*.md`, `.github/ISSUE_TEMPLATE/*.yml`
-   - Actions workflows: `.github/workflows/*.yml`, `.github/workflows/*.yaml`
-2. **Rewriting:**
-   - Detects team tokens matching `/@([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/g`.
-   - Replaces `sourceOrg` with `targetOrg`.
-   - Translates team slugs using `teamSlugMap` from Task 017.
-3. **Application Modes:**
-   - **Direct Commit Mode:** Commits repaired files directly to default branch (`PUT /repos/{owner}/{repo}/contents/{path}`).
-   - **Branch Protection Conflict Fallback (Auto Mode):** If direct commit fails due to protected branches (HTTP 403/422), automatically creates a PR branch (`migration/repair-team-references`) and opens a pull request.
-   - **Dry-Run Mode:** Emits calculated diffs without calling write endpoints.
-4. **Verification:**
-   - Asserts zero `@sourceOrg/` team references remain in scanned target files.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "post-migration-codeowners"
+```
+
+To preview the file diffs without committing any changes to your repository, add the `--dry-run` option:
+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "post-migration-codeowners" \
+  --dry-run
+```
+
+To update `CODEOWNERS` and workflow files across multiple repositories using a scope file:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["post-migration-codeowners"]
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> If branch protection blocks direct commits to the default branch, the module automatically creates a branch named `migration/repair-team-references` and opens a pull request for your team to merge.
+
+## Testing the CODEOWNERS repair module offline
+
+By default, the unit tests check file scanning, team slug replacement, and pull request fallback when branches are protected.
+
+To run the CODEOWNERS repair unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/post-migration/codeowners.test.ts
+```

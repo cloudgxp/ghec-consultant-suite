@@ -1,71 +1,61 @@
-# Teams & Identity Mapping Migration Module (`teams`)
+# Migrating Teams and Identity Mappings (`teams`)
 
-The `teams` module reconciles team trees (parent-child hierarchies), repository permissions, and base organization permissions, while providing an identity mapping engine and IdP Group Sync blueprints for GHEC Enterprise Managed Users (EMU).
+By default, the `teams` module recreates your organization team hierarchy (creating parent teams before child teams), restores team repository permissions (`read`, `triage`, `write`, `maintain`, `admin`), and exports an Identity Provider (IdP) group sync spreadsheet (`idp-group-sync-blueprint.csv`) for GHEC-EMU.
 
----
+## Migrating team hierarchies and repository permissions
 
-## Background & Architecture
+By default, this module reads teams from `/orgs/{org}/teams`, sorts parent and child teams in the right order, creates missing teams on the target organization, and binds each team to its migrated repositories.
 
-### GHEC-EMU Team Governance (DEC-005)
+To migrate teams and repository permissions for your organization:
 
-In GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU):
-
-1. **User Membership via IdP**: Direct membership modification on teams is managed out-of-band by Identity Provider (IdP) SCIM group synchronization. Direct membership assignment via `PUT /orgs/{org}/teams/{team_slug}/memberships/{username}` will either fail or conflict with SCIM synchronization.
-2. **Team Hierarchy & Access Seam**: This module recreates team hierarchies (parent-child relationships) and grants repository permissions (`read`, `triage`, `write`, `maintain`, `admin`).
-3. **IdP Group Sync Blueprint**: A CSV artifact (`idp-group-sync-blueprint.csv`) is generated to guide directory administrators in configuring corresponding Azure AD (Entra ID), Okta, or PingFederate groups.
-4. **CODEOWNERS Slug Mapping**: A `teamSlugMap` (`sourceSlug -> targetSlug`) translation dictionary is emitted to support downstream CODEOWNERS team reference repair (Task 028).
-
----
-
-## 4-Stage Lifecycle
-
-```
-[ Discover ] ---> [ Plan ] ---> [ Apply ] ---> [ Verify ]
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --modules "teams"
 ```
 
-1. **Discover**:
-   - Queries source organization teams via `GET /orgs/{org}/teams` or cached `DiscoveryBundle` (`kind === 'team'`).
-   - Gathers parent team relationships (`parentSlug`, `parentTeamId`), privacy settings (`closed` or `secret`), membership counts, and repository permission grants.
-   - Reads source organization base permissions (`default_repository_permission`).
-2. **Plan**:
-   - Queries target organization teams.
-   - **Topological Sorting**: Resolves team parent-child dependencies using depth-first search (DFS) to guarantee parent teams are created before child teams.
-   - Computes planned operations:
-     - `create`: Missing teams in target organization.
-     - `update` / `noop`: Existing teams needing metadata adjustment or already matching.
-     - `update`: Repository permission bindings (`PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}`).
-     - `update`: Base organization permission alignment if `default_repository_permission` differs.
-3. **Apply**:
-   - Creates root teams first, capturing returned team IDs in-flight.
-   - Creates child teams, linking their `parent_team_id` dynamically to newly created parent teams.
-   - Binds repository permissions for each team.
-   - Respects `dryRun: true` and `--continue-on-error`.
-4. **Verify**:
-   - Audits target organization teams and repository permissions.
-   - Emits discrepancies if any expected team or permission binding is missing or misaligned.
+To preview the team creation order and permission bindings without changing GitHub, add the `--dry-run` option:
 
----
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --modules "teams" \
+  --dry-run
+```
 
-## Identity Mapping Engine
+To migrate teams and map usernames using a scope file:
 
-[`IdentityMappingEngine`](file:///home/madmin/Documents/GitHub/ghec-consultant-suite/packages/migration/src/modules/teams/identity-mapper.ts) provides identity translation for GHEC-EMU:
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["teams"],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "shortcode": "acme"
+  }
+}
+```
 
-- **`emu-saml`**: Transforms usernames by appending enterprise suffix (e.g. `octocat` $\rightarrow$ `octocat_acme`).
-- **`manual`**: Looks up explicit dictionary mappings (`sourceLogin -> targetLogin`).
-- **`pass-through`**: Preserves original login names unchanged.
-- **Precedence**: Explicit dictionary overrides always take precedence over suffix rules. Unmapped identities emit structured warnings rather than crashing the pipeline.
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/teams-wave.json \
+  --output-dir ./scans
+```
 
----
+> [!NOTE]
+> In GHEC-EMU, user membership inside teams is managed by your Identity Provider (such as Entra ID, Okta, or PingFederate) through SCIM group sync rather than manual API calls. Use the generated `idp-group-sync-blueprint.csv` file to connect your IdP groups to the newly created GitHub teams.
 
-## IdP Group Sync Blueprint Exporter
+## Testing this module offline
 
-[`exportIdpGroupSyncBlueprint`](file:///home/madmin/Documents/GitHub/ghec-consultant-suite/packages/migration/src/modules/teams/idp-exporter.ts) exports a CSV table with:
+By default, the unit tests check parent-child team ordering, repository permission bindings, EMU username mapping, and CSV export offline.
 
-- Team Slug & Name
-- Parent Team Slug
-- Privacy & Member Count
-- Recommended IdP Group Name (e.g. `gh-${targetOrg}-${teamSlug}`)
-- Recommended SCIM Display Name (e.g. `GitHub ${targetOrg} - ${teamName}`)
-- Repository Permissions Summary
+To run the teams module unit tests offline:
 
-All CSV cells are sanitized against spreadsheet formula injection (`=`, `+`, `-`, `@`, `\t`, `\r`).
+```bash
+node --import tsx --test packages/migration/tests/modules/teams.test.ts
+```

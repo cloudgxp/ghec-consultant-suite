@@ -3,6 +3,12 @@ import {
   type DiscoveryBundle,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  getScopedSourceRepoNames,
+  getScopedTargetRepoName,
+  isAssociatedOnlyOrgMode,
+  isPublicOnlyTargetScope,
+} from '../../core/org-item-filter.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -107,21 +113,95 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
       target.map((variable) => [variable.name, variable]),
     );
     const operations: PlannedOperation[] = [];
-    const dynamicMap =
-      Object.keys(this.repositoryIdMap).length === 0 &&
-      source.variables.some(
-        (v) =>
-          v.visibility === 'selected' && v.selectedRepositoryIds.length > 0,
-      )
-        ? await this.resolveDynamicRepositoryIdMap(ctx)
-        : undefined;
-    for (const variable of source.variables) {
-      const mapped = this.mapSelected(variable, warnings, dynamicMap);
-      const desired = {
-        ...variable,
-        selectedRepositoryIds: mapped.map(String),
-      };
+    const associatedOnly = isAssociatedOnlyOrgMode(ctx);
+    const scopedSourceRepos = getScopedSourceRepoNames(ctx);
+    const publicOnlyScope = isPublicOnlyTargetScope(ctx);
+
+    const needsDynamicResolution =
+      associatedOnly ||
+      (Object.keys(this.repositoryIdMap).length === 0 &&
+        source.variables.some(
+          (v) =>
+            v.visibility === 'selected' && v.selectedRepositoryIds.length > 0,
+        ));
+    const repoMeta = needsDynamicResolution
+      ? await this.resolveDynamicRepositoryMetadata(ctx)
+      : undefined;
+    const dynamicMap = repoMeta?.sourceIdToTargetId;
+
+    for (const rawVariable of source.variables) {
+      let variable = rawVariable;
+      if (associatedOnly) {
+        if (variable.visibility === 'private' && publicOnlyScope) {
+          warnings.push(
+            `Skipping organization variable "${variable.name}" (visibility: private) because private organization variables do not apply to public repositories.`,
+          );
+          continue;
+        }
+        if (variable.visibility === 'selected') {
+          const filteredSourceIds = variable.selectedRepositoryIds.filter(
+            (sourceId) => {
+              const sourceName = repoMeta?.sourceIdToName[sourceId];
+              if (sourceName) {
+                return scopedSourceRepos.has(sourceName);
+              }
+              return scopedSourceRepos.has(sourceId.toLowerCase());
+            },
+          );
+          if (filteredSourceIds.length === 0) {
+            continue;
+          }
+          variable = {
+            ...variable,
+            selectedRepositoryIds: filteredSourceIds,
+          };
+        }
+      }
+
       const existing = targetByName.get(variable.name);
+      let desired: OrganizationVariable;
+
+      if (
+        associatedOnly &&
+        variable.visibility === 'all' &&
+        (repoMeta?.scopedTargetRepoIds.length ?? 0) > 0
+      ) {
+        const mergedTargetIds = [
+          ...new Set([
+            ...(existing?.visibility === 'selected'
+              ? existing.selectedRepositoryIds
+              : []),
+            ...(repoMeta?.scopedTargetRepoIds.map(String) ?? []),
+          ]),
+        ].sort();
+        warnings.push(
+          `Scoped organization variable "${variable.name}" from visibility "all" to "selected" (${mergedTargetIds.length} repository/repositories) for associated-only migration.`,
+        );
+        desired = {
+          ...variable,
+          visibility: 'selected',
+          selectedRepositoryIds: mergedTargetIds,
+        };
+      } else {
+        const mapped = this.mapSelected(variable, warnings, dynamicMap);
+        const mappedStrIds = mapped.map(String);
+        const mergedSelectedIds =
+          variable.visibility === 'selected' &&
+          (associatedOnly || ctx.scope.isMultiOrgConsolidation) &&
+          existing?.visibility === 'selected'
+            ? [
+                ...new Set([
+                  ...existing.selectedRepositoryIds,
+                  ...mappedStrIds,
+                ]),
+              ].sort()
+            : mappedStrIds;
+        desired = {
+          ...variable,
+          selectedRepositoryIds: mergedSelectedIds,
+        };
+      }
+
       const sameScope =
         existing &&
         existing.visibility === desired.visibility &&
@@ -365,10 +445,17 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
     return [...new Set(mapped)].sort((left, right) => left - right);
   }
 
-  private async resolveDynamicRepositoryIdMap(
+  private async resolveDynamicRepositoryMetadata(
     ctx: MigrationContext,
-  ): Promise<Record<string, number>> {
-    const map: Record<string, number> = {};
+  ): Promise<{
+    sourceIdToTargetId: Record<string, number>;
+    sourceIdToName: Record<string, string>;
+    scopedTargetRepoIds: number[];
+  }> {
+    const sourceIdToTargetId: Record<string, number> = {};
+    const sourceIdToName: Record<string, string> = {};
+    const scopedTargetRepoIds: number[] = [];
+    const scopedSourceRepos = getScopedSourceRepoNames(ctx);
     try {
       const [srcRes, tgtRes] = await Promise.all([
         ctx.sourceClient.fetchAll<{ id?: number; name?: string }>(
@@ -402,16 +489,32 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
       }
       for (const item of srcRes?.items ?? []) {
         if (typeof item.id === 'number' && typeof item.name === 'string') {
-          const targetId = targetByName.get(item.name.toLowerCase());
+          const sourceLower = item.name.toLowerCase();
+          sourceIdToName[String(item.id)] = sourceLower;
+          const mappedTargetName = getScopedTargetRepoName(
+            ctx,
+            item.name,
+          ).toLowerCase();
+          const targetId =
+            targetByName.get(mappedTargetName) ?? targetByName.get(sourceLower);
           if (targetId !== undefined) {
-            map[String(item.id)] = targetId;
+            sourceIdToTargetId[String(item.id)] = targetId;
+            if (scopedSourceRepos.has(sourceLower)) {
+              scopedTargetRepoIds.push(targetId);
+            }
           }
         }
       }
     } catch {
-      // Ignore if repository listing fails; fallback to empty map
+      // Ignore if repository listing fails; fallback to empty maps
     }
-    return map;
+    return {
+      sourceIdToTargetId,
+      sourceIdToName,
+      scopedTargetRepoIds: [...new Set(scopedTargetRepoIds)].sort(
+        (a, b) => a - b,
+      ),
+    };
   }
 
   private payload(variable: OrganizationVariable): Record<string, unknown> {

@@ -11,6 +11,12 @@ import {
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import type { MigrationModule } from '../../core/module.js';
 import {
+  getScopedSourceRepoNames,
+  getScopedTargetRepoName,
+  isAssociatedOnlyOrgMode,
+  matchesRulesetRepoNameCondition,
+} from '../../core/org-item-filter.js';
+import {
   formatSanitizedReadError,
   isExpectedFeatureAbsentError,
 } from '../../core/read-error-classifier.js';
@@ -175,6 +181,10 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
     const warnings: string[] = [];
     const opPrefix = isRepo && targetRepo ? `${targetRepo}-` : '';
 
+    const associatedOnly = !isRepo && isAssociatedOnlyOrgMode(ctx);
+    const scopedSourceNames = getScopedSourceRepoNames(ctx);
+    const scopedRepos = ctx.scope.scopedRepositories ?? [];
+
     let sourceIdToName = new Map<number, string>();
     let targetNameToId = new Map<string, number>();
     if (
@@ -208,16 +218,34 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
       ) {
         const mappedIds: number[] = [];
         const missingRepoNames: string[] = [];
+        let matchedInScopeCount = 0;
         for (const srcId of srcRepoIds) {
           const repoName = sourceIdToName.get(Number(srcId));
           if (repoName) {
-            const targetId = targetNameToId.get(repoName.toLowerCase());
+            if (
+              associatedOnly &&
+              scopedSourceNames.size > 0 &&
+              !scopedSourceNames.has(repoName.toLowerCase())
+            ) {
+              continue;
+            }
+            matchedInScopeCount++;
+            const targetRepoName = getScopedTargetRepoName(ctx, repoName);
+            const targetId = targetNameToId.get(targetRepoName.toLowerCase());
             if (targetId !== undefined) {
               mappedIds.push(targetId);
             } else {
-              missingRepoNames.push(repoName);
+              missingRepoNames.push(targetRepoName);
             }
           }
+        }
+
+        if (
+          associatedOnly &&
+          scopedSourceNames.size > 0 &&
+          matchedInScopeCount === 0
+        ) {
+          continue;
         }
 
         if (mappedIds.length === 0 && missingRepoNames.length > 0) {
@@ -238,14 +266,69 @@ export class RulesetsMigrationModule implements MigrationModule<RulesetsData> {
 
         if (mappedIds.length > 0) {
           sourceRuleset = {
-            ...rawSourceRuleset,
+            ...sourceRuleset,
             conditions: {
-              ...rawSourceRuleset.conditions,
+              ...sourceRuleset.conditions,
               repository_id: {
-                ...rawSourceRuleset.conditions?.repository_id,
+                ...sourceRuleset.conditions?.repository_id,
                 repository_ids: mappedIds,
               },
             },
+          };
+        }
+      }
+
+      if (associatedOnly && scopedRepos.length > 0) {
+        const repoNameCond = sourceRuleset.conditions?.repository_name;
+        if (repoNameCond) {
+          const includePatterns = repoNameCond.include ?? [];
+          const excludePatterns = repoNameCond.exclude ?? [];
+          if (includePatterns.includes('~ALL')) {
+            const scopedTargetNames = scopedRepos.map((r) => r.targetRepo);
+            const updatedIncludes = includePatterns.flatMap((pat) =>
+              pat === '~ALL' ? scopedTargetNames : [pat],
+            );
+            sourceRuleset = {
+              ...sourceRuleset,
+              conditions: {
+                ...sourceRuleset.conditions,
+                repository_name: {
+                  ...repoNameCond,
+                  include: [...new Set(updatedIncludes)],
+                },
+              },
+            };
+          } else if (includePatterns.length > 0) {
+            const anyInScopeMatches = scopedRepos.some(
+              (r) =>
+                matchesRulesetRepoNameCondition(
+                  r.sourceRepo,
+                  includePatterns,
+                  excludePatterns,
+                ) ||
+                matchesRulesetRepoNameCondition(
+                  r.targetRepo,
+                  includePatterns,
+                  excludePatterns,
+                ),
+            );
+            if (!anyInScopeMatches) {
+              continue;
+            }
+          }
+        }
+      }
+
+      if (!isRepo && ctx.scope.isMultiOrgConsolidation) {
+        const prefixedName = `${ctx.scope.sourceOrg}-${sourceRuleset.name}`;
+        const existingExact = targetMapByName.get(sourceRuleset.name);
+        if (
+          targetMapByName.has(prefixedName) ||
+          (existingExact && !areRulesetsEqual(sourceRuleset, existingExact))
+        ) {
+          sourceRuleset = {
+            ...sourceRuleset,
+            name: prefixedName,
           };
         }
       }

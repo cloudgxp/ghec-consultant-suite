@@ -1,45 +1,56 @@
-# @ghec/analysis — Deterministic Migration Readiness & Risk Heuristics
+# @ghec/analysis — Migration Readiness & Risk Scoring
 
-The `@ghec/analysis` package contains deterministic analysis algorithms, heuristic scoring, and risk classification engines for GitHub Enterprise Cloud (GHEC) migration assessments.
-
----
-
-## Key Features
-
-1. **Deterministic Readiness Scoring:**
-   - Evaluates discovery bundles strictly offline without network dependencies.
-   - Calculates numerical complexity scores and risk tiers (Green, Yellow, Red) based on repository characteristics, asset sizes, and security configurations.
-2. **Platform Boundary & Blocker Detection:**
-   - **Repository Size Limits:** Flags repositories exceeding GitHub Enterprise Importer (GEI) thresholds (>40 GiB repository git size, >2 GiB single commit size).
-   - **Large Release Assets:** Flags releases with assets >10 GiB requiring specialized streaming migration strategies.
-   - **Git LFS Assets:** Identifies Git LFS tracking requirements and post-transfer dual-remote stream requirements.
-   - **Governance & Ruleset Bypass:** Detects missing or non-exempt ruleset bypass actors (DEC-012).
-3. **Cross-Entity Dependency Mapping:**
-   - Constructs dependency graphs across repositories, shared Actions workflows, organization variables, environment secrets, and outside collaborators.
+`@ghec/analysis` calculates migration readiness scores, finds size blockers, and maps dependencies across repositories, workflows, secrets, and teams.
 
 ---
 
-## Usage
+## Scoring migration readiness and finding blockers
+
+By default, `@ghec/analysis` inspects a `DiscoveryBundle` completely offline without making any network calls and groups repositories into Green, Yellow, and Red risk tiers:
+
+- **Repository size limits**: Flags repositories that exceed GitHub Enterprise Importer (GEI) limits (over 40 GiB total git size or over 2 GiB in a single commit).
+- **Large release files**: Flags releases with files over 10 GiB that need the large-release streaming helper.
+- **Git LFS files**: Identifies repositories that use Git LFS and require a follow-up LFS push after transfer.
+- **Ruleset bypass rules**: Flags rulesets that are missing the required migration bypass setting (`DEC-012`).
+- **Dependency mapping**: Connects repositories, shared Actions workflows, organization variables, environment secrets, and outside collaborators.
+
+To score a discovery bundle and check how many repositories are blocked:
 
 ```ts
-import { analyzeBundle, buildDependencyGraph } from '@ghec/analysis';
+import { analyzeBundle } from '@ghec/analysis';
 import type { DiscoveryBundle } from '@ghec/contracts';
 
-// Analyze an immutable discovery bundle
 const report = analyzeBundle(discoveryBundle);
 
 console.log(`Overall Readiness Score: ${report.summary.readinessScore}`);
 console.log(`Blocked Repositories: ${report.summary.blockedCount}`);
 ```
 
+To build a cross-repository dependency graph from a discovery bundle:
+
+```ts
+import { buildDependencyGraph } from '@ghec/analysis';
+
+const graph = buildDependencyGraph(discoveryBundle);
+```
+
+> [!NOTE]
+> All scoring functions are pure and run in memory, so you can call them in both the CLI and the offline browser dashboard.
+
 ---
 
-## Verification
+## Building and testing the analysis package
+
+By default, building `@ghec/analysis` compiles the readiness rules and TypeScript declarations for the CLI and dashboard.
+
+To check TypeScript types in `@ghec/analysis`:
 
 ```bash
-# Run type checking
 npm run typecheck -w @ghec/analysis
+```
 
-# Build package
+To compile the `@ghec/analysis` package:
+
+```bash
 npm run build -w @ghec/analysis
 ```

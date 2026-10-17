@@ -1,24 +1,59 @@
-# Repository Visibility & PR Settings Reconciliation Module
+# Restoring Repository Visibility and Pull Request Settings (`repo-settings`)
 
-`RepoSettingsMigrationModule` (`id = 'repo-settings'`) is responsible for reconciling repository visibility and pull request commit message settings following GitHub Enterprise Importer (GEI) migrations.
+By default, GitHub Enterprise Importer (GEI) resets every migrated repository to `private` visibility and resets pull request merge commit templates back to GitHub defaults. The `repo-settings` module runs after GEI to restore your original visibility (`private`, `internal`, or `public`) and pull request merge settings (`allow_squash_merge`, `squash_merge_commit_title`, `delete_branch_on_merge`, and more).
 
-## Motivation & Architecture Context
+## Restoring repository visibility and merge settings
 
-When GitHub Enterprise Importer (GEI) migrates a repository into GitHub Enterprise Cloud (GHEC), it operates with default security assumptions:
+By default, this module compares your source and target repository settings and sends a `PATCH /repos/{owner}/{repo}` request to restore any settings that GEI reset.
 
-1. **Private Visibility Reset:** All migrated repositories are initially created with `private` visibility, breaking inner-sourcing workflows for enterprises relying on `internal` or `public` repositories.
-2. **Pull Request Commit Settings Reset (DEC-015):** GEI resets custom merge strategies and commit message templates (e.g. `squash_merge_commit_title: 'PR_TITLE'`, `squash_merge_commit_message: 'PR_BODY'`) back to GitHub platform defaults.
+To restore visibility and pull request settings for a migrated repository:
 
-This module executes in **Stage 5 (Post-GEI API Modules)** to restore visibility and PR settings without disruption.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-settings"
+```
 
-## Lifecycle Stages
+To preview the visibility and merge setting changes without modifying GitHub, add the `--dry-run` option:
 
-1. **`discover(ctx, cachedData?)`**: Extracts visibility and PR settings from the source repository via `GET /repos/{owner}/{repo}` or cached `DiscoveryBundle`.
-2. **`plan(ctx, sourceData)`**: Queries the destination repository post-GEI (or compares against GEI baseline), generating an `update` or `noop` operation based on detected configuration differences.
-3. **`apply(ctx, plan)`**: Invokes `PATCH /repos/{targetOrg}/{targetRepo}` to update settings. If target enterprise policies prohibit `public` visibility (HTTP 422), it safely falls back to `internal` visibility with a structured warning.
-4. **`verify(ctx, plan)`**: Re-audits the destination repository via `GET /repos/{targetOrg}/{targetRepo}` and verifies target visibility and PR configurations match planned state.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-settings" \
+  --dry-run
+```
 
-## Enterprise Policy Handling
+To restore repository settings across multiple repositories using a scope file:
 
-When migrating public open-source or inner-source repositories to an Enterprise Managed User (EMU) enterprise, enterprise policies may strictly prohibit `public` repositories.
-If an attempt to restore `public` visibility returns HTTP 422, the module gracefully falls back to `internal` visibility (when `enforceInternalForPublic: true`, default) while logging a clear warning.
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "shared-ui-library"],
+  "enabledModules": ["repo-settings"]
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> Many Enterprise Managed User (EMU) enterprises block `public` repositories by policy. If restoring `public` visibility fails with HTTP 422, this module automatically falls back to `internal` visibility and logs a clear warning.
+
+## Testing this module offline
+
+By default, the unit tests check visibility updates, pull request commit message templates, and the `public` to `internal` fallback offline.
+
+To run the repository settings unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/repo-settings.test.ts
+```

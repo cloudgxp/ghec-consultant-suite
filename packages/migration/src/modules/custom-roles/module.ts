@@ -293,45 +293,52 @@ export class CustomRolesMigrationModule implements MigrationModule<CustomRolesMi
       }
     }
 
-    // Plan organization roles
-    for (const srcRole of source.organizationRoles) {
-      const targetRole = targetOrgRolesByName.get(srcRole.name);
-      if (!targetRole) {
-        operations.push({
-          id: `op-custom-org-role-create-${srcRole.name}`,
-          resourceType: 'custom-organization-role',
-          resourceName: srcRole.name,
-          operation: 'create',
-          sourceState: srcRole,
-          destinationCurrentState: undefined,
-          reason: `Recreating custom organization role '${srcRole.name}'`,
-        });
-      } else {
-        const needsUpdate =
-          (srcRole.description &&
-            srcRole.description !== targetRole.description) ||
-          !arePermissionsEqual(srcRole.permissions, targetRole.permissions);
-
-        if (needsUpdate) {
+    // Plan organization roles (skip global org admin roles in associated-only mode)
+    const associatedOnly =
+      ctx.scope.orgItemsMode === 'associated-only' ||
+      Boolean(
+        ctx.scope.isMultiOrgConsolidation && ctx.scope.orgItemsMode !== 'all',
+      );
+    if (!associatedOnly) {
+      for (const srcRole of source.organizationRoles) {
+        const targetRole = targetOrgRolesByName.get(srcRole.name);
+        if (!targetRole) {
           operations.push({
-            id: `op-custom-org-role-update-${srcRole.name}`,
+            id: `op-custom-org-role-create-${srcRole.name}`,
             resourceType: 'custom-organization-role',
             resourceName: srcRole.name,
-            operation: 'update',
+            operation: 'create',
             sourceState: srcRole,
-            destinationCurrentState: targetRole,
-            reason: `Aligning custom organization role '${srcRole.name}' configuration`,
+            destinationCurrentState: undefined,
+            reason: `Recreating custom organization role '${srcRole.name}'`,
           });
         } else {
-          operations.push({
-            id: `op-custom-org-role-noop-${srcRole.name}`,
-            resourceType: 'custom-organization-role',
-            resourceName: srcRole.name,
-            operation: 'noop',
-            sourceState: srcRole,
-            destinationCurrentState: targetRole,
-            reason: `Custom organization role '${srcRole.name}' already matches target configuration`,
-          });
+          const needsUpdate =
+            (srcRole.description &&
+              srcRole.description !== targetRole.description) ||
+            !arePermissionsEqual(srcRole.permissions, targetRole.permissions);
+
+          if (needsUpdate) {
+            operations.push({
+              id: `op-custom-org-role-update-${srcRole.name}`,
+              resourceType: 'custom-organization-role',
+              resourceName: srcRole.name,
+              operation: 'update',
+              sourceState: srcRole,
+              destinationCurrentState: targetRole,
+              reason: `Aligning custom organization role '${srcRole.name}' configuration`,
+            });
+          } else {
+            operations.push({
+              id: `op-custom-org-role-noop-${srcRole.name}`,
+              resourceType: 'custom-organization-role',
+              resourceName: srcRole.name,
+              operation: 'noop',
+              sourceState: srcRole,
+              destinationCurrentState: targetRole,
+              reason: `Custom organization role '${srcRole.name}' already matches target configuration`,
+            });
+          }
         }
       }
     }

@@ -4,130 +4,128 @@
 **Date**: 2026-10-14
 **Status**: Ready for Implementation
 
-This guide outlines runnable verification scenarios and local testing procedures for proving the scale-adaptive migration orchestration and automated remediation features end-to-end.
+This guide shows you how to test automatic repository sizing, runner disk checks, automated fix loops, sandbox cleanup guards, and full migration wave previews.
 
 ---
 
-## 1. Prerequisites & Environment Setup
+## Building the workspace and checking your setup
 
-Verify the workspace is built and local test dependencies are resolved:
+By default, the workspace requires Node.js `>=22.13.0` and compiled packages before running the migration tests.
+
+To check your Node.js version and build all packages:
 
 ```bash
-# Verify Node runtime (>=22.13.0)
 node --version
-
-# Build all packages and contracts
 npm run build
+```
 
-# Run primary quality check
+To run the full workspace quality check:
+
+```bash
 npm run check
 ```
 
 ---
 
-## 2. Validation Scenario 1: Sizing Classification & Strategy Slicing
+## Testing repository sizing and runner selection
 
-Test that the slicer accurately diagnoses repository characteristics and assigns appropriate runner labels and strategies without network dependencies.
+By default, the slicer checks repository sizes offline and picks the matching migration strategy and runner labels:
+
+- **Under 10 GiB (and under 40 GiB total)**: Uses `tier: standard`, `useGei: true`, and `runnerLabels: ['ubuntu-latest']`.
+- **Releases over 10 GiB**: Sets `skipReleases: true` and `useReleaseFallback: true`.
+- **Contains Git LFS objects**: Sets `useLfsStreamer: true`.
+- **Over 40 GiB**: Uses `tier: massive-mirror`, `useGei: false`, `useMirrorPush: true`, `runnerLabels: ['self-hosted', 'high-disk']`, and `requiresHeadroomCheck: true`.
+
+To run the offline repository sizing and strategy tests:
 
 ```bash
-# Run isolated offline unit tests for repository sizing and strategy classification
 node --import tsx --test packages/migration/tests/strategies/slicer-classification.test.ts
 ```
 
-**Expected Outcome**:
-
-- Repositories <10 GiB and <40 GiB metadata are assigned `tier: standard`, `useGei: true`, `runnerLabels: ['ubuntu-latest']`.
-- Repositories with >10 GiB release binaries have `skipReleases: true` and `useReleaseFallback: true`.
-- Repositories with Git LFS objects have `useLfsStreamer: true`.
-- Repositories >40 GiB have `tier: massive-mirror`, `useGei: false`, `useMirrorPush: true`, `runnerLabels: ['self-hosted', 'high-disk']`, `requiresHeadroomCheck: true`.
-
 ---
 
-## 3. Validation Scenario 2: Runner Disk Headroom Protection (`checkScratchDiskSpace`)
+## Checking available runner disk space (`checkScratchDiskSpace`)
 
-Validate that `checkScratchDiskSpace` protects runners from out-of-disk failures (`ENOSPC`) before Git operations spawn.
+By default, `checkScratchDiskSpace` makes sure the runner has at least 1.5x the estimated repository size free on disk before starting a Git clone, returning `sufficient: false` and stopping early if space is too low (`ENOSPC`).
+
+To run the disk space protection unit tests offline:
 
 ```bash
-# Execute unit tests for scratch space verification
 node --import tsx --test packages/migration/tests/strategies/mirror-push/headroom.test.ts
 ```
 
-**Expected Outcome**:
-
-- When available scratch disk is less than 1.5x the estimated size, the check returns `sufficient: false` and the runner aborts with a diagnostic error prior to cloning.
-- When disk space is sufficient, `checkScratchDiskSpace` returns `sufficient: true` and proceeds.
-
 ---
 
-## 4. Validation Scenario 3: Closed-Loop Self-Healing Remediation
+## Generating and running automated verification fixes
 
-Validate that verification discrepancies are automatically translated into an idempotent remediation plan and executed to achieve 0 discrepancies.
+By default, `agent-review` turns any differences in `scans/verification-report.json` into a repeatable fix plan (`scans/remediation-plan.json`), a Markdown report (`scans/remediation-plan.md`), and a shell script (`remediation.sh`), retrying up to `max_remediation_rounds` (default: 3).
+
+```text
+scans/
+├── verification-report.json
+├── remediation-plan.json
+└── remediation-plan.md
+```
+
+To run verification on a sample wave and save the report:
 
 ```bash
-# 1. Run synthetic verification generating a test report with known discrepancies
 npm run dev:cli -- verify --scope scopes/synthetic-wave.json --output scans/verification-report.json
+```
 
-# 2. Synthesize remediation plan and shell script
+To generate the JSON fix plan and Markdown report from the verification report:
+
+```bash
 npm run dev:cli -- agent-review \
   --report scans/verification-report.json \
   --output scans/remediation-plan.json \
   --output-markdown scans/remediation-plan.md
+```
 
-# 3. Validate generated schema contracts
+To check that `scans/remediation-plan.json` contains valid fix actions:
+
+```bash
 node --input-type=module -e '
   import fs from "node:fs";
   const plan = JSON.parse(fs.readFileSync("scans/remediation-plan.json", "utf8"));
   if (!plan.actions || plan.actions.length === 0) throw new Error("Plan missing actions");
   console.log("Remediation plan validated successfully with", plan.actions.length, "actions.");
 '
+```
 
-# 4. Simulate execution of remediation.sh and re-run verify to demonstrate 0 discrepancies
+To run the automated fix loop test and confirm that re-running verification leaves 0 differences:
+
+```bash
 node --import tsx --test apps/cli/tests/remediation-loop.test.ts
 ```
 
-**Expected Outcome**:
-
-- `agent-review` generates valid `remediation-plan.json` and `remediation.sh`.
-- Closed-loop retry terminates within `max_remediation_rounds` (default: 3).
-- Re-verification confirms 0 remaining actionable discrepancies.
-
 ---
 
-## 5. Validation Scenario 4: Target Sandbox Teardown Safety Guards
+## Testing target sandbox cleanup safety guards
 
-Validate that the sandbox teardown rejects dangerous prefix filters and safely purges matching resources.
+By default, the sandbox cleanup command requires `confirm_teardown: true`, blocks broad wildcard prefixes (`*`, `""`, `a`, `all`), and only deletes items that match your prefix (such as `dummy-*`).
+
+To run the sandbox cleanup safety unit tests offline:
 
 ```bash
-# Execute teardown safety unit tests
 node --import tsx --test apps/cli/tests/teardown-sandbox.test.ts
 ```
 
-**Expected Outcome**:
-
-- Wildcard filters (`*`, `""`, `a`, `all`) trigger an immediate safety halt.
-- Requiring `confirm_teardown: true` prevents accidental execution.
-- In dry-run mode, matching resources (`dummy-*`) are logged without issuing DELETE API requests.
-- In live mode, only matching resources are deleted, leaving non-matching assets intact.
+> [!WARNING]
+> In `--dry-run` mode, the cleanup tool lists matching `dummy-*` items without sending `DELETE` requests. In live mode, only matching items are deleted.
 
 ---
 
-## 6. Validation Scenario 5: End-to-End Workflow Dry-Run Dispatch
+## Previewing an end-to-end migration wave with auto-remediation
 
-Simulate the workflow dispatch of `.github/workflows/migration-e2e-autonomous.yml` using `act` or manual dry-run CLI:
+By default, running `migrate` with `--dry-run` and `--auto-remediate` tests preflight checks, repository slicing, checkpoint saving under `./migrations/.checkpoint-*`, visibility restoration, and final verification without changing the target organization (matching `.github/workflows/migration-e2e-autonomous.yml`).
+
+To preview a full migration wave with checkpoints and automatic remediation enabled:
 
 ```bash
-# Test full migration wave in dry-run mode with autonomous remediation enabled
 npm run dev:cli -- migrate \
   --scope scopes/wave-1.json \
   --dry-run \
   --checkpoint-dir ./migrations/ \
   --auto-remediate
 ```
-
-**Expected Outcome**:
-
-- Preflight evaluation passes.
-- Slicer outputs matrix partition.
-- Checkpoints are created under `./migrations/.checkpoint-*`.
-- Post-GEI reconciliation restores original visibility.
-- Final verification report and audit summaries are generated.

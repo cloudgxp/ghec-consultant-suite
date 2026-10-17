@@ -1,5 +1,6 @@
 import { MIGRATION_SCHEMA_VERSION } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import { isAssociatedOnlyOrgMode } from '../../core/org-item-filter.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -102,8 +103,26 @@ export class OrgCustomPropertiesMigrationModule implements MigrationModule<OrgCu
           : [];
       }),
     );
-    const operations = source.definitions.map((definition) => {
-      const existing = target.get(definition.propertyName);
+    const mergeAdditive =
+      isAssociatedOnlyOrgMode(ctx) ||
+      Boolean(ctx.scope.isMultiOrgConsolidation);
+    const operations = source.definitions.map((rawDefinition) => {
+      const existing = target.get(rawDefinition.propertyName);
+      const definition: CustomPropertyDefinition =
+        existing &&
+        mergeAdditive &&
+        (existing.allowedValues.length > 0 ||
+          rawDefinition.allowedValues.length > 0)
+          ? {
+              ...rawDefinition,
+              allowedValues: [
+                ...new Set([
+                  ...existing.allowedValues,
+                  ...rawDefinition.allowedValues,
+                ]),
+              ],
+            }
+          : rawDefinition;
       return {
         id: `org-custom-properties:${ctx.scope.targetOrg}:${definition.propertyName}`,
         resourceType: 'custom-property-schema',

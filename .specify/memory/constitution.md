@@ -1,24 +1,17 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: Unratified Template (0.0.0) -> 1.0.0
-Bump Rationale: Initial formal ratification of the project constitution establishing core engineering principles, security boundaries, quality gates, and governance policies.
+Version Change: 1.0.0 -> 1.1.0
+Bump Rationale: Added Task-Oriented Documentation Standard (consultant-style-docs) under Quality Gates & Verification Workflow to ensure all user-facing guides, READMEs, and SpecKit quickstarts follow short, task-oriented explanations paired with progressive examples.
 
 Modified Principles:
-- [PRINCIPLE_1_NAME] -> I. Zero-Exposure Secret Boundary (DEC-004)
-- [PRINCIPLE_2_NAME] -> II. 4-Stage Migration Lifecycle & Topological DAG Execution
-- [PRINCIPLE_3_NAME] -> III. Single Source of Truth & Strict Schema Validation
-- [PRINCIPLE_4_NAME] -> IV. Offline Test Determinism & Synthetic Test Fixtures
-- [PRINCIPLE_5_NAME] -> V. Strict ESM & TypeScript Standards
+- None (Core Principles I through V unchanged)
 
 Added Sections:
-- Core Principles (Principles I through V)
-- Architecture & Security Boundaries
-- Quality Gates & Verification Workflow
-- Governance
+- Quality Gates & Verification Workflow -> Task-Oriented Documentation Standard (`consultant-style-docs`)
 
 Removed Sections:
-- None (Template placeholders transformed into ratified sections)
+- None
 
 Follow-up TODOs:
 - None. All placeholders fully resolved and ratified.
@@ -93,6 +86,7 @@ The codebase adheres strictly to pure ECMAScript Modules (`"type": "module"`) an
   4. Complete offline test suite: `npm run test:unit`.
 - **Structured Task Planning**: Implementation workflows MUST follow `.agents/rules/task-planning.md`. Tasks start in `.agents/tasks/backlog/`, transition to `.agents/tasks/in-progress/` when active, and move to `.agents/tasks/completed/` via `git mv` only after all verification commands pass and completion evidence is recorded.
 - **Reconciliation & Verification**: Post-migration verification MUST perform deep structural comparisons between source and destination states, logging diffable discrepancy entries in `VerificationReport` artifacts.
+- **Task-Oriented Documentation Standard (`consultant-style-docs`)**: All user-facing guides (`docs/guides/**/*.md`), package/app READMEs, and SpecKit `quickstart.md` validation guides MUST adhere to `.agents/rules/documentation-style.md` and `.agents/skills/consultant-style-docs/SKILL.md` (plain-English ~8th-grade reading level free of academic jargon, task-oriented headings, upfront default behaviors, 1–2 sentence `"To <goal>:"` lead-ins paired with individual copy-pasteable code blocks ordered from simple to complex, and admonition callouts for caveats).
 
 ## Governance
 
@@ -105,4 +99,4 @@ This constitution is the authoritative technical baseline for the `ghec-consulta
   - `PATCH`: Wording clarifications, typo corrections, and non-semantic refinements.
 - **Compliance Review**: All feature specifications, implementation plans, and automated agent reviews MUST verify compliance against these principles before phase signoff.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-12 | **Last Amended**: 2026-10-12
+**Version**: 1.1.0 | **Ratified**: 2026-10-12 | **Last Amended**: 2026-10-16

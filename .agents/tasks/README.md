@@ -1,59 +1,62 @@
-# Agent Task Planning & Execution Board
+# Managing Tasks on the Agent Planning Board
 
-This directory manages structured task planning, multi-phase execution tracking, and durable cross-session coordination for AI agents and human engineers.
-
----
-
-## 1. Directory Structure
+By default, `.agents/tasks/` tracks planned, active, and completed engineering tasks across `backlog/`, `in-progress/`, and `completed/` using markdown files named `TASK-<id>-<kebab-title>.md`.
 
 ```text
 .agents/tasks/
-├── README.md                 # This overview & active task registry
+├── README.md                 # This guide and active task list
 ├── templates/
-│   └── task-template.md      # Canonical markdown template for new tasks
+│   └── task-template.md      # Markdown template for new tasks
 ├── backlog/                  # Planned tasks waiting to be started
-├── in-progress/              # Tasks actively being worked on
-└── completed/                # Verified, finished tasks with execution evidence
+├── in-progress/              # Tasks currently being worked on
+└── completed/                # Verified, finished tasks with test evidence
 ```
 
 ---
 
-## 2. Task Lifecycle & Workflow
+## Creating a new task in the backlog
 
-Every task progresses through three discrete states via `git mv`:
+By default, new tasks start in `.agents/tasks/backlog/` with `status: backlog` based on [`templates/task-template.md`](templates/task-template.md) and declare affected packages, dependencies, a checklist (`- [ ]`), and offline verification commands.
 
-1. **Planning (`backlog/`)**:
-   - Tasks are authored using [`templates/task-template.md`](templates/task-template.md).
-   - Filename format: `TASK-<id>-<kebab-title>.md` (e.g., `TASK-044-github-app-manifest-flow.md`).
-   - Must specify dependencies, affected packages, implementation checklist, and explicit verification commands.
+To create a new task file in `.agents/tasks/backlog/`:
 
-2. **Claiming & Execution (`in-progress/`)**:
-   - When an agent or engineer begins working on a task, move it from `backlog/` to `in-progress/`:
-     ```bash
-     git mv .agents/tasks/backlog/TASK-044-*.md .agents/tasks/in-progress/
-     ```
-   - Update frontmatter: `status: in-progress`, `owner: <agent|name>`.
-   - Update checklist items (`- [x]`) as progress is made across atomic commits.
-
-3. **Verification & Completion (`completed/`)**:
-   - Run the task's defined verification commands and root quality gate (`npm run check`).
-   - Populate Section 6 (**Completion Summary & Evidence**) with test outcomes and notes.
-   - Move file to `completed/`:
-     ```bash
-     git mv .agents/tasks/in-progress/TASK-044-*.md .agents/tasks/completed/
-     ```
-   - Update frontmatter: `status: completed`.
+```bash
+npm run task:new -- "github-app-manifest-flow"
+```
 
 ---
 
-## 3. Active Task Registry
+## Moving a task from backlog to completion
 
-| ID            | Title              | Status | Owner | Dependencies |
-| :------------ | :----------------- | :----- | :---- | :----------- |
-| _None active_ | _Backlog is clear_ | -      | -     | -            |
+By default, you move task files between folders using `git mv` so git history records every status change.
+
+To claim a task and move it from `backlog/` to `in-progress/` (then set `status: in-progress` and `owner` in its frontmatter):
+
+```bash
+git mv .agents/tasks/backlog/TASK-044-*.md .agents/tasks/in-progress/
+```
+
+To run the repository quality gate before marking a task complete:
+
+```bash
+npm run check
+```
+
+Once all checklist items (`- [x]`) and Section 6 (**Completion Summary & Evidence**) are filled in, move the file to `completed/` and set `status: completed`:
+
+```bash
+git mv .agents/tasks/in-progress/TASK-044-*.md .agents/tasks/completed/
+```
 
 ---
 
-## 4. Integration with Rules
+## Checking active tasks
 
-See [`.agents/rules/task-planning.md`](../rules/task-planning.md) for the authoritative invariant governing how agents plan and execute tasks.
+By default, the table below lists tasks currently in `backlog/` or `in-progress/`.
+
+| ID       | Title                                                                               | Status        | Owner   | Dependencies                       |
+| :------- | :---------------------------------------------------------------------------------- | :------------ | :------ | :--------------------------------- |
+| TASK-068 | Live End-to-End GitHub Actions Migration: demogxp to demogxp-mig5 & Reporting Audit | `in-progress` | `agent` | `TASK-064`, `TASK-065`, `TASK-067` |
+
+> [!NOTE]
+> See [`.agents/rules/task-planning.md`](../rules/task-planning.md) for the full rules on planning and completing tasks.

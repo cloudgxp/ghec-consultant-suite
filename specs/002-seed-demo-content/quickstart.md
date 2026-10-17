@@ -4,93 +4,69 @@
 **Date**: 2026-10-14
 **Status**: Draft
 
-This guide outlines runnable scenarios to validate the demo content seeder, verify schema conformance, test dry-run simulation offline, audit zero-exposure secret redaction, and execute live GitHub Actions workflow dispatch runs.
+This guide shows you how to test the demo content seeder offline, preview demo items without changing GitHub, and create sample items in a live test organization.
 
 ---
 
-## 1. Prerequisites
+## Building the workspace packages
 
-- Node.js `>=22.13.0` and npm `>=10`
-- Monorepo packages built: `npm run build:packages`
-- For live execution: A GitHub Personal Access Token (PAT) with `admin:org`, `repo`, `delete_repo`, and `workflow` scopes.
+By default, all offline seeder tests run on Node.js `>=22.13.0` and npm `>=10` once the workspace packages are compiled.
 
----
-
-## 2. Validation Scenarios
-
-### Scenario 1: Validate Schema Conformance of Seed Contracts (Offline)
-
-Validates that all contract definitions (`seed-dispatch.contract.json`, `seed-manifest.contract.json`, and `seed-summary.contract.json`) are structurally valid JSON Schema (Draft 2020-12) documents and validate sample payloads.
+To build all shared packages before running the tests:
 
 ```bash
-# Validate schema files using ajv or contracts test suite
+npm run build:packages
+```
+
+---
+
+## Checking the demo seeder JSON contracts offline
+
+By default, the contract test checks `seed-dispatch.contract.json`, `seed-manifest.contract.json`, and `seed-summary.contract.json` against JSON Schema (Draft 2020-12) and rejects invalid scopes or unredacted secrets.
+
+To run the contract schema validation tests offline:
+
+```bash
 node --import tsx packages/contracts/tests/seed-contracts.test.ts
 ```
 
-**Expected Outcome**:
-
-- All schemas validate cleanly without draft syntax errors.
-- Valid sample dispatch requests and summaries pass validation.
-- Malformed inputs (e.g. invalid scope levels or un-sanitized secrets) fail validation.
-
 ---
 
-### Scenario 2: Validate Item Catalog & Preset Filtering (Offline)
+## Testing the item catalog and preset groups offline
 
-Validates that all 32 migration items (13 organization-level, 19 repository-level) are correctly indexed in the catalog and resolve accurately for each preset.
+By default, the seeder catalog includes 32 migration items (13 organization items and 19 repository items) grouped into presets (`all`: 32, `core-governance`: 8, `actions-and-security`: 10, `collaboration`: 7, `artifacts-and-code`: 6).
+
+To test preset filtering and module ordering (such as `teams,rulesets,environments`) offline:
 
 ```bash
-# Test preset resolution and dependency ordering offline
 node --import tsx apps/cli/tests/seed-catalog.test.ts
 ```
 
-**Expected Outcome**:
-
-- `all` preset resolves exactly 32 items.
-- `core-governance` resolves 8 items.
-- `actions-and-security` resolves 10 items.
-- `collaboration` resolves 7 items.
-- `artifacts-and-code` resolves 6 items.
-- Custom module lists (e.g. `teams,rulesets,environments`) resolve in topological dependency order.
-
 ---
 
-### Scenario 3: Test Dry-Run Simulation with Mock GitHub Adapter (Offline)
+## Testing preview mode and secret encryption offline
 
-Executes the seeder in dry-run mode (`dry_run: true`) against an in-memory mock GitHub API adapter to verify that zero mutating calls (`POST`, `PUT`, `PATCH`, `DELETE`) are performed and that the planned changes are summarized accurately.
+By default, when `dry_run: true` is enabled, the seeder marks every step as `dry-run-create`, `dry-run-update`, or `dry-run-skip` without sending `POST`, `PUT`, `PATCH`, or `DELETE` calls, and produces a summary matching `seed-summary.contract.json`.
+
+To run the offline preview test suite against the mock GitHub adapter:
 
 ```bash
-# Run offline dry-run test suite
 node --import tsx apps/cli/tests/seed-demo-dry-run.test.ts
 ```
 
-**Expected Outcome**:
-
-- 100% of planned actions are marked as `dry-run-create`, `dry-run-update`, or `dry-run-skip`.
-- Exactly 0 mutating HTTP requests are sent to the adapter.
-- The generated execution summary conforms to `seed-summary.contract.json`.
-
----
-
-### Scenario 4: Audit Zero-Exposure Secret Redaction (Offline)
-
-Ensures that libsodium sealed-box encryption produces ciphertext placeholders, and verifies that any diagnostic logging, error capturing, or summary formatting redacts tokens and sensitive headers.
+To verify that `org-secrets` and `repo-secrets` are encrypted with `libsodium-wrappers` and that no tokens (`ghp_*`, `github_pat_*`) or `Authorization` headers appear in logs:
 
 ```bash
-# Verify secret sealing and token scrubbing
 node --import tsx apps/cli/tests/seed-demo-security.test.ts
 ```
 
-**Expected Outcome**:
-
-- `org-secrets` and `repo-secrets` write-only payloads are encrypted using `libsodium-wrappers`.
-- No plaintext tokens (`ghp_*`, `github_pat_*`) or `Authorization` headers appear in any logged string or summary markdown.
-
 ---
 
-### Scenario 5: Live Execution via CLI or GitHub Actions Dispatch (Online)
+## Creating demo content from the command line or GitHub Actions
 
-#### Option A: Local CLI Execution
+By default, `seed-demo` reads your token from `GHEC_TOKEN` (requiring `admin:org`, `repo`, `delete_repo`, and `workflow` scopes for live runs) and creates sample items in your test organization and repository.
+
+To preview creating the `core-governance` items from the command line without making any changes on GitHub:
 
 ```bash
 export GHEC_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
@@ -102,16 +78,13 @@ npm run dev:cli -- seed-demo \
   --dry-run
 ```
 
-#### Option B: GitHub Actions Workflow Dispatch
+To create all 32 demo items in a live test organization from the command line:
 
-1. Navigate to **Actions** $\rightarrow$ **Seed Demo Content** (`.github/workflows/seed-demo-content.yml`).
-2. Click **Run workflow**.
-3. Fill in the dispatch inputs:
-   - **organization**: `octodemo-migration-test`
-   - **repository**: `demo-ecommerce-monorepo`
-   - **scope_level**: `both`
-   - **content_type**: `all`
-   - **pat_secret_name**: `GHEC_SOURCE_TOKEN`
-   - **dry_run**: `false`
-   - **cleanup_existing**: `false`
-4. Inspect the **Job Summary** in GitHub Actions upon completion for the Markdown status table.
+```bash
+npm run dev:cli -- seed-demo \
+  --org "octodemo-migration-test" \
+  --repo "demo-ecommerce-monorepo"
+```
+
+> [!NOTE]
+> You can also run **Actions** $\rightarrow$ **Seed Demo Content** (`.github/workflows/seed-demo-content.yml`) in GitHub Actions with `organization: octodemo-migration-test`, `repository: demo-ecommerce-monorepo`, `scope_level: both`, `content_type: all`, `pat_secret_name: GHEC_SOURCE_TOKEN`, `dry_run: false`, and `cleanup_existing: false`, then review the status table in the **Job Summary**.
