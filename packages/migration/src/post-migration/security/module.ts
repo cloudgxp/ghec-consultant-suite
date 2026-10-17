@@ -209,6 +209,69 @@ export class GhasSecurityMigrationModule implements MigrationModule<GhasSecurity
     for (const operation of plan.operations) {
       const completedAt = new Date().toISOString();
 
+      if (
+        operation.operation === 'noop' &&
+        operation.resourceType === 'repository-security-settings' &&
+        !ctx.dryRun &&
+        !(ctx.targetClient as { isMock?: boolean }).isMock
+      ) {
+        const srcSettings = operation.sourceState as
+          Record<string, { status?: string } | undefined> | undefined;
+        const hasSourceEnabled =
+          srcSettings?.advanced_security?.status === 'enabled' ||
+          srcSettings?.secret_scanning?.status === 'enabled' ||
+          srcSettings?.secret_scanning_push_protection?.status === 'enabled' ||
+          srcSettings?.dependabot_security_updates?.status === 'enabled';
+        if (hasSourceEnabled) {
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+          const latestTargetSettings = await fetchRepositorySecuritySettings(
+            ctx,
+            targetOrg,
+            targetRepo,
+            ctx.targetClient,
+          );
+          const recheckDiff = diffSecuritySettings(
+            operation.sourceState as Parameters<typeof diffSecuritySettings>[0],
+            latestTargetSettings,
+            { targetHasGhasLicense: this.options.targetHasGhasLicense },
+          );
+          if (recheckDiff.hasChanges) {
+            ctx.logger.info(
+              `[security] Detected post-visibility security settings reset on ${targetOrg}/${targetRepo}; applying ${recheckDiff.changesDescription.join(', ')}...`,
+            );
+            try {
+              const res = await ctx.targetWriteClient!.mutate(
+                {
+                  id: 'rest.repos.updateSecuritySettings',
+                  method: 'PATCH',
+                  path: '/repos/{owner}/{repo}',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                  body: {
+                    security_and_analysis: recheckDiff.payload,
+                  },
+                },
+                ctx.signal,
+              );
+              results.push({
+                operationId: operation.id,
+                status: res.status < 300 ? 'succeeded' : 'failed',
+                httpStatus: res.status,
+                completedAt: new Date().toISOString(),
+              });
+              continue;
+            } catch (err) {
+              results.push({
+                operationId: operation.id,
+                status: 'failed',
+                error: err instanceof Error ? err.message : String(err),
+                completedAt: new Date().toISOString(),
+              });
+              continue;
+            }
+          }
+        }
+      }
+
       if (operation.operation === 'noop') {
         results.push({
           operationId: operation.id,
@@ -264,6 +327,51 @@ export class GhasSecurityMigrationModule implements MigrationModule<GhasSecurity
             },
             ctx.signal,
           );
+
+          if (
+            !(ctx.targetClient as { isMock?: boolean }).isMock &&
+            secPayload?.advanced_security?.status === 'enabled' &&
+            (secPayload?.secret_scanning?.status === 'enabled' ||
+              secPayload?.secret_scanning_push_protection?.status === 'enabled')
+          ) {
+            const afterFirstPatch = await fetchRepositorySecuritySettings(
+              ctx,
+              targetOrg,
+              targetRepo,
+              ctx.targetClient,
+            );
+            const followUpPayload: Record<string, { status: string }> = {};
+            if (
+              secPayload.secret_scanning?.status === 'enabled' &&
+              afterFirstPatch.secret_scanning?.status !== 'enabled'
+            ) {
+              followUpPayload.secret_scanning = { status: 'enabled' };
+            }
+            if (
+              secPayload.secret_scanning_push_protection?.status ===
+                'enabled' &&
+              afterFirstPatch.secret_scanning_push_protection?.status !==
+                'enabled'
+            ) {
+              followUpPayload.secret_scanning_push_protection = {
+                status: 'enabled',
+              };
+            }
+            if (Object.keys(followUpPayload).length > 0) {
+              await ctx.targetWriteClient!.mutate(
+                {
+                  id: 'rest.repos.updateSecuritySettings',
+                  method: 'PATCH',
+                  path: '/repos/{owner}/{repo}',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                  body: {
+                    security_and_analysis: followUpPayload,
+                  },
+                },
+                ctx.signal,
+              );
+            }
+          }
 
           if (wantsDependabotUpdates) {
             try {

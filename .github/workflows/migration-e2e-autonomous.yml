@@ -619,9 +619,13 @@ jobs:
         env:
           EXPECTED_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count || '0' }}
         run: |
-          mkdir -p ./scans
+          mkdir -p ./scans ./scopes
           if [ -f ./downloaded-slicer/scans/resolved-scope.json ]; then
             cp ./downloaded-slicer/scans/resolved-scope.json ./scans/resolved-scope.json
+            SCOPE_NAME=$(jq -r '.name // ""' ./scans/resolved-scope.json 2>/dev/null || true)
+            if [ -n "$SCOPE_NAME" ] && [ "$SCOPE_NAME" != "null" ]; then
+              cp ./scans/resolved-scope.json "./scopes/${SCOPE_NAME}.json"
+            fi
           fi
           node --input-type=module -e '
             import fs from "node:fs";

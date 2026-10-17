@@ -921,6 +921,11 @@ function shouldIncludeGranularItemInPostCare(params: {
     return true;
   }
 
+  // Always include deploy keys (SSH public keys require rotation or detachment from source repo due to GitHub global key uniqueness)
+  if (modLower === 'deploy-keys' || typeLower.includes('deploy-key')) {
+    return true;
+  }
+
   return false;
 }
 
