@@ -37,3 +37,8 @@
 
 **Learning:** React component re-renders that filter over large collections of graph edges repeatedly (e.g. `graph.edges.filter(e => e.toNodeId === id)`) lead to O(E) complexity and noticeable lag on large datasets.
 **Action:** Always precompute lookups or use `buildDependencyIndex` to transform the structure and cache relationships as Maps for O(1) rendering lookups.
+
+## 2024-05-19 - O(N*M) Multiple Array Passes for Metrics Cards
+
+**Learning:** When generating multiple metric cards in a React component (like `ProjectsTab.tsx`), using inline `.filter(...).length` expressions for each metric card causes multiple redundant O(N) passes over the same dataset during every render cycle.
+**Action:** Replace multiple inline `.filter(...).length` expressions with a single `useMemo` block that computes all required statistics in a single O(N) pass using a `for...of` loop.

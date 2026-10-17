@@ -30,6 +30,30 @@ export function ProjectsTab({ bundle, selectedOrgIds }: Props) {
       e.kind === 'project' &&
       (!selectedOrgIds.length || selectedOrgIds.includes(e.organizationId)),
   );
+
+  // ⚡ Bolt: Optimize metric aggregation by tracking values in a single pass O(N)
+  // instead of redundant sequential array operations like `.filter().length` in render.
+  const stats = useMemo(() => {
+    let open = 0;
+    let unlinked = 0;
+    let staleOrUnknown = 0;
+
+    const scanCompletedAt = Date.parse(bundle.scan.completedAt);
+
+    for (const e of rows) {
+      if (e.status === 'open') open++;
+      if (!e.linkedRepositoryIds.length) unlinked++;
+      if (
+        !e.updatedAt ||
+        scanCompletedAt - Date.parse(e.updatedAt) > 365 * 86400000
+      ) {
+        staleOrUnknown++;
+      }
+    }
+
+    return { open, unlinked, staleOrUnknown };
+  }, [rows, bundle.scan.completedAt]);
+
   const columns: readonly VirtualizedColumn<Project>[] = [
     {
       header: 'Project',
@@ -71,25 +95,11 @@ export function ProjectsTab({ bundle, selectedOrgIds }: Props) {
       />
       <div className="grid gap-3 sm:grid-cols-4">
         <MetricCard label="Projects" value={rows.length} />
-        <MetricCard
-          label="Open"
-          value={rows.filter((e) => e.status === 'open').length}
-        />
-        <MetricCard
-          label="Unlinked"
-          value={rows.filter((e) => !e.linkedRepositoryIds.length).length}
-          tone="warning"
-        />
+        <MetricCard label="Open" value={stats.open} />
+        <MetricCard label="Unlinked" value={stats.unlinked} tone="warning" />
         <MetricCard
           label="Stale or unknown"
-          value={
-            rows.filter(
-              (e) =>
-                !e.updatedAt ||
-                Date.parse(bundle.scan.completedAt) - Date.parse(e.updatedAt) >
-                  365 * 86400000,
-            ).length
-          }
+          value={stats.staleOrUnknown}
           tone="warning"
         />
       </div>
