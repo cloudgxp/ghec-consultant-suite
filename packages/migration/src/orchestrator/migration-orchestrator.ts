@@ -322,8 +322,14 @@ export class MigrationOrchestrator {
         }
         executionResults.push(validated.data);
 
-        if (modulePlan.moduleId === 'gei-repo') {
-          if (validated.data.status === 'failed') {
+        if (
+          modulePlan.moduleId === 'gei-repo' ||
+          modulePlan.moduleId === 'repo-settings'
+        ) {
+          if (
+            modulePlan.moduleId === 'gei-repo' &&
+            validated.data.status === 'failed'
+          ) {
             failedRepoTargets.add(modulePlan.targetIdentifier);
           } else if (
             validated.data.results.some((r) => r.status === 'succeeded')

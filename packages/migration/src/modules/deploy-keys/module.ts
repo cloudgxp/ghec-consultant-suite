@@ -289,16 +289,19 @@ export class DeployKeysMigrationModule implements MigrationModule<DeployKeysMigr
               completedAt: new Date().toISOString(),
             });
           } else if (res.status === 422) {
-            // Key already in use or unprocessable
+            // Key already in use globally on GitHub or deploy keys disabled by policy
+            const skipReason =
+              'Skipped deploy key creation (HTTP 422): SSH public key is already in use on GitHub or deploy keys are disabled by repository/organization policy. Rotate the SSH key or detach it from the source repository during post-care.';
+            ctx.logger.warn(
+              `[deploy-keys] ${skipReason} (${ctx.scope.targetOrg}/${targetRepo}: "${op.resourceName}")`,
+            );
             results.push({
               operationId: op.id,
-              status: 'failed',
+              status: 'skipped',
               httpStatus: 422,
-              error:
-                'Deploy key already in use or rejected by GitHub policy (HTTP 422)',
+              reason: skipReason,
               completedAt: new Date().toISOString(),
             });
-            if (!ctx.continueOnError) break;
           } else {
             results.push({
               operationId: op.id,
@@ -311,10 +314,30 @@ export class DeployKeysMigrationModule implements MigrationModule<DeployKeysMigr
           }
         }
       } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (
+          /HTTP 422/i.test(errMsg) ||
+          /key is already in use/i.test(errMsg) ||
+          /Deploy keys are disabled/i.test(errMsg)
+        ) {
+          const skipReason =
+            'Skipped deploy key creation (HTTP 422): SSH public key is already in use on GitHub or deploy keys are disabled by repository/organization policy. Rotate the SSH key or detach it from the source repository during post-care.';
+          ctx.logger.warn(
+            `[deploy-keys] ${skipReason} (${ctx.scope.targetOrg}/${targetRepo}: "${op.resourceName}") — ${errMsg}`,
+          );
+          results.push({
+            operationId: op.id,
+            status: 'skipped',
+            httpStatus: 422,
+            reason: skipReason,
+            completedAt: new Date().toISOString(),
+          });
+          continue;
+        }
         results.push({
           operationId: op.id,
           status: 'failed',
-          error: (err as Error).message || 'Unknown network error',
+          error: errMsg || 'Unknown network error',
           completedAt: new Date().toISOString(),
         });
         if (!ctx.continueOnError) break;
@@ -352,6 +375,7 @@ export class DeployKeysMigrationModule implements MigrationModule<DeployKeysMigr
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
     const targetRepo = ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? '';
+    const sourceRepo = ctx.scope.sourceRepo ?? targetRepo;
     const discrepancies: VerificationDiscrepancy[] = [];
 
     const targetKeys: MigrationDeployKey[] = [];
@@ -404,6 +428,54 @@ export class DeployKeysMigrationModule implements MigrationModule<DeployKeysMigr
       }
     }
 
+    let sourceKeysCache: MigrationDeployKey[] | undefined;
+    const getSourceKeys = async (): Promise<MigrationDeployKey[]> => {
+      if (sourceKeysCache !== undefined) {
+        return sourceKeysCache;
+      }
+      sourceKeysCache = [];
+      try {
+        const fetchResult = await ctx.sourceClient.fetchAll<RawApiDeployKey>(
+          {
+            id: 'rest.repos.listDeployKeys',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/keys',
+            pathParams: { owner: ctx.scope.sourceOrg, repo: sourceRepo },
+            queryParams: { per_page: 100 },
+          },
+          ctx.signal,
+        );
+        const items = Array.isArray(fetchResult?.items)
+          ? fetchResult.items
+          : [];
+        for (const item of items) {
+          sourceKeysCache.push(mapApiDeployKey(item));
+        }
+      } catch {
+        try {
+          const res = await ctx.sourceClient.readSingle<RawApiDeployKey[]>(
+            {
+              id: 'rest.repos.listDeployKeys',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}/keys',
+              pathParams: { owner: ctx.scope.sourceOrg, repo: sourceRepo },
+            },
+            ctx.signal,
+          );
+          if (res.status === 200 && Array.isArray(res.data)) {
+            for (const item of res.data) {
+              sourceKeysCache.push(mapApiDeployKey(item));
+            }
+          }
+        } catch {
+          // Best-effort source check
+        }
+      }
+      return sourceKeysCache;
+    };
+
     // Verify operations
     for (const op of plan.operations) {
       if (op.resourceType === 'deploy-key') {
@@ -417,6 +489,16 @@ export class DeployKeysMigrationModule implements MigrationModule<DeployKeysMigr
         );
 
         if (!matchingTarget) {
+          const activeSourceKeys = await getSourceKeys();
+          const stillBoundToSource = activeSourceKeys.some((sk) =>
+            areSshKeysEqual(sk.key, expectedKey),
+          );
+          if (stillBoundToSource) {
+            ctx.logger.warn(
+              `[deploy-keys] Deploy key "${op.resourceName}" remains attached to active source repository ${ctx.scope.sourceOrg}/${sourceRepo}; skipping discrepancy because GitHub enforces global SSH deploy-key uniqueness until rotated or detached during post-care.`,
+            );
+            continue;
+          }
           discrepancies.push({
             resourceName: op.resourceName,
             expected: 'present',

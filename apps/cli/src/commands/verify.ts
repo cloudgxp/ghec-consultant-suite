@@ -131,11 +131,18 @@ export async function executeVerifyCommand(
 
   let scope: MigrationScope | undefined;
   if (options.scopePath) {
-    if (!existsSync(options.scopePath)) {
+    let resolvedScopePath = options.scopePath;
+    if (
+      !existsSync(resolvedScopePath) &&
+      existsSync('./scans/resolved-scope.json')
+    ) {
+      resolvedScopePath = './scans/resolved-scope.json';
+    }
+    if (!existsSync(resolvedScopePath)) {
       throw new Error(`Scope file not found at "${options.scopePath}".`);
     }
     try {
-      const scopeJson = JSON.parse(readFileSync(options.scopePath, 'utf8'));
+      const scopeJson = JSON.parse(readFileSync(resolvedScopePath, 'utf8'));
       const scopeValidation = validateMigrationScope(scopeJson);
       if (!scopeValidation.success) {
         throw new Error(

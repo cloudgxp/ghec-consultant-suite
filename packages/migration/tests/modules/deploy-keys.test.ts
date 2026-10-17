@@ -328,3 +328,72 @@ test('DeployKeysMigrationModule verify detects missing keys and read-only mismat
     /missing on target repository/,
   );
 });
+
+test('DeployKeysMigrationModule apply treats HTTP 422 key-already-in-use as skipped post-care item and verify ignores source-bound keys', async () => {
+  const mod = new DeployKeysMigrationModule();
+  const throwing422Client: TargetWriteClient = {
+    async mutate() {
+      throw new Error(
+        'GitHub mutation rest.repos.createDeployKey failed with HTTP 422: {"message":"Validation Failed","errors":[{"resource":"PublicKey","code":"custom","field":"key","message":"key is already in use"}]}',
+      );
+    },
+  };
+
+  const sourceKeys: RawApiDeployKey[] = [
+    {
+      id: 1,
+      title: 'Demogxp-test-deploy',
+      key: SAMPLE_KEY_1,
+      read_only: true,
+    },
+  ];
+
+  const ctx: MigrationContext = {
+    runId: 'run-422',
+    scope: {
+      level: 'repository',
+      sourceOrg: 'demogxp',
+      sourceRepo: 'demo',
+      targetOrg: 'demogxp-mig5',
+      targetRepo: 'demo',
+    },
+    sourceClient: new MockDeployKeyReadAdapter(sourceKeys),
+    targetClient: new MockDeployKeyReadAdapter([]),
+    targetWriteClient: throwing422Client,
+    signal: new AbortController().signal,
+    dryRun: false,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+
+  const plan = {
+    moduleId: 'deploy-keys',
+    scopeLevel: 'repository' as const,
+    targetIdentifier: 'demogxp-mig5/demo',
+    operations: [
+      {
+        id: 'deploy-key:demo:Demogxp-test-deploy',
+        resourceType: 'deploy-key',
+        resourceName: 'Demogxp-test-deploy',
+        operation: 'create' as const,
+        payload: {
+          title: 'Demogxp-test-deploy',
+          key: SAMPLE_KEY_1,
+          read_only: true,
+        },
+      },
+    ],
+    warnings: [],
+  };
+
+  const applyResult = await mod.apply(ctx, plan);
+  assert.equal(applyResult.status, 'skipped');
+  assert.equal(applyResult.results.length, 1);
+  assert.equal(applyResult.results[0]?.status, 'skipped');
+  assert.equal(applyResult.results[0]?.httpStatus, 422);
+  assert.match(applyResult.results[0]?.reason ?? '', /HTTP 422/);
+
+  const verifyResult = await mod.verify(ctx, plan);
+  assert.equal(verifyResult.verified, true);
+  assert.equal(verifyResult.discrepancies.length, 0);
+});
