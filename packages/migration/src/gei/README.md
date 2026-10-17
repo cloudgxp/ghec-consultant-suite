@@ -1,58 +1,76 @@
-# GEI process wrapper
+# Running GitHub Enterprise Importer (GEI) Commands
 
-This package wraps GitHub Enterprise Importer (`gh gei`) as a typed,
-testable process boundary. It never puts source or target PATs in command
-arguments: `GeiProcessExecutor` supplies them only as `GH_SOURCE_PAT` and
-`GH_PAT` environment variables, and sanitizes process output before it is
-returned or forwarded to a logger.
+By default, the GEI runner starts `gh gei` to copy your repository code, issues, and pull requests from the source organization to the target organization. It passes tokens through environment variables so your credentials never appear in command logs.
 
-## Prerequisites
+## Installing and checking GEI before you start
 
-Install the GitHub CLI and the GEI extension on the self-hosted runner:
+By default, the preflight check verifies that both the GitHub CLI (`gh`) and the `gh-gei` extension are installed on your machine.
 
-```shell
+To install the `gh-gei` extension before running a migration:
+
+```bash
 gh extension install github/gh-gei
 ```
 
-Call `checkGeiPreflight()` before starting a cutover. It reports independent
-diagnostics for the `gh` binary and the GEI extension, including the matching
-installation command when either is absent.
+To check if `gh` and `gh-gei` are ready from TypeScript:
 
-## Starting and monitoring a migration
+```typescript
+import { checkGeiPreflight } from '@ghec/migration';
 
-```ts
-const executor = new GeiProcessExecutor();
-const result = await executor.execute({
-  sourceOrg: 'source-org',
-  sourceRepo: 'application',
-  targetOrg: 'target-org',
-  targetRepo: 'application',
-  sourceToken: process.env.GHEC_SOURCE_TOKEN,
-  targetToken: process.env.GHEC_TARGET_TOKEN,
-  targetRepoVisibility: 'internal',
-});
+const status = await checkGeiPreflight();
+console.log(status.ready);
+```
 
-if (result.migrationId) {
-  await pollGeiMigrationStatus(result.migrationId, targetClient, signal, {
-    targetOrg: 'target-org',
-  });
+## Migrating a repository with GEI
+
+By default, the GEI wrapper copies a repository and polls GitHub until the import finishes. If a repository has more than 10 GiB of releases, it automatically adds `--skip-releases` so the import does not fail.
+
+To migrate a repository with default settings from the command line:
+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service"
+```
+
+To preview the GEI migration steps without making any changes on GitHub, add the `--dry-run` option:
+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --dry-run
+```
+
+To migrate repositories listed in a scope file:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service"],
+  "enabledModules": ["gei-repo"]
 }
 ```
 
-The executor adds `--skip-releases` when requested explicitly, when releases
-exceed 10 GiB, or when repository metadata exceeds 40 GiB. It supports source
-and target API endpoint flags for data-residency tenants, cancellation through
-`AbortSignal`, and a timeout. On cancellation, call `abortGeiMigration()` with
-the same API endpoint options.
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
 
-## Migration logs
+> [!WARNING]
+> GitHub deletes GEI migration logs 24 hours after a migration finishes. The tool downloads `<repo>-migration.log` right away so you can keep a permanent copy.
 
-Call `downloadMigrationLogs()` as soon as GEI completes. GitHub makes these
-logs available for only 24 hours. The function writes
-`<target-repo>-migration.log` below the supplied output directory and returns
-the warnings detected in it, including metadata-size and missing-comment
-messages.
+## Testing the GEI wrapper offline
 
-All child-process calls use argument arrays with no shell, and the injectable
-`GeiCommandRunner` seam makes command construction testable without a live GEI
-installation.
+By default, the GEI unit tests simulate command runs and log downloads without calling GitHub or requiring `gh-gei` to be installed.
+
+To run the GEI executor and log parser tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/gei-executor.test.ts packages/migration/tests/gei-logs.test.ts
+```

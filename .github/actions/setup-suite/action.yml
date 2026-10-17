@@ -27,18 +27,48 @@ inputs:
     description: 'Whether to verify and install the gh-gei GitHub CLI extension'
     required: false
     default: 'false'
+  release-url:
+    description: 'Optional URL to a prebuilt ghec-migration-kit-vX.Y.Z.tar.gz release archive to download instead of building from source'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
   steps:
+    - name: Detect Standalone Release Kit or Monorepo Mode
+      id: detect-mode
+      shell: bash
+      env:
+        INPUT_RELEASE_URL: ${{ inputs.release-url }}
+      run: |
+        if [ -n "$INPUT_RELEASE_URL" ]; then
+          echo "Downloading prebuilt GHEC Migration Release Kit from $INPUT_RELEASE_URL..."
+          TMP_KIT="$(mktemp -d)"
+          curl -fsSL "$INPUT_RELEASE_URL" -o "$TMP_KIT/kit.tar.gz"
+          tar -xzf "$TMP_KIT/kit.tar.gz" -C .
+          rm -rf "$TMP_KIT"
+        fi
+        if [ -f "./bin/ghec-consultant-cli.mjs" ] && [ ! -d "./packages/migration/src" ]; then
+          echo "is_standalone=true" >> "$GITHUB_OUTPUT"
+          echo "cache_mode=" >> "$GITHUB_OUTPUT"
+          echo "Detected standalone Customer Migration Release Kit (./bin/ghec-consultant-cli.mjs). Skipping npm ci and source build."
+        else
+          echo "is_standalone=false" >> "$GITHUB_OUTPUT"
+          if [ -f "package-lock.json" ]; then
+            echo "cache_mode=${{ inputs.cache }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "cache_mode=" >> "$GITHUB_OUTPUT"
+          fi
+        fi
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-        cache: ${{ inputs.cache }}
+        cache: ${{ steps.detect-mode.outputs.cache_mode }}
 
     - name: Install Monorepo Dependencies
-      if: ${{ inputs.install-dependencies == 'true' }}
+      if: ${{ inputs.install-dependencies == 'true' && steps.detect-mode.outputs.is_standalone != 'true' }}
       shell: bash
       run: |
         if [ ! -d "node_modules" ] || [ "${{ inputs.clean-install }}" = "true" ]; then
@@ -46,10 +76,24 @@ runs:
         fi
 
     - name: Build Monorepo Packages
-      if: ${{ inputs.build == 'true' }}
+      if: ${{ inputs.build == 'true' && steps.detect-mode.outputs.is_standalone != 'true' }}
       shell: bash
       run: |
         npm run build
+
+    - name: Register CLI Binary on Runner PATH
+      shell: bash
+      run: |
+        if [ -d "$PWD/bin" ]; then
+          chmod +x "$PWD/bin/ghec-consultant-cli.mjs" 2>/dev/null || true
+          ln -sf "$PWD/bin/ghec-consultant-cli.mjs" "$PWD/bin/ghec-consultant-cli" 2>/dev/null || true
+          echo "$PWD/bin" >> "$GITHUB_PATH"
+        fi
+        if [ -d "$PWD/apps/cli/bin" ]; then
+          chmod +x "$PWD/apps/cli/bin/ghec-consultant-cli.mjs" 2>/dev/null || true
+          ln -sf "$PWD/apps/cli/bin/ghec-consultant-cli.mjs" "$PWD/apps/cli/bin/ghec-consultant-cli" 2>/dev/null || true
+          echo "$PWD/apps/cli/bin" >> "$GITHUB_PATH"
+        fi
 
     - name: Ensure GitHub Enterprise Importer (GEI) CLI Extension
       if: ${{ inputs.install-gei == 'true' }}

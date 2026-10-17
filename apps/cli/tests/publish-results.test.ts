@@ -406,6 +406,16 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
           '[View Log](https://github.com/demogxp-mig4/migration-audit-results/blob/main/success/release-heavy-benchmark.md)',
         ),
       );
+      assert.ok(
+        stepSummaryMd.includes(
+          'https://github.com/demogxp-mig4/migration-audit-results/blob/main/POST-CARE-CHECKLIST.md',
+        ),
+      );
+      assert.ok(
+        stepSummaryMd.includes(
+          'https://github.com/demogxp-mig4/migration-audit-results/blob/main/exports/post-care-items.csv',
+        ),
+      );
       assert.ok(!stepSummaryMd.includes('](success/'));
     } finally {
       if (prevStepSummary === undefined) {
@@ -413,6 +423,99 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
       } else {
         process.env['GITHUB_STEP_SUMMARY'] = prevStepSummary;
       }
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('supports standalone --discovery-report, --evidence-dir, and --force-push with full post-care CSV and evidence parity', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'pub-discovery-parity-'));
+
+    try {
+      const discoveryPath = join(tmpDir, 'ghec-discovery-acme.json');
+      writeFileSync(
+        discoveryPath,
+        JSON.stringify(
+          {
+            schemaVersion: '1.0.0',
+            generatedAt: '2026-10-16T12:00:00Z',
+            entities: [
+              {
+                kind: 'repository',
+                id: 'repo:core-api',
+                name: 'core-api',
+              },
+              {
+                kind: 'configuration-metadata',
+                id: 'secret:org:DEPLOY_TOKEN',
+                name: 'DEPLOY_TOKEN',
+                configurationKind: 'secret',
+                level: 'organization',
+                domain: 'actions',
+                accessMode: 'write-only',
+              },
+            ],
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+
+      const evidenceDir = join(tmpDir, 'scans');
+      const preflightPath = join(evidenceDir, 'preflight-report.json');
+      const outDir = join(tmpDir, 'results-repo');
+      writeFileSync(
+        discoveryPath,
+        readFileSync(discoveryPath, 'utf-8'),
+        'utf-8',
+      );
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(evidenceDir, { recursive: true });
+      writeFileSync(preflightPath, '{"preflight":"passed"}\n', 'utf-8');
+
+      const parsed = parsePublishResultsOptions([
+        '--discovery-report',
+        discoveryPath,
+        '--source-org',
+        'acme-src',
+        '--target-org',
+        'acme-emu',
+        '--evidence-dir',
+        evidenceDir,
+        '--output-dir',
+        outDir,
+        '--dry-run',
+        '--force-push',
+        '--skip-push',
+      ]);
+
+      assert.equal(parsed.discoveryReportPath, discoveryPath);
+      assert.equal(parsed.evidenceDir, evidenceDir);
+      assert.equal(parsed.forcePush, true);
+
+      const exitCode = await runCli([
+        'publish-results',
+        '--discovery-report',
+        discoveryPath,
+        '--source-org',
+        'acme-src',
+        '--target-org',
+        'acme-emu',
+        '--evidence-dir',
+        evidenceDir,
+        '--output-dir',
+        outDir,
+        '--dry-run',
+        '--skip-push',
+      ]);
+
+      assert.equal(exitCode, 0);
+      assert.ok(existsSync(join(outDir, 'POST-CARE-CHECKLIST.md')));
+      assert.ok(existsSync(join(outDir, 'exports/post-care-items.csv')));
+      assert.ok(existsSync(join(outDir, 'exports/secrets-to-populate.csv')));
+      assert.ok(existsSync(join(outDir, 'evidence/discovery-bundle.json')));
+      assert.ok(existsSync(join(outDir, 'evidence/preflight-report.json')));
+    } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });

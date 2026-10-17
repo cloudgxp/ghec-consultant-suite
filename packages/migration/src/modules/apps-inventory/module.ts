@@ -17,7 +17,14 @@ import type {
   AppsInventoryData,
   RawAppInstallationResponse,
   RawAppInstallationsListResponse,
+  RawGitHubAppDetailsResponse,
 } from './types.js';
+import {
+  buildGitHubAppManifest,
+  buildGitHubAppUrlParametersLink,
+  buildRecreatedAppSlug,
+  classifyGitHubApp,
+} from './manifest.js';
 
 function parseInstallations(
   data: RawAppInstallationsListResponse | unknown,
@@ -61,7 +68,7 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
 
   async discover(ctx: MigrationContext): Promise<AppsInventoryData> {
     const sourceOrg = ctx.scope.sourceOrg;
-    let installations: AppInstallationState[];
+    let rawInstallations: AppInstallationState[];
 
     try {
       const res =
@@ -76,13 +83,60 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
           ctx.signal,
         );
 
-      installations = parseInstallations(res.data);
+      rawInstallations = parseInstallations(res.data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(
         `Failed to discover GitHub Apps inventory for ${sourceOrg}: ${message}`,
         { cause: err },
       );
+    }
+
+    const installations: AppInstallationState[] = [];
+    for (const inst of rawInstallations) {
+      let status: number | null;
+      let details: RawGitHubAppDetailsResponse | null;
+
+      try {
+        const appRes =
+          await ctx.sourceClient.readSingle<RawGitHubAppDetailsResponse>(
+            {
+              id: 'rest.apps.getBySlug',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/apps/{app_slug}',
+              pathParams: { app_slug: inst.app_slug },
+            },
+            ctx.signal,
+          );
+        status = appRes.status;
+        details = appRes.data;
+      } catch {
+        status = 404;
+        details = null;
+      }
+
+      const classified = classifyGitHubApp({
+        sourceOrg,
+        status,
+        details,
+      });
+
+      installations.push({
+        ...inst,
+        ...(classified.appName ? { app_name: classified.appName } : {}),
+        ...(classified.description
+          ? { description: classified.description }
+          : {}),
+        ...(classified.externalUrl
+          ? { external_url: classified.externalUrl }
+          : {}),
+        ...(classified.ownerLogin
+          ? { owner_login: classified.ownerLogin }
+          : {}),
+        classification: classified.classification,
+        recommended_strategy: classified.recommendedStrategy,
+      });
     }
 
     return {
@@ -126,7 +180,9 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
 
     for (const app of source.installations) {
       const slugKey = app.app_slug.toLowerCase();
-      const existing = targetMap.get(slugKey);
+      const recreatedSlug = buildRecreatedAppSlug(app.app_slug, targetOrg);
+      const existing =
+        targetMap.get(slugKey) ?? targetMap.get(recreatedSlug.toLowerCase());
 
       if (existing) {
         const { matches, diffs } = comparePermissions(
@@ -161,6 +217,7 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
             >,
             payload: {
               app_slug: app.app_slug,
+              recreated_app_slug: recreatedSlug,
               diffs,
               expectedPermissions: app.permissions,
               actualPermissions: existing.permissions,
@@ -169,7 +226,17 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
           });
         }
       } else {
-        const advisory = `GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "${app.app_slug}" (ID: ${app.app_id}) on ${targetOrg}.`;
+        const classification = app.classification ?? 'third_party';
+        const recommendedStrategy =
+          app.recommended_strategy ?? 'install_existing';
+        const destinationInstallUrl = `https://github.com/apps/${encodeURIComponent(app.app_slug)}/installations/new`;
+        const recreateAppUrl = buildGitHubAppUrlParametersLink(app, targetOrg);
+        const manifest = buildGitHubAppManifest(app, targetOrg);
+
+        const advisory =
+          classification === 'custom_private'
+            ? `GitHub Apps cannot be installed programmatically via API. "${app.app_slug}" (ID: ${app.app_id}) is a private custom app and must be recreated on ${targetOrg} as "${recreatedSlug}" via URL parameters or GitHub App Manifest. Recreate URL: ${recreateAppUrl} | Install URL: ${destinationInstallUrl}`
+            : `GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "${app.app_slug}" (ID: ${app.app_id}) on ${targetOrg}, or recreate it as "${recreatedSlug}". Install URL: ${destinationInstallUrl} | Recreate URL: ${recreateAppUrl}`;
         warnings.push(
           `Manual reinstallation advisory: GitHub App "${app.app_slug}" must be installed on ${targetOrg} manually.`,
         );
@@ -183,6 +250,12 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
           payload: {
             app_id: app.app_id,
             app_slug: app.app_slug,
+            recreated_app_slug: recreatedSlug,
+            classification,
+            recommended_strategy: recommendedStrategy,
+            destination_install_url: destinationInstallUrl,
+            recreate_app_url: recreateAppUrl,
+            manifest,
             html_url: app.html_url,
             permissions: app.permissions,
             events: app.events,
@@ -280,7 +353,16 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
     for (const op of plan.operations) {
       if (op.operation === 'warn' || op.operation === 'noop') {
         const appSlug = op.resourceName;
-        const act = targetMap.get(appSlug.toLowerCase());
+        const payloadRecreatedSlug = (
+          op.payload as { recreated_app_slug?: string } | undefined
+        )?.recreated_app_slug;
+        const fallbackRecreatedSlug = buildRecreatedAppSlug(appSlug, targetOrg);
+        const act =
+          targetMap.get(appSlug.toLowerCase()) ??
+          (payloadRecreatedSlug
+            ? targetMap.get(payloadRecreatedSlug.toLowerCase())
+            : undefined) ??
+          targetMap.get(fallbackRecreatedSlug.toLowerCase());
 
         if (!act) {
           const isManualInstallAdvisory =

@@ -2,6 +2,7 @@ export * from './core/types.js';
 export * from './core/module.js';
 export * from './core/dag.js';
 export * from './core/registry.js';
+export * from './core/org-item-filter.js';
 export * from './core/read-error-classifier.js';
 export * from './checkpoint/index.js';
 export * from './gei/index.js';

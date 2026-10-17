@@ -1,18 +1,59 @@
-# Repository Custom Properties Migration Module
+# Migrating Repository Custom Property Values (`repo-custom-properties`)
 
-`RepoCustomPropertiesMigrationModule` (`id = 'repo-custom-properties'`) is responsible for discovering, planning, and setting custom property values on individual repositories.
+By default, the `repo-custom-properties` module copies the custom property values assigned to a source repository (such as `service_tier: production` or `owner: data-engineering`) and applies them to the migrated repository on your target organization.
 
-## Overview
+## Migrating custom property values on a repository
 
-GitHub custom properties allow enterprises and organizations to assign structured metadata values to repositories (e.g. `service_tier: production`, `owner: data-engineering`).
-This module operates at `scopeLevel: 'repository'`:
+By default, this module reads property values from `GET /repos/{owner}/{repo}/properties/values` and applies missing or updated values on the target repository using `PATCH /repos/{owner}/{repo}/properties/values`.
 
-1. **`discover(ctx)`**: Fetches custom property values assigned to the source repository via `GET /repos/{owner}/{repo}/properties/values`.
-2. **`plan(ctx, sourceData)`**: Queries target repository property values via `GET /repos/{owner}/{repo}/properties/values`, identifying missing values (`create`), changed values (`update`), or identical values (`noop`).
-3. **`apply(ctx, plan)`**: Invokes `PATCH /repos/{owner}/{repo}/properties/values` to assign property values on the target repository.
-4. **`verify(ctx, plan)`**: Re-queries target repository values and confirms all expected custom properties match the plan.
+To copy custom property values for a single repository:
 
-## Dependencies
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-custom-properties"
+```
 
-- Depends on `gei-repo` (repository must exist on target before setting property values).
-- Requires organization property definitions to exist (handled at the org level by `org-custom-properties`).
+To preview which custom property values will be set on the target repository without making changes, add the `--dry-run` option:
+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-custom-properties" \
+  --dry-run
+```
+
+To migrate custom property values across multiple repositories using a scope file:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["org-custom-properties", "repo-custom-properties"]
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> Make sure the custom property definitions already exist on your target organization (by running `org-custom-properties` first) before setting values on individual repositories.
+
+## Testing this module offline
+
+By default, the unit tests verify discovering, planning, applying, and checking repository custom property values offline.
+
+To run the custom properties unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/custom-properties.test.ts
+```

@@ -1,10 +1,13 @@
 import { parseArgs } from 'node:util';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import {
+  type DiscoveryBundle,
   MIGRATION_SCHEMA_VERSION,
   type MigrationPlan,
   type MigrationScope,
   type VerificationReport,
+  validateBundle,
   validateMigrationPlan,
   validateMigrationScope,
   validateVerificationReport,
@@ -32,6 +35,8 @@ export interface PublishResultsCommandOptions {
   readonly executionReportPath?: string | undefined;
   readonly verificationReportPath?: string | undefined;
   readonly remediationPlanPath?: string | undefined;
+  readonly discoveryReportPath?: string | undefined;
+  readonly evidenceDir?: string | undefined;
   readonly scopePath?: string | undefined;
   readonly planPath?: string | undefined;
   readonly targetOrg?: string | undefined;
@@ -39,6 +44,7 @@ export interface PublishResultsCommandOptions {
   readonly repoName: string;
   readonly outputDir: string;
   readonly dryRun: boolean;
+  readonly forcePush?: boolean | undefined;
   readonly skipPush: boolean;
   readonly appendStepSummary: boolean;
   readonly branch: string;
@@ -70,6 +76,9 @@ export function parsePublishResultsOptions(
       'verification-report': { type: 'string' },
       report: { type: 'string' },
       'remediation-plan': { type: 'string' },
+      'discovery-report': { type: 'string' },
+      'discovery-bundle': { type: 'string' },
+      'evidence-dir': { type: 'string' },
       scope: { type: 'string' },
       plan: { type: 'string' },
       'target-org': { type: 'string' },
@@ -77,6 +86,7 @@ export function parsePublishResultsOptions(
       'repo-name': { type: 'string', default: 'migration-audit-results' },
       'output-dir': { type: 'string', default: './scans/results-repo' },
       'dry-run': { type: 'boolean', default: false },
+      'force-push': { type: 'boolean', default: false },
       'skip-push': { type: 'boolean', default: false },
       'append-step-summary': { type: 'boolean', default: false },
       branch: { type: 'string', default: 'main' },
@@ -94,6 +104,9 @@ export function parsePublishResultsOptions(
       values['execution-report'] ?? values['execution-reports'],
     verificationReportPath: values['verification-report'] ?? values.report,
     remediationPlanPath: values['remediation-plan'],
+    discoveryReportPath:
+      values['discovery-report'] ?? values['discovery-bundle'],
+    evidenceDir: values['evidence-dir'],
     scopePath: values.scope,
     planPath: values.plan,
     targetOrg: values['target-org'],
@@ -101,6 +114,7 @@ export function parsePublishResultsOptions(
     repoName: values['repo-name'] || 'migration-audit-results',
     outputDir: values['output-dir'] || './scans/results-repo',
     dryRun: values['dry-run'] ?? false,
+    forcePush: values['force-push'] ?? false,
     skipPush: values['skip-push'] ?? false,
     appendStepSummary: values['append-step-summary'] ?? false,
     branch: values.branch || 'main',
@@ -111,6 +125,50 @@ export function parsePublishResultsOptions(
     targetToken: values['target-token'],
     verbose: values.verbose ?? false,
   };
+}
+
+function collectEvidenceDirectoryFiles(
+  evidenceDir: string,
+  outputDir: string,
+): Record<string, string> {
+  const collected: Record<string, string> = {};
+  if (!existsSync(evidenceDir)) {
+    return collected;
+  }
+  const absEvidenceDir = resolve(evidenceDir);
+  const absOutputDir = resolve(outputDir);
+  const allowedExts = new Set(['.json', '.md', '.sh', '.log', '.csv', '.txt']);
+
+  const walk = (currentDir: string, depth: number): void => {
+    if (depth > 2) return;
+    const entries = readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(currentDir, entry.name);
+      if (
+        fullPath === absOutputDir ||
+        fullPath.startsWith(`${absOutputDir}/`) ||
+        entry.name === 'results-repo'
+      ) {
+        continue;
+      }
+      if (entry.isDirectory()) {
+        walk(fullPath, depth + 1);
+      } else if (entry.isFile()) {
+        const dotIdx = entry.name.lastIndexOf('.');
+        const ext = dotIdx !== -1 ? entry.name.slice(dotIdx).toLowerCase() : '';
+        if (allowedExts.has(ext)) {
+          const relPath = relative(absEvidenceDir, fullPath).replace(
+            /\\/g,
+            '/',
+          );
+          collected[relPath] = readFileSync(fullPath, 'utf-8');
+        }
+      }
+    }
+  };
+
+  walk(absEvidenceDir, 0);
+  return collected;
 }
 
 export async function executePublishResultsCommand(
@@ -142,17 +200,49 @@ export async function executePublishResultsCommand(
     plan = validated.data;
   }
 
+  // 1c. Load Discovery Report / Bundle if provided
+  let discoveryBundle: DiscoveryBundle | undefined;
+  if (options.discoveryReportPath && existsSync(options.discoveryReportPath)) {
+    const raw = readFileSync(options.discoveryReportPath, 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const candidate =
+      parsed &&
+      typeof parsed === 'object' &&
+      parsed.discoveryBundle &&
+      typeof parsed.discoveryBundle === 'object'
+        ? parsed.discoveryBundle
+        : parsed;
+    const validated = validateBundle(candidate);
+    if (validated.success) {
+      discoveryBundle = validated.data;
+    } else if (
+      candidate &&
+      typeof candidate === 'object' &&
+      Array.isArray((candidate as { entities?: unknown }).entities)
+    ) {
+      discoveryBundle = candidate as unknown as DiscoveryBundle;
+    }
+  }
+
+  const discoveryOrg =
+    discoveryBundle?.organizations?.[0]?.login ??
+    (discoveryBundle?.scope?.kind === 'organization'
+      ? discoveryBundle.scope.organizationId
+      : undefined);
+
   // 2. Resolve source and target org
   const sourceOrg =
     options.sourceOrg ??
     scope?.organizations[0]?.source ??
     scope?.repositories[0]?.sourceOrg ??
+    discoveryOrg ??
     'source-org';
 
   const targetOrg =
     options.targetOrg ??
     scope?.organizations[0]?.target ??
-    scope?.repositories[0]?.targetOrg;
+    scope?.repositories[0]?.targetOrg ??
+    discoveryOrg;
 
   if (!targetOrg) {
     throw new Error(
@@ -221,12 +311,19 @@ export async function executePublishResultsCommand(
     remediationPlan = JSON.parse(raw);
   }
 
+  // 5b. Collect supplementary evidence files if --evidence-dir was provided
+  const evidenceFiles = options.evidenceDir
+    ? collectEvidenceDirectoryFiles(options.evidenceDir, options.outputDir)
+    : undefined;
+
   // 6. Generate results manifest & files
   const results = generateMigrationResults({
     sourceOrg,
     targetOrg,
     targetResultsRepo: options.repoName,
     executionMode: options.dryRun ? 'dry-run' : 'live',
+    discoveryBundle,
+    evidenceFiles,
     executionReport,
     verificationReport,
     remediationPlan,
@@ -266,7 +363,7 @@ export async function executePublishResultsCommand(
       repoName: options.repoName,
       targetClient,
       targetWriteClient,
-      dryRun: options.dryRun,
+      dryRun: options.forcePush ? false : options.dryRun,
       branch: options.branch,
       signal,
     });
@@ -278,6 +375,12 @@ export async function executePublishResultsCommand(
   if (options.appendStepSummary) {
     const blobBaseUrl = `${repoUrl}/blob/${options.branch}`;
     const stepSummaryReadme = (results.files['README.md'] ?? '')
+      .replaceAll(
+        '](POST-CARE-CHECKLIST.md)',
+        `](${blobBaseUrl}/POST-CARE-CHECKLIST.md)`,
+      )
+      .replaceAll('](exports/', `](${blobBaseUrl}/exports/`)
+      .replaceAll('](evidence/', `](${blobBaseUrl}/evidence/`)
       .replaceAll('](organization/', `](${blobBaseUrl}/organization/`)
       .replaceAll('](success/', `](${blobBaseUrl}/success/`)
       .replaceAll('](failure/', `](${blobBaseUrl}/failure/`)
@@ -299,6 +402,9 @@ export async function executePublishResultsCommand(
   console.log(
     `   - Success Rate:     ${results.manifest.summary.successRatePercent}%`,
   );
+  if (results.postCare) {
+    console.log(`   - Post-Care Items:  ${results.postCare.items.length}`);
+  }
 
   if (publishResult) {
     console.log(`\n🚀 Results Repository:`);

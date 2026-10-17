@@ -12,6 +12,7 @@ import {
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
+import { buildOrganizationScopeTarget } from '../core/org-item-filter.js';
 import {
   VERIFY_READ_ERROR_PREFIX,
   formatSanitizedReadError,
@@ -22,6 +23,7 @@ import type {
   StructuredLogger,
 } from '../core/types.js';
 import {
+  GLOBAL_SINGLETON_ORGANIZATION_MODULES,
   isAutoModuleSelection,
   parseModuleSelectionFlags,
   resolveAutoOrganizationModules,
@@ -99,6 +101,7 @@ export class MigrationPlanner {
     }
 
     const modulePlans: ModulePlan[] = [];
+    const seenOperationIds = new Set<string>();
     const summary = {
       create: 0,
       update: 0,
@@ -114,25 +117,22 @@ export class MigrationPlanner {
 
     // 1. Process Organization-level Scopes
     for (const orgMapping of this.scope.organizations) {
-      const effectiveTargetType =
-        orgMapping.targetType ??
-        this.scope.targetType ??
-        (this.scope.identityMapping?.strategy === 'pass-through'
-          ? 'ghec'
-          : 'emu');
-      const orgScope: MigrationScopeTarget = {
-        level: 'organization',
-        sourceOrg: orgMapping.source,
-        targetOrg: orgMapping.target,
-        targetType: effectiveTargetType,
-        identityMapping: this.scope.identityMapping,
-      };
+      const orgScope = buildOrganizationScopeTarget(this.scope, orgMapping);
+      if (orgScope.orgItemsMode === 'none') {
+        continue;
+      }
 
       const orgParsed = parseModuleSelectionFlags(
         orgMapping.modules,
         cliParsed.excludeModules,
       );
-      const effectiveExcludes = orgParsed.excludeModules;
+      const effectiveExcludesSet = new Set(orgParsed.excludeModules);
+      if (orgScope.orgItemsMode === 'associated-only') {
+        for (const singletonId of GLOBAL_SINGLETON_ORGANIZATION_MODULES) {
+          effectiveExcludesSet.add(singletonId);
+        }
+      }
+      const effectiveExcludes = Array.from(effectiveExcludesSet);
       const registeredOrgIds = this.registry
         .getAll()
         .filter((m) => m.scopeLevel === 'organization')
@@ -142,7 +142,13 @@ export class MigrationPlanner {
       if (orgMapping.modules !== undefined && orgMapping.modules.length === 0) {
         selectedModules =
           cliParsed.modules && !cliParsed.isAuto ? cliParsed.modules : [];
-      } else if (cliParsed.isAuto || orgParsed.isAuto) {
+      } else if (cliParsed.modules && !cliParsed.isAuto) {
+        selectedModules = cliParsed.modules;
+      } else if (
+        cliParsed.isAuto ||
+        orgParsed.isAuto ||
+        orgScope.orgItemsMode === 'associated-only'
+      ) {
         const baseOrgIds =
           orgParsed.modules && !isAutoModuleSelection(orgParsed.modules)
             ? orgParsed.modules.filter((id) => this.registry.has(id))
@@ -151,6 +157,7 @@ export class MigrationPlanner {
           orgMapping,
           baseOrgIds,
           effectiveExcludes,
+          this.scope.orgItemsMode,
         );
         selectedModules = this.verificationMode
           ? resolved.verifyModules
@@ -160,9 +167,6 @@ export class MigrationPlanner {
           orgParsed.modules ??
           orgMapping.modules ??
           this.registry.getAll().map((m) => m.id);
-        if (cliParsed.modules && cliParsed.modules.length > 0) {
-          selectedModules = cliParsed.modules;
-        }
       }
       const executionModules = this.registry
         .resolveExecutionPlan(selectedModules, {
@@ -190,9 +194,21 @@ export class MigrationPlanner {
           const discovered = await module.discover(ctx, this.cachedBundle);
           const plan = await module.plan(ctx, discovered);
 
-          // Ensure unique targetIdentifier is present
+          const disambiguatedOps = plan.operations.map((op) => {
+            const nextId = seenOperationIds.has(op.id)
+              ? `${orgMapping.source}:${op.id}`
+              : op.id;
+            seenOperationIds.add(nextId);
+            return nextId === op.id ? op : { ...op, id: nextId };
+          });
+
+          // Ensure unique targetIdentifier (and sourceIdentifier for N-to-1 consolidation) is present
           const validatedModulePlan: ModulePlan = {
             ...plan,
+            operations: disambiguatedOps,
+            ...(orgScope.isMultiOrgConsolidation
+              ? { sourceIdentifier: orgMapping.source }
+              : {}),
             targetIdentifier: plan.targetIdentifier || `${orgMapping.target}`,
           };
 
@@ -211,6 +227,9 @@ export class MigrationPlanner {
           modulePlans.push({
             moduleId: module.id as ModulePlan['moduleId'],
             scopeLevel: module.scopeLevel,
+            ...(orgScope.isMultiOrgConsolidation
+              ? { sourceIdentifier: orgMapping.source }
+              : {}),
             targetIdentifier: targetId,
             operations: [],
             warnings: [readErrWarning],
@@ -234,9 +253,15 @@ export class MigrationPlanner {
         effectiveMirrorPushMode !== undefined
           ? { ...baseRepoOptions, mirrorPushMode: effectiveMirrorPushMode }
           : baseRepoOptions;
-      const matchingOrg = this.scope.organizations.find(
-        (o) => o.target === repoMapping.targetOrg,
-      );
+      const matchingOrg =
+        this.scope.organizations.find(
+          (o) =>
+            o.source === repoMapping.sourceOrg &&
+            o.target === repoMapping.targetOrg,
+        ) ??
+        this.scope.organizations.find(
+          (o) => o.target === repoMapping.targetOrg,
+        );
       const effectiveTargetType =
         matchingOrg?.targetType ??
         this.scope.targetType ??
@@ -272,6 +297,8 @@ export class MigrationPlanner {
       ) {
         selectedModules =
           cliParsed.modules && !cliParsed.isAuto ? cliParsed.modules : [];
+      } else if (cliParsed.modules && !cliParsed.isAuto) {
+        selectedModules = cliParsed.modules;
       } else if (cliParsed.isAuto || repoParsed.isAuto) {
         const baseRepoIds =
           repoParsed.modules && !isAutoModuleSelection(repoParsed.modules)
@@ -290,9 +317,6 @@ export class MigrationPlanner {
           repoParsed.modules ??
           repoMapping.modules ??
           this.registry.getAll().map((m) => m.id);
-        if (cliParsed.modules && cliParsed.modules.length > 0) {
-          selectedModules = cliParsed.modules;
-        }
       }
       const executionModules = this.registry
         .resolveExecutionPlan(selectedModules, {

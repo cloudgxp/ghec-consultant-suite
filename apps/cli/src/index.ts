@@ -39,6 +39,12 @@ import {
   executeTeardownSandbox,
 } from './commands/teardown-sandbox.js';
 import {
+  parseGenerateScopeOptions,
+  executeGenerateScopeCommand,
+  parseValidateScopeOptions,
+  executeValidateScopeCommand,
+} from './commands/generate-scope.js';
+import {
   loadConfig,
   sanitizeDiagnostics,
   type CliConfig,
@@ -47,6 +53,17 @@ import {
   DiscoveryOrchestrator,
   PreflightPermissionError,
 } from '@ghec/discovery';
+
+export {
+  validateMigrationScope,
+  MIGRATION_SCHEMA_VERSION,
+} from '@ghec/contracts';
+export {
+  sliceScaleAdaptiveMatrix,
+  assertScratchDiskSpace,
+  HttpTargetWriteClient,
+  reconcilePostGeiVisibility,
+} from '@ghec/migration';
 
 export interface CliOverrides extends CliConfig {
   sourceClient?: GitHubReadAdapter | undefined;
@@ -67,6 +84,8 @@ Usage: ghec-consultant-cli <command> [options]
 
 Commands:
   discover         Enumerate source tenant metadata and emit DiscoveryBundle
+  generate-scope   Generate schema-validated MigrationScope JSON from org, repo list, or file
+  validate-scope   Validate MigrationScope JSON against contract schema (with optional overrides)
   preflight        Evaluate source & destination readiness, token scopes, and blockers
   plan             Generate immutable MigrationPlan from MigrationScope
   migrate          Execute pre-approved MigrationPlan or Scope against target tenant
@@ -608,6 +627,91 @@ Options:
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`Teardown failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    }
+  }
+
+  if (command === 'generate-scope') {
+    if (commandArgs.includes('--help') || commandArgs.includes('-h')) {
+      console.log(`ghec-consultant-cli generate-scope — Generate schema-compliant migration scope JSON
+Usage: ghec-consultant-cli generate-scope --source <org> --target <org> (--all | --org-only | --repos <list> | --file <path>) [options]
+Options:
+  --source <org>               Source organization slug
+  --target <org>               Target organization slug (required)
+  --all                        Fetch all non-archived repositories from source organization
+  --org-only                   Generate scope for organization-level resources only (no repositories)
+  --repos <list>               Comma- or newline-separated repository names or URLs
+  --file, --repos-file <path>  Path to file containing repository URLs or names (one per line)
+  --name <scopeName>           Scope name (defaults to <source>-to-<target>-<mode>)
+  --output <path>              Output JSON path (defaults to scopes/<name>.json)
+  --target-type <ghec|emu>     Target tenant type ('ghec' or 'emu')
+  --emu-shortcode <shortcode>  EMU shortcode/suffix (e.g. 'acme' or '_acme')
+  --lfs-strategy <strategy>    LFS strategy: 'dual-remote-stream' (default) or 'skip'
+  --mirror-push-mode <mode>    Mirror-push mode: 'fast-snapshot' (default) or 'full-history'
+  --target-visibility <vis>    Override visibility ('private', 'internal', 'public')
+  --target-repo-prefix <str>   Prefix for target repository names (supports '{source}-' placeholder)
+  --target-repo-suffix <str>   Suffix for target repository names (supports '-{source}' placeholder)
+  --include-archived           Include archived repositories when using --all
+  --skip-releases              Skip release asset migration
+  --org-items <mode>           Organization items mode: 'all', 'associated-only', or 'none'
+  --include-org-resources <b>  Include org-level modules ('true' default or 'false')
+  --org-modules <list>         Comma-separated org modules to include
+  --repo-modules <list>        Comma-separated repo modules to include
+  --dry-run                    Print generated scope JSON to stdout without writing to disk`);
+      return 0;
+    }
+
+    let scopeOptions;
+    try {
+      scopeOptions = parseGenerateScopeOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `Invalid generate-scope options: ${sanitizeDiagnostics(msg)}`,
+      );
+      return 2;
+    }
+
+    try {
+      await executeGenerateScopeCommand(scopeOptions);
+      return 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Scope generation failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    }
+  }
+
+  if (command === 'validate-scope') {
+    if (commandArgs.includes('--help') || commandArgs.includes('-h')) {
+      console.log(`ghec-consultant-cli validate-scope — Validate migration scope JSON against contract schema
+Usage: ghec-consultant-cli validate-scope [--scope] <file> [options]
+Options:
+  --scope <file>               Path to migration scope JSON file
+  --target-type <ghec|emu>     Optional targetType override to apply before validation
+  --emu-shortcode <shortcode>  Optional EMU shortcode override when target-type is 'emu'
+  --mirror-push-mode <mode>    Optional mirrorPushMode override ('fast-snapshot' or 'full-history')
+  --org-items <mode>           Optional orgItemsMode override ('all', 'associated-only', or 'none')`);
+      return 0;
+    }
+
+    let validateOptions;
+    try {
+      validateOptions = parseValidateScopeOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `Invalid validate-scope options: ${sanitizeDiagnostics(msg)}`,
+      );
+      return 2;
+    }
+
+    try {
+      executeValidateScopeCommand(validateOptions);
+      return 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Scope validation failed: ${sanitizeDiagnostics(msg)}`);
       return 1;
     }
   }

@@ -1,43 +1,62 @@
-# Repository Secrets Migration Module
+# Migrating Repository Secret Names (`repo-secrets`)
 
-`RepoSecretsMigrationModule` restores repository-level secret _names_ after a
-GEI migration for Actions, Dependabot, and Codespaces. It intentionally cannot
-discover or persist source secret values: GitHub's secret-list APIs are
-write-only for values.
+By default, the `repo-secrets` module reads the names of your repository secrets across GitHub Actions, Dependabot, and Codespaces, and creates encrypted empty string (`""`) placeholders on the target repository. Because GitHub's API never lets anyone read existing secret values, this module reserves each secret name safely without exposing sensitive data.
 
-## Behavior
+## Creating repository secret placeholders or injecting vault values
 
-For each domain, discovery and verification use the corresponding repository
-secret list endpoint. Planning creates a `create` operation for a missing name
-and a `noop` for a name already present. Each planned creation warns operators
-that the secret needs a value after migration.
+By default, this module fetches the target repository's public key and uses libsodium sealed-box encryption to create a placeholder secret with an empty value (`""`) for every missing secret name.
 
-When applying a missing secret, the module obtains the target domain's public
-key, encrypts a value with a libsodium sealed box, and sends only
-`encrypted_value` and `key_id` to GitHub. With no value provider, the encrypted
-value is an empty string, creating a clearly nonfunctional placeholder without
-leaking a source secret.
+To migrate repository secret names for a single repository:
 
-## Client vault injection
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-secrets"
+```
 
-Callers can supply `MigrationContext.secretValueProvider`. The provider receives
-only secret identity and migration scope, then returns a value directly to the
-apply stage. The value is encrypted in memory and is never placed in discovery
-output, a migration plan, structured logs, or an execution report. A provider
-can bridge HashiCorp Vault, Azure Key Vault, AWS Secrets Manager, or a client
-owned equivalent.
+To preview which Actions, Dependabot, and Codespaces secret names will be created without changing GitHub, add the `--dry-run` option:
 
-The provider should avoid embedding secret values in thrown error messages. The
-module deliberately replaces apply-stage errors with a generic diagnostic to
-prevent accidental value disclosure.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-secrets" \
+  --dry-run
+```
 
-## Endpoints
+To migrate repository secret names across multiple repositories using a scope file:
 
-For each of `actions`, `dependabot`, and `codespaces`, the module uses:
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["repo-secrets"]
+}
+```
 
-- `GET /repos/{owner}/{repo}/{domain}/secrets`
-- `GET /repos/{owner}/{repo}/{domain}/secrets/public-key`
-- `PUT /repos/{owner}/{repo}/{domain}/secrets/{secret_name}`
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
 
-For Actions, `{domain}` is `actions`; the endpoint patterns otherwise match the
-domain name directly.
+> [!WARNING]
+> Placeholder secrets contain a sealed blank string (`""`) by default. You must either populate real secret values in GitHub after migration or pass a `secretValueProvider` connected to your secret vault (such as HashiCorp Vault or AWS Secrets Manager) at apply time.
+
+> [!NOTE]
+> Even when you supply a custom `secretValueProvider`, secret values are encrypted in memory right away and are never written to discovery bundles, migration plans, or logs.
+
+## Testing this module offline
+
+By default, the unit tests verify Actions, Dependabot, and Codespaces secret encryption, placeholder creation, and error scrubbing offline.
+
+To run the repository secrets unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/repo-secrets.test.ts
+```

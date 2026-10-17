@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   AppsInventoryMigrationModule,
+  buildGitHubAppManifest,
+  buildGitHubAppUrlParametersLink,
+  buildRecreatedAppSlug,
+  classifyGitHubApp,
+  MAX_GITHUB_APP_NAME_LENGTH,
   type AppsInventoryData,
+  type GitHubAppManifestPayload,
   type RawAppInstallationsListResponse,
 } from '../../src/index.js';
 import type { MigrationContext } from '../../src/core/types.js';
@@ -10,17 +16,37 @@ import type {
   EndpointProbeResult,
   GitHubReadAdapter,
   GraphQLResponse,
+  ReadOperation,
   ReadPage,
 } from '@ghec/github-client';
 
 class MockReadAdapter implements GitHubReadAdapter {
-  constructor(private readonly data: unknown) {}
+  constructor(
+    private readonly data: unknown,
+    private readonly routeHandler?: (op: ReadOperation) => {
+      data: unknown;
+      status: number;
+    } | null,
+  ) {}
 
-  async readSingle<T>(): Promise<{
+  async readSingle<T>(op: ReadOperation): Promise<{
     data: T;
     status: number;
     observedAt: string;
   }> {
+    if (this.routeHandler) {
+      const routed = this.routeHandler(op);
+      if (routed) {
+        if (routed.data instanceof Error) {
+          throw routed.data;
+        }
+        return {
+          data: routed.data as T,
+          status: routed.status,
+          observedAt: new Date().toISOString(),
+        };
+      }
+    }
     if (this.data instanceof Error) {
       throw this.data;
     }
@@ -56,6 +82,10 @@ function createContext(
   sourceData: unknown,
   targetData: unknown,
   dryRun = false,
+  sourceRouteHandler?: (op: ReadOperation) => {
+    data: unknown;
+    status: number;
+  } | null,
 ): MigrationContext {
   return {
     runId: 'test-run-apps',
@@ -64,7 +94,7 @@ function createContext(
       sourceOrg: 'source-org',
       targetOrg: 'target-emu-org',
     },
-    sourceClient: new MockReadAdapter(sourceData),
+    sourceClient: new MockReadAdapter(sourceData, sourceRouteHandler),
     targetClient: new MockReadAdapter(targetData),
     dryRun,
     continueOnError: false,
@@ -123,6 +153,95 @@ describe('AppsInventoryMigrationModule', () => {
     assert.equal(discovered.installations[1].repository_selection, 'selected');
   });
 
+  it('discover classifies third_party, custom_public, and custom_private apps via GET /apps/{app_slug}', async () => {
+    const raw: RawAppInstallationsListResponse = {
+      total_count: 3,
+      installations: [
+        {
+          id: 101,
+          app_id: 1,
+          app_slug: 'datadog',
+          repository_selection: 'all',
+          permissions: { checks: 'read' },
+          events: ['check_run'],
+        },
+        {
+          id: 102,
+          app_id: 2,
+          app_slug: 'source-public-bot',
+          repository_selection: 'all',
+          permissions: { issues: 'write' },
+          events: ['issues'],
+        },
+        {
+          id: 103,
+          app_id: 3,
+          app_slug: 'internal-deploy-bot',
+          repository_selection: 'selected',
+          permissions: { deployments: 'write', contents: 'read' },
+          events: ['deployment'],
+        },
+      ],
+    };
+
+    const mod = new AppsInventoryMigrationModule();
+    const ctx = createContext(raw, null, false, (op) => {
+      if (op.id === 'rest.apps.getBySlug') {
+        const slug = op.pathParams?.app_slug;
+        if (slug === 'datadog') {
+          return {
+            status: 200,
+            data: {
+              slug: 'datadog',
+              name: 'Datadog',
+              external_url: 'https://www.datadoghq.com',
+              owner: { login: 'DataDog', type: 'Organization' },
+            },
+          };
+        }
+        if (slug === 'source-public-bot') {
+          return {
+            status: 200,
+            data: {
+              slug: 'source-public-bot',
+              name: 'Source Public Bot',
+              description: 'Public org bot',
+              external_url: 'https://bot.example.com',
+              owner: { login: 'source-org', type: 'Organization' },
+            },
+          };
+        }
+        if (slug === 'internal-deploy-bot') {
+          return {
+            status: 404,
+            data: new Error('Not Found'),
+          };
+        }
+      }
+      return null;
+    });
+
+    const discovered = await mod.discover(ctx);
+    assert.equal(discovered.installations.length, 3);
+
+    assert.equal(discovered.installations[0].classification, 'third_party');
+    assert.equal(
+      discovered.installations[0].recommended_strategy,
+      'install_existing',
+    );
+    assert.equal(discovered.installations[0].owner_login, 'DataDog');
+
+    assert.equal(discovered.installations[1].classification, 'custom_public');
+    assert.equal(discovered.installations[1].recommended_strategy, 'either');
+    assert.equal(discovered.installations[1].owner_login, 'source-org');
+
+    assert.equal(discovered.installations[2].classification, 'custom_private');
+    assert.equal(
+      discovered.installations[2].recommended_strategy,
+      'recreate_app',
+    );
+  });
+
   it('discover handles error properly with descriptive cause', async () => {
     const mod = new AppsInventoryMigrationModule();
     const ctx = createContext(new Error('Rate limited on installations'), null);
@@ -132,7 +251,7 @@ describe('AppsInventoryMigrationModule', () => {
     );
   });
 
-  it('plan generates reinstallation advisories, perms warnings, and noops', async () => {
+  it('plan generates reinstallation advisories, manifest payloads, URL links, perms warnings, and noops', async () => {
     const mod = new AppsInventoryMigrationModule();
     const sourceData: AppsInventoryData = {
       organization: 'source-org',
@@ -156,10 +275,12 @@ describe('AppsInventoryMigrationModule', () => {
         {
           id: 3,
           app_id: 30,
-          app_slug: 'jira-integration',
+          app_slug: 'internal-deploy-bot',
           repository_selection: 'all',
-          permissions: { issues: 'read' },
-          events: ['issues'],
+          permissions: { deployments: 'write', issues: 'read' },
+          events: ['deployment', 'issues'],
+          classification: 'custom_private',
+          recommended_strategy: 'recreate_app',
         },
       ],
     };
@@ -202,13 +323,40 @@ describe('AppsInventoryMigrationModule', () => {
     assert.ok(snykOp);
     assert.equal(snykOp.operation, 'warn');
 
-    // jira-integration: warn (missing, manual reinstallation required)
-    const jiraOp = plan.operations.find(
-      (o) => o.resourceName === 'jira-integration',
+    // internal-deploy-bot: warn with both direct install URL and manifest recreation payload
+    const botOp = plan.operations.find(
+      (o) => o.resourceName === 'internal-deploy-bot',
     );
-    assert.ok(jiraOp);
-    assert.equal(jiraOp.operation, 'warn');
-    assert.ok(plan.warnings.some((w) => w.includes('jira-integration')));
+    assert.ok(botOp);
+    assert.equal(botOp.operation, 'warn');
+    assert.ok(plan.warnings.some((w) => w.includes('internal-deploy-bot')));
+
+    const payload = botOp.payload as {
+      classification: string;
+      recommended_strategy: string;
+      recreated_app_slug: string;
+      destination_install_url: string;
+      recreate_app_url: string;
+      manifest: GitHubAppManifestPayload;
+    };
+    assert.equal(payload.classification, 'custom_private');
+    assert.equal(payload.recommended_strategy, 'recreate_app');
+    assert.ok(payload.recreated_app_slug.length <= MAX_GITHUB_APP_NAME_LENGTH);
+    assert.equal(
+      payload.destination_install_url,
+      'https://github.com/apps/internal-deploy-bot/installations/new',
+    );
+    assert.match(
+      payload.recreate_app_url,
+      /^https:\/\/github\.com\/organizations\/target-emu-org\/settings\/apps\/new\?/,
+    );
+    assert.match(payload.recreate_app_url, /deployments=write/);
+    assert.match(payload.recreate_app_url, /events%5B%5D=deployment/);
+    assert.deepEqual(payload.manifest.default_permissions, {
+      deployments: 'write',
+      issues: 'read',
+    });
+    assert.deepEqual(payload.manifest.default_events, ['deployment', 'issues']);
   });
 
   it('apply logs advisories and returns success in advisory mode', async () => {
@@ -236,8 +384,12 @@ describe('AppsInventoryMigrationModule', () => {
     assert.equal(result.results[0].status, 'succeeded');
   });
 
-  it('verify reports verified=true when all apps are installed with matching permissions', async () => {
+  it('verify reports verified=true when all apps are installed with matching permissions (including recreated custom app slug)', async () => {
     const mod = new AppsInventoryMigrationModule();
+    const recreatedBotSlug = buildRecreatedAppSlug(
+      'internal-bot',
+      'target-emu-org',
+    );
     const sourceData: AppsInventoryData = {
       organization: 'source-org',
       installations: [
@@ -249,11 +401,21 @@ describe('AppsInventoryMigrationModule', () => {
           permissions: { issues: 'read' },
           events: [],
         },
+        {
+          id: 2,
+          app_id: 20,
+          app_slug: 'internal-bot',
+          repository_selection: 'selected',
+          permissions: { deployments: 'write' },
+          events: ['deployment'],
+          classification: 'custom_private',
+          recommended_strategy: 'recreate_app',
+        },
       ],
     };
 
     const targetData: RawAppInstallationsListResponse = {
-      total_count: 1,
+      total_count: 2,
       installations: [
         {
           id: 101,
@@ -262,6 +424,14 @@ describe('AppsInventoryMigrationModule', () => {
           repository_selection: 'all',
           permissions: { issues: 'read' },
           events: [],
+        },
+        {
+          id: 102,
+          app_id: 999,
+          app_slug: recreatedBotSlug,
+          repository_selection: 'selected',
+          permissions: { deployments: 'write' },
+          events: ['deployment'],
         },
       ],
     };
@@ -318,5 +488,66 @@ describe('AppsInventoryMigrationModule', () => {
 
     assert.equal(result.verified, false);
     assert.equal(result.discrepancies.length, 2);
+  });
+
+  it('buildRecreatedAppSlug enforces the 34-character GitHub App name limit', () => {
+    const shortSlug = buildRecreatedAppSlug('my-bot', 'emu-org');
+    assert.equal(shortSlug, 'my-bot-emu-org');
+    assert.ok(shortSlug.length <= MAX_GITHUB_APP_NAME_LENGTH);
+
+    const longSlug = buildRecreatedAppSlug(
+      'enterprise-deployment-automation-controller-service',
+      'global-enterprise-managed-users-org',
+    );
+    assert.ok(
+      longSlug.length <= MAX_GITHUB_APP_NAME_LENGTH,
+      `Expected length <= 34, got ${longSlug.length} (${longSlug})`,
+    );
+    assert.doesNotMatch(longSlug, /-$/);
+  });
+
+  it('classifyGitHubApp and manifest builders produce valid manifest and URL query parameters', () => {
+    const privateClass = classifyGitHubApp({
+      sourceOrg: 'source-org',
+      status: 404,
+      details: null,
+    });
+    assert.equal(privateClass.classification, 'custom_private');
+    assert.equal(privateClass.recommendedStrategy, 'recreate_app');
+
+    const manifest = buildGitHubAppManifest(
+      {
+        app_slug: 'release-bot',
+        permissions: { contents: 'write', metadata: 'read' },
+        events: ['push', 'release'],
+      },
+      'target-emu',
+      { redirectUrl: 'http://localhost:3000/callback' },
+    );
+
+    assert.equal(manifest.name, 'release-bot-target-emu');
+    assert.equal(manifest.public, false);
+    assert.equal(manifest.redirect_url, 'http://localhost:3000/callback');
+    assert.deepEqual(manifest.default_permissions, {
+      contents: 'write',
+      metadata: 'read',
+    });
+    assert.deepEqual(manifest.default_events, ['push', 'release']);
+
+    const urlLink = buildGitHubAppUrlParametersLink(
+      {
+        app_slug: 'release-bot',
+        permissions: { contents: 'write', metadata: 'read' },
+        events: ['push', 'release'],
+      },
+      'target-emu',
+    );
+    assert.match(
+      urlLink,
+      /^https:\/\/github\.com\/organizations\/target-emu\/settings\/apps\/new\?/,
+    );
+    assert.match(urlLink, /name=release-bot-target-emu/);
+    assert.match(urlLink, /contents=write/);
+    assert.match(urlLink, /events%5B%5D=release/);
   });
 });

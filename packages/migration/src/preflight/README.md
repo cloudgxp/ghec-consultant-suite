@@ -1,77 +1,74 @@
-# Migration Preflight Engine
+# Checking Repositories for Migration Blockers (Preflight)
 
-The Migration Preflight Engine performs comprehensive, read-only validation of source repositories and destination organization configurations prior to migration execution. It protects migration cutover windows by surfacing platform limits, ruleset bypass gaps, and repository blockers before any network transfer or state mutation occurs.
+By default, the preflight checker inspects your source repositories and target organization before you start a migration. It catches oversized files, large commits, and missing ruleset bypass settings early so your migration does not fail halfway through.
 
-## Platform Sizing Thresholds
+| Check                         | GitHub Limit           | What Happens If Exceeded                                                     |
+| :---------------------------- | :--------------------- | :--------------------------------------------------------------------------- |
+| **Total Repository Git Data** | $\le 40\text{ GiB}$    | **Blocked** — You must shrink the repository before migrating.               |
+| **Single Git Commit**         | $\le 2\text{ GiB}$     | **Blocked** — You must split the commit before migrating.                    |
+| **Single File During Import** | $\le 400\text{ MiB}$   | **Blocked** — Move the file to Git LFS before migrating.                     |
+| **Single File After Cutover** | $\le 100\text{ MiB}$   | **Warning** — Imports cleanly, but future Git pushes will fail without LFS.  |
+| **Git Branch or Tag Name**    | $\le 255\text{ bytes}$ | **Blocked** — Shorten the branch or tag name before migrating.               |
+| **Total Release Assets**      | $\le 10\text{ GiB}$    | **Special Strategy** — Uses `--skip-releases` and streams assets separately. |
 
-GitHub Enterprise Importer (GEI) and GitHub platform constraints enforce strict sizing boundaries:
+## Running preflight checks before a migration
 
-| Metric                         | Limit                  | Severity / Action                                                                                                           | Reference                                                                      |
-| ------------------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| **Repository Git Data**        | $\le 40\text{ GiB}$    | **Blocker** — Rejection by Git backend                                                                                      | `data/reusables/enterprise-migration-tool/git-repo-size-limit.md`              |
-| **Single Git Commit**          | $\le 2\text{ GiB}$     | **Blocker** — Cannot be imported; must split commit                                                                         | `data/reusables/enterprise-migration-tool/limitations-of-dotcom.md`            |
-| **Migration Single File/Blob** | $\le 400\text{ MiB}$   | **Blocker** — Exceeds GEI file transfer limit; move to LFS                                                                  | `data/reusables/enterprise-migration-tool/limitations-of-migration-tooling.md` |
-| **Post-Migration Single File** | $\le 100\text{ MiB}$   | **Warning** — Allowed during migration, but rejected by standard GitHub pushes post-cutover unless tracked in LFS           | `data/reusables/enterprise-migration-tool/limitations-of-dotcom.md`            |
-| **Git Reference Length**       | $\le 255\text{ bytes}$ | **Blocker** — Ref names > 255 bytes fail ref storage                                                                        | `data/reusables/enterprise-migration-tool/limitations-of-dotcom.md`            |
-| **Release Total Assets**       | $\le 10\text{ GiB}$    | **Special Strategy** — GEI cannot migrate releases > 10 GiB; requires `--skip-releases` with REST release streamer fallback | `data/reusables/enterprise-migration-tool/skip-releases.md`                    |
+By default, the preflight command checks every repository in your scope and groups each one as `ready`, `ready-with-follow-up` (needs Git LFS copy), `requires-special-strategy` (large releases), or `blocked`.
 
-## `git-sizer` Integration
-
-The preflight engine integrates with [`github/git-sizer`](https://github.com/github/git-sizer) JSON output:
+To run preflight checks for a single repository:
 
 ```bash
-git-sizer --no-progress -j
+npm run dev:cli -- preflight \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service"
 ```
 
-The `parseGitSizerOutput` utility normalizes JSON fields across snake_case and camelCase variants:
+To preview preflight checks during a dry-run migration without modifying GitHub, add `--dry-run`:
 
-- `unique_blob_size` / `total_blob_size` $\rightarrow$ `gitSizeBytes`
-- `max_commit_size` $\rightarrow$ `largestCommitBytes`
-- `max_blob_size` $\rightarrow$ `largestBlobBytes`
-- `max_ref_name_length` / `longest_ref_length` $\rightarrow$ `longestRefLength`
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --dry-run
+```
 
-When `git-sizer` data is not supplied, the engine queries the GitHub REST API (`GET /repos/{owner}/{repo}`) for disk footprint and evaluates known dimensions.
+To check a full wave of repositories using a scope file:
 
-## Ruleset Bypass Requirements (DEC-012)
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "legacy-monolith"]
+}
+```
 
-When importing repositories with GEI, Git data is pushed to GitHub in large batches. Evaluation of destination rulesets against these batch pushes causes evaluations to time out and break the migration.
+```bash
+npm run dev:cli -- preflight \
+  --scope ./scopes/wave-1.json
+```
 
-### The "Always allow" vs. "Exempt" Trap
+> [!WARNING]
+> Every active ruleset on your target organization must include **Repository migrations** in its bypass list with the mode set to **Exempt**. Setting a ruleset to "Always allow" still evaluates every pushed commit and causes GEI imports to time out.
 
-GitHub rulesets support two bypass modes:
+## Checking local repository sizes with `git-sizer`
 
-- **Always allow:** The ruleset is evaluated and prompts the actor for confirmation. **This causes migrations to time out and fail.**
-- **Exempt:** The ruleset is completely bypassed without evaluation.
+By default, preflight reads repository sizes from the GitHub API, or you can feed it JSON output from `git-sizer` for deeper commit and blob checks.
 
-> **CRITICAL REQUIREMENT:**
-> Every active ruleset on the target organization must include **"Repository migrations"** in its bypass list with the mode strictly set to **`exempt`**. Any active ruleset with missing bypass or configured with `always` / `always_allow` will be flagged as a destination blocker and block migration.
+To generate a JSON size report from a local Git clone using `git-sizer`:
 
-## Repository Readiness Tiers
+```bash
+git-sizer --no-progress -j > git-sizer-report.json
+```
 
-Every repository evaluated by `PreflightEvaluator` is classified into one of 4 tiers:
+## Testing the preflight checker offline
 
-1. **`ready`**:
-   - Safe for standard GEI migration.
-   - Sizing within all platform limits.
-   - No Git LFS detected.
-   - Total release assets $\le 10\text{ GiB}$.
-   - No destination blockers or naming collisions.
-   - Invariant: `blockers: []`.
+By default, the preflight unit tests check size limits, credential scopes, and ruleset bypass warnings using local mock data.
 
-2. **`ready-with-follow-up`**:
-   - Safe for GEI migration, but requires post-migration follow-up operations.
-   - Git LFS objects detected (`lfsObjectCount > 0` or `.gitattributes`). LFS objects are not migrated by GEI and must be pushed via a dual-remote stream after cutover.
+To run the preflight unit tests offline:
 
-3. **`requires-special-strategy`**:
-   - Sizing within Git limits, but requires non-standard flags.
-   - Total release assets $> 10\text{ GiB}$.
-   - Repository must be migrated with `--skip-releases`, followed by the REST release streamer fallback.
-
-4. **`blocked`**:
-   - Migration cannot proceed without remediation.
-   - Triggered by: commit $> 2\text{ GiB}$, file $> 400\text{ MiB}$ without LFS, repo $> 40\text{ GiB}$, ref $> 255$ bytes, target repo naming collision, or destination ruleset missing the exempt bypass.
-   - Invariant: `blockers.length >= 1`.
-
-## Output Contract
-
-The preflight engine produces a validated `MigrationPreflightReport` adhering strictly to `MigrationPreflightReportSchema` (`1.0.0`) from `@ghec/contracts`.
+```bash
+node --import tsx --test packages/migration/tests/preflight/evaluator.test.ts packages/migration/tests/preflight/sizer.test.ts packages/migration/tests/preflight/credential-inspector.test.ts
+```

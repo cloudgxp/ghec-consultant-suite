@@ -4,10 +4,73 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: 'Path to migration scope JSON file (e.g. "scopes/wave-1.json")'
-        required: true
+        description: 'Path to migration scope JSON file (or leave default when using scope_run_id / inline source_org & target_org)'
+        required: false
         type: string
         default: 'scopes/wave-1.json'
+      scope_run_id:
+        description: 'Optional GitHub Actions Run ID from generate-scope.yml (or "latest") to download migration-scopes artifact'
+        required: false
+        type: string
+        default: ''
+      source_org:
+        description: 'Optional inline source organization(s), e.g. "org-a" or "org-a,org-b,org-c" for multi-org consolidation'
+        required: false
+        type: string
+        default: ''
+      target_org:
+        description: 'Optional inline target organization (used with source_org for 1-click inline scope generation)'
+        required: false
+        type: string
+        default: ''
+      repositories:
+        description: 'Inline repository selection when using source_org & target_org ("all", "public", "private", "internal", "org_only", or comma-separated repo names)'
+        required: false
+        type: string
+        default: 'all'
+      source_visibility:
+        description: 'Filter discovered repositories by visibility when using inline source_org & target_org ("all", "public", "private", or "internal")'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'public'
+          - 'private'
+          - 'internal'
+        default: 'all'
+      exclude_forks:
+        description: 'Exclude forked repositories when discovering organization repositories inline'
+        required: false
+        type: boolean
+        default: false
+      org_items_mode:
+        description: 'Organization items mode ("auto" = all for 1:1 / associated-only for multi-org, "associated-only" = only items linked to in-scope repos, "all", or "none")'
+        required: false
+        type: choice
+        options:
+          - 'auto'
+          - 'associated-only'
+          - 'all'
+          - 'none'
+        default: 'auto'
+      target_type:
+        description: 'Target tenant type ("ghec" for standard GHEC, "emu" for Enterprise Managed Users)'
+        required: false
+        type: choice
+        options:
+          - 'ghec'
+          - 'emu'
+        default: 'ghec'
+      emu_shortcode:
+        description: 'Admin-defined EMU shortcode/suffix (e.g. "acme" or "_acme") when target_type is "emu"'
+        required: false
+        type: string
+        default: ''
+      discovery_run_id:
+        description: 'Optional GitHub Actions Run ID from discovery-scan.yml (or "latest") to download discovery bundle artifact'
+        required: false
+        type: string
+        default: ''
       cached_bundle:
         description: 'Optional path to pre-collected discovery bundle JSON file'
         required: false
@@ -24,10 +87,10 @@ on:
         type: number
         default: 5
       modules:
-        description: 'Comma-separated migration modules to execute (or "all"). Valid IDs: apps-inventory, ip-allow-lists, actions-runners, actions-policies, autolinks, discussions, projects-v2, org-settings, repo-settings, teams, custom-roles, org-variables, org-secrets, repo-variables, repo-secrets, environments, webhooks, org-custom-properties, repo-custom-properties, rulesets, branch-protection, gei-repo, mannequin-reclamation, codeowners, security, releases, deploy-keys, collaborators, lfs, packages, issues, pull-requests'
+        description: 'Modules to execute ("auto" for strategy-aware resolution across all 32 modules, "all", or comma-separated module IDs)'
         required: false
         type: string
-        default: 'all'
+        default: 'auto'
       dry_run:
         description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
         required: false
@@ -59,6 +122,7 @@ env:
 
 permissions:
   contents: read
+  actions: read
   issues: write
   pull-requests: write
 
@@ -70,6 +134,7 @@ jobs:
       matrix: ${{ steps.slice.outputs.matrix }}
       cohort_count: ${{ steps.slice.outputs.cohort_count }}
       runner_labels_json: ${{ steps.resolve-runners.outputs.labels_json }}
+      resolved_scope_label: ${{ steps.resolve-inputs.outputs.scope_label }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -77,25 +142,133 @@ jobs:
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
 
+      - name: Resolve Scope & Discovery Bundle (Artifact, Inline, or Repository File)
+        id: resolve-inputs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_SCOPE_RUN_ID: ${{ inputs.scope_run_id }}
+          INPUT_SOURCE_ORG: ${{ inputs.source_org }}
+          INPUT_TARGET_ORG: ${{ inputs.target_org }}
+          INPUT_REPOS: ${{ inputs.repositories }}
+          INPUT_SOURCE_VISIBILITY: ${{ inputs.source_visibility || 'all' }}
+          INPUT_EXCLUDE_FORKS: ${{ inputs.exclude_forks }}
+          INPUT_ORG_ITEMS_MODE: ${{ inputs.org_items_mode || 'auto' }}
+          INPUT_TARGET_TYPE: ${{ inputs.target_type }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode }}
+          INPUT_DISCOVERY_RUN_ID: ${{ inputs.discovery_run_id }}
+          INPUT_CACHED_BUNDLE: ${{ inputs.cached_bundle }}
+        run: |
+          mkdir -p ./scans ./downloaded-scope ./downloaded-discovery
+          RESOLVED_SCOPE=""
+
+          # Mode 1: Inline 1-Click Scope Generation (when source_org and target_org are provided)
+          if [ -n "$INPUT_SOURCE_ORG" ] && [ -n "$INPUT_TARGET_ORG" ]; then
+            echo "Generating migration scope inline for $INPUT_SOURCE_ORG -> $INPUT_TARGET_ORG..."
+            GEN_ARGS=(
+              generate-scope
+              --source "$INPUT_SOURCE_ORG"
+              --target "$INPUT_TARGET_ORG"
+              --target-type "${INPUT_TARGET_TYPE:-ghec}"
+              --output ./scans/resolved-scope.json
+            )
+            if [ -n "$INPUT_EMU_SHORTCODE" ]; then
+              GEN_ARGS+=(--emu-shortcode "$INPUT_EMU_SHORTCODE")
+            fi
+            if [ "$INPUT_EXCLUDE_FORKS" = "true" ]; then
+              GEN_ARGS+=(--exclude-forks)
+            fi
+            if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
+              GEN_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+            fi
+            if [ "$INPUT_REPOS" = "all" ] || [ -z "$INPUT_REPOS" ]; then
+              GEN_ARGS+=(--all --source-visibility "${INPUT_SOURCE_VISIBILITY:-all}")
+            elif [ "$INPUT_REPOS" = "public" ] || [ "$INPUT_REPOS" = "private" ] || [ "$INPUT_REPOS" = "internal" ]; then
+              GEN_ARGS+=(--all --source-visibility "$INPUT_REPOS")
+            elif [ "$INPUT_REPOS" = "org_only" ] || [ "$INPUT_REPOS" = "org_resources_only" ]; then
+              GEN_ARGS+=(--org-only)
+            else
+              GEN_ARGS+=(--repos "$INPUT_REPOS")
+            fi
+            node ./apps/cli/bin/ghec-consultant-cli.mjs "${GEN_ARGS[@]}"
+            RESOLVED_SCOPE="./scans/resolved-scope.json"
+            echo "scope_label=inline:${INPUT_SOURCE_ORG}-to-${INPUT_TARGET_ORG}" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Mode 2: Download Scope Artifact from generate-scope.yml (explicit scope_run_id or fallback when repo file missing)
+          if [ -z "$RESOLVED_SCOPE" ] && { [ -n "$INPUT_SCOPE_RUN_ID" ] || [ ! -f "$INPUT_SCOPE" ]; }; then
+            TARGET_SCOPE_RUN="$INPUT_SCOPE_RUN_ID"
+            if [ -z "$TARGET_SCOPE_RUN" ] || [ "$TARGET_SCOPE_RUN" = "latest" ]; then
+              echo "Looking up latest successful generate-scope.yml workflow run..."
+              TARGET_SCOPE_RUN=$(gh run list --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+            fi
+            if [ -n "$TARGET_SCOPE_RUN" ] && [ "$TARGET_SCOPE_RUN" != "null" ]; then
+              echo "Downloading migration-scopes artifact from workflow run $TARGET_SCOPE_RUN..."
+              if gh run download "$TARGET_SCOPE_RUN" -n migration-scopes --dir ./downloaded-scope 2>/dev/null || gh run download "$TARGET_SCOPE_RUN" --dir ./downloaded-scope 2>/dev/null; then
+                if [ -n "$INPUT_SCOPE" ] && [ -f "./downloaded-scope/$(basename "$INPUT_SCOPE")" ]; then
+                  FOUND_SCOPE="./downloaded-scope/$(basename "$INPUT_SCOPE")"
+                else
+                  FOUND_SCOPE=$(find ./downloaded-scope -name '*.json' | sort | head -n 1 || true)
+                fi
+                if [ -n "$FOUND_SCOPE" ] && [ -f "$FOUND_SCOPE" ]; then
+                  cp "$FOUND_SCOPE" ./scans/resolved-scope.json
+                  RESOLVED_SCOPE="./scans/resolved-scope.json"
+                  echo "scope_label=artifact:${TARGET_SCOPE_RUN}/$(basename "$FOUND_SCOPE")" >> "$GITHUB_OUTPUT"
+                fi
+              fi
+            fi
+          fi
+
+          # Mode 3: Repository Scope File
+          if [ -z "$RESOLVED_SCOPE" ]; then
+            if [ ! -f "$INPUT_SCOPE" ]; then
+              echo "::error::Scope file '$INPUT_SCOPE' does not exist in repository and no scope_run_id artifact or inline source_org/target_org was provided."
+              exit 1
+            fi
+            cp "$INPUT_SCOPE" ./scans/resolved-scope.json
+            RESOLVED_SCOPE="./scans/resolved-scope.json"
+            echo "scope_label=$INPUT_SCOPE" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Optional Discovery Bundle Resolution (Artifact or Repo File)
+          if [ -n "$INPUT_CACHED_BUNDLE" ] && [ -f "$INPUT_CACHED_BUNDLE" ]; then
+            cp "$INPUT_CACHED_BUNDLE" ./scans/resolved-discovery-bundle.json
+          elif [ -n "$INPUT_DISCOVERY_RUN_ID" ]; then
+            TARGET_DISC_RUN="$INPUT_DISCOVERY_RUN_ID"
+            if [ "$TARGET_DISC_RUN" = "latest" ]; then
+              TARGET_DISC_RUN=$(gh run list --workflow=discovery-scan.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+            fi
+            if [ -n "$TARGET_DISC_RUN" ] && [ "$TARGET_DISC_RUN" != "null" ]; then
+              echo "Downloading discovery bundle artifact from workflow run $TARGET_DISC_RUN..."
+              if gh run download "$TARGET_DISC_RUN" --dir ./downloaded-discovery 2>/dev/null; then
+                FOUND_BUNDLE=$(find ./downloaded-discovery -name 'ghec-discovery-*.json' | sort | head -n 1 || true)
+                if [ -n "$FOUND_BUNDLE" ] && [ -f "$FOUND_BUNDLE" ]; then
+                  cp "$FOUND_BUNDLE" ./scans/resolved-discovery-bundle.json
+                fi
+              fi
+            fi
+          fi
+
       - name: Validate Migration Scope
         shell: bash
+        env:
+          INPUT_TARGET_TYPE: ${{ inputs.target_type }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode }}
+          INPUT_ORG_ITEMS_MODE: ${{ inputs.org_items_mode || 'auto' }}
         run: |
-          if [ ! -f "${{ inputs.scope }}" ]; then
-            echo "::error::Scope file '${{ inputs.scope }}' does not exist."
-            exit 1
+          VAL_ARGS=(validate-scope --scope ./scans/resolved-scope.json)
+          if [ -n "$INPUT_TARGET_TYPE" ]; then
+            VAL_ARGS+=(--target-type "$INPUT_TARGET_TYPE")
           fi
-          echo "Validating migration scope: ${{ inputs.scope }}"
-          node --input-type=module -e '
-            import { validateMigrationScope } from "./packages/contracts/dist/index.js";
-            import fs from "fs";
-            const parsed = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-            const res = validateMigrationScope(parsed);
-            if (!res.success) {
-              console.error("Scope validation failed:", JSON.stringify(res.error, null, 2));
-              process.exit(1);
-            }
-            console.log("Scope schema validation passed successfully.");
-          ' "${{ inputs.scope }}"
+          if [ -n "$INPUT_EMU_SHORTCODE" ]; then
+            VAL_ARGS+=(--emu-shortcode "$INPUT_EMU_SHORTCODE")
+          fi
+          if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
+            VAL_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+          fi
+          node ./apps/cli/bin/ghec-consultant-cli.mjs "${VAL_ARGS[@]}"
 
       - name: Execute Preflight Evaluation & Credential Audit
         id: preflight
@@ -108,13 +281,13 @@ jobs:
           mkdir -p ./scans
           echo "Evaluating source and target preflight readiness..."
           INPUT_ARG=()
-          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
-            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          if [ -f ./scans/resolved-discovery-bundle.json ]; then
+            INPUT_ARG=(--input ./scans/resolved-discovery-bundle.json)
           fi
 
           EXIT_CODE=0
           node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
-            --scope "${{ inputs.scope }}" \
+            --scope ./scans/resolved-scope.json \
             "${INPUT_ARG[@]}" \
             --output ./scans/preflight-report.json \
             --verbose || EXIT_CODE=$?
@@ -147,13 +320,13 @@ jobs:
           mkdir -p ./scans ./cohorts
 
           INPUT_ARG=()
-          if [ -n "${{ inputs.cached_bundle }}" ] && [ -f "${{ inputs.cached_bundle }}" ]; then
-            INPUT_ARG=(--input "${{ inputs.cached_bundle }}")
+          if [ -f ./scans/resolved-discovery-bundle.json ]; then
+            INPUT_ARG=(--input ./scans/resolved-discovery-bundle.json)
           fi
 
           echo "Generating plan and slicing into cohorts (runner capacity: ${{ inputs.runner_capacity }})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs plan \
-            --scope "${{ inputs.scope }}" \
+            --scope ./scans/resolved-scope.json \
             "${INPUT_ARG[@]}" \
             --modules "${{ inputs.modules }}" \
             --runner-capacity "${{ inputs.runner_capacity }}" \
@@ -187,6 +360,8 @@ jobs:
         with:
           name: migration-wave-plan-${{ github.run_id }}
           path: |
+            ./scans/resolved-scope.json
+            ./scans/resolved-discovery-bundle.json
             ./scans/preflight-report.json
             ./scans/migration-plan.json
             ./scans/migration-matrix.json
@@ -244,7 +419,9 @@ jobs:
           fi
 
           INPUT_ARG=()
-          if [ -n "$INPUT_CACHED_BUNDLE" ] && [ -f "$INPUT_CACHED_BUNDLE" ]; then
+          if [ -f ./scans/resolved-discovery-bundle.json ]; then
+            INPUT_ARG=(--input ./scans/resolved-discovery-bundle.json)
+          elif [ -n "$INPUT_CACHED_BUNDLE" ] && [ -f "$INPUT_CACHED_BUNDLE" ]; then
             INPUT_ARG=(--input "$INPUT_CACHED_BUNDLE")
           fi
 
@@ -302,12 +479,16 @@ jobs:
           INPUT_SCOPE: ${{ inputs.scope }}
         run: |
           mkdir -p ./scans
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
+          fi
 
           if [ -f ./scans/migration-plan.json ]; then
             echo "Running post-migration verification against target enterprise..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --plan ./scans/migration-plan.json \
-              --scope "$INPUT_SCOPE" \
+              --scope "$EFFECTIVE_SCOPE" \
               --verbose \
               --output ./scans/verification-report.json || {
                 echo "Verification reported discrepancies or failed."
@@ -339,7 +520,7 @@ jobs:
         id: report
         shell: bash
         env:
-          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_SCOPE: ${{ needs.slicer.outputs.resolved_scope_label || inputs.scope }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           NEEDS_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count }}
         run: |
@@ -412,31 +593,46 @@ jobs:
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
         run: |
           mkdir -p ./scans/results-repo
-          EXEC_REPORT=$(find ./scans ./downloaded-cohorts -name 'cohort-report-*.json' -o -name 'migration-execution.json' 2>/dev/null | head -n 1)
-          DRY_RUN_FLAG=""
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
+          fi
+
+          DRY_RUN_FLAGS=()
           if [ "$INPUT_DRY_RUN" = "true" ]; then
-            DRY_RUN_FLAG="--dry-run"
+            if [ -n "${GHEC_TARGET_TOKEN:-}" ]; then
+              DRY_RUN_FLAGS=(--dry-run --force-push)
+            else
+              DRY_RUN_FLAGS=(--dry-run --skip-push)
+            fi
           fi
 
-          VERIFY_FLAG=""
+          PLAN_FLAG=()
+          if [ -f ./scans/migration-plan.json ]; then
+            PLAN_FLAG=(--plan ./scans/migration-plan.json)
+          fi
+
+          VERIFY_FLAG=()
           if [ -f ./scans/verification-report.json ]; then
-            VERIFY_FLAG="--verification-report ./scans/verification-report.json"
+            VERIFY_FLAG=(--verification-report ./scans/verification-report.json)
           fi
 
-          REMEDIATION_FLAG=""
+          REMEDIATION_FLAG=()
           if [ -f ./scans/remediation-plan.json ]; then
-            REMEDIATION_FLAG="--remediation-plan ./scans/remediation-plan.json"
+            REMEDIATION_FLAG=(--remediation-plan ./scans/remediation-plan.json)
           fi
 
           node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
-            ${EXEC_REPORT:+--execution-report "$EXEC_REPORT"} \
-            ${INPUT_SCOPE:+--scope "$INPUT_SCOPE"} \
-            $VERIFY_FLAG \
-            $REMEDIATION_FLAG \
+            --execution-reports ./downloaded-cohorts,./scans \
+            ${EFFECTIVE_SCOPE:+--scope "$EFFECTIVE_SCOPE"} \
+            "${PLAN_FLAG[@]}" \
+            "${VERIFY_FLAG[@]}" \
+            "${REMEDIATION_FLAG[@]}" \
+            --evidence-dir ./scans,./downloaded-cohorts \
             --output-dir ./scans/results-repo \
             --append-step-summary \
             --verbose \
-            $DRY_RUN_FLAG || {
+            "${DRY_RUN_FLAGS[@]}" || {
               echo "::warning::Publishing migration results repository encountered non-fatal issues."
             }
 

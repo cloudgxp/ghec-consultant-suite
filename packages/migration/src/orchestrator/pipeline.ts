@@ -23,6 +23,10 @@ import type { GitLfsQuotaChecker } from '../strategies/git-lfs/types.js';
 import { LargeReleasesMigrationStrategy } from '../strategies/releases/strategy.js';
 import { GitMirrorPushExecutor } from '../strategies/mirror-push/index.js';
 import { enrichModuleExecutionResult } from './execution-enricher.js';
+import {
+  isAutoModuleSelection,
+  resolveAutoRepositoryModules,
+} from './module-resolver.js';
 import type {
   RepositoryPipelineOptions,
   RepositoryPipelineResult,
@@ -584,7 +588,11 @@ export class RepositoryMigrationPipeline {
 
         const repoModules =
           repoMapping.modules && repoMapping.modules.length > 0
-            ? repoMapping.modules
+            ? isAutoModuleSelection(repoMapping.modules)
+              ? resolveAutoRepositoryModules(repoMapping, {
+                  repositoryOptions: this.options.scope?.repositoryOptions,
+                }).applyModules
+              : repoMapping.modules
             : ['repo-variables', 'rulesets', 'branch-protection'];
 
         const apiModulesRecord: Record<
@@ -856,7 +864,11 @@ export class RepositoryMigrationPipeline {
 
         const repoModules =
           repoMapping.modules && repoMapping.modules.length > 0
-            ? repoMapping.modules
+            ? isAutoModuleSelection(repoMapping.modules)
+              ? resolveAutoRepositoryModules(repoMapping, {
+                  repositoryOptions: this.options.scope?.repositoryOptions,
+                }).verifyModules
+              : repoMapping.modules
             : ['repo-variables', 'rulesets', 'branch-protection'];
 
         let allVerified = true;

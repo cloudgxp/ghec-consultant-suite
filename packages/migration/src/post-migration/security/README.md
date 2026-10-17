@@ -1,26 +1,62 @@
-# GitHub Advanced Security (GHAS) & Security Remediation Reconciliation Module
+# Restoring GitHub Advanced Security Settings and Alerts (`security`)
 
-`GhasSecurityMigrationModule` (`id = 'security'`) reconciles GitHub Advanced Security configurations, features, secret scanning alert remediation states, and optional code scanning SARIF data.
+By default, when you enable secret scanning on a migrated repository, GitHub scans the commit history from scratch and reopens every old alert as new. The `security` module turns on your GitHub Advanced Security (GHAS), secret scanning, push protection, and Dependabot settings, and then closes secret scanning alerts that your team already resolved in the source repository.
 
-## Background & Platform Mechanics
+## Migrating security settings and resolved secret alerts
 
-1. **Feature Configuration:**
-   - Evaluates `security_and_analysis` settings on source and target repositories (`advanced_security`, `secret_scanning`, `secret_scanning_push_protection`, `dependabot_security_updates`).
-   - Diffing generates safe, idempotent `PATCH /repos/{owner}/{repo}` payloads.
-   - Enforces prerequisite dependencies: secret scanning requires `advanced_security: 'enabled'` and verifies target enterprise GHAS license availability.
+By default, this module checks that your target enterprise has available GHAS licenses, enables your repository security features, and matches resolved secret scanning alerts by secret type so your security team does not have to re-triage old findings.
 
-2. **Secret Scanning Remediation Reconciliation:**
-   - When secret scanning is enabled on the destination repository, GitHub scans the entire commit history from scratch. This populates alerts, but **loses historical resolution states** (all alerts open as new).
-   - The module queries source resolved alerts (`state=resolved`) and matches them against target open alerts by secret type.
-   - For matching alerts, it applies `PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}` with `state: "resolved"`, the original resolution reason (`false_positive`, `wont_fix`, `revoked`, `used_in_tests`), and an audit comment noting the migration origin.
+To migrate security settings and resolved secret scanning states for a repository:
 
-3. **Code Scanning SARIF Synchronization (Opt-in):**
-   - With `syncSarif: true`, the module extracts the latest SARIF analysis payloads from the source repository and uploads them to the target repository via `POST /repos/{owner}/{repo}/code-scanning/sarifs`.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "security"
+```
 
-## Audit & Compliance Limitations
+To preview which security settings will be enabled and which alerts will be resolved without changing GitHub, add the `--dry-run` option:
 
-- **Actor Attribution:** Resolved secret scanning alerts on the destination reflect the PAT token owner executing the migration as the resolving user.
-- **Timestamp Fidelity:** Resolution events and SARIF alert creations bear the migration execution timestamp; GitHub REST APIs do not permit backdating security alert timestamps.
-- **SARIF Remediation History:** SARIF uploads populate alerts in `open` or `fixed` states. Alert dismissals or custom resolution comments on the source code scanning alerts are not preserved in raw SARIF uploads.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "security" \
+  --dry-run
+```
 
-These limitations are codified in `generateFidelityReport()` and emitted in migration audit logs.
+To migrate security settings across multiple repositories using a scope file:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "auth-service"],
+  "enabledModules": ["security"]
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/security-wave.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> You can also enable `syncSarif: true` in module options to download the latest code scanning SARIF report from the source repository and upload it to the target repository.
+
+> [!WARNING]
+> GitHub's REST API does not allow backdating security alert timestamps. Resolved alerts on the target repository will show the migration token owner and the date of the migration, along with a comment noting the original resolution reason.
+
+## Testing the security module offline
+
+By default, the unit tests verify GHAS feature activation, secret scanning alert matching, and SARIF uploads using offline mock responses.
+
+To run the security module unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/post-migration/security.test.ts
+```

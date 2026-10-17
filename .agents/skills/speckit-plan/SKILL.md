@@ -147,6 +147,7 @@ Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated 
    - Skip if project is purely internal (build scripts, one-off tools, etc.)
 
 3. **Create quickstart validation guide** → `quickstart.md`:
+   - Follow `.agents/rules/documentation-style.md` and `.agents/skills/consultant-style-docs/SKILL.md`: write in plain English at an 8th-grade reading level (avoid stiff jargon), state default behavior upfront, and pair 1–2 sentence `"To <do X>:"` explanations with individual copy-pasteable commands ordered from simple to complex
    - Document runnable validation scenarios that prove the feature works end-to-end
    - Include prerequisites, setup commands, test/run commands, and expected outcomes
    - Use links or references to contracts and data model details instead of duplicating them

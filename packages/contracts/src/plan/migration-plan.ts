@@ -36,6 +36,7 @@ export const ModulePlanSchema = z
   .object({
     moduleId: MigrationModuleIdSchema,
     scopeLevel: MigrationScopeLevelSchema,
+    sourceIdentifier: NonEmptyStringSchema.optional(),
     targetIdentifier: NonEmptyStringSchema,
     operations: z.array(PlannedOperationSchema),
     warnings: z.array(z.string().max(2048)),
@@ -59,7 +60,7 @@ export const MigrationPlanSchema = z
     const observed = { create: 0, update: 0, noop: 0, skip: 0, warn: 0 };
 
     for (const [moduleIndex, module] of plan.modules.entries()) {
-      const moduleTarget = `${module.moduleId}/${module.scopeLevel}/${module.targetIdentifier}`;
+      const moduleTarget = `${module.sourceIdentifier ?? ''}/${module.moduleId}/${module.scopeLevel}/${module.targetIdentifier}`;
       if (moduleTargets.has(moduleTarget)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

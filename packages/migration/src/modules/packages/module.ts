@@ -3,6 +3,11 @@ import {
   type DiscoveryBundle,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  getScopedSourceRepoNames,
+  getScopedTargetRepoName,
+  isAssociatedOnlyOrgMode,
+} from '../../core/org-item-filter.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -282,13 +287,31 @@ export class PackagesMigrationModule implements MigrationModule<PackagesMigratio
       }
     }
 
+    const associatedOnly = isAssociatedOnlyOrgMode(ctx);
+    const scopedSourceNames = getScopedSourceRepoNames(ctx);
+
     for (const srcPkg of sourceData.packages) {
+      if (associatedOnly && scopedSourceNames.size > 0) {
+        const bareRepoName = srcPkg.repositoryName
+          ?.split('/')
+          .pop()
+          ?.split(':')
+          .pop()
+          ?.toLowerCase();
+        if (!bareRepoName || !scopedSourceNames.has(bareRepoName)) {
+          continue;
+        }
+      }
+
       const key = `${srcPkg.packageType}:${srcPkg.name.toLowerCase()}`;
       const targetPkg = targetPackages.get(key);
+      const targetRepoName = srcPkg.repositoryName
+        ? getScopedTargetRepoName(ctx, srcPkg.repositoryName)
+        : undefined;
 
-      if (srcPkg.repositoryName) {
+      if (targetRepoName) {
         warnings.push(
-          `Package "${srcPkg.name}" is linked to repository "${srcPkg.repositoryName}"; ensure repository is migrated to retain linkage.`,
+          `Package "${srcPkg.name}" is linked to repository "${targetRepoName}"; ensure repository is migrated to retain linkage.`,
         );
       }
 
@@ -300,7 +323,7 @@ export class PackagesMigrationModule implements MigrationModule<PackagesMigratio
           versionName: ver.name,
           digest: ver.digest,
           tags: ver.tags,
-          repositoryName: srcPkg.repositoryName,
+          repositoryName: targetRepoName,
         };
 
         const targetVer = targetPkg?.versions.find(

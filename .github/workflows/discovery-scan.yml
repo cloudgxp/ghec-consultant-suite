@@ -272,6 +272,31 @@ jobs:
             --output "./scans" \
             "${EXTRA_ARGS[@]}"
 
+      - name: Generate & Publish Discovery Post-Care & Audit Results
+        if: always() && inputs.dry_run == false
+        env:
+          GHEC_SOURCE_TOKEN: ${{ steps.org-token.outputs.token || secrets.GHEC_DISCOVERY_TOKEN || secrets.GHEC_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN || '' }}
+          MATRIX_ORG: ${{ matrix.org }}
+        run: |
+          BUNDLE_FILE=$(find ./scans ./apps/cli/scans -name "ghec-discovery-${MATRIX_ORG}-*.json" -o -name "ghec-discovery-*.json" 2>/dev/null | head -n 1 || true)
+          if [ -n "$BUNDLE_FILE" ] && [ -f "$BUNDLE_FILE" ]; then
+            PUSH_ARGS=(--dry-run --skip-push)
+            if [ -n "$GHEC_TARGET_TOKEN" ]; then
+              PUSH_ARGS=(--dry-run --force-push)
+            fi
+            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+              --discovery-report "$BUNDLE_FILE" \
+              --source-org "$MATRIX_ORG" \
+              --target-org "$MATRIX_ORG" \
+              --evidence-dir ./scans \
+              --output-dir "./scans/results-repo" \
+              --append-step-summary \
+              "${PUSH_ARGS[@]}" || {
+                echo "::warning::Publishing discovery results repository encountered non-fatal issues."
+              }
+          fi
+
       - name: Upload Organization Bundle Artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -280,6 +305,7 @@ jobs:
           path: |
             scans/ghec-discovery-*.json
             apps/cli/scans/ghec-discovery-*.json
+            scans/results-repo/
           if-no-files-found: ignore
           retention-days: 30
 

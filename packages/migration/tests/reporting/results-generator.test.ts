@@ -1380,3 +1380,138 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
     `rhmSettingsMd missing Updated note: ${rhmSettingsMd}`,
   );
 });
+
+test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 100% parity across discovery, dry-run plan, and live modes', () => {
+  // 1. Standalone Discovery Mode
+  const discoveryResults = generateMigrationResults({
+    sourceOrg: 'src-org',
+    targetOrg: 'dest-emu',
+    executionMode: 'dry-run',
+    operationalMode: 'discovery',
+    discoveryBundle: {
+      schemaVersion: '1.0.0',
+      generatedAt: '2026-10-16T12:00:00Z',
+      entities: [
+        {
+          kind: 'repository',
+          id: 'repo:billing-api',
+          name: 'billing-api',
+        },
+        {
+          kind: 'configuration-metadata',
+          id: 'secret:org:STRIPE_LIVE_KEY',
+          name: 'STRIPE_LIVE_KEY',
+          configurationKind: 'secret',
+          level: 'organization',
+          domain: 'actions',
+          accessMode: 'write-only',
+        },
+        {
+          kind: 'configuration-metadata',
+          id: 'secret:repo:DB_PASS',
+          name: 'DB_PASS',
+          configurationKind: 'secret',
+          level: 'repository',
+          repositoryId: 'repo:billing-api',
+          domain: 'dependabot',
+          accessMode: 'write-only',
+        },
+      ],
+    } as never,
+    evidenceFiles: {
+      'custom-scan-summary.json': '{"ok":true}\n',
+    },
+  });
+
+  assert.ok(discoveryResults.files['POST-CARE-CHECKLIST.md']);
+  assert.ok(discoveryResults.files['exports/post-care-items.csv']);
+  assert.ok(discoveryResults.files['exports/secrets-to-populate.csv']);
+  assert.ok(discoveryResults.files['exports/github-apps-reinstall.csv']);
+  assert.ok(discoveryResults.files['exports/webhooks-reconfiguration.csv']);
+  assert.ok(discoveryResults.files['exports/runners-registration.csv']);
+  assert.ok(discoveryResults.files['exports/migration-operations-full.csv']);
+  assert.ok(discoveryResults.files['evidence/discovery-bundle.json']);
+  assert.ok(discoveryResults.files['evidence/custom-scan-summary.json']);
+
+  const discoveryChecklist =
+    discoveryResults.files['POST-CARE-CHECKLIST.md'] ?? '';
+  assert.ok(
+    discoveryChecklist.includes(
+      'https://github.com/organizations/dest-emu/settings/secrets/actions/STRIPE_LIVE_KEY',
+    ),
+  );
+  assert.ok(
+    discoveryChecklist.includes(
+      'https://github.com/dest-emu/billing-api/settings/secrets/dependabot/DB_PASS',
+    ),
+  );
+
+  // 2. Standalone Plan / Dry-Run Mode (without executionReport)
+  const planResults = generateMigrationResults({
+    sourceOrg: 'src-org',
+    targetOrg: 'dest-emu',
+    executionMode: 'dry-run',
+    operationalMode: 'dry-run',
+    plan: {
+      schemaVersion: '1.0.0',
+      id: 'plan-standalone',
+      createdAt: '2026-10-16T12:00:00Z',
+      scopeName: 'plan-scope',
+      modules: [
+        {
+          moduleId: 'org-secrets',
+          targetIdentifier: 'dest-emu',
+          scopeLevel: 'organization',
+          operations: [
+            {
+              id: 'org-secret:create:SONAR_TOKEN',
+              resourceType: 'org-secret',
+              resourceName: 'actions:SONAR_TOKEN',
+              operation: 'create',
+              reason:
+                'Create sealed empty placeholder for actions organization secret SONAR_TOKEN (visibility: all)',
+              dependencies: [],
+            },
+          ],
+          warnings: [],
+        },
+        {
+          moduleId: 'repo-secrets',
+          targetIdentifier: 'dest-emu/billing-api',
+          scopeLevel: 'repository',
+          operations: [
+            {
+              id: 'repo-secret:codespaces:CS_PAT',
+              resourceType: 'repo-secret',
+              resourceName: 'CS_PAT',
+              operation: 'create',
+              reason: 'Create codespaces secret placeholder',
+              dependencies: [],
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      executionOrder: ['org-secrets', 'repo-secrets'],
+    },
+  });
+
+  assert.ok(planResults.files['POST-CARE-CHECKLIST.md']);
+  assert.ok(planResults.files['organization/org-secrets.md']);
+  assert.ok(planResults.files['repositories/billing-api/repo-secrets.md']);
+  assert.ok(planResults.files['evidence/migration-plan.json']);
+
+  const orgSecretsMd = planResults.files['organization/org-secrets.md'] ?? '';
+  assert.ok(
+    orgSecretsMd.includes(
+      'https://github.com/organizations/dest-emu/settings/secrets/actions/SONAR_TOKEN',
+    ),
+  );
+  const repoSecretsMd =
+    planResults.files['repositories/billing-api/repo-secrets.md'] ?? '';
+  assert.ok(
+    repoSecretsMd.includes(
+      'https://github.com/dest-emu/billing-api/settings/secrets/codespaces/CS_PAT',
+    ),
+  );
+});

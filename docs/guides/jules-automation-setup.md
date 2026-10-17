@@ -1,176 +1,133 @@
-# Jules Autonomous Maintenance & CI Healing Setup Guide
+# Setting up Jules automated maintenance and CI healing
 
-This guide describes how to configure, operate, and maintain the autonomous AI development workflows powered by Google Labs' **Jules** (`google-labs-code/jules-action@v1.0.0`) within the GHEC Consultant Suite monorepo.
-
----
-
-## 1. Overview & Architecture
-
-Jules is an autonomous, cloud-hosted AI software engineering agent developed by Google Labs and powered by Gemini 3 Pro. The GHEC Consultant Suite integrates Jules to eliminate maintenance friction, autonomously heal broken CI builds on feature branches, resolve minor issues, and execute daily preventative codebase hygiene sweeps.
+You can use **Jules** (`google-labs-code/jules-action@v1.0.0`) in this repository to fix broken CI builds automatically, solve small GitHub issues, and clean up unused code every morning. Jules works in a cloud virtual machine, runs `npm run check` to test its own changes, and opens a Pull Request for you to review.
 
 ```mermaid
 flowchart TD
-    subgraph Triggers["Trigger Surface"]
-        T1["Issue Labeled 'jules'"]
-        T2["Monorepo Quality Failure<br/>(workflow_run)"]
-        T3["Daily Hygiene Cron<br/>(04:00 UTC)"]
-        T4["Manual Dispatch<br/>(workflow_dispatch)"]
+    subgraph Triggers["How Jules Starts"]
+        T1["Add 'jules' Label to Issue"]
+        T2["CI Build Fails on a Branch"]
+        T3["Daily Cleanup (04:00 UTC)"]
+        T4["Manual Workflow Run"]
     end
 
-    subgraph Guards["Safety & Quota Guards"]
-        G1{"Author Association Guard<br/>(OWNER / MEMBER / COLLABORATOR)"}
-        G2{"Loop & Branch Guard<br/>(Skip main, combined, & jules/*)"}
+    subgraph Guards["Safety Checks"]
+        G1{"Is User a Collaborator?"}
+        G2{"Is Branch Safe to Heal?"}
     end
 
-    subgraph Jules["Jules Autonomous Execution (google-labs-code/jules-action@v1.0.0)"]
-        J1["Cloud VM Environment"]
-        J2["Contextual Codebase Analysis"]
-        J3["Scoped Code Modification (< 100 lines)"]
-        J4["Local Verification: npm run check"]
+    subgraph Jules["Jules Cloud Runner"]
+        J1["Analyze Code & Fix Issue (< 100 lines)"]
+        J2["Run Local Check: npm run check"]
     end
 
-    subgraph Delivery["Pull Request & Merge Pipeline"]
-        PR["Jules Pull Request<br/>(Branch: jules/*, Label: 'jules')"]
-        Combiner[".github/workflows/combine-jules-prs.yml<br/>(Weekly batching via github/combine-prs)"]
-        Merged["Main Codebase"]
+    subgraph Delivery["Pull Request & Weekly Merge"]
+        PR["Open PR with 'jules' Label"]
+        Combiner["Combine Passing PRs Weekly"]
     end
 
     T1 --> G1
+    T2 --> G2
     T3 --> Jules
     T4 --> Jules
-    T2 --> G2
-
-    G1 -->|Authorized| Jules
-    G1 -->|Unauthorized| Reject["Post rejection comment & exit"]
-
-    G2 -->|Valid internal branch| Jules
-    G2 -->|Recursion detected| Skip["Skip healing run"]
-
-    Jules --> PR
-    PR --> Combiner
-    Combiner --> Merged
+    G1 -->|Yes| Jules
+    G2 -->|Yes| Jules
+    Jules --> PR --> Combiner
 ```
 
 ---
 
-## 2. API Key Configuration
+## Saving your Jules API key in GitHub Secrets
 
-To activate Jules automations, you must configure a Google Jules API key as a repository secret.
+By default, all Jules workflows authenticate using a repository secret named `JULES_API_KEY`.
 
-### Step 2.1: Generate a Jules API Key
+First, get an API key from Google Jules:
 
-1. Navigate to [jules.google.com](https://jules.google.com) and authenticate with your GitHub account.
-2. Select your user avatar in the top-right corner and open **Account Settings**.
-3. Under **API Keys**, select **Create New API Key**.
-4. Copy the generated key token.
+1. Sign in to [jules.google.com](https://jules.google.com) with your GitHub account.
+2. Click your profile picture in the top-right corner and open **Account Settings**.
+3. Under **API Keys**, click **Create New API Key** and copy the token.
 
-### Step 2.2: Add to GitHub Repository Secrets
+To save your `JULES_API_KEY` in your repository's GitHub Actions secrets using the GitHub CLI:
 
-1. Navigate to your repository on GitHub.
-2. Go to **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**.
-3. Click **New repository secret**.
-4. Name: `JULES_API_KEY`
-5. Secret: _Paste your Jules API token_.
-6. Click **Add secret**.
+```bash
+gh secret set JULES_API_KEY
+```
+
+To also set an optional Personal Access Token for combining weekly Jules Pull Requests (if you do not want to use the default `GITHUB_TOKEN`):
+
+```bash
+gh secret set COMBINE_PRS_PAT
+```
+
+---
+
+## Asking Jules to fix a GitHub Issue
+
+By default, `.github/workflows/jules-agent.yml` watches for the `jules` label on issues. When a maintainer or collaborator adds that label, Jules adds an `:eyes:` reaction, fixes the problem, runs `npm run check`, and opens a Pull Request.
+
+To assign a GitHub Issue to Jules from the command line:
+
+```bash
+gh issue edit 42 --add-label "jules"
+```
+
+To start a Jules task manually from the command line with custom instructions:
+
+```bash
+gh workflow run jules-agent.yml \
+  -f task_type="custom" \
+  -f custom_prompt="Add unit tests for formatDuration in packages/analysis" \
+  -f base_branch="main"
+```
+
+To ask Jules to fix a specific issue number using a manual workflow run:
+
+```bash
+gh workflow run jules-agent.yml \
+  -f task_type="issue-fix" \
+  -f issue_number="42" \
+  -f base_branch="main"
+```
 
 > [!NOTE]
-> If you wish to use a Personal Access Token with elevated permissions to combine and merge PRs in `combine-jules-prs.yml`, you can optionally set `COMBINE_PRS_PAT` in the same secrets settings. If omitted, the default `GITHUB_TOKEN` is used.
+> Only repository `OWNER`, `MEMBER`, or `COLLABORATOR` accounts can trigger Jules. If an outside user adds the `jules` label, the workflow posts a polite note and stops so your API quota is protected.
 
 ---
 
-## 3. Operational Workflows & Triggers
+## How automatic CI healing and daily cleanup work
 
-### Trigger A: Issue Fix Agent
+In addition to issue fixes, Jules runs two background workflows automatically:
 
-Maintainers can delegate bug fixes and documentation corrections directly from GitHub Issues:
+1. **Fixing broken branch builds (`jules-ci-healer.yml`):** When a feature branch fails the `Monorepo quality` check (such as a lint error, Prettier formatting issue, or TypeScript error), Jules reads the failed log and pushes a fix. To prevent infinite loops, auto-healing never runs on `main`, `combined-jules-prs`, or branches created by Jules (`jules/*`).
+2. **Daily code cleanup (`04:00 UTC`):** Every morning at 04:00 UTC, Jules runs a small cleanup sweep (under 100 lines) to remove unused variables, tighten TypeScript types, and add unit tests.
 
-#### 1. Via Issue Label
+To trigger a daily code cleanup sweep on demand from your terminal:
 
-- Apply the label `jules` to any issue.
-- **Workflow:** `.github/workflows/jules-agent.yml` triggers automatically.
-- **Acknowledgement:** The issue receives an `:eyes:` reaction.
-- **Authorization:** Only repository `OWNER`, `MEMBER`, or `COLLABORATOR` actors can invoke Jules. If an unauthorized user applies the label, the workflow posts an explanatory comment and terminates without consuming quota.
-
-> [!NOTE]
-> Pull request reviews, inline comments, and `@jules` mentions are handled directly by the native **Jules GitHub App** (`@google-labs-jules[bot]`). GitHub Action triggers on issue comments were intentionally removed to eliminate duplicate runs and avoid bot authorization conflicts.
-
----
-
-### Trigger B: CI Auto-Healer
-
-When code changes in internal branches trigger a failure in `monorepo-quality.yml`, the auto-healer steps in.
-
-- **Workflow:** `.github/workflows/jules-ci-healer.yml` triggers via `workflow_run` on completion of `Monorepo quality`.
-- **Diagnostic Collection:** The action queries the GitHub REST API to locate failed jobs and steps (such as ESLint lint errors, Prettier formatting violations, or TypeScript compilation issues).
-- **Anti-Recursion Protection:**
-  - Auto-healing only runs on internal branches (`github.repository == workflow_run.head_repository.full_name`).
-  - Auto-healing is disabled on `main`, `combined-jules-prs`, and branches created by Jules itself (`jules/*`, `*-jules-*`, or timestamped refs). This prevents infinite error feedback loops.
-- **Remediation:** Jules runs on the head branch with `include_last_commit: 'true'` and pushes a remediation pull request or commit.
+```bash
+gh workflow run jules-agent.yml \
+  -f task_type="hygiene-sweep" \
+  -f base_branch="main"
+```
 
 ---
 
-### Trigger C: Daily Scheduled Hygiene Sweep
+## Combining and merging Jules Pull Requests
 
-- **Schedule:** Runs every morning at **04:00 UTC** via cron (`0 4 * * *`).
-- **Scope:**
-  - Replaces loose `any` types in `@ghec/contracts` and `@ghec/github-client` with strict types or generics.
-  - Cleans up dead variables and unreferenced imports across packages.
-  - Updates stale JSDoc annotations to match exported function signatures.
-  - Adds unit test coverage for pure helper functions in `@ghec/analysis` and `@ghec/migration`.
-- **Quality Constraint:** Diff must be $< 100$ lines, and `npm run check` must pass cleanly.
+To keep your Pull Request list tidy, `.github/workflows/combine-jules-prs.yml` automatically labels every new Jules PR with `jules` and combines all passing `jules` PRs into a single `combined-jules-prs` branch every Sunday at 00:00 UTC.
 
----
+To combine all open, passing Jules Pull Requests right now instead of waiting until Sunday:
 
-### Trigger D: Manual Dispatch
-
-Maintainers can manually trigger targeted Jules interventions from the GitHub Actions UI:
-
-1. Navigate to **Actions** $\rightarrow$ **Jules Agent**.
-2. Click **Run workflow**.
-3. Configure the inputs:
-   - **Type of task:**
-     - `custom`: Supply custom instructions in the prompt.
-     - `hygiene-sweep`: Run a targeted hygiene sweep on a specific branch.
-     - `issue-fix`: Fix a specific issue by number.
-   - **Custom prompt instructions:** Specific instructions or constraints.
-   - **Starting branch:** Branch to base work on (defaults to `main`).
-   - **Target issue number:** Issue number (if `issue-fix` selected).
+```bash
+gh workflow run combine-jules-prs.yml
+```
 
 ---
 
-## 4. Jules PR Auto-Batching & Merging
+## Checking Jules workflow logs and YAML syntax
 
-When Jules completes a task, it opens a pull request. To prevent repository noise and PR sprawl, `.github/workflows/combine-jules-prs.yml` handles batching:
+If a Jules workflow does not start or fails to open a Pull Request, you can check the workflow syntax and logs from your terminal.
 
-1. **Immediate Labeling (`pull_request_target`)**:
-   As soon as a Jules PR is opened, the workflow detects Jules branch names (`jules/*`, timestamped suffixes), Jules PR bodies, or `[Jules]` titles and attaches the `jules` label.
-
-2. **Weekly Combination Schedule**:
-   Every Sunday at 00:00 UTC (or upon manual dispatch), `combine-prs` aggregates all open, passing Jules PRs into a single combined PR (`combined-jules-prs`):
-   - Only PRs with the `jules` label and passing CI checks (`ci_required: true`) are merged into the batch.
-   - Maintainers can review and merge one combined PR per week instead of handling dozens of minor PRs individually.
-
----
-
-## 5. Quota & Safety Guardrails
-
-Google AI Ultra provides up to **300 Jules fixes per day**. The suite implements multiple layers of protection to ensure this quota is used efficiently:
-
-| Safeguard                       | Implementation                                                | Benefit                                                              |
-| :------------------------------ | :------------------------------------------------------------ | :------------------------------------------------------------------- |
-| **Maintainer Allowlists**       | Author association checks (`OWNER`, `MEMBER`, `COLLABORATOR`) | Prevents external issue spammers from draining API quota             |
-| **Anti-Loop Filter**            | Filters out `jules/*`, `main`, and `combined-*` branches      | Eliminates infinite CI failure feedback loops                        |
-| **Diff Limitation**             | Prompt template strictly caps diffs at $< 100$ lines          | Ensures fast execution, low token usage, and high success rates      |
-| **Strict Quality Verification** | Mandatory `npm run check` in Jules prompt before PR creation  | Zero broken builds or regressions introduced into the monorepo       |
-| **Rate-Limited Cron**           | Single daily hygiene run                                      | Predictable daily background quota allocation ($< 1\%$ of daily cap) |
-
----
-
-## 6. Verification & Troubleshooting
-
-### Validating Workflow Configurations
-
-Run a quick YAML validation check locally:
+To verify that all `.github/workflows/*.yml` files have valid YAML syntax:
 
 ```bash
 python3 -c "
@@ -178,12 +135,13 @@ import yaml, glob
 for f in sorted(glob.glob('.github/workflows/*.yml')):
     with open(f) as fp:
         yaml.safe_load(fp)
-print('All workflows valid YAML.')
+print('All workflows have valid YAML syntax.')
 "
 ```
 
-### Checking Jules Invocation Logs
+To inspect the latest Jules Agent workflow run and find the link to its remote cloud session:
 
-1. Go to **Actions** $\rightarrow$ **Jules Agent** or **Jules CI Auto-Healer**.
-2. Inspect the **Prepare Jules Context & Prompt** step to review the generated prompt and authorization decision.
-3. Review the **Invoke Jules Action** step for the remote VM execution link (e.g. `https://jules.google.com/task/<task-id>`).
+```bash
+RUN_ID=$(gh run list --workflow=jules-agent.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run view "$RUN_ID" --log
+```

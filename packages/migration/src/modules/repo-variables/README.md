@@ -1,54 +1,59 @@
-# Repository Actions Variables Migration Module (`repo-variables`)
+# Migrating Repository Actions Variables (`repo-variables`)
 
-The `repo-variables` migration module handles discovery, planning, mutation, and verification of repository-level GitHub Actions variables between source and target GitHub organizations.
+By default, GitHub Enterprise Importer (GEI) does not copy repository-level GitHub Actions configuration variables. The `repo-variables` module reads all Actions variables from your source repository and creates or updates them on the target repository after GEI finishes.
 
-## Metadata
+## Copying repository Actions variables
 
-- **Module ID:** `repo-variables`
-- **Display Name:** `Repository Actions Variables`
-- **Scope Level:** `repository`
-- **Dependencies:** `gei-repo` (executes post-GEI repository transfer)
+By default, this module reads variables from `GET /repos/{owner}/{repo}/actions/variables`, creates missing variables on the target repository, and updates any existing variables whose values do not match.
 
----
+To copy Actions variables for a single repository:
 
-## 4-Stage Lifecycle
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-variables"
+```
 
-### 1. `discover(ctx, cachedData?)`
+To preview which variables will be created or updated without making any changes on GitHub, add the `--dry-run` option:
 
-- **Live Mode:** Queries `GET /repos/{owner}/{repo}/actions/variables` on the source repository via `ctx.sourceClient`.
-- **Cached Mode:** Extracts `configuration-metadata` entities from the supplied `DiscoveryBundle` where `domain === 'actions'`, `configurationKind === 'variable'`, and `level === 'repository'`.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "repo-variables" \
+  --dry-run
+```
 
-### 2. `plan(ctx, sourceData)`
+To migrate repository Actions variables across multiple repositories using a scope file:
 
-- Queries existing variables on the target repository via `GET /repos/{owner}/{repo}/actions/variables`.
-- Compares each source variable against the destination:
-  - **Missing on Target:** Emits a `create` operation with payload `{ name, value }`.
-  - **Exists with Different Value:** Emits an `update` operation with payload `{ value }`.
-  - **Exists with Identical Value:** Emits a `noop` operation.
-- Emits a strictly validated `ModulePlan`.
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["repo-variables"]
+}
+```
 
-### 3. `apply(ctx, plan)`
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
 
-- **Dry-Run Mode (`ctx.dryRun === true`):** Simulates operations without performing network writes, recording `succeeded` execution results.
-- **Live Mode:** Dispatches mutations via `ctx.targetWriteClient`:
-  - `create`: `POST /repos/{owner}/{repo}/actions/variables`
-  - `update`: `PATCH /repos/{owner}/{repo}/actions/variables/{name}`
-  - `noop`: Skips write calls completely, recording `succeeded`.
-  - `skip`: Skips operation, recording `skipped`.
-- Honors `ctx.continueOnError` upon failure.
-- Returns a validated `ModuleExecutionResult`.
+> [!NOTE]
+> This module is safe to run more than once. If a variable already exists on the target repository with the same value, the module skips it without making extra API calls.
 
-### 4. `verify(ctx, plan)`
+## Testing this module offline
 
-- Queries destination variables post-migration.
-- Confirms each planned variable exists and possesses the expected value.
-- If all variables match, returns `{ moduleId: 'repo-variables', verified: true, discrepancies: [] }`.
-- If missing or value mismatch, records discrepancies and returns `{ moduleId: 'repo-variables', verified: false, discrepancies }`.
+By default, the unit tests check discovering, planning, creating, updating, and verifying repository Actions variables offline.
 
----
+To run the repository variables unit tests offline:
 
-## Invariant Guarantees
-
-- **Idempotency:** Applying an already applied plan produces only `noop` operations with zero target write requests.
-- **Dry-Run Safety:** When `ctx.dryRun === true`, no write operations are issued to `targetWriteClient`.
-- **Contract Schema Adherence:** All outputs conform strictly to `@ghec/contracts` schemas: `ModulePlanSchema`, `ModuleExecutionResultSchema`, and `ModuleVerificationResultSchema`.
+```bash
+node --import tsx --test packages/migration/tests/modules/repo-variables.test.ts
+```

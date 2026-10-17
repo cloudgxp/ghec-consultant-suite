@@ -1,26 +1,25 @@
 # `@ghec/contracts`
 
-Runtime Zod contracts shared by discovery, planning, migration, and verification.
-The exported schemas reject unknown object fields and accept only the registered
-`1.0.0` migration artifact version. Use the accompanying `validate*` helper to
-safe-parse untrusted JSON before it enters a workflow.
+`@ghec/contracts` provides the shared Zod schemas that check JSON files for discovery, planning, migration, and verification across the workspace.
 
-## Migration artifacts
+---
 
-| Schema                                           | Purpose                                                                                                                                                            | Validation helper                  |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| `MigrationScopeSchema`                           | Maps enterprise, organization, repository, and identity boundaries from source to target. Repository mappings cannot conflict with declared organization mappings. | `validateMigrationScope`           |
-| `MigrationPreflightReportSchema`                 | Captures repository sizing, LFS/release data, readiness status, and destination prerequisites.                                                                     | `validatePreflightReport`          |
-| `MigrationPlanSchema` / `PlannedOperationSchema` | Records the immutable, reviewed create/update/noop/skip/warn diff. Its summary must equal the recorded operations.                                                 | `validateMigrationPlan`            |
-| `ModuleExecutionResultSchema`                    | Records operation outcomes and elapsed duration for an executed module.                                                                                            | `validateModuleExecutionResult`    |
-| `VerificationReportSchema`                       | Audits module compliance at the destination; its summary must equal the observed module results and discrepancies.                                                 | `validateVerificationReport`       |
-| `MannequinReclamationPlanSchema`                 | Records mannequin attribution entries and enforces `skipInvitation` for EMU/SAML reclamation.                                                                      | `validateMannequinReclamationPlan` |
-| `CustomPropertyMappingSchema`                    | Maps custom-property names and values from a source organization to its target organization.                                                                       | `validateCustomPropertyMapping`    |
+## Validating discovery and migration JSON files
 
-`DiscoveryBundleSchema` and `validateBundle()` remain the discovery-artifact
-entry points. `SCHEMA_VERSION` applies to discovery bundles; migration artifacts
-share the separately exported `MIGRATION_SCHEMA_VERSION` constant, currently
-also `1.0.0`.
+By default, every schema in `@ghec/contracts` requires version `1.0.0` (`SCHEMA_VERSION` and `MIGRATION_SCHEMA_VERSION`) and rejects unknown extra fields so bad data cannot enter a migration workflow.
+
+| Schema                                           | What it checks                                                                                                                    | Helper function                    |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `DiscoveryBundleSchema`                          | Checks saved discovery bundles (`SCHEMA_VERSION` `1.0.0`).                                                                        | `validateBundle`                   |
+| `MigrationScopeSchema`                           | Maps enterprise, organization, repository, and user names from source to target without conflicting organization mappings.        | `validateMigrationScope`           |
+| `MigrationPreflightReportSchema`                 | Records repository sizes, Git LFS and release sizes, readiness status, and target requirements.                                   | `validatePreflightReport`          |
+| `MigrationPlanSchema` / `PlannedOperationSchema` | Records the planned `create`, `update`, `noop`, `skip`, and `warn` steps and confirms the summary totals match the listed steps.  | `validateMigrationPlan`            |
+| `ModuleExecutionResultSchema`                    | Records the results and run time for a completed migration module.                                                                | `validateModuleExecutionResult`    |
+| `VerificationReportSchema`                       | Checks whether the target organization matches the plan and confirms the summary totals match the module results and differences. | `validateVerificationReport`       |
+| `MannequinReclamationPlanSchema`                 | Records mannequin user mappings and requires `skipInvitation` for Enterprise Managed Users (EMU) and SAML accounts.               | `validateMannequinReclamationPlan` |
+| `CustomPropertyMappingSchema`                    | Maps custom property names and values from a source organization to a target organization.                                        | `validateCustomPropertyMapping`    |
+
+To validate a migration scope JSON payload before using it in code:
 
 ```ts
 import { validateMigrationScope } from '@ghec/contracts';
@@ -29,4 +28,34 @@ const validated = validateMigrationScope(json);
 if (!validated.success) throw new Error('Invalid migration scope');
 
 const scope = validated.data;
+```
+
+To validate a discovery bundle JSON payload:
+
+```ts
+import { validateBundle } from '@ghec/contracts';
+
+const result = validateBundle(rawJson);
+if (!result.ok) throw new Error('Invalid discovery bundle');
+```
+
+> [!NOTE]
+> Always use the `validate*` helper functions when reading JSON from disk so invalid files fail safely without printing sensitive customer strings in error logs.
+
+---
+
+## Building and testing the contracts package
+
+By default, building `@ghec/contracts` compiles the shared TypeScript types and Zod validators used by all other packages.
+
+To check TypeScript types in `@ghec/contracts`:
+
+```bash
+npm run typecheck -w @ghec/contracts
+```
+
+To build the `@ghec/contracts` package:
+
+```bash
+npm run build -w @ghec/contracts
 ```

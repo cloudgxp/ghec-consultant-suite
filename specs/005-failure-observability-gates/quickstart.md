@@ -3,45 +3,77 @@
 **Feature**: `005-failure-observability-gates`
 **Created**: 2026-10-15
 
----
-
-## 1. Prerequisites
-
-- Node.js `>=22.13.0` and npm workspaces installed (`npm install` at repository root).
-- All packages built via `npm run build`.
+This guide shows you how to test failure logging, subprocess output streaming, verification error handling, and execution-aware `agent-review` reports offline.
 
 ---
 
-## 2. Running Targeted Offline Unit & Integration Suites
+## Installing and building the workspace
 
-Execute the unit and integration test suites covering all 6 observability areas 100% offline:
+By default, the unit tests and CLI commands require Node.js `>=22.13.0` and compiled workspace packages.
+
+To install dependencies and build all packages from the repository root:
 
 ```bash
-# 1. Validate @ghec/contracts ModuleExecutionResultSchema targetIdentifier & validation
-node --import tsx --test packages/contracts/tests/results-repo-manifest.test.ts
+npm install
+npm run build
+```
 
-# 2. Validate 32-module summary-reporter attribution & step-summary collapsible details
+---
+
+## Running the failure reporting and verification tests offline
+
+By default, these five unit test suites verify target identifiers, step summaries, live subprocess output streaming, verification failure checks, and `agent-review` report matching 100% offline.
+
+To test `targetIdentifier` validation in `ModuleExecutionResultSchema`:
+
+```bash
+node --import tsx --test packages/contracts/tests/results-repo-manifest.test.ts
+```
+
+To test 32-module attribution and collapsible error details in GitHub Actions step summaries:
+
+```bash
 node --import tsx --test \
   packages/migration/tests/reporting/summary-reporter.test.ts \
   packages/migration/tests/reporting/step-summary.test.ts
+```
 
-# 3. Validate real-time subprocess streaming (onStdout/onStderr) & redacted timeout tails
+To test live subprocess output streaming (`onStdout`/`onStderr`) and redacted timeout logs:
+
+```bash
 node --import tsx --test packages/migration/tests/strategies/mirror-push.test.ts
+```
 
-# 4. Validate fail-closed verification on unexpected source/target read errors
+To verify that unexpected source or target read errors during verification are recorded as failures:
+
+```bash
 node --import tsx --test \
   packages/migration/tests/orchestrator/verification-orchestrator.test.ts \
   packages/migration/tests/modules/gei-repo.test.ts
+```
 
-# 5. Validate execution-aware agent-review (--execution-reports)
+To test execution-aware `agent-review` with `--execution-reports`:
+
+```bash
 node --import tsx --test apps/cli/tests/agent-review.test.ts
 ```
 
 ---
 
-## 3. Running Execution-Aware `agent-review` via CLI
+## Matching verification reports with execution reports in `agent-review`
 
-Correlate a verification report (`verification-report.json`) with downloaded cohort execution reports (`./downloaded-cohorts`):
+By default, passing `--execution-reports` to `agent-review` matches each difference in `./scans/verification-report.json` with the saved `apply()` error (`executionError`) from `./downloaded-cohorts/cohort-report-*.json` (see [`contracts/remediation-plan-v1.contract.json`](./contracts/remediation-plan-v1.contract.json)).
+
+```text
+downloaded-cohorts/
+└── cohort-report-1.json
+scans/
+├── verification-report.json
+├── remediation-plan.json
+└── remediation-plan.md
+```
+
+To generate a fix plan that includes `apply()` errors from `./downloaded-cohorts`:
 
 ```bash
 npm run dev:cli -- agent-review \
@@ -52,24 +84,17 @@ npm run dev:cli -- agent-review \
   --verbose
 ```
 
-### Expected Outcomes
-
-- `remediation-plan.json` and `remediation-plan.md` include sanitized `apply()` root-cause errors (`executionError`) on matching verification discrepancies (see [`contracts/remediation-plan-v1.contract.json`](./contracts/remediation-plan-v1.contract.json)).
-- Any module that failed during `apply()` in `cohort-report-*.json` but reported `0` discrepancies in `verification-report.json` produces a synthesized `RemediationAction` (`synthesizedFromExecution: true`) and an explicit warning in `remediation-plan.json`.
+> [!NOTE]
+> If a module failed during `apply()` in `cohort-report-*.json` but showed `0` differences in `verification-report.json`, `agent-review` automatically adds a `RemediationAction` with `synthesizedFromExecution: true` and records a warning in `remediation-plan.json`.
 
 ---
 
-## 4. Primary Quality Gate
+## Running the full repository quality check
 
-Run the repository quality gate before completing any task:
+By default, `npm run check` runs `npm run lint`, `npm run typecheck`, `npm run build:apps`, and `npm run test:unit` offline.
+
+To run the full quality check before finishing your work:
 
 ```bash
 npm run check
 ```
-
-Expected outcome:
-
-- `npm run lint` passes with zero ESLint or Prettier errors.
-- `npm run typecheck` passes across all packages and apps.
-- `npm run build:apps` compiles `@ghec/cli` and `@ghec/dashboard`.
-- `npm run test:unit` passes all unit and integration suites 100% offline.

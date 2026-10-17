@@ -1,67 +1,63 @@
-# Mannequin Reclamation & Attribution Engine
+# Reclaiming Mannequins to Restore User History (`post-migration-mannequins`)
 
-This module provides automated discovery, identity translation, and bulk reattribution of historical user contributions (issues, pull requests, and comments) imported as placeholder "mannequin" identities during GitHub Enterprise Importer (GEI) migrations.
+By default, GitHub Enterprise Importer (GEI) assigns imported issues, pull requests, and comments to placeholder accounts called "mannequins." This module maps each mannequin to the user's new Enterprise Managed User (EMU) login and runs `gh gei reclaim-mannequin --skip-invitation` to link their past work immediately.
 
-## Background & Architecture
+## Reclaiming mannequin accounts in your target organization
 
-When repositories are migrated to GitHub Enterprise Cloud (GHEC) via GEI, historical activity authored by source contributors who do not yet exist as target users is attributed to placeholder "mannequin" accounts.
+By default, this module exports the mannequin list from your target organization, matches source logins to EMU usernames (such as `octocat` to `octocat_acme`), and reassigns historical issues and pull requests without sending email invitations.
 
-Reclaiming mannequins reassociates this activity with real users in the target organization.
+To reclaim mannequins for your organization from the command line:
 
-```
-       +---------------------------------------------+
-       |   gh gei generate-mannequin-csv             |
-       |   (Exports inventory of placeholder logins) |
-       +----------------------+----------------------+
-                              |
-                              v
-       +---------------------------------------------+
-       |   IdentityMappingEngine                     |
-       |   (Resolves EMU usernames: _suffix, dict)   |
-       +----------------------+----------------------+
-                              |
-                              v
-       +---------------------------------------------+
-       |   gh gei reclaim-mannequin                  |
-       |   --skip-invitation (GHEC-EMU fast-track)   |
-       +----------------------+----------------------+
-                              |
-                              v
-       +---------------------------------------------+
-       |   Soundness Audit & Discrepancy Reporting   |
-       +---------------------------------------------+
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --modules "post-migration-mannequins"
 ```
 
-## GHEC-EMU Fast-Track (`--skip-invitation`)
+To preview which mannequin accounts will be linked to which EMU users without making changes, add the `--dry-run` option:
 
-In standard GitHub migrations, reclaiming a mannequin requires sending an invitation email that the target user must manually accept.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --modules "post-migration-mannequins" \
+  --dry-run
+```
 
-In **GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU)**, enterprise administrators have centralized governance over managed identities. Passing `--skip-invitation` allows the engine to immediately reattribute contributions to the target EMU user without requiring individual acceptance.
+To map usernames using an explicit identity mapping rule in a scope file:
 
-## Commit Authorship Platform Limitation (DEC-013)
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "enabledModules": ["post-migration-mannequins"],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "shortcode": "acme"
+  }
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/mannequins-wave.json \
+  --output-dir ./scans
+```
+
+> [!NOTE]
+> Make sure your users are already created in the target organization through your identity provider (SCIM) before running this module.
 
 > [!WARNING]
-> In GHEC-EMU, managed users cannot link secondary or personal email addresses to their enterprise accounts.
->
-> As a result:
->
-> - Git commits authored using non-primary or legacy email addresses cannot be linked to the user's EMU profile.
-> - Git commit history remains permanently linked to the author string / email in the Git log.
-> - Only commits authored using the user's primary IdP-linked email address are attributed to the managed user account.
+> In GHEC-EMU, users cannot attach personal or secondary email addresses to their managed accounts. Git commits made with an old email address will still show the author's name in the Git log, but only commits matching the user's primary identity provider email will link to their EMU profile picture.
 
-The engine automatically includes this advisory notice in all generated plans and migration summary reports.
+## Testing the mannequin reclamation module offline
 
-## Prerequisites
+By default, the unit tests check CSV generation, EMU username mapping, and `--skip-invitation` execution using offline test doubles.
 
-1. **Target User Provisioning:** Target EMU users must already exist and be members of the target organization (via SCIM provisioning) before executing reclamation.
-2. **Access Tokens:** The execution token requires organization admin / owner permissions in the destination enterprise organization.
+To run the mannequin reclamation unit tests offline:
 
-## Module Integration
-
-- **Module ID:** `post-migration-mannequins`
-- **Scope Level:** `organization` (or repository pipeline Stage 6)
-- **Lifecycle:**
-  - `discover`: Exports mannequin CSV via GEI CLI.
-  - `plan`: Applies EMU identity mappings, detects unmapped contributors, and attaches limitation advisories.
-  - `apply`: Serializes mapped CSV and runs `reclaim-mannequin` with `--skip-invitation`.
-  - `verify`: Flags unmapped or unreclaimed mannequins as discrepancies.
+```bash
+node --import tsx --test packages/migration/tests/post-migration/mannequins.test.ts
+```

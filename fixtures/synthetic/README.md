@@ -1,11 +1,34 @@
-# Fictional discovery bundles
+# Validating and using synthetic discovery bundles
 
-`enterprise-v1.json` contains two fictional organizations, a partial enterprise enumeration, unknown LFS metrics, a failed security collector, and an advisory finding. `organization-v1.json` shows the same contract for one fictional organization.
+By default, `fixtures/synthetic/` provides four fictional discovery bundles (`1.0.0`) that you can use to test the CLI and offline dashboard without connecting to GitHub:
 
-`specialized-v1.json` provides complete positive coverage for specialized and newly emitted entity kinds: Actions self-hosted and hosted runners, runner groups, native workflows, run summaries, workflow policies, caches, artifacts, environments, configuration metadata, configuration coverage, repository portfolios, CODEOWNERS posture, projects, dependency nodes/edges, and package versions/releases.
+```text
+fixtures/synthetic/
+├── enterprise-v1.json
+├── organization-v1.json
+├── partial-denied-v1.json
+└── specialized-v1.json
+```
 
-`partial-denied-v1.json` exercises permission-denied / HTTP 403 partial collection scenarios. It demonstrates denied configuration coverage, partial collector execution with `permission_denied` error codes, and unknown metric preservation without coercing unobserved values to zero.
+- `enterprise-v1.json`: Contains two fictional organizations, a partial enterprise list, unknown Git LFS counts, a failed security collector, and an advisory finding.
+- `organization-v1.json`: Uses the same schema for a single fictional organization.
+- `specialized-v1.json`: Covers Actions self-hosted and GitHub-hosted runners, runner groups, workflows, run summaries, workflow policies, caches, artifacts, environments, repository portfolios, `CODEOWNERS`, projects, dependency graphs, and packages/releases.
+- `partial-denied-v1.json`: Simulates HTTP `403` (`permission_denied`) responses so you can test how partial results and unknown values are displayed without turning missing numbers into `0`.
 
-All names, timestamps, counts, IDs, and outcomes are invented; no API response or customer data was used.
+To check that all four synthetic bundles match the `@ghec/contracts` schema:
 
-Run `npm run validate:fixtures`. These fixtures exercise the contract, not live collectors or permission guarantees. Secret **names** are fictional metadata; there are no secret values. Coverage observed/expected counts represent enumerated target resources, not entity counts.
+```bash
+npm run validate:fixtures
+```
+
+To build a migration plan offline using one of the synthetic bundles:
+
+```bash
+npm run dev:cli -- plan \
+  --scope ./scopes/org-scope.json \
+  --input ./fixtures/synthetic/organization-v1.json \
+  --output ./scans/migration-plan.json
+```
+
+> [!NOTE]
+> All names, timestamps, counts, IDs, and secret names in these files are completely made up. No secret values or real customer data are included.

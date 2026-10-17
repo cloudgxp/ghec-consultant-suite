@@ -4,10 +4,55 @@ on:
   workflow_dispatch:
     inputs:
       scope:
-        description: 'Path to migration scope JSON file (e.g. "scopes/wave-1.json")'
-        required: true
+        description: 'Path to migration scope JSON file (or leave default when using scope_run_id / inline source_org & target_org)'
+        required: false
         type: string
         default: 'scopes/wave-1.json'
+      scope_run_id:
+        description: 'Optional GitHub Actions Run ID from generate-scope.yml (or "latest") to download migration-scopes artifact'
+        required: false
+        type: string
+        default: ''
+      source_org:
+        description: 'Optional inline source organization(s), e.g. "org-a" or "org-a,org-b,org-c" for multi-org consolidation'
+        required: false
+        type: string
+        default: ''
+      target_org:
+        description: 'Optional inline target organization (used with source_org for 1-click inline scope generation)'
+        required: false
+        type: string
+        default: ''
+      repositories:
+        description: 'Inline repository selection when using source_org & target_org ("all", "public", "private", "internal", "org_only", or comma-separated repo names)'
+        required: false
+        type: string
+        default: 'all'
+      source_visibility:
+        description: 'Filter discovered repositories by visibility when using inline source_org & target_org ("all", "public", "private", or "internal")'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'public'
+          - 'private'
+          - 'internal'
+        default: 'all'
+      exclude_forks:
+        description: 'Exclude forked repositories when discovering organization repositories inline'
+        required: false
+        type: boolean
+        default: false
+      org_items_mode:
+        description: 'Organization items mode ("auto" = all for 1:1 / associated-only for multi-org, "associated-only" = only items linked to in-scope repos, "all", or "none")'
+        required: false
+        type: choice
+        options:
+          - 'auto'
+          - 'associated-only'
+          - 'all'
+          - 'none'
+        default: 'auto'
       auto_remediate:
         description: 'Automatically execute synthesized remediation plans in closed loop'
         required: false
@@ -19,15 +64,15 @@ on:
         type: number
         default: 3
       default_runner_labels:
-        description: 'Runner pool for standard/small repos (comma-separated or single label)'
+        description: 'Runner pool for standard/small repos (comma-separated or single label, e.g. "ubuntu-latest" or "self-hosted")'
         required: false
         type: string
-        default: 'self-hosted'
+        default: 'ubuntu-latest'
       large_repo_runner_labels:
-        description: 'High-capacity runner pool with >=100 GB scratch disk for large repos'
+        description: 'High-capacity runner pool with >=100 GB scratch disk for large repos (e.g. "ubuntu-latest" or "self-hosted")'
         required: false
         type: string
-        default: 'self-hosted'
+        default: 'ubuntu-latest'
       dry_run:
         description: 'Execute in dry-run mode (simulates planning & mutations without modifying destination)'
         required: false
@@ -75,13 +120,14 @@ env:
 
 permissions:
   contents: read
+  actions: read
   issues: write
   pull-requests: write
 
 jobs:
   slicer:
     name: 'Phase 1: Scale-Adaptive Sizing & Strategy Classification'
-    runs-on: self-hosted
+    runs-on: ${{ inputs.default_runner_labels || 'ubuntu-latest' }}
     outputs:
       matrix: ${{ steps.slice.outputs.matrix }}
       cohort_count: ${{ steps.slice.outputs.cohort_count }}
@@ -92,108 +138,97 @@ jobs:
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
 
-      - name: Validate Migration Scope Contract
+      - name: Resolve & Validate Migration Scope Contract
         shell: bash
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_SCOPE_RUN_ID: ${{ inputs.scope_run_id }}
+          INPUT_SOURCE_ORG: ${{ inputs.source_org }}
+          INPUT_TARGET_ORG: ${{ inputs.target_org }}
+          INPUT_REPOS: ${{ inputs.repositories }}
+          INPUT_SOURCE_VISIBILITY: ${{ inputs.source_visibility || 'all' }}
+          INPUT_EXCLUDE_FORKS: ${{ inputs.exclude_forks }}
+          INPUT_ORG_ITEMS_MODE: ${{ inputs.org_items_mode || 'auto' }}
           INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
           INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
           INPUT_MIRROR_PUSH_MODE: ${{ inputs.mirror_push_mode || 'fast-snapshot' }}
         run: |
-          if [ ! -f "${{ inputs.scope }}" ]; then
-            echo "::error::Scope file '${{ inputs.scope }}' does not exist."
-            exit 1
-          fi
-          echo "Validating migration scope: ${{ inputs.scope }}"
-          node --input-type=module -e '
-            import { validateMigrationScope } from "./packages/contracts/dist/index.js";
-            import fs from "fs";
-            const scopePath = process.argv[1];
-            const parsed = JSON.parse(fs.readFileSync(scopePath, "utf8"));
-            const targetType = process.env.INPUT_TARGET_TYPE;
-            const emuShortcode = (process.env.INPUT_EMU_SHORTCODE || "").trim();
-            const mirrorPushMode = process.env.INPUT_MIRROR_PUSH_MODE;
-            let modified = false;
-            if (targetType === "ghec" || targetType === "emu") {
-              parsed.targetType = targetType;
-              if (Array.isArray(parsed.organizations)) {
-                for (const org of parsed.organizations) {
-                  org.targetType = targetType;
-                }
-              }
-              if (targetType === "ghec") {
-                parsed.identityMapping = { strategy: "pass-through" };
-              } else if (targetType === "emu" && emuShortcode) {
-                const normalizedSuffix = emuShortcode.startsWith("_") ? emuShortcode : `_${emuShortcode}`;
-                parsed.identityMapping = { strategy: "emu-saml", suffix: normalizedSuffix };
-              }
-              modified = true;
-            }
-            if (mirrorPushMode === "fast-snapshot" || mirrorPushMode === "full-history") {
-              parsed.mirrorPushMode = mirrorPushMode;
-              if (Array.isArray(parsed.repositories)) {
-                for (const repo of parsed.repositories) {
-                  repo.mirrorPushMode = mirrorPushMode;
-                  if (repo.options && typeof repo.options === "object") {
-                    repo.options.mirrorPushMode = mirrorPushMode;
-                  }
-                }
-              }
-              modified = true;
-            }
-            if (modified) {
-              fs.writeFileSync(scopePath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
-            }
-            const res = validateMigrationScope(parsed);
-            if (!res.success) {
-              console.error("Scope validation failed:", JSON.stringify(res.error, null, 2));
-              process.exit(1);
-            }
-            console.log(`Scope schema validation passed successfully (targetType=${parsed.targetType ?? "default"}, mirrorPushMode=${parsed.mirrorPushMode ?? "fast-snapshot"}).`);
-          ' "${{ inputs.scope }}"
+          mkdir -p ./scans ./downloaded-scope
+          RESOLVED_SCOPE=""
 
-      - name: Prune Retired Oversized Repositories
-        if: ${{ inputs.dry_run == false }}
-        shell: bash
-        env:
-          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
-          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
-          SCOPE_FILE: ${{ inputs.scope }}
-        run: |
-          SOURCE_ORG=$(jq -r '.organizations[0].source // .repositories[0].sourceOrg // "demogxp"' "$SCOPE_FILE")
-          TARGET_ORG=$(jq -r '.organizations[0].target // .repositories[0].targetOrg // "demogxp-mig"' "$SCOPE_FILE")
-          RETIRED_REPOS=(WebKit linux llvm-project nixpkgs next.js TypeScript grafana node kubernetes rust)
-          for repo in "${RETIRED_REPOS[@]}"; do
-            if [ -n "$GHEC_SOURCE_TOKEN" ]; then
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
-                -H "Authorization: Bearer $GHEC_SOURCE_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/$SOURCE_ORG/$repo" || true)
-              echo "Prune $SOURCE_ORG/$repo: HTTP $STATUS"
+          if [ -n "$INPUT_SOURCE_ORG" ] && [ -n "$INPUT_TARGET_ORG" ]; then
+            echo "Generating migration scope inline for $INPUT_SOURCE_ORG -> $INPUT_TARGET_ORG..."
+            GEN_ARGS=(
+              generate-scope
+              --source "$INPUT_SOURCE_ORG"
+              --target "$INPUT_TARGET_ORG"
+              --target-type "${INPUT_TARGET_TYPE:-ghec}"
+              --mirror-push-mode "${INPUT_MIRROR_PUSH_MODE:-fast-snapshot}"
+              --output ./scans/resolved-scope.json
+            )
+            if [ -n "$INPUT_EMU_SHORTCODE" ]; then
+              GEN_ARGS+=(--emu-shortcode "$INPUT_EMU_SHORTCODE")
             fi
-            if [ -n "$GHEC_TARGET_TOKEN" ]; then
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
-                -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/$TARGET_ORG/$repo" || true)
-              echo "Prune $TARGET_ORG/$repo: HTTP $STATUS"
+            if [ "$INPUT_EXCLUDE_FORKS" = "true" ]; then
+              GEN_ARGS+=(--exclude-forks)
             fi
-          done
-          if [ -n "$GHEC_TARGET_TOKEN" ]; then
-            for locked_candidate in migration-demo-1361857985-fork; do
-              PROBE_RESP=$(curl -s -X PATCH \
-                -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                -d '{}' \
-                "https://api.github.com/repos/$TARGET_ORG/$locked_candidate" || true)
-              if echo "$PROBE_RESP" | grep -qi "locked for migration"; then
-                DEL_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
-                  -H "Authorization: Bearer $GHEC_TARGET_TOKEN" \
-                  -H "Accept: application/vnd.github+json" \
-                  "https://api.github.com/repos/$TARGET_ORG/$locked_candidate" || true)
-                echo "Deleted stale migration-locked target repo $TARGET_ORG/$locked_candidate: HTTP $DEL_STATUS"
-              fi
-            done
+            if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
+              GEN_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+            fi
+            if [ "$INPUT_REPOS" = "all" ] || [ -z "$INPUT_REPOS" ]; then
+              GEN_ARGS+=(--all --source-visibility "${INPUT_SOURCE_VISIBILITY:-all}")
+            elif [ "$INPUT_REPOS" = "public" ] || [ "$INPUT_REPOS" = "private" ] || [ "$INPUT_REPOS" = "internal" ]; then
+              GEN_ARGS+=(--all --source-visibility "$INPUT_REPOS")
+            elif [ "$INPUT_REPOS" = "org_only" ] || [ "$INPUT_REPOS" = "org_resources_only" ]; then
+              GEN_ARGS+=(--org-only)
+            else
+              GEN_ARGS+=(--repos "$INPUT_REPOS")
+            fi
+            node ./apps/cli/bin/ghec-consultant-cli.mjs "${GEN_ARGS[@]}"
+            RESOLVED_SCOPE="./scans/resolved-scope.json"
           fi
+
+          if [ -z "$RESOLVED_SCOPE" ] && { [ -n "$INPUT_SCOPE_RUN_ID" ] || [ ! -f "$INPUT_SCOPE" ]; }; then
+            TARGET_SCOPE_RUN="$INPUT_SCOPE_RUN_ID"
+            if [ -z "$TARGET_SCOPE_RUN" ] || [ "$TARGET_SCOPE_RUN" = "latest" ]; then
+              TARGET_SCOPE_RUN=$(gh run list --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+            fi
+            if [ -n "$TARGET_SCOPE_RUN" ] && [ "$TARGET_SCOPE_RUN" != "null" ]; then
+              echo "Downloading migration-scopes artifact from workflow run $TARGET_SCOPE_RUN..."
+              if gh run download "$TARGET_SCOPE_RUN" -n migration-scopes --dir ./downloaded-scope 2>/dev/null || gh run download "$TARGET_SCOPE_RUN" --dir ./downloaded-scope 2>/dev/null; then
+                FOUND_SCOPE=$(find ./downloaded-scope -name '*.json' | sort | head -n 1 || true)
+                if [ -n "$FOUND_SCOPE" ] && [ -f "$FOUND_SCOPE" ]; then
+                  cp "$FOUND_SCOPE" ./scans/resolved-scope.json
+                  RESOLVED_SCOPE="./scans/resolved-scope.json"
+                fi
+              fi
+            fi
+          fi
+
+          if [ -z "$RESOLVED_SCOPE" ]; then
+            if [ ! -f "$INPUT_SCOPE" ]; then
+              echo "::error::Scope file '$INPUT_SCOPE' does not exist."
+              exit 1
+            fi
+            cp "$INPUT_SCOPE" ./scans/resolved-scope.json
+          fi
+
+          VAL_ARGS=(validate-scope --scope ./scans/resolved-scope.json)
+          if [ -n "$INPUT_TARGET_TYPE" ]; then
+            VAL_ARGS+=(--target-type "$INPUT_TARGET_TYPE")
+          fi
+          if [ -n "$INPUT_EMU_SHORTCODE" ]; then
+            VAL_ARGS+=(--emu-shortcode "$INPUT_EMU_SHORTCODE")
+          fi
+          if [ -n "$INPUT_MIRROR_PUSH_MODE" ]; then
+            VAL_ARGS+=(--mirror-push-mode "$INPUT_MIRROR_PUSH_MODE")
+          fi
+          if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
+            VAL_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+          fi
+          node ./apps/cli/bin/ghec-consultant-cli.mjs "${VAL_ARGS[@]}"
 
       - name: Execute Preflight Readiness Gate
         id: preflight
@@ -201,7 +236,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
-          SCOPE_FILE: ${{ inputs.scope }}
+          SCOPE_FILE: ./scans/resolved-scope.json
         run: |
           mkdir -p ./scans
           echo "Running preflight readiness checks on Actions Runner..."
@@ -216,7 +251,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
-          SCOPE_FILE: ${{ inputs.scope }}
+          SCOPE_FILE: ./scans/resolved-scope.json
         run: |
           mkdir -p ./scans
           node --input-type=module -e '
@@ -233,7 +268,6 @@ jobs:
                   m !== "post-migration-mannequins"
                 ),
               })),
-              repositories: [],
             };
             fs.writeFileSync("./scans/org-prereq-scope.json", JSON.stringify(orgPrereqScope, null, 2), "utf8");
           '
@@ -251,7 +285,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
-          SCOPE_FILE: ${{ inputs.scope }}
+          SCOPE_FILE: ./scans/resolved-scope.json
           DEFAULT_RUNNERS: ${{ inputs.default_runner_labels }}
           LARGE_RUNNERS: ${{ inputs.large_repo_runner_labels }}
         run: |
@@ -337,6 +371,34 @@ jobs:
 
             fs.writeFileSync("./scans/slicer-matrix.json", JSON.stringify(matrixOutput, null, 2), "utf8");
 
+            const mirrorPushRepoNames = new Set(
+              matrixOutput.matrix.include
+                .filter(c => c.useMirrorPush)
+                .flatMap(c => c.repositories)
+            );
+            scope.repositories = (scope.repositories || []).map(r => {
+              if (typeof r !== "object" || !r) return r;
+              const name = r.sourceRepo || r.name;
+              const prof = profiles.find(p => p.repositoryName === name);
+              const repoUseMirrorPush = Boolean(
+                r.gitTransferStrategy === "mirror-push" ||
+                r.options?.gitTransferStrategy === "mirror-push" ||
+                mirrorPushRepoNames.has(name)
+              );
+              const repoSkipReleases = Boolean(
+                r.skipReleases ||
+                r.options?.skipReleases ||
+                repoUseMirrorPush ||
+                (prof && prof.releaseAssetsTotalBytes > 10 * 1024 * 1024 * 1024)
+              );
+              return {
+                ...r,
+                ...(repoUseMirrorPush ? { gitTransferStrategy: "mirror-push" } : {}),
+                ...(repoSkipReleases ? { skipReleases: true } : {}),
+              };
+            });
+            fs.writeFileSync(process.env.SCOPE_FILE, JSON.stringify(scope, null, 2), "utf8");
+
             // Write individual cohort scopes (org modules are bootstrapped pre-cohort and reconciled post-cohort)
             matrixOutput.matrix.include.forEach((cohort) => {
               const cohortScope = {
@@ -346,22 +408,6 @@ jobs:
                   .filter(r => {
                     const name = typeof r === "string" ? r : (r.sourceRepo || r.name);
                     return cohort.repositories.includes(name);
-                  })
-                  .map(r => {
-                    if (typeof r !== "object" || !r) return r;
-                    const name = r.sourceRepo || r.name;
-                    const prof = profiles.find(p => p.repositoryName === name);
-                    const repoSkipReleases = Boolean(
-                      r.skipReleases ||
-                      r.options?.skipReleases ||
-                      cohort.useMirrorPush ||
-                      (prof && prof.releaseAssetsTotalBytes > 10 * 1024 * 1024 * 1024)
-                    );
-                    return {
-                      ...r,
-                      ...(cohort.useMirrorPush ? { gitTransferStrategy: "mirror-push" } : {}),
-                      ...(repoSkipReleases ? { skipReleases: true } : {}),
-                    };
                   })
               };
               fs.writeFileSync(`./cohorts/${cohort.cohortId}-scope.json`, JSON.stringify(cohortScope, null, 2), "utf8");
@@ -381,6 +427,7 @@ jobs:
         with:
           name: slicer-matrix-${{ github.run_id }}
           path: |
+            ./scans/resolved-scope.json
             ./scans/preflight-report.json
             ./scans/pre-cohort-org-report.json
             ./scans/slicer-matrix.json
@@ -511,7 +558,7 @@ jobs:
     name: 'Phase 3 & 4: Verification & Autonomous Closed-Loop Self-Healing'
     needs: [slicer, migrate-cohorts]
     if: always()
-    runs-on: self-hosted
+    runs-on: ${{ inputs.default_runner_labels || 'ubuntu-latest' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -543,6 +590,9 @@ jobs:
           EXPECTED_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count || '0' }}
         run: |
           mkdir -p ./scans
+          if [ -f ./downloaded-slicer/scans/resolved-scope.json ]; then
+            cp ./downloaded-slicer/scans/resolved-scope.json ./scans/resolved-scope.json
+          fi
           node --input-type=module -e '
             import fs from "node:fs";
             import path from "node:path";
@@ -665,33 +715,13 @@ jobs:
           INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
           INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
         run: |
-          node --input-type=module -e '
-            import fs from "fs";
-            const scopePath = process.env.INPUT_SCOPE;
-            if (scopePath && fs.existsSync(scopePath)) {
-              const parsed = JSON.parse(fs.readFileSync(scopePath, "utf8"));
-              const targetType = process.env.INPUT_TARGET_TYPE;
-              const emuShortcode = (process.env.INPUT_EMU_SHORTCODE || "").trim();
-              if (targetType === "ghec" || targetType === "emu") {
-                parsed.targetType = targetType;
-                if (Array.isArray(parsed.organizations)) {
-                  for (const org of parsed.organizations) {
-                    org.targetType = targetType;
-                  }
-                }
-                if (targetType === "ghec") {
-                  parsed.identityMapping = { strategy: "pass-through" };
-                } else if (targetType === "emu" && emuShortcode) {
-                  const normalizedSuffix = emuShortcode.startsWith("_") ? emuShortcode : `_${emuShortcode}`;
-                  parsed.identityMapping = { strategy: "emu-saml", suffix: normalizedSuffix };
-                }
-                fs.writeFileSync(scopePath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
-              }
-            }
-          '
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
+          fi
           echo "Reconciling all organization-scoped modules (including teams, packages, actions-runners, org-rulesets, post-migration-mannequins) after all cohort repositories have unlocked..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
-            --scope "$INPUT_SCOPE" \
+            --scope "$EFFECTIVE_SCOPE" \
             --modules org-custom-properties,custom-roles,teams,packages,actions-runners,org-rulesets,org-webhooks,org-variables,org-secrets,org-settings,actions-policies,ip-allow-lists,apps-inventory,projects-v2,post-migration-mannequins \
             --continue-on-error \
             --verbose \
@@ -708,13 +738,17 @@ jobs:
           INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
         run: |
           mkdir -p ./scans
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
+          fi
           VERIFY_ARGS=(--modules "${INPUT_MODULES:-auto}")
           if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
             VERIFY_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
           fi
           echo "Executing initial target verification (modules=${INPUT_MODULES:-auto}, exclude=${INPUT_EXCLUDE_MODULES:-none})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
-            --scope "$INPUT_SCOPE" \
+            --scope "$EFFECTIVE_SCOPE" \
             "${VERIFY_ARGS[@]}" \
             --output ./scans/verification-report.json \
             --verbose || true
@@ -733,6 +767,10 @@ jobs:
           MAX_ROUNDS: ${{ inputs.max_remediation_rounds }}
         run: |
           mkdir -p ./scans ./remediations
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
+          fi
           if [ ! -f ./scans/verification-report.json ]; then
             echo "Verification report was not generated; skipping remediation loop."
             exit 0
@@ -788,7 +826,7 @@ jobs:
             # 3. Re-verify target state
             echo "Re-running target verification after round $ROUND..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
-              --scope "$INPUT_SCOPE" \
+              --scope "$EFFECTIVE_SCOPE" \
               "${VERIFY_ARGS[@]}" \
               --output ./scans/verification-report.json \
               --verbose || true
@@ -811,37 +849,64 @@ jobs:
           done
 
       - name: Publish Migration Audit Repository to Target Organization
-        if: always() && inputs.dry_run == false
+        if: always()
         shell: bash
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
         run: |
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             : > "$GITHUB_STEP_SUMMARY"
           fi
-          if [ -f ./scans/verification-report.json ]; then
-            EXEC_REPORTS="./downloaded-cohorts"
-            if [ -f ./downloaded-slicer/scans/pre-cohort-org-report.json ]; then
-              EXEC_REPORTS="./downloaded-slicer/scans/pre-cohort-org-report.json,${EXEC_REPORTS}"
-            fi
-            if [ -f ./scans/post-cohort-reconcile-report.json ]; then
-              EXEC_REPORTS="${EXEC_REPORTS},./scans/post-cohort-reconcile-report.json"
-            fi
-            if [ -f ./scans/migration-execution.json ]; then
-              EXEC_REPORTS="${EXEC_REPORTS},./scans/migration-execution.json"
-            fi
-            echo "Publishing 3-tier migration audit results repository (migration-audit-results) to target organization..."
-            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
-              --scope "$INPUT_SCOPE" \
-              --execution-reports "$EXEC_REPORTS" \
-              --report ./scans/verification-report.json \
-              --repo-name migration-audit-results \
-              --output-dir ./scans/audit-results-repo \
-              --append-step-summary \
-              --verbose || true
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
           fi
+          EXEC_REPORTS="./downloaded-cohorts"
+          if [ -f ./downloaded-slicer/scans/pre-cohort-org-report.json ]; then
+            EXEC_REPORTS="./downloaded-slicer/scans/pre-cohort-org-report.json,${EXEC_REPORTS}"
+          fi
+          if [ -f ./scans/post-cohort-reconcile-report.json ]; then
+            EXEC_REPORTS="${EXEC_REPORTS},./scans/post-cohort-reconcile-report.json"
+          fi
+          if [ -f ./scans/migration-execution.json ]; then
+            EXEC_REPORTS="${EXEC_REPORTS},./scans/migration-execution.json"
+          fi
+
+          VERIFY_ARGS=()
+          if [ -f ./scans/verification-report.json ]; then
+            VERIFY_ARGS=(--report ./scans/verification-report.json)
+          fi
+
+          LATEST_REMEDIATION=$(ls -1 ./remediations/remediation-plan-round-*.json 2>/dev/null | sort -V | tail -n 1 || true)
+          REMEDIATION_ARGS=()
+          if [ -n "$LATEST_REMEDIATION" ] && [ -f "$LATEST_REMEDIATION" ]; then
+            REMEDIATION_ARGS=(--remediation-plan "$LATEST_REMEDIATION")
+          fi
+
+          DRY_RUN_ARGS=()
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            if [ -n "${GHEC_TARGET_TOKEN:-}" ]; then
+              DRY_RUN_ARGS=(--dry-run --force-push)
+            else
+              DRY_RUN_ARGS=(--dry-run --skip-push)
+            fi
+          fi
+
+          echo "Publishing 3-tier migration audit results repository (migration-audit-results) to target organization..."
+          node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+            --scope "$EFFECTIVE_SCOPE" \
+            --execution-reports "$EXEC_REPORTS" \
+            "${VERIFY_ARGS[@]}" \
+            "${REMEDIATION_ARGS[@]}" \
+            --evidence-dir ./scans,./downloaded-slicer/scans,./downloaded-cohorts,./remediations \
+            --repo-name migration-audit-results \
+            --output-dir ./scans/audit-results-repo \
+            --append-step-summary \
+            --verbose \
+            "${DRY_RUN_ARGS[@]}" || true
 
       - name: Generate Final Audit & Step Summary
         if: always()

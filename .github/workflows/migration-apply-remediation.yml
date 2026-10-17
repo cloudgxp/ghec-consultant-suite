@@ -19,10 +19,15 @@ on:
         type: string
         default: ''
       scope:
-        description: 'Path to migration scope JSON file for re-verification'
+        description: 'Path to migration scope JSON file for re-verification (or filename inside scope artifact)'
         required: false
         type: string
         default: 'scopes/demogxp-to-demogxp-mig.json'
+      scope_run_id:
+        description: 'GitHub Actions run ID from Generate Migration Scope (or "latest") to download the scope artifact without committing to git'
+        required: false
+        type: string
+        default: ''
       dry_run:
         description: 'Preview planned remediation actions without executing mutations'
         required: false
@@ -33,16 +38,22 @@ on:
         required: false
         type: string
         default: ''
+      runner_labels:
+        description: 'GitHub Actions runner label (e.g. "ubuntu-latest" or "self-hosted")'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
 
 permissions:
   contents: read
+  actions: read
   issues: write
   pull-requests: write
 
 jobs:
   apply-remediation:
     name: Execute Targeted Remediation
-    runs-on: self-hosted
+    runs-on: ${{ inputs.runner_labels || 'ubuntu-latest' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -51,20 +62,34 @@ jobs:
         uses: ./.github/actions/setup-suite
 
       - name: Download Prior Run Remediation Artifacts
-        if: ${{ inputs.workflow_run_id != '' || inputs.report_artifact != '' }}
+        if: ${{ inputs.workflow_run_id != '' || inputs.report_artifact != '' || inputs.scope_run_id != '' }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID_INPUT: ${{ inputs.workflow_run_id }}
           ARTIFACT_INPUT: ${{ inputs.report_artifact }}
+          SCOPE_RUN_ID: ${{ inputs.scope_run_id }}
         run: |
           mkdir -p ./downloaded-audit
           RUN_ID="$RUN_ID_INPUT"
+          if [ "$RUN_ID" = "latest" ]; then
+            RUN_ID=$(gh run list --workflow=migration-execute-wave.yml --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          fi
           if [ -z "$RUN_ID" ] && [ -n "$ARTIFACT_INPUT" ]; then
             RUN_ID="${ARTIFACT_INPUT##*-}"
           fi
           if [ -n "$RUN_ID" ]; then
             gh run download "$RUN_ID" --dir ./downloaded-audit || true
+          fi
+          if [ -n "$SCOPE_RUN_ID" ]; then
+            mkdir -p ./downloaded-scope
+            SRUN="$SCOPE_RUN_ID"
+            if [ "$SRUN" = "latest" ]; then
+              SRUN=$(gh run list --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            fi
+            if [ -n "$SRUN" ]; then
+              gh run download "$SRUN" --dir ./downloaded-scope || true
+            fi
           fi
 
       - name: Resolve Remediation Plan
@@ -132,9 +157,22 @@ jobs:
           SCOPE: ${{ inputs.scope }}
         run: |
           mkdir -p ./scans
-          echo "Re-running verification to confirm discrepancy resolution..."
+          SCOPE_PATH="$SCOPE"
+          if [ ! -f "$SCOPE_PATH" ] && [ -d "./downloaded-scope" ]; then
+            CANDIDATE=$(find ./downloaded-scope -name "*.json" | head -n 1)
+            if [ -n "$CANDIDATE" ]; then
+              SCOPE_PATH="$CANDIDATE"
+            fi
+          fi
+          if [ ! -f "$SCOPE_PATH" ] && [ -d "./downloaded-audit" ]; then
+            CANDIDATE=$(find ./downloaded-audit -name "*scope*.json" | head -n 1)
+            if [ -n "$CANDIDATE" ]; then
+              SCOPE_PATH="$CANDIDATE"
+            fi
+          fi
+          echo "Re-running verification to confirm discrepancy resolution using scope $SCOPE_PATH..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
-            --scope "$SCOPE" \
+            --scope "$SCOPE_PATH" \
             --verbose \
             --output ./scans/post-remediation-verification.json || true
 

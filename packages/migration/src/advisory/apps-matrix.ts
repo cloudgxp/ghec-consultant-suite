@@ -1,5 +1,12 @@
 import type { DiscoveryBundle } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
+import {
+  buildGitHubAppManifest,
+  buildGitHubAppUrlParametersLink,
+  buildRecreatedAppSlug,
+  classifyGitHubApp,
+} from '../modules/apps-inventory/manifest.js';
+import type { RawGitHubAppDetailsResponse } from '../modules/apps-inventory/types.js';
 import type { GitHubAppInstallationInfo } from './types.js';
 
 interface RawAppInstallation {
@@ -51,6 +58,7 @@ export class GitHubAppsAdvisoryPlanner {
     signal?: AbortSignal | undefined,
   ): Promise<GitHubAppInstallationInfo[]> {
     const apps: GitHubAppInstallationInfo[] = [];
+    const activeSignal = signal ?? new AbortController().signal;
 
     // 1. Query live API if adapter is available
     if (adapter) {
@@ -63,13 +71,53 @@ export class GitHubAppsAdvisoryPlanner {
             path: '/orgs/{org}/installations',
             pathParams: { org: sourceOrg },
           },
-          signal ?? new AbortController().signal,
+          activeSignal,
         );
 
         if (res.status === 200 && res.data?.installations) {
           for (const inst of res.data.installations) {
             const appId = inst.app_id ?? 0;
             const slug = inst.app_slug ?? `app-${appId}`;
+            const permissions = inst.permissions ?? {};
+            const events = inst.events ?? [];
+            const htmlUrl = inst.html_url ?? `https://github.com/apps/${slug}`;
+
+            let status: number | null;
+            let details: RawGitHubAppDetailsResponse | null;
+            try {
+              const appRes =
+                await adapter.readSingle<RawGitHubAppDetailsResponse>(
+                  {
+                    id: 'rest.apps.getBySlug',
+                    transport: 'rest',
+                    verifiedReadOnly: true,
+                    path: '/apps/{app_slug}',
+                    pathParams: { app_slug: slug },
+                  },
+                  activeSignal,
+                );
+              status = appRes.status;
+              details = appRes.data;
+            } catch {
+              status = 404;
+              details = null;
+            }
+
+            const classified = classifyGitHubApp({
+              sourceOrg,
+              status,
+              details,
+            });
+            const manifestInput = {
+              app_slug: slug,
+              app_name: classified.appName,
+              description: classified.description,
+              external_url: classified.externalUrl,
+              html_url: htmlUrl,
+              permissions,
+              events,
+            };
+
             apps.push({
               id: inst.id ?? 0,
               appId,
@@ -78,10 +126,18 @@ export class GitHubAppsAdvisoryPlanner {
               targetType: inst.target_type ?? 'Organization',
               repositorySelection:
                 inst.repository_selection === 'all' ? 'all' : 'selected',
-              permissions: inst.permissions ?? {},
-              events: inst.events ?? [],
-              htmlUrl: inst.html_url ?? `https://github.com/apps/${slug}`,
+              permissions,
+              events,
+              htmlUrl,
               destinationInstallUrl: `https://github.com/apps/${slug}/installations/new`,
+              classification: classified.classification,
+              recommendedStrategy: classified.recommendedStrategy,
+              recreatedSlug: buildRecreatedAppSlug(slug, targetOrg),
+              recreateAppUrl: buildGitHubAppUrlParametersLink(
+                manifestInput,
+                targetOrg,
+              ),
+              manifest: buildGitHubAppManifest(manifestInput, targetOrg),
             });
           }
         }
@@ -96,6 +152,14 @@ export class GitHubAppsAdvisoryPlanner {
       for (const e of discoveryBundle.entities) {
         if (e.kind === 'integration' && e.integrationKind === 'github_app') {
           const slug = e.label.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+          const htmlUrl = `https://github.com/apps/${slug}`;
+          const manifestInput = {
+            app_slug: slug,
+            app_name: e.label,
+            html_url: htmlUrl,
+            permissions: {},
+            events: [],
+          };
           apps.push({
             id: idx + 1,
             appId: 1000 + idx,
@@ -105,8 +169,16 @@ export class GitHubAppsAdvisoryPlanner {
             repositorySelection: 'selected',
             permissions: {},
             events: [],
-            htmlUrl: `https://github.com/apps/${slug}`,
+            htmlUrl,
             destinationInstallUrl: `https://github.com/apps/${slug}/installations/new`,
+            classification: 'third_party',
+            recommendedStrategy: 'install_existing',
+            recreatedSlug: buildRecreatedAppSlug(slug, targetOrg),
+            recreateAppUrl: buildGitHubAppUrlParametersLink(
+              manifestInput,
+              targetOrg,
+            ),
+            manifest: buildGitHubAppManifest(manifestInput, targetOrg),
           });
           idx++;
         }
@@ -129,6 +201,9 @@ export class GitHubAppsAdvisoryPlanner {
       'Permissions Requested',
       'Subscribed Events',
       'Destination Install URL',
+      'Classification',
+      'Recommended Strategy',
+      'Recreate App URL',
     ];
 
     const rows = apps.map((app) => {
@@ -146,6 +221,9 @@ export class GitHubAppsAdvisoryPlanner {
         sanitizeCsvCell(permissionsStr),
         sanitizeCsvCell(eventsStr),
         sanitizeCsvCell(app.destinationInstallUrl),
+        sanitizeCsvCell(app.classification ?? 'third_party'),
+        sanitizeCsvCell(app.recommendedStrategy ?? 'install_existing'),
+        sanitizeCsvCell(app.recreateAppUrl ?? ''),
       ].join(',');
     });
 

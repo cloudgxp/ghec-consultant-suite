@@ -57,6 +57,9 @@ Run from workspace root:
 5. **Strict TypeScript & Node Protocols:**
    - Strict typing across all packages; prohibition of `any`.
    - Node built-in modules must use the `node:` protocol prefix (e.g. `node:path`, `node:fs`).
+6. **Plain-English Task-Oriented Documentation (`consultant-style-docs`):**
+   - All user-facing guides (`docs/guides/**`), READMEs, and SpecKit `quickstart.md` files must follow [`.agents/rules/documentation-style.md`](.agents/rules/documentation-style.md) and [`.agents/skills/consultant-style-docs/SKILL.md`](.agents/skills/consultant-style-docs/SKILL.md).
+   - Write at an **8th-grade reading level** (plain English, no stiff jargon like _"invariants"_ or _"idempotent"_), state default behavior upfront, and pair short `"To <do X>:"` sentences with individual copy-pasteable code blocks.
 
 ---
 

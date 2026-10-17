@@ -1,5 +1,22 @@
-# Security review gates
+# Reviewing security and privacy before shipping changes
 
-Before any live collector ships, review its read operations, exact permissions, field allowlist, role/plan assumptions, pagination/rate behavior, redaction and error channels. Before bundle output ships, verify restricted atomic writes, no-overwrite behavior and prohibited-data sentinels. Before dashboard ingestion ships, verify untrusted file limits, schema/reference checks and local-only memory handling. Before export ships, review CSV formula safety, PDF content/coverage and data minimization.
+By default, every collector, bundle writer, and dashboard export must pass the security rules in [security-and-privacy.md](../specs/security-and-privacy.md) so tokens and secret values never leak to disk or logs:
 
-These gates are specified, not a completed audit. The authoritative threat model is [security-and-privacy.md](../specs/security-and-privacy.md). Do not use real tokens or customer data in tests, screenshots, documentation or fixtures.
+- **Live collectors**: Check that all requests are read-only, use the minimum required permissions, keep only approved fields, respect rate limits, and scrub tokens from errors.
+- **Bundle writers**: Confirm files are written safely to temporary files first, never overwrite existing files, and reject secret values.
+- **Dashboard imports and exports**: Check file size limits, schema validation, local-only browser memory, CSV formula escaping, and PDF data minimization.
+
+To run the full repository check (including security and secret-redaction tests):
+
+```bash
+npm run check
+```
+
+To validate the fictional test bundles and make sure no prohibited fields are present:
+
+```bash
+npm run validate:fixtures
+```
+
+> [!WARNING]
+> Never use real GitHub tokens (`ghp_*`, `github_pat_*`) or real customer data in tests, screenshots, documentation, or `fixtures/synthetic/`.

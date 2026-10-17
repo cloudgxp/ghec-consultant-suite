@@ -4,150 +4,154 @@
 
 # GHEC Consultant Suite
 
-> Enterprise consulting platform and migration engineering toolkit for assessing, planning, executing, and auditing migrations from GitHub Enterprise Cloud (GHEC) to GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU).
+The **GHEC Consultant Suite** helps you plan, run, and verify migrations from **GitHub Enterprise Cloud (GHEC)** to **GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU)**. You can collect organization data for offline review, move repositories and settings in parallel waves, and check that nothing was missed.
 
 ---
 
-## 🛠️ Tools & Packages Directory
+## Installing and building the project
 
-The suite is structured as a modular TypeScript monorepo (`npm` workspaces). Every tool and engine operates with strict system boundaries, air-gapped guarantees, and zero-exposure security principles.
+By default, this repository uses `npm` workspaces to manage both apps (`apps/*`) and shared packages (`packages/*`) from one root folder. You need **Node.js `22.13.0` or newer** and **npm `10` or newer**.
 
-| Tool / Package                                      | What It Does                                                                                                                                                  |                 Interface / Access                  |                     Documentation                     |
-| :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------: | :---------------------------------------------------: |
-| **Consultant CLI**<br/>`apps/cli`                   | Discovery, preflight audits, planning, execution, verification, AI remediation, and audit repo publishing                                                     |          CLI binary: `ghec-consultant-cli`          |         [**CLI README**](apps/cli/README.md)          |
-| **Offline Dashboard**<br/>`apps/dashboard`          | Air-gapped Vite + React 19 + Primer assessment UI for analyzing bundles, inventory sizing, and PDF exports                                                    | Web UI: `http://localhost:5173`<br/>(`npm run dev`) |   [**Dashboard README**](apps/dashboard/README.md)    |
-| **Migration Engine**<br/>`packages/migration`       | 4-stage modular lifecycle (`discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`), DAG dependency resolver, GEI runner, and strategies |                      Core API                       | [**Migration README**](packages/migration/README.md)  |
-| **Discovery Engine**<br/>`packages/discovery`       | GraphQL/REST metadata aggregation, adaptive rate limiting, entity pseudonymization, and JSON bundle publisher                                                 |                      Core API                       | [**Discovery README**](packages/discovery/README.md)  |
-| **Readiness Analysis**<br/>`packages/analysis`      | Deterministic heuristics, risk classification, blocker evaluation, and cross-resource dependency mapping                                                      |                      Core API                       |  [**Analysis README**](packages/analysis/README.md)   |
-| **Dual GitHub Client**<br/>`packages/github-client` | Isolated source & target REST/GraphQL clients with per-tenant AdaptiveRateLimiters and retry engines                                                          |                      Core API                       | [**Client README**](packages/github-client/README.md) |
-| **Data Contracts**<br/>`packages/contracts`         | Authoritative v1.0.0 JSON schema contracts, Zod runtime validators, and immutable DTO shapes                                                                  |                      Core API                       | [**Contracts README**](packages/contracts/README.md)  |
-
----
-
-## 🚀 End-to-End Migration Lifecycle
-
-```mermaid
-flowchart LR
-    A["1. Discovery<br/>(CLI / Workflow)"] --> B["2. Assessment<br/>(Dashboard / Analysis)"]
-    B --> C["3. Scope Formulation<br/>(generate-scope.mjs)"]
-    C --> D["4. Preflight & Slicing<br/>(CLI preflight / plan)"]
-    D --> E["5. Wave Execution<br/>(Parallel Runners / GEI)"]
-    E --> F["6. Compliance Verification<br/>(Target Auditing)"]
-    F --> G["7. AI Remediation<br/>(Agent Review / Shell Script)"]
-    G --> H["8. Audit Publishing<br/>(Target Results Repo)"]
-```
-
-1. **Discovery:** Extract source tenant inventory (orgs, repos, teams, secrets, variables, webhooks, rulesets) into an immutable, pseudonymized `DiscoveryBundle` JSON file.
-2. **Offline Assessment:** Load bundles into the air-gapped `@ghec/dashboard` to assess sizing risks (>40 GiB repos, >2 GiB commits, Git LFS, large releases), inspect dependency graphs, and export executive PDF reports.
-3. **Scope Formulation:** Define target waves (`scopes/*.json`) targeting specific organizations and repository subsets.
-4. **Preflight & Slicing:** Validate credentials, token permissions, and ruleset bypass actors (DEC-012), dynamically partitioning repositories across runner cohorts.
-5. **Wave Execution:** Run parallel migrations with dry-run simulation, GEI repo imports, and atomic `.checkpoint-*` tracking.
-6. **Compliance Verification:** Perform deep destination auditing comparing actual tenant state against expected plan operations.
-7. **AI Remediation Review:** Analyze discrepancies and synthesize actionable remediation runbooks (`remediation-plan.json` / `remediation.sh`).
-8. **Audit Repository Publishing:** Push an immutable audit and compliance repository (`migration-audit-<date>`) directly to the target organization.
-
----
-
-## ⚡ Quick Start
-
-### 1. Prerequisites
-
-- **Node.js:** `>=22.13.0` (Use `.nvmrc`: `nvm use`)
-- **npm:** `>=10.0.0`
-- **Optional External Tools:** `gh`, `git-sizer`, `git-lfs`
-
-### 2. Installation & Build
+To download the repository, install dependencies, and build all tools:
 
 ```bash
-# Clone the repository
 git clone https://github.com/cloudgxp/ghec-consultant-suite.git
 cd ghec-consultant-suite
-
-# Install locked dependencies across all monorepo workspaces
 npm ci
-
-# Compile all packages and build applications
 npm run build
+```
 
-# Run the full quality gate (lint, format, typecheck, unit tests)
+To run the full quality check (code formatting, type checks, app builds, and 740+ offline tests):
+
+```bash
 npm run check
 ```
 
-### 3. Launching the Local Dashboard
+---
 
-Run the offline assessment dashboard on `127.0.0.1:5173` without connecting to GitHub:
+## Exploring migration data in the offline dashboard
+
+By default, the assessment dashboard (`@ghec/dashboard`) runs on `http://localhost:5173` completely in your browser without connecting to GitHub or sending data over the internet.
+
+To start the local dashboard server:
 
 ```bash
 npm run dev
 ```
 
-Open your browser to `http://localhost:5173` and upload any discovery bundle JSON file (or sample bundles from [`fixtures/synthetic/`](fixtures/synthetic/)).
+Once the server starts, open `http://localhost:5173` in your browser and upload a discovery JSON file (or try one of the sample files from [`fixtures/synthetic/`](fixtures/synthetic/)).
 
-### 4. Running the Consultant CLI
+---
 
-Execute the CLI directly from source:
+## Running migration commands from the command line
+
+By default, `ghec-consultant-cli` reads your source and target GitHub tokens from the `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` environment variables and saves output files to the `./scans` folder.
+
+```text
+scans/
+├── discovery-bundle.json
+├── migration-plan.json
+├── verification-report.json
+└── remediation-plan.md
+```
+
+To see all available commands and options:
 
 ```bash
-# Display general help and available modules
 npm run dev:cli -- --help
-
-# Run a dry-run discovery scan against a test organization
-npm run dev:cli -- discover --organization octocorp --modules all --dry-run
 ```
 
-Or execute the compiled binary:
+To collect data from a single organization and save a discovery bundle for offline review:
 
 ```bash
-npm exec --workspace ghec-consultant-cli -- ghec-consultant-cli --help
+npm run dev:cli -- discover --organization "octocorp" --modules "all"
+```
+
+To check that your tokens have the right permissions and your repositories fit within GitHub size limits before starting a migration:
+
+```bash
+npm run dev:cli -- preflight --scope ./scopes/test-org-wave.json
+```
+
+To preview a migration wave without making any changes to your target organization, add the `--dry-run` option:
+
+```bash
+npm run dev:cli -- migrate --scope ./scopes/test-org-wave.json --dry-run
+```
+
+To run a live migration wave and then verify that the target organization matches your plan:
+
+```bash
+npm run dev:cli -- migrate --scope ./scopes/test-org-wave.json
+npm run dev:cli -- verify --plan ./scans/migration-plan.json --scope ./scopes/test-org-wave.json
+```
+
+> [!WARNING]
+> Never pass your GitHub tokens directly in command flags or save them inside `scopes/*.json` files. Always set `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` as environment variables or GitHub Actions secrets.
+
+---
+
+## Running migrations with GitHub Actions
+
+If you are migrating dozens or hundreds of repositories, you can run every step in [`.github/workflows/`](.github/workflows/) so multiple GitHub Actions runners divide up the work automatically.
+
+To generate and commit a new migration wave file (`scopes/<wave>.json`) using GitHub Actions:
+
+```bash
+gh workflow run generate-scope.yml \
+  -f wave_name="wave-1" \
+  -f source_org="source-enterprise-org" \
+  -f target_org="target-emu-org"
+```
+
+To preview a full migration wave in GitHub Actions without changing the target organization (`dry_run: true` is the default):
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope="scopes/wave-1.json" \
+  -f dry_run="true"
+```
+
+To resume an interrupted migration run from its last saved checkpoint:
+
+```bash
+gh workflow run migration-resume.yml \
+  -f run_id="migration-20261004-123456"
 ```
 
 ---
 
-## 🧭 CLI Commands At a Glance
+## Apps & packages in this repository
 
-| Command           | Usage                                                             | Description                                                        |
-| :---------------- | :---------------------------------------------------------------- | :----------------------------------------------------------------- |
-| `discover`        | `ghec-consultant-cli discover --organization <org> --modules all` | Enumerate tenant metadata and emit immutable JSON bundle           |
-| `preflight`       | `ghec-consultant-cli preflight --scope <file>`                    | Audit token scopes, ruleset bypass actors, and sizing limits       |
-| `plan`            | `ghec-consultant-cli plan --scope <file> --split-matrix 5`        | Generate migration plan and partition into parallel matrix cohorts |
-| `migrate`         | `ghec-consultant-cli migrate --scope <file> --dry-run`            | Execute pre-approved migration wave (dry-run or live apply)        |
-| `verify`          | `ghec-consultant-cli verify --plan <plan.json> --scope <file>`    | Compare target tenant state against expected plan operations       |
-| `agent-review`    | `ghec-consultant-cli agent-review --report <report.json>`         | Analyze verification discrepancies and generate remediation script |
-| `publish-results` | `ghec-consultant-cli publish-results --scope <file>`              | Publish immutable migration audit repository to destination org    |
-| `console`         | `ghec-consultant-cli console --port 3000`                         | Launch local loopback proxy server and dashboard bridge            |
-
-For complete command-line syntax and advanced flags, see the [**CLI README**](apps/cli/README.md).
+| Tool / Package                                    | What It Does                                                                                                        |                  Documentation                   |
+| :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------: |
+| **Consultant CLI** (`apps/cli`)                   | Command-line tool to collect data, check readiness, plan waves, migrate items, verify results, and fix gaps.        |         [CLI Guide](apps/cli/README.md)          |
+| **Offline Dashboard** (`apps/dashboard`)          | Local web app (`http://localhost:5173`) to explore discovery files, check repo sizes, and export PDF reports.       |   [Dashboard Guide](apps/dashboard/README.md)    |
+| **Migration Engine** (`packages/migration`)       | 29 migration modules (`discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`) and GEI runner. | [Migration Guide](packages/migration/README.md)  |
+| **Discovery Engine** (`packages/discovery`)       | Collects organization and repository data via REST and GraphQL while hiding personal user names.                    | [Discovery Guide](packages/discovery/README.md)  |
+| **Readiness Analysis** (`packages/analysis`)      | Scores migration risks, flags oversized repos or LFS files, and maps dependencies between teams and repos.          |  [Analysis Guide](packages/analysis/README.md)   |
+| **Dual GitHub Client** (`packages/github-client`) | Keeps source (read-only) and target (write) connections and rate limits strictly separated.                         | [Client Guide](packages/github-client/README.md) |
+| **Data Contracts** (`packages/contracts`)         | Shared Zod schemas (`v1.0.0`) that validate every scope file, plan, checkpoint, and report.                         | [Contracts Guide](packages/contracts/README.md)  |
 
 ---
 
-## 🤖 GitHub Actions Workflow Automation
+## User guides & documentation
 
-The repository includes streamlined, production-hardened workflows in [`.github/workflows/`](.github/workflows/):
-
-- [**`discovery-scan.yml`**](.github/workflows/discovery-scan.yml): Unified discovery scan supporting single orgs, multiple orgs, or enterprise slugs with dual-mode App/PAT auth.
-- [**`generate-scope.yml`**](.github/workflows/generate-scope.yml): Scaffolds and commits `scopes/<wave>.json` files with full CLI option support.
-- [**`migration-execute-wave.yml`**](.github/workflows/migration-execute-wave.yml): Production wave runner with preflight checks, dynamic matrix cohort slicing, verification, agent review, and audit repo publishing (`dry_run: true` by default).
-- [**`migration-resume.yml`**](.github/workflows/migration-resume.yml): Resumes interrupted runs by retrieving checkpoint manifests from workflow artifacts.
-- [**`migration-plan-pr.yml`**](.github/workflows/migration-plan-pr.yml): Automatically plans and comments projected migration metrics on pull requests modifying `scopes/*.json`.
-
----
-
-## 🔒 Security & Architectural Invariants
-
-1. **Zero-Plaintext Local Secrets (DEC-004):** Source secrets are write-only in GitHub's API. Secret values are never fetched, logged, or stored. Target secrets default to sealed empty placeholders (`""`) or are provisioned via enterprise secret vault integrations.
-2. **Air-Gapped Dashboard:** The `@ghec/dashboard` executes 100% in-browser with zero external network connectivity or telemetry.
-3. **Offline Test Determinism:** The complete test suite (**540+ unit/integration tests**) runs 100% offline using synthetic fixtures in `fixtures/synthetic/`.
-4. **Command Injection Prevention:** All external CLI tooling (`gh`, `git`, `git-lfs`, `git-sizer`) is executed with parameterized argument arrays (`execFile`), never raw shell concatenation.
-
----
-
-## 📚 Architectural Specifications & Deep Dives
-
-- [**Repository Charter & Agent Invariants**](AGENTS.md): Monorepo standards, code rules, and workflows.
-- [**Architectural Decisions**](docs/architecture/decisions.md): DEC-001 through DEC-020+ covering rate limiters, storage, and identity models.
-- [**Specifications Catalog**](docs/specs/README.md):
-  - [Migration Module Contract](docs/specs/migration-module-contract.md)
-  - [Migration Execution Model](docs/specs/migration-execution-model.md)
-  - [Verification & Remediation Agent](docs/specs/verification-remediation-agent.md)
-  - [Security and Privacy Requirements](docs/specs/security-and-privacy.md)
-- [**Data Contracts Specification**](docs/data-contracts/README.md): Schema validation and bundle format documentation.
+- **Step-by-Step User Guides ([`docs/guides/`](docs/guides/README.md)):**
+  - [Downloading Discovery Data & Running Offline Assessments](docs/guides/offline-discovery-and-assessment.md)
+  - [Running Migrations with GitHub Actions](docs/guides/github-actions-migration.md)
+  - [Setting Up a GHEC to GHEC-EMU Test Migration](docs/guides/ghec-to-emu-test-migration-setup.md)
+  - [Verifying Migrations & Fixing Missing Items](docs/guides/verification-and-remediation.md)
+  - [Creating Sample Data for a Demo (`seed-demo`)](docs/guides/seed-demo-content.md)
+  - [Setting Up Jules Automated Maintenance](docs/guides/jules-automation-setup.md)
+- **Collaboration & Community:**
+  - [Collaborators & Team Roles](COLLABORATORS.md)
+  - [Contributing Guide](CONTRIBUTING.md)
+  - [Support & Troubleshooting](SUPPORT.md)
+  - [Security Policy](SECURITY.md)
+  - [Code of Conduct](CODE_OF_CONDUCT.md)
+- **Engineering Specs & Architecture ([`docs/`](docs/README.md)):**
+  - [Repository Charter (`AGENTS.md`)](AGENTS.md)
+  - [Architectural Decisions (`DEC-001`–`DEC-020+`)](docs/architecture/decisions.md)
+  - [Specifications Index](docs/specs/README.md)
+  - [Data Contracts Reference](docs/data-contracts/README.md)

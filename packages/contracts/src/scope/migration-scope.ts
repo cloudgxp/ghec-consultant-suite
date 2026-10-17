@@ -9,11 +9,16 @@ export const TargetTenantTypeSchema = z.enum(['ghec', 'emu']);
 
 export type TargetTenantType = z.infer<typeof TargetTenantTypeSchema>;
 
+export const OrgItemsModeSchema = z.enum(['all', 'associated-only', 'none']);
+
+export type OrgItemsMode = z.infer<typeof OrgItemsModeSchema>;
+
 const OrganizationMappingSchema = z
   .object({
     source: NonEmptyStringSchema,
     target: NonEmptyStringSchema,
     targetType: TargetTenantTypeSchema.optional(),
+    orgItemsMode: OrgItemsModeSchema.optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
   })
   .strict();
@@ -88,6 +93,7 @@ export const MigrationScopeSchema = z
     version: z.literal(MIGRATION_SCHEMA_VERSION),
     name: NonEmptyStringSchema,
     targetType: TargetTenantTypeSchema.optional(),
+    orgItemsMode: OrgItemsModeSchema.optional(),
     mirrorPushMode: MirrorPushModeSchema.optional(),
     enterprise: z
       .object({
@@ -107,30 +113,22 @@ export const MigrationScopeSchema = z
   .strict()
   .superRefine((scope, ctx) => {
     const organizationPairs = new Map<string, string>();
-    const targetOrganizations = new Set<string>();
     const sourceRepositories = new Set<string>();
     const targetRepositories = new Set<string>();
 
     for (const [index, organization] of scope.organizations.entries()) {
       const priorTarget = organizationPairs.get(organization.source);
-      if (priorTarget && priorTarget !== organization.target) {
+      if (priorTarget !== undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message:
-            'A source organization can map to only one target organization.',
+            priorTarget !== organization.target
+              ? 'A source organization can map to only one target organization.'
+              : 'A source organization can appear in only one organization mapping.',
           path: ['organizations', index, 'source'],
         });
       }
-      if (targetOrganizations.has(organization.target)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message:
-            'A target organization can appear in only one organization mapping.',
-          path: ['organizations', index, 'target'],
-        });
-      }
       organizationPairs.set(organization.source, organization.target);
-      targetOrganizations.add(organization.target);
     }
 
     for (const [index, repository] of scope.repositories.entries()) {

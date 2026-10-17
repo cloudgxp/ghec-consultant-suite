@@ -14,6 +14,7 @@ import {
 } from '@ghec/contracts';
 import type { GitHubReadAdapter } from '@ghec/github-client';
 import { ModuleRegistry } from '../core/registry.js';
+import { buildOrganizationScopeTarget } from '../core/org-item-filter.js';
 import {
   VERIFY_READ_ERROR_PREFIX,
   formatSanitizedReadError,
@@ -291,9 +292,10 @@ export class VerificationOrchestrator {
           ? { ...baseRepoOptions, mirrorPushMode: effectiveMirrorPushMode }
           : baseRepoOptions;
 
-      const matchingOrg = this.scope?.organizations.find(
-        (o) => o.target === targetOrg,
-      );
+      const matchingOrg =
+        this.scope?.organizations.find(
+          (o) => o.source === sourceOrg && o.target === targetOrg,
+        ) ?? this.scope?.organizations.find((o) => o.target === targetOrg);
       const effectiveTargetType =
         matchingOrg?.targetType ??
         this.scope?.targetType ??
@@ -313,22 +315,21 @@ export class VerificationOrchestrator {
       };
     }
 
-    const orgMapping = this.scope?.organizations.find(
-      (o) => o.target === targetId,
-    );
-    const effectiveTargetType =
-      orgMapping?.targetType ??
-      this.scope?.targetType ??
-      (this.scope?.identityMapping?.strategy === 'pass-through'
-        ? 'ghec'
-        : 'emu');
-    return {
-      level: 'organization',
-      sourceOrg: orgMapping?.source ?? targetId,
-      targetOrg: targetId,
-      targetType: effectiveTargetType,
-      identityMapping: this.scope?.identityMapping,
-    };
+    const orgMapping =
+      (modulePlan.sourceIdentifier
+        ? this.scope?.organizations.find(
+            (o) =>
+              o.source === modulePlan.sourceIdentifier && o.target === targetId,
+          )
+        : undefined) ??
+      this.scope?.organizations.find((o) => o.target === targetId);
+
+    return buildOrganizationScopeTarget(this.scope, {
+      source: modulePlan.sourceIdentifier ?? orgMapping?.source ?? targetId,
+      target: targetId,
+      targetType: orgMapping?.targetType,
+      orgItemsMode: orgMapping?.orgItemsMode,
+    });
   }
 }
 

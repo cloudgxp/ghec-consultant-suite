@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
+  type DiscoveryBundle,
   MIGRATION_SCHEMA_VERSION,
   type MigrationPlan,
   type MigrationResultsManifest,
@@ -23,6 +24,11 @@ import type {
   MigrationExecutionReport,
   RepositoryPipelineResult,
 } from '../orchestrator/types.js';
+import {
+  type PostCareDeliverables,
+  generatePostCareDeliverables,
+  resolveTargetSettingsLinks,
+} from './post-care-generator.js';
 import {
   type GranularMigrationItemRow,
   type OrgModuleDetailModel,
@@ -57,6 +63,9 @@ export interface GenerateResultsOptions {
   readonly targetOrg: string;
   readonly targetResultsRepo?: string | undefined;
   readonly executionMode: 'dry-run' | 'live';
+  readonly operationalMode?: 'discovery' | 'dry-run' | 'live' | undefined;
+  readonly discoveryBundle?: DiscoveryBundle | undefined;
+  readonly evidenceFiles?: Readonly<Record<string, string>> | undefined;
   readonly executionReport?: MigrationExecutionReport | undefined;
   readonly verificationReport?: VerificationReport | undefined;
   readonly remediationPlan?: RemediationPlanLike | undefined;
@@ -72,6 +81,7 @@ export interface GenerateResultsOptions {
 export interface GeneratedResults {
   readonly manifest: MigrationResultsManifest;
   readonly files: Record<string, string>;
+  readonly postCare?: PostCareDeliverables | undefined;
 }
 
 const KNOWN_ORG_MODULE_IDS = new Set<string>([
@@ -400,6 +410,8 @@ function formatStateValue(val: unknown): string {
 
 function buildGranularItemsForModule(params: {
   readonly moduleId: string;
+  readonly targetOrg: string;
+  readonly targetRepo?: string | undefined;
   readonly operations: readonly OperationExecutionResult[];
   readonly discrepancies: readonly RepositoryDiscrepancyDetail[];
   readonly isModuleVerified: boolean;
@@ -409,6 +421,8 @@ function buildGranularItemsForModule(params: {
 }): GranularMigrationItemRow[] {
   const {
     moduleId,
+    targetOrg,
+    targetRepo,
     operations,
     discrepancies,
     isModuleVerified,
@@ -540,7 +554,19 @@ function buildGranularItemsForModule(params: {
       noteParts.push(`HTTP ${op.httpStatus}`);
     }
 
+    const links = resolveTargetSettingsLinks({
+      moduleId,
+      resourceType,
+      resourceName,
+      targetOrg,
+      targetRepo,
+      operationId: op.operationId,
+      notes: reason,
+      plannedOp: planned,
+    });
+
     rows.push({
+      operationId: op.operationId,
       resourceName,
       resourceType,
       operationType,
@@ -549,6 +575,13 @@ function buildGranularItemsForModule(params: {
       verificationStatus,
       ...(noteParts.length > 0 ? { notes: noteParts.join(' — ') } : {}),
       isSecret: secretFlag,
+      settingsUrl: links.settingsUrl,
+      settingsLinkLabel: links.settingsLinkLabel,
+      ...(links.secondaryUrl ? { secondaryUrl: links.secondaryUrl } : {}),
+      ...(links.secondaryLinkLabel
+        ? { secondaryLinkLabel: links.secondaryLinkLabel }
+        : {}),
+      subDomain: links.subDomain,
     });
   }
 
@@ -560,6 +593,14 @@ function buildGranularItemsForModule(params: {
     const resourceName = stripRepoPrefix(disc.resourceName, repoNames);
     const resourceType = inferDefaultResourceType(moduleId);
     const secretFlag = isSecretResource(moduleId, resourceType);
+    const links = resolveTargetSettingsLinks({
+      moduleId,
+      resourceType,
+      resourceName,
+      targetOrg,
+      targetRepo,
+      notes: disc.message,
+    });
 
     rows.push({
       resourceName,
@@ -569,6 +610,13 @@ function buildGranularItemsForModule(params: {
       verificationStatus: 'discrepancy',
       notes: `${disc.message} (expected: ${formatStateValue(disc.expected)}, actual: ${formatStateValue(disc.actual)})`,
       isSecret: secretFlag,
+      settingsUrl: links.settingsUrl,
+      settingsLinkLabel: links.settingsLinkLabel,
+      ...(links.secondaryUrl ? { secondaryUrl: links.secondaryUrl } : {}),
+      ...(links.secondaryLinkLabel
+        ? { secondaryLinkLabel: links.secondaryLinkLabel }
+        : {}),
+      subDomain: links.subDomain,
     });
   }
 
@@ -612,11 +660,14 @@ export function generateMigrationResults(
 ): GeneratedResults {
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const runId =
-    options.runId ?? options.executionReport?.planId ?? `run-${Date.now()}`;
+    options.runId ??
+    options.executionReport?.planId ??
+    options.plan?.planId ??
+    `run-${Date.now()}`;
   const targetResultsRepo =
     options.targetResultsRepo ?? 'migration-audit-results';
 
-  // Build lookup structures from scope and plan
+  // Build lookup structures from scope, plan, and discovery bundle
   const repoSourceToTarget = new Map<string, string>();
   const repoTargetToSource = new Map<string, string>();
   const knownRepoNames = new Set<string>();
@@ -636,6 +687,21 @@ export function generateMigrationResults(
       repoTargetToSource.set(r.targetRepo.toLowerCase(), r.sourceRepo);
       knownRepoNames.add(r.sourceRepo.toLowerCase());
       knownRepoNames.add(r.targetRepo.toLowerCase());
+    }
+  }
+
+  if (options.discoveryBundle?.entities) {
+    for (const entity of options.discoveryBundle.entities) {
+      if (entity.kind === 'repository') {
+        const lower = entity.name.toLowerCase();
+        if (!repoSourceToTarget.has(lower)) {
+          repoSourceToTarget.set(lower, entity.name);
+        }
+        if (!repoTargetToSource.has(lower)) {
+          repoTargetToSource.set(lower, entity.name);
+        }
+        knownRepoNames.add(lower);
+      }
     }
   }
 
@@ -970,6 +1036,62 @@ export function generateMigrationResults(
     }
   }
 
+  // Synthesize module results from MigrationPlan when no executionReport/pipelineResults were provided (Plan / Dry-Run mode)
+  if (
+    (!options.executionReport ||
+      options.executionReport.results.length === 0) &&
+    (!options.pipelineResults || options.pipelineResults.length === 0) &&
+    options.plan?.modules
+  ) {
+    for (const mp of options.plan.modules) {
+      const syntheticOps: OperationExecutionResult[] = mp.operations.map(
+        (op) => ({
+          operationId: op.id,
+          status:
+            op.operation === 'skip'
+              ? ('skipped' as const)
+              : ('succeeded' as const),
+          completedAt: options.plan?.createdAt ?? generatedAt,
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          reason: op.reason,
+          targetIdentifier: mp.targetIdentifier,
+        }),
+      );
+      const syntheticModResult: ModuleExecutionResult = {
+        schemaVersion: MIGRATION_SCHEMA_VERSION,
+        moduleId: mp.moduleId,
+        targetIdentifier: mp.targetIdentifier,
+        scopeLevel: mp.scopeLevel,
+        status:
+          syntheticOps.length === 0 ||
+          syntheticOps.every((r) => r.status === 'skipped')
+            ? 'skipped'
+            : 'complete',
+        results: syntheticOps,
+        durationMs: 0,
+      };
+      if (
+        isOrganizationScopedModuleResult(syntheticModResult, {
+          sourceOrg: options.sourceOrg,
+          targetOrg: options.targetOrg,
+          knownRepoNames,
+        })
+      ) {
+        recordOrgModuleExec(syntheticModResult);
+      } else {
+        let targetRepo = resolveCanonicalTargetRepo(mp.targetIdentifier);
+        if (!targetRepo && options.scope?.repositories.length === 1) {
+          targetRepo = options.scope.repositories[0]!.targetRepo;
+        }
+        if (targetRepo) {
+          recordRepoModuleExec(targetRepo, syntheticModResult);
+        }
+      }
+    }
+  }
+
   // Also include any organization module that had verification discrepancies without execution results
   for (const moduleId of orgDiscrepanciesByModule.keys()) {
     if (!orgExecResultsByModule.has(moduleId)) {
@@ -1058,6 +1180,7 @@ export function generateMigrationResults(
 
     const items = buildGranularItemsForModule({
       moduleId,
+      targetOrg: options.targetOrg,
       operations: allOps,
       discrepancies,
       isModuleVerified: isVerifiedClean,
@@ -1416,6 +1539,8 @@ export function generateMigrationResults(
 
       const items = buildGranularItemsForModule({
         moduleId,
+        targetOrg: options.targetOrg,
+        targetRepo,
         operations: allOps,
         discrepancies: modDiscs,
         isModuleVerified:
@@ -1591,7 +1716,15 @@ export function generateMigrationResults(
       }
     }
   } else {
-    // Construct repository list from scope.repositories OR discovered executionReport targets
+    // Construct repository list from scope.repositories, executionReport/plan targets, or discoveryBundle
+    const discoveredRepoCandidates =
+      options.discoveryBundle?.entities
+        .filter((e) => e.kind === 'repository')
+        .map((e) => ({
+          sourceRepo: e.name,
+          targetRepo: repoSourceToTarget.get(e.name.toLowerCase()) ?? e.name,
+        })) ?? [];
+
     const candidateRepos: {
       readonly sourceRepo: string;
       readonly targetRepo: string;
@@ -1601,11 +1734,13 @@ export function generateMigrationResults(
             sourceRepo: r.sourceRepo,
             targetRepo: r.targetRepo,
           }))
-        : Array.from(repoExecResultsByRepo.keys()).map((targetRepo) => ({
-            sourceRepo:
-              repoTargetToSource.get(targetRepo.toLowerCase()) ?? targetRepo,
-            targetRepo,
-          }));
+        : repoExecResultsByRepo.size > 0
+          ? Array.from(repoExecResultsByRepo.keys()).map((targetRepo) => ({
+              sourceRepo:
+                repoTargetToSource.get(targetRepo.toLowerCase()) ?? targetRepo,
+              targetRepo,
+            }))
+          : discoveredRepoCandidates;
 
     for (const repoMap of candidateRepos) {
       const discrepancies =
@@ -1787,12 +1922,62 @@ export function generateMigrationResults(
     );
   }
 
-  // 5. Generate 3-Tier File Map
+  // 5. Generate Unified Post-Care Deliverables, CSV Exports, and 3-Tier File Map
+  const effectiveMode: 'discovery' | 'dry-run' | 'live' =
+    options.operationalMode ??
+    (!options.executionReport &&
+    !options.plan &&
+    Boolean(options.discoveryBundle)
+      ? 'discovery'
+      : options.executionMode);
+
+  const postCare = generatePostCareDeliverables({
+    runId,
+    generatedAt,
+    sourceOrg: options.sourceOrg,
+    targetOrg: options.targetOrg,
+    mode: effectiveMode,
+    orgModuleModels: orgModuleDetailModels,
+    repoModuleModels: repoModuleDetailModels,
+    plan: options.plan,
+    discoveryBundle: options.discoveryBundle,
+    repoSourceToTarget,
+  });
+
+  const secretCount = postCare.items.filter(
+    (i) => i.category === 'secret',
+  ).length;
+  const appCount = postCare.items.filter(
+    (i) => i.category === 'github-app',
+  ).length;
+  const webhookCount = postCare.items.filter(
+    (i) => i.category === 'webhook',
+  ).length;
+  const runnerCount = postCare.items.filter(
+    (i) => i.category === 'runner',
+  ).length;
+  const otherCount =
+    postCare.items.length - secretCount - appCount - webhookCount - runnerCount;
+
   const files: Record<string, string> = {};
   files['README.md'] = formatResultsReadmeMarkdown(manifest, {
     nextSteps: options.nextSteps,
+    operationalMode: effectiveMode,
+    postCareSummary: {
+      totalItems: postCare.items.length,
+      secretCount,
+      appCount,
+      webhookCount,
+      runnerCount,
+      otherCount,
+    },
   });
   files['manifest.json'] = JSON.stringify(manifest, null, 2);
+  files['POST-CARE-CHECKLIST.md'] = postCare.checklistMarkdown;
+
+  for (const [csvPath, csvContent] of Object.entries(postCare.csvFiles)) {
+    files[csvPath] = csvContent;
+  }
 
   // Tier 2: Organization Module Detail Pages (organization/<module>.md)
   for (const [moduleId, orgModel] of orgModuleDetailModels.entries()) {
@@ -1826,7 +2011,59 @@ export function generateMigrationResults(
     files[relPath] = formatRepoModuleDetailMarkdown(repoModModel);
   }
 
-  return { manifest, files };
+  // Evidence Bundle Parity (evidence/*.json & custom evidenceFiles)
+  if (options.discoveryBundle) {
+    files['evidence/discovery-bundle.json'] = JSON.stringify(
+      options.discoveryBundle,
+      null,
+      2,
+    );
+  }
+  if (options.scope) {
+    files['evidence/migration-scope.json'] = JSON.stringify(
+      options.scope,
+      null,
+      2,
+    );
+  }
+  if (options.plan) {
+    files['evidence/migration-plan.json'] = JSON.stringify(
+      options.plan,
+      null,
+      2,
+    );
+  }
+  if (options.executionReport) {
+    files['evidence/execution-report.json'] = JSON.stringify(
+      options.executionReport,
+      null,
+      2,
+    );
+  }
+  if (options.verificationReport) {
+    files['evidence/verification-report.json'] = JSON.stringify(
+      options.verificationReport,
+      null,
+      2,
+    );
+  }
+  if (options.remediationPlan) {
+    files['evidence/remediation-plan.json'] = JSON.stringify(
+      options.remediationPlan,
+      null,
+      2,
+    );
+  }
+  if (options.evidenceFiles) {
+    for (const [relPath, content] of Object.entries(options.evidenceFiles)) {
+      const normalizedKey = relPath.startsWith('evidence/')
+        ? relPath
+        : `evidence/${relPath.replace(/^\/+/, '')}`;
+      files[normalizedKey] = content;
+    }
+  }
+
+  return { manifest, files, postCare };
 }
 
 /**

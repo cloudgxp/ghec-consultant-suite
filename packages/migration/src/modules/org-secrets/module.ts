@@ -4,6 +4,12 @@ import {
 } from '@ghec/contracts';
 import sodium from 'libsodium-wrappers';
 import type { MigrationModule } from '../../core/module.js';
+import {
+  getScopedSourceRepoNames,
+  getScopedTargetRepoName,
+  isAssociatedOnlyOrgMode,
+  isPublicOnlyTargetScope,
+} from '../../core/org-item-filter.js';
 import type {
   MigrationContext,
   MigrationScopeLevel,
@@ -112,22 +118,91 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
       target.map((secret) => [`${secret.domain}:${secret.name}`, secret]),
     );
     const operations: PlannedOperation[] = [];
-    const dynamicMap =
-      Object.keys(this.repositoryIdMap).length === 0 &&
-      source.secrets.some(
-        (s) =>
-          s.visibility === 'selected' && s.selectedRepositoryIds.length > 0,
-      )
-        ? await this.resolveDynamicRepositoryIdMap(ctx)
-        : undefined;
-    for (const secret of source.secrets) {
-      const selectedRepositoryIds = this.mapped(
-        secret,
-        warnings,
-        dynamicMap,
-      ).map(String);
-      const desired = { ...secret, selectedRepositoryIds };
+    const associatedOnly = isAssociatedOnlyOrgMode(ctx);
+    const scopedSourceRepos = getScopedSourceRepoNames(ctx);
+    const publicOnlyScope = isPublicOnlyTargetScope(ctx);
+
+    const needsDynamicResolution =
+      associatedOnly ||
+      (Object.keys(this.repositoryIdMap).length === 0 &&
+        source.secrets.some(
+          (s) =>
+            s.visibility === 'selected' && s.selectedRepositoryIds.length > 0,
+        ));
+    const repoMeta = needsDynamicResolution
+      ? await this.resolveDynamicRepositoryMetadata(ctx)
+      : undefined;
+    const dynamicMap = repoMeta?.sourceIdToTargetId;
+
+    for (const rawSecret of source.secrets) {
+      let secret = rawSecret;
+      if (associatedOnly) {
+        if (secret.visibility === 'private' && publicOnlyScope) {
+          warnings.push(
+            `Skipping ${secret.domain} secret "${secret.name}" (visibility: private) because private organization secrets do not apply to public repositories.`,
+          );
+          continue;
+        }
+        if (secret.visibility === 'selected') {
+          const filteredSourceIds = secret.selectedRepositoryIds.filter(
+            (sourceId) => {
+              const sourceName = repoMeta?.sourceIdToName[sourceId];
+              if (sourceName) {
+                return scopedSourceRepos.has(sourceName);
+              }
+              return scopedSourceRepos.has(sourceId.toLowerCase());
+            },
+          );
+          if (filteredSourceIds.length === 0) {
+            continue;
+          }
+          secret = {
+            ...secret,
+            selectedRepositoryIds: filteredSourceIds,
+          };
+        }
+      }
+
       const current = existing.get(`${secret.domain}:${secret.name}`);
+      let desired: OrganizationSecret;
+
+      if (
+        associatedOnly &&
+        secret.visibility === 'all' &&
+        (repoMeta?.scopedTargetRepoIds.length ?? 0) > 0
+      ) {
+        const mergedTargetIds = [
+          ...new Set([
+            ...(current?.visibility === 'selected'
+              ? current.selectedRepositoryIds
+              : []),
+            ...(repoMeta?.scopedTargetRepoIds.map(String) ?? []),
+          ]),
+        ].sort();
+        warnings.push(
+          `Scoped ${secret.domain} secret "${secret.name}" from visibility "all" to "selected" (${mergedTargetIds.length} repository/repositories) for associated-only migration.`,
+        );
+        desired = {
+          ...secret,
+          visibility: 'selected',
+          selectedRepositoryIds: mergedTargetIds,
+        };
+      } else {
+        const mappedIds = this.mapped(secret, warnings, dynamicMap).map(String);
+        const mergedSelectedIds =
+          secret.visibility === 'selected' &&
+          (associatedOnly || ctx.scope.isMultiOrgConsolidation) &&
+          current?.visibility === 'selected'
+            ? [
+                ...new Set([...current.selectedRepositoryIds, ...mappedIds]),
+              ].sort()
+            : mappedIds;
+        desired = {
+          ...secret,
+          selectedRepositoryIds: mergedSelectedIds,
+        };
+      }
+
       const operation = !current
         ? 'create'
         : current.visibility === desired.visibility &&
@@ -148,13 +223,18 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
         operation,
         sourceState: desired,
         destinationCurrentState: current,
+        reason:
+          operation === 'noop'
+            ? `${secret.domain} organization secret (${desired.visibility} visibility) scope matches target; verify secret value is populated.`
+            : `${secret.domain} organization secret (${desired.visibility} visibility) requires post-migration secret value population.`,
         payload:
           operation === 'noop'
             ? undefined
             : {
-                domain: secret.domain,
-                visibility: secret.visibility,
-                selected_repository_ids: selectedRepositoryIds.map(Number),
+                domain: desired.domain,
+                visibility: desired.visibility,
+                selected_repository_ids:
+                  desired.selectedRepositoryIds.map(Number),
                 valuePopulation: 'vault-or-blank',
               },
       });
@@ -406,10 +486,17 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
     }
     return [...new Set(mapped)].sort((a, b) => a - b);
   }
-  private async resolveDynamicRepositoryIdMap(
+  private async resolveDynamicRepositoryMetadata(
     ctx: MigrationContext,
-  ): Promise<Record<string, number>> {
-    const map: Record<string, number> = {};
+  ): Promise<{
+    sourceIdToTargetId: Record<string, number>;
+    sourceIdToName: Record<string, string>;
+    scopedTargetRepoIds: number[];
+  }> {
+    const sourceIdToTargetId: Record<string, number> = {};
+    const sourceIdToName: Record<string, string> = {};
+    const scopedTargetRepoIds: number[] = [];
+    const scopedSourceRepos = getScopedSourceRepoNames(ctx);
     try {
       const [srcRes, tgtRes] = await Promise.all([
         ctx.sourceClient.fetchAll<{ id?: number; name?: string }>(
@@ -443,16 +530,32 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
       }
       for (const item of srcRes?.items ?? []) {
         if (typeof item.id === 'number' && typeof item.name === 'string') {
-          const targetId = targetByName.get(item.name.toLowerCase());
+          const sourceLower = item.name.toLowerCase();
+          sourceIdToName[String(item.id)] = sourceLower;
+          const mappedTargetName = getScopedTargetRepoName(
+            ctx,
+            item.name,
+          ).toLowerCase();
+          const targetId =
+            targetByName.get(mappedTargetName) ?? targetByName.get(sourceLower);
           if (targetId !== undefined) {
-            map[String(item.id)] = targetId;
+            sourceIdToTargetId[String(item.id)] = targetId;
+            if (scopedSourceRepos.has(sourceLower)) {
+              scopedTargetRepoIds.push(targetId);
+            }
           }
         }
       }
     } catch {
-      // Ignore if repository listing fails; fallback to empty map
+      // Ignore if repository listing fails; fallback to empty maps
     }
-    return map;
+    return {
+      sourceIdToTargetId,
+      sourceIdToName,
+      scopedTargetRepoIds: [...new Set(scopedTargetRepoIds)].sort(
+        (a, b) => a - b,
+      ),
+    };
   }
   private discoverCached(
     organization: string,

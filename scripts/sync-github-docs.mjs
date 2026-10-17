@@ -160,15 +160,15 @@ export const ALLOWLIST = [
   'content/graphql/guides',
   'content/graphql/reference',
 
-  // 11. GitHub Apps, SSH & Authentication Posture
+  // 11. GitHub Apps, OAuth Apps, SSH & Authentication Posture
   'content/apps/index.md',
   'content/apps/overview.md',
-  'content/apps/creating-github-apps/index.md',
-  'content/apps/creating-github-apps/about-creating-github-apps',
-  'content/apps/creating-github-apps/authenticating-with-a-github-app',
-  'content/apps/creating-github-apps/registering-a-github-app',
+  'content/apps/github-authentication-discovery-endpoints.md',
+  'content/apps/creating-github-apps',
+  'content/apps/sharing-github-apps',
   'content/apps/using-github-apps',
   'content/apps/maintaining-github-apps',
+  'content/apps/oauth-apps',
   'content/authentication/index.md',
   'content/authentication/authenticating-with-single-sign-on',
   'content/authentication/connecting-to-github-with-ssh',
@@ -649,22 +649,6 @@ function sync() {
     console.log(
       `Cloning/fetching upstream tree into temporary workspace (${tempDir})...`,
     );
-    execFileSync(
-      'git',
-      [
-        'clone',
-        '--depth',
-        '1',
-        '--filter=blob:none',
-        '--sparse',
-        '--branch',
-        ref,
-        source,
-        tempDir,
-      ],
-      { stdio: ['pipe', 'inherit', 'inherit'] },
-    );
-
     const sparseDirs = Array.from(
       new Set([
         ...ALLOWLIST.map((p) =>
@@ -675,11 +659,27 @@ function sync() {
       ]),
     );
 
+    execFileSync('git', ['init', tempDir], {
+      stdio: ['pipe', 'inherit', 'inherit'],
+    });
+    execFileSync('git', ['remote', 'add', 'origin', source], {
+      cwd: tempDir,
+      stdio: ['pipe', 'inherit', 'inherit'],
+    });
     execFileSync(
       'git',
       ['sparse-checkout', 'set', '--skip-checks', ...sparseDirs],
       { cwd: tempDir, stdio: ['pipe', 'inherit', 'inherit'] },
     );
+    execFileSync(
+      'git',
+      ['fetch', '--depth', '1', '--filter=blob:none', 'origin', ref],
+      { cwd: tempDir, stdio: ['pipe', 'inherit', 'inherit'] },
+    );
+    execFileSync('git', ['checkout', 'FETCH_HEAD'], {
+      cwd: tempDir,
+      stdio: ['pipe', 'inherit', 'inherit'],
+    });
 
     const resolvedSha = execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: tempDir,

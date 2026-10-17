@@ -1,34 +1,59 @@
-# `rulesets` Migration Module
+# Migrating Repository and Organization Rulesets (`rulesets`)
 
-## Overview
+By default, the `rulesets` module copies GitHub repository and organization rulesets—including target branch patterns, required pull request reviews, status checks, commit signing rules, and bypass actors—from your source to your target on GitHub.
 
-The `rulesets` migration module governs the migration of modern GitHub repository and organization rulesets, including rule parameters (pull request reviews, required status checks, commit signing, linear history, deployments), conditions (target ref name include and exclude patterns), and bypass actors.
+## Migrating rulesets to your target repository or organization
 
-## Lifecycle Methods
+By default, this module reads rulesets from `/repos/{owner}/{repo}/rulesets` (or `/orgs/{org}/rulesets`), skips inherited organization rulesets when working at the repository level, and creates or updates rulesets on the destination.
 
-### 1. Discover
+To migrate rulesets for a single repository:
 
-- **Cached Mode:** Reads `policy` entities where `policyKind === "ruleset"` from the discovery bundle.
-- **Live Mode:** Queries `GET /repos/{owner}/{repo}/rulesets` (for repositories) or `GET /orgs/{org}/rulesets` (for organizations).
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "rulesets"
+```
 
-### 2. Plan
+To preview which rulesets will be created or updated without making any changes on GitHub, add the `--dry-run` option:
 
-- Queries target rulesets via `GET /repos/{owner}/{repo}/rulesets` or `GET /orgs/{org}/rulesets`.
-- Filters out inherited organization rulesets (`source_type === "Organization"`) so they are not inappropriately modified at the repository level.
-- Emits planned operations:
-  - `create`: When a ruleset exists on source but not target.
-  - `update`: When ruleset parameters, conditions, or bypass actors differ on target.
-  - `noop`: When ruleset configuration is identical on target.
-  - `skip`: When target ruleset is inherited from Organization and cannot be overwritten.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "rulesets" \
+  --dry-run
+```
 
-### 3. Apply
+To migrate rulesets across multiple repositories using a scope file:
 
-- `create`: Calls `POST /repos/{owner}/{repo}/rulesets` (or org) via `TargetWriteClient`.
-- `update`: Calls `PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}` (or org).
-- `noop` / `skip`: Skips mutation requests.
-- Honors `dryRun: true` by simulating operations without writing.
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"],
+  "enabledModules": ["rulesets"]
+}
+```
 
-### 4. Verify
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
 
-- Re-queries destination rulesets and verifies conditions, parameters, and bypass actors.
-- Reports discrepancies conforming to `ModuleVerificationResultSchema`.
+> [!WARNING]
+> Before importing repositories with GEI, any active ruleset on your target organization must include **Repository migrations** in its bypass list with the mode set to **Exempt**. Otherwise, GitHub evaluates rulesets against large batch pushes and the import can time out.
+
+## Testing this module offline
+
+By default, the unit tests check ruleset conditions, rule parameters, bypass actors, and inherited organization ruleset filtering offline.
+
+To run the rulesets unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/rulesets.test.ts
+```

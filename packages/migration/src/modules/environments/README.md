@@ -1,48 +1,63 @@
-# Deployment Environments Migration Module
+# Migrating Deployment Environments (`environments`)
 
-`EnvironmentsMigrationModule` handles the discovery, planning, reconciliation, and post-GEI rehydration of repository deployment environments, protection rules, deployment branch policies, environment-scoped variables, and environment-scoped secrets.
+By default, GitHub Enterprise Importer (GEI) does not copy deployment environments like `production` or `staging`. The `environments` module recreates your deployment environments, wait timers, reviewer rules, branch policies, environment variables, and environment secret placeholders on the target repository.
 
-## Module Metadata
+## Migrating deployment environments, variables, and secrets
 
-- **ID**: `environments`
-- **Display Name**: `Deployment Environments, Variables & Protection Rules`
-- **Scope Level**: `repository`
-- **Dependencies**: `['gei-repo']`
+By default, this module creates each environment on the target repository, maps reviewer logins to their new EMU usernames, copies environment variables, and creates sealed blank (`""`) placeholders for environment secrets.
 
-## Background
+To migrate deployment environments for a repository:
 
-GitHub Enterprise Importer (GEI) migrates repository code, issues, and pull requests, but does **not** transfer deployment environments, their protection policies, or environment-scoped secrets and variables. Without this module, deployment workflows targeting environments such as `production`, `staging`, or `qa` fail upon target execution.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "environments"
+```
 
-## Features
+To preview which environments, variables, and branch policies will be created without changing GitHub, add the `--dry-run` option:
 
-1. **Environment Definition & Protection Rules**:
-   - Transfers environment names, wait timers (`wait_timer` in minutes), and self-review prevention (`prevent_self_review`).
-   - Recreates deployment branch policies: `all` branches, `protected` branches, or `selected` (custom branch/tag rules).
-2. **Reviewer Identity Translation**:
-   - Integrates with [`IdentityMappingEngine`](../teams/identity-mapper.ts) to map reviewer user logins to EMU usernames (e.g., `octocat` -> `octocat_acme`).
-   - Issues structured non-fatal warnings for unmapped users.
-3. **Environment-Scoped Variables**:
-   - Discovers variables in source environments.
-   - Plans `create`, `update`, and `noop` operations based on destination state.
-   - Applies mutations via GitHub REST API endpoints (`POST` / `PATCH`).
-4. **Environment-Scoped Secrets (Zero Exposure per DEC-004)**:
-   - Secret values are never exposed, logged, or serialized in migration plans.
-   - Obtains target environment public keys (`GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key`).
-   - Uses `libsodium-wrappers` sealed-box encryption (`crypto_box_seal`) to encrypt ephemeral vault-supplied secrets or placeholder blank values (`""`).
-5. **Auditing & Verification**:
-   - Verifies target environment existence, wait timer accuracy, variable values, and secret names post-migration.
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --repo "payments-service" \
+  --modules "environments" \
+  --dry-run
+```
 
-## REST Endpoints Used
+To migrate deployment environments across multiple repositories with EMU reviewer mapping in a scope file:
 
-| Action                             | HTTP Method & Path                                                                      |
-| ---------------------------------- | --------------------------------------------------------------------------------------- |
-| List environments                  | `GET /repos/{owner}/{repo}/environments`                                                |
-| Create / update environment        | `PUT /repos/{owner}/{repo}/environments/{environment_name}`                             |
-| List branch policies               | `GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies`  |
-| Create branch policy               | `POST /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies` |
-| List environment variables         | `GET /repos/{owner}/{repo}/environments/{environment_name}/variables`                   |
-| Create environment variable        | `POST /repos/{owner}/{repo}/environments/{environment_name}/variables`                  |
-| Update environment variable        | `PATCH /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}`          |
-| List environment secrets           | `GET /repos/{owner}/{repo}/environments/{environment_name}/secrets`                     |
-| Get environment public key         | `GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key`          |
-| Create / update environment secret | `PUT /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}`       |
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "checkout-api"],
+  "enabledModules": ["environments"],
+  "identityMapping": {
+    "strategy": "emu-saml",
+    "shortcode": "acme"
+  }
+}
+```
+
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
+
+> [!WARNING]
+> GitHub never exposes secret values through the API. By default, this module encrypts an empty string (`""`) for each environment secret so the secret name is reserved on the target repository. Provide a `secretValueProvider` or update secret values from your vault before running deployment workflows.
+
+## Testing this module offline
+
+By default, the unit tests check environment wait timers, reviewer login mapping, branch policies, variables, and sealed secret placeholders offline.
+
+To run the environments module unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/modules/environments.test.ts
+```

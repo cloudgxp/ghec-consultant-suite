@@ -10,6 +10,11 @@ import {
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
 import {
+  getScopedSourceRepoNames,
+  getScopedTargetRepoName,
+  isAssociatedOnlyOrgMode,
+} from '../../core/org-item-filter.js';
+import {
   assertFetchAllOk,
   formatSanitizedReadError,
   isExpectedFeatureAbsentError,
@@ -468,8 +473,41 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
       // Target may be fresh with no teams
     }
 
+    const associatedOnly = isAssociatedOnlyOrgMode(ctx);
+    const scopedSourceRepos = getScopedSourceRepoNames(ctx);
+
+    let candidateTeams = data.teams;
+    if (associatedOnly) {
+      const teamBySlug = new Map(data.teams.map((t) => [t.slug, t]));
+      const keptSlugs = new Set<string>();
+
+      for (const team of data.teams) {
+        const hasInScopeRepo = team.repositoryAccess.some((access) =>
+          scopedSourceRepos.has(access.repositoryName.toLowerCase()),
+        );
+        if (hasInScopeRepo) {
+          let currentSlug: string | undefined = team.slug;
+          const visited = new Set<string>();
+          while (currentSlug && !visited.has(currentSlug)) {
+            visited.add(currentSlug);
+            keptSlugs.add(currentSlug);
+            currentSlug = teamBySlug.get(currentSlug)?.parentSlug;
+          }
+        }
+      }
+
+      candidateTeams = data.teams
+        .filter((team) => keptSlugs.has(team.slug))
+        .map((team) => ({
+          ...team,
+          repositoryAccess: team.repositoryAccess.filter((access) =>
+            scopedSourceRepos.has(access.repositoryName.toLowerCase()),
+          ),
+        }));
+    }
+
     // Topologically sort teams: parents MUST be planned/created before children
-    const sortedTeams = sortTeamsTopologically(data.teams);
+    const sortedTeams = sortTeamsTopologically(candidateTeams);
 
     for (const team of sortedTeams) {
       const targetTeam = targetTeamsBySlug.get(team.slug);
@@ -527,7 +565,7 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
         const targetRepo =
           ctx.scope.targetRepo && access.repositoryName === ctx.scope.sourceRepo
             ? ctx.scope.targetRepo
-            : access.repositoryName;
+            : getScopedTargetRepoName(ctx, access.repositoryName);
 
         operations.push({
           id: `op-team-perm-${team.slug}-${targetRepo}`,
@@ -605,7 +643,12 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
     }
 
     // Plan base organization default repository permission alignment if present
-    if (data.defaultRepositoryPermission) {
+    // Skip in associated-only or multi-org consolidation mode to avoid overwriting target org baseline
+    if (
+      data.defaultRepositoryPermission &&
+      !associatedOnly &&
+      !ctx.scope.isMultiOrgConsolidation
+    ) {
       operations.push({
         id: 'op-org-base-permission',
         resourceType: 'org-permission',

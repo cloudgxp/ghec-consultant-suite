@@ -910,7 +910,7 @@ export function generateRemediationPlan(
     }
   }
 
-  const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -uo pipefail\nif ! command -v ghec-consultant-cli >/dev/null 2>&1 && [ -f "./apps/cli/bin/ghec-consultant-cli.mjs" ]; then\n  ghec-consultant-cli() { node ./apps/cli/bin/ghec-consultant-cli.mjs "$@"; }\nfi\nexport GH_TOKEN="\${GHEC_TARGET_TOKEN:-\${GH_TOKEN:-}}"\n\n`;
+  const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -uo pipefail\nif ! command -v ghec-consultant-cli >/dev/null 2>&1; then\n  if [ -f "./bin/ghec-consultant-cli.mjs" ]; then\n    ghec-consultant-cli() { node ./bin/ghec-consultant-cli.mjs "$@"; }\n  elif [ -f "./apps/cli/bin/ghec-consultant-cli.mjs" ]; then\n    ghec-consultant-cli() { node ./apps/cli/bin/ghec-consultant-cli.mjs "$@"; }\n  fi\nfi\nexport GH_TOKEN="\${GHEC_TARGET_TOKEN:-\${GH_TOKEN:-}}"\n\n`;
   const executedCommands = new Set<string>();
   const scriptBody = actions
     .map((a) => {

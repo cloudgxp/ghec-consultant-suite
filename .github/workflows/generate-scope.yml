@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source_org:
-        description: 'Source organization slug (e.g. source-org)'
+        description: 'Source organization slug, or comma-separated slugs for multi-org consolidation (e.g. "org-a,org-b")'
         required: true
         type: string
       target_org:
@@ -17,10 +17,38 @@ on:
         type: choice
         options:
           - 'all_repositories'
+          - 'public_repositories_only'
+          - 'private_repositories_only'
+          - 'internal_repositories_only'
           - 'urls_file'
           - 'custom_list'
           - 'org_resources_only'
         default: 'all_repositories'
+      source_visibility:
+        description: 'Filter discovered source repositories by visibility ("all", "public", "private", or "internal")'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'public'
+          - 'private'
+          - 'internal'
+        default: 'all'
+      exclude_forks:
+        description: 'Exclude forked repositories when discovering organization repositories'
+        required: false
+        type: boolean
+        default: false
+      org_items_mode:
+        description: 'Organization items mode ("auto" = all for 1:1 / associated-only for multi-org, "associated-only" = only items linked to in-scope repos, "all", or "none")'
+        required: false
+        type: choice
+        options:
+          - 'auto'
+          - 'associated-only'
+          - 'all'
+          - 'none'
+        default: 'auto'
       repos_file_path:
         description: 'Path to repository URLs file (if scope_type is urls_file, e.g. waves/wave1.txt)'
         required: false
@@ -70,7 +98,7 @@ on:
         type: boolean
         default: false
       target_repo_prefix:
-        description: 'Optional prefix for target repository names'
+        description: 'Optional prefix for target repository names (supports "{source}-" placeholder)'
         required: false
         type: string
         default: ''
@@ -92,11 +120,26 @@ on:
           - 'fast-snapshot'
           - 'full-history'
         default: 'fast-snapshot'
-      commit_to_branch:
-        description: 'Commit and push the generated scope file to this branch'
+      include_org_resources:
+        description: 'Include organization-level migration modules in scope'
         required: false
         type: boolean
         default: true
+      org_modules:
+        description: 'Optional comma-separated list of org modules (leave blank for "auto" strategy resolution)'
+        required: false
+        type: string
+        default: ''
+      repo_modules:
+        description: 'Optional comma-separated list of repository modules (leave blank for "auto" strategy resolution)'
+        required: false
+        type: string
+        default: ''
+      commit_to_branch:
+        description: 'Optional: also commit and push the generated scope file to this git branch (artifacts are always uploaded)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -115,25 +158,59 @@ jobs:
         uses: ./.github/actions/setup-suite
 
       - name: Generate Scope File
+        id: gen
         shell: bash
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GH_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
         run: |
+          mkdir -p ./generated-scopes ./scopes
+          EFFECTIVE_VIS="${{ inputs.source_visibility || 'all' }}"
+          if [ "${{ inputs.scope_type }}" = "public_repositories_only" ]; then
+            EFFECTIVE_VIS="public"
+          elif [ "${{ inputs.scope_type }}" = "private_repositories_only" ]; then
+            EFFECTIVE_VIS="private"
+          elif [ "${{ inputs.scope_type }}" = "internal_repositories_only" ]; then
+            EFFECTIVE_VIS="internal"
+          fi
+
+          SOURCE_LABEL="${{ inputs.source_org }}"
+          if [[ "$SOURCE_LABEL" == *","* ]]; then
+            SOURCE_LABEL="multi-org"
+          fi
+
+          SCOPE_BASENAME="${{ inputs.scope_name }}"
+          if [ -z "$SCOPE_BASENAME" ]; then
+            if [ "${{ inputs.scope_type }}" = "org_resources_only" ]; then
+              SCOPE_BASENAME="${SOURCE_LABEL}-to-${{ inputs.target_org }}-org"
+            elif [ "$EFFECTIVE_VIS" != "all" ]; then
+              SCOPE_BASENAME="${SOURCE_LABEL}-to-${{ inputs.target_org }}-${EFFECTIVE_VIS}"
+            elif [ "${{ inputs.scope_type }}" = "all_repositories" ]; then
+              SCOPE_BASENAME="${SOURCE_LABEL}-to-${{ inputs.target_org }}-all"
+            else
+              SCOPE_BASENAME="${SOURCE_LABEL}-to-${{ inputs.target_org }}-wave"
+            fi
+          fi
+          OUT_FILE="scopes/${SCOPE_BASENAME}.json"
+
           ARGS=(
+            "generate-scope"
             "--source" "${{ inputs.source_org }}"
             "--target" "${{ inputs.target_org }}"
+            "--name" "$SCOPE_BASENAME"
+            "--output" "$OUT_FILE"
             "--target-type" "${{ inputs.target_type || 'ghec' }}"
             "--lfs-strategy" "${{ inputs.lfs_strategy }}"
             "--mirror-push-mode" "${{ inputs.mirror_push_mode || 'fast-snapshot' }}"
+            "--include-org-resources" "${{ inputs.include_org_resources != false && 'true' || 'false' }}"
           )
+
+          if [ -n "${{ inputs.org_items_mode }}" ] && [ "${{ inputs.org_items_mode }}" != "auto" ]; then
+            ARGS+=("--org-items" "${{ inputs.org_items_mode }}")
+          fi
 
           if [ -n "${{ inputs.emu_shortcode }}" ]; then
             ARGS+=("--emu-shortcode" "${{ inputs.emu_shortcode }}")
-          fi
-
-          if [ -n "${{ inputs.scope_name }}" ]; then
-            ARGS+=("--name" "${{ inputs.scope_name }}")
           fi
 
           if [ "${{ inputs.target_visibility }}" != "preserve" ]; then
@@ -142,6 +219,10 @@ jobs:
 
           if [ "${{ inputs.include_archived }}" = "true" ]; then
             ARGS+=("--include-archived")
+          fi
+
+          if [ "${{ inputs.exclude_forks }}" = "true" ]; then
+            ARGS+=("--exclude-forks")
           fi
 
           if [ -n "${{ inputs.target_repo_prefix }}" ]; then
@@ -156,8 +237,16 @@ jobs:
             ARGS+=("--skip-releases")
           fi
 
-          if [ "${{ inputs.scope_type }}" = "all_repositories" ]; then
-            ARGS+=("--all")
+          if [ -n "${{ inputs.org_modules }}" ]; then
+            ARGS+=("--org-modules" "${{ inputs.org_modules }}")
+          fi
+
+          if [ -n "${{ inputs.repo_modules }}" ]; then
+            ARGS+=("--repo-modules" "${{ inputs.repo_modules }}")
+          fi
+
+          if [ "${{ inputs.scope_type }}" = "all_repositories" ] || [ "${{ inputs.scope_type }}" = "public_repositories_only" ] || [ "${{ inputs.scope_type }}" = "private_repositories_only" ] || [ "${{ inputs.scope_type }}" = "internal_repositories_only" ]; then
+            ARGS+=("--all" "--source-visibility" "$EFFECTIVE_VIS")
           elif [ "${{ inputs.scope_type }}" = "org_resources_only" ]; then
             ARGS+=("--org-only")
           elif [ "${{ inputs.scope_type }}" = "urls_file" ]; then
@@ -172,22 +261,26 @@ jobs:
             ARGS+=("--file" "$TMP_URLS_FILE")
           fi
 
-          node scripts/generate-scope.mjs "${ARGS[@]}"
+          node ./apps/cli/bin/ghec-consultant-cli.mjs "${ARGS[@]}"
+          cp "$OUT_FILE" "./generated-scopes/${SCOPE_BASENAME}.json"
+          echo "scope_file=$OUT_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Upload Generated Scopes as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: migration-scopes
-          path: scopes/*.json
-          retention-days: 14
+          path: |
+            generated-scopes/*.json
+            scopes/*.json
+          retention-days: 30
 
-      - name: Commit & Push Scope File
-        if: ${{ inputs.commit_to_branch }}
+      - name: Commit & Push Scope File (Optional GitOps Mode)
+        if: ${{ inputs.commit_to_branch == true }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add scopes/
+          git add "${{ steps.gen.outputs.scope_file }}"
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
@@ -198,13 +291,35 @@ jobs:
       - name: Generate Actions Step Summary
         if: always()
         shell: bash
+        env:
+          GENERATED_FILE: ${{ steps.gen.outputs.scope_file }}
         run: |
           SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
           echo "## 📋 Migration Scope Generation Summary" >> "$SUMMARY_FILE"
           echo "" >> "$SUMMARY_FILE"
-          echo "- **Source:** \`${{ inputs.source_org }}\`" >> "$SUMMARY_FILE"
-          echo "- **Target:** \`${{ inputs.target_org }}\`" >> "$SUMMARY_FILE"
-          echo "- **Type:** \`${{ inputs.scope_type }}\`" >> "$SUMMARY_FILE"
-          echo "- **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$SUMMARY_FILE"
+          echo "- **Source Organization:** \`${{ inputs.source_org }}\`" >> "$SUMMARY_FILE"
+          echo "- **Target Organization:** \`${{ inputs.target_org }}\` (\`${{ inputs.target_type || 'ghec' }}\`)" >> "$SUMMARY_FILE"
+          echo "- **Selection Mode:** \`${{ inputs.scope_type }}\` (Source Visibility: \`${{ inputs.source_visibility || 'all' }}\`)" >> "$SUMMARY_FILE"
+          echo "- **Artifact Uploaded:** \`migration-scopes\` (Run ID: \`${{ github.run_id }}\`)" >> "$SUMMARY_FILE"
+          if [ -f "$GENERATED_FILE" ]; then
+            REPO_COUNT=$(jq '.repositories | length' "$GENERATED_FILE")
+            ORG_MODS=$(jq -r '.organizations[0].modules | join(", ")' "$GENERATED_FILE")
+            REPO_MODS=$(jq -r '.repositories[0].modules // [] | join(", ")' "$GENERATED_FILE")
+            echo "- **Repositories in Scope:** \`$REPO_COUNT\`" >> "$SUMMARY_FILE"
+            if [ "$ORG_MODS" = "auto" ] || [ -z "$ORG_MODS" ]; then
+              echo "- **Organization Modules:** \`auto\` (all 15 organization modules)" >> "$SUMMARY_FILE"
+            else
+              echo "- **Organization Modules:** \`$ORG_MODS\`" >> "$SUMMARY_FILE"
+            fi
+            if [ "$REPO_MODS" = "auto" ] || [ -z "$REPO_MODS" ]; then
+              echo "- **Repository Modules:** \`auto\` (all 19 repository modules, strategy-aware)" >> "$SUMMARY_FILE"
+            else
+              echo "- **Repository Modules:** \`$REPO_MODS\`" >> "$SUMMARY_FILE"
+            fi
+          fi
           echo "" >> "$SUMMARY_FILE"
-          echo "Scope files in \`scopes/\` are validated and ready for \`migration-execute-wave.yml\`." >> "$SUMMARY_FILE"
+          echo "### 🚀 Next Step: Run Dry-Run or Live Migration Wave" >> "$SUMMARY_FILE"
+          echo "You can execute this scope immediately from the **Parallel Matrix Migration Wave** workflow using \`scope_run_id: latest\` (or \`${{ github.run_id }}\`):" >> "$SUMMARY_FILE"
+          echo '```bash' >> "$SUMMARY_FILE"
+          echo "gh workflow run migration-execute-wave.yml -f scope_run_id=\"${{ github.run_id }}\" -f dry_run=\"true\"" >> "$SUMMARY_FILE"
+          echo '```' >> "$SUMMARY_FILE"

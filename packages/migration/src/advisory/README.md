@@ -1,89 +1,109 @@
-# Migration Advisory & Non-Migrated Items Planner
+# Creating Cutover Guides for Items That Do Not Migrate Automatically
 
-The Advisory Planning Engine generates actionable cutover blueprints, reinstallation matrices, and impact assessments for resources that cannot or should not be copied via API during GitHub Enterprise Importer (GEI) migrations.
+By default, the advisory planner inspects your source organization and writes 5 cutover guides for items that GitHub Enterprise Importer (GEI) cannot copy automatically. These guides include checklists for GitHub Apps, Packages, self-hosted runners, and repository forks.
 
-## Philosophy: Zero Silent Gaps
+```text
+migration-output/advisory/
+├── github-apps-reinstallation-matrix.csv
+├── migration-advisory-report.json
+├── migration-advisory-report.md
+├── packages-cutover-guide.md
+└── runner-infrastructure-spec.md
+```
 
-In high-stakes enterprise migrations, omission is unacceptable. Many GitHub resources cannot be migrated via automated API due to:
+## Generating cutover guides and checklists
 
-1. **Security & Cryptographic Boundaries:** Private keys, OAuth application secrets, webhook secrets, and user personal access tokens.
-2. **Registry Mechanics:** Package registries (`ghcr.io`, npm, Maven, NuGet, RubyGems) requiring native CLI pushes to populate artifact storage.
-3. **Platform Architecture:** Ephemeral runner tokens, immutable enterprise audit logs, and severed fork networks.
+By default, the advisory planner reads your source organization settings and saves Markdown, JSON, and CSV checklists to your output folder.
 
-The advisory planner discovers these entities, provides clear cutover playbooks, and explicitly audits all platform-unsupported items per GitHub documentation (`data-not-migrated.md`).
+To generate all 5 cutover guides during a migration run:
 
----
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org"
+```
 
-## Output Deliverables
+To preview the advisory report without making any changes on GitHub, add the `--dry-run` option:
 
-The engine generates 5 complementary artifacts:
+```bash
+npm run dev:cli -- migrate \
+  --source-org "source-enterprise-org" \
+  --target-org "target-emu-org" \
+  --dry-run
+```
 
-| File Name                               | Format   | Purpose                                                                           |
-| --------------------------------------- | -------- | --------------------------------------------------------------------------------- |
-| `migration-advisory-report.json`        | JSON     | Complete machine-readable advisory inventory and audit                            |
-| `migration-advisory-report.md`          | Markdown | Executive summary combining all cutover domains                                   |
-| `github-apps-reinstallation-matrix.csv` | CSV      | Sanitized spreadsheet for IT administrators installing Apps on the destination    |
-| `packages-cutover-guide.md`             | Markdown | Inventory and CI/CD commands for republishing Container and language packages     |
-| `runner-infrastructure-spec.md`         | Markdown | Runner groups topology and host registration playbooks for destination enterprise |
+To generate advisory guides from a saved scope file and write the results to `./scans`:
 
----
+```json
+{
+  "schemaVersion": "1.0.0",
+  "sourceOrg": "source-enterprise-org",
+  "targetOrg": "target-emu-org",
+  "repositories": ["payments-service", "web-frontend"]
+}
+```
 
-## Subsystems
+```bash
+npm run dev:cli -- migrate \
+  --scope ./scopes/wave-1.json \
+  --output-dir ./scans
+```
 
-### 1. GitHub Apps Advisory Planner (`GitHubAppsAdvisoryPlanner`)
+> [!NOTE]
+> The CSV spreadsheet automatically escapes cells starting with `=`, `+`, `-`, or `@` so you can open `github-apps-reinstallation-matrix.csv` safely in Excel or Google Sheets.
 
-- Queries `GET /orgs/{org}/installations` or discovers GitHub App integrations from discovery bundles.
-- Emits `github-apps-reinstallation-matrix.csv` listing:
-  - App Name, App ID, and App Slug
-  - Target Type (`Organization` or `User`)
-  - Repository Selection (`all` vs. `selected`)
-  - Requested Permissions and Subscribed Webhook Events
-  - Destination installation URL (`https://github.com/apps/{slug}/installations/new`)
-- Enforces formula injection neutralization (prefixing cells starting with `=`, `+`, `-`, `@`, `\t`, `\r` with a single quote).
+## Calling the advisory planner from TypeScript
 
-### 2. Packages Cutover Planner (`PackagesCutoverPlanner`)
+By default, `MigrationAdvisoryPlanner` works with either a live GitHub client or an offline discovery bundle.
 
-- Discovers Container (GHCR), npm, Maven, NuGet, and RubyGems packages.
-- Formats tailored republishing commands:
-  - **Docker / GHCR:** `docker tag ... && docker push ...`
-  - **npm:** Re-pointing `.npmrc` to `@targetOrg:registry=https://npm.pkg.github.com` and `npm publish`
-  - **Maven:** `<distributionManagement>` URL update and `mvn deploy`
-  - **NuGet:** `dotnet nuget push`
-  - **RubyGems:** `gem push`
-
-### 3. Self-Hosted Runners Planner (`SelfHostedRunnersPlanner`)
-
-- Discovers runner groups (`GET /orgs/{org}/actions/runner-groups`) and self-hosted runners (`GET /orgs/{org}/actions/runners`).
-- Details runner status, architecture, OS, labels, and group visibility.
-- Provides target registration script templates using `gh api POST /orgs/{targetOrg}/actions/runners/registration-token`.
-
-### 4. Unsupported Items Auditor (`UnsupportedItemsAuditor`)
-
-- Explicitly accounts for all non-migrated entities documented in `references/github-docs/data/reusables/enterprise-migration-tool/data-not-migrated.md`:
-  - **Fork Networks:** Flags repositories that are forks. Documents that GEI imports them as independent standalone roots, severing upstream PR links.
-  - **Discussions:** Explains that repository-level discussions do not migrate and advises GraphQL export.
-  - **Projects (v2):** Documents that Projects v2 boards require GraphQL export or recreation.
-  - **Workflow Run History, Caches, & Artifacts:** Confirms ephemeral execution history is not retained.
-  - **Audit Logs:** Reminds operators that enterprise audit trail remains in source enterprise.
-  - **Stars & Watchers:** Explicitly classifies social metadata as non-migrated.
-  - **User Profiles & SSH/Signing Keys:** Reminds users to register SSH/GPG keys on their new EMU accounts.
-  - **Secret Scanning Remediation States:** Clarifies that alert dismissal states are not preserved.
-
----
-
-## Usage
+To generate and save all advisory files from code:
 
 ```typescript
 import { MigrationAdvisoryPlanner } from '@ghec/migration';
 
 const planner = new MigrationAdvisoryPlanner({
-  sourceOrg: 'legacy-enterprise-org',
-  targetOrg: 'modern-enterprise-org',
-  adapter: sourceClient, // or discoveryBundle for offline mode
+  sourceOrg: 'source-enterprise-org',
+  targetOrg: 'target-emu-org',
+  adapter: sourceClient,
 });
 
-const { report, artifacts } = await planner.generateReport();
-
-// Write artifacts to destination directory
+const { artifacts } = await planner.generateReport();
 await planner.writeArtifacts('./migration-output/advisory', artifacts);
+```
+
+> [!WARNING]
+> GitHub does not copy private keys, OAuth tokens, workflow run history, or audit logs during a migration. Review `migration-advisory-report.md` before your cutover window so your team knows which items to recreate manually.
+
+## Recreating custom GitHub Apps in your target organization
+
+By default, the advisory planner checks whether each installed app is a public third-party app or a private custom app. It includes both a direct install link and a custom app recreation manifest in `migration-advisory-report.json` and `github-apps-reinstallation-matrix.csv`.
+
+To recreate a custom app from the advisory report and save its new credentials to GitHub Actions secrets:
+
+```bash
+node scripts/register-app.mjs \
+  --manifest-file ./migration-output/advisory/migration-advisory-report.json \
+  --app "internal-deploy-bot"
+```
+
+To recreate a custom app from a saved migration plan and choose a specific target organization:
+
+```bash
+node scripts/register-app.mjs \
+  --manifest-file ./migration-output/migration-plan.json \
+  --app "internal-deploy-bot" \
+  --org "target-emu-org"
+```
+
+> [!NOTE]
+> You can also open `github-apps-reinstallation-matrix.csv` and click the **Recreate App URL** column to create a matching app in your browser without running a local command.
+
+## Testing the advisory planner offline
+
+By default, the unit tests check GitHub Apps, Packages, self-hosted runners, and unsupported item warnings using offline test data.
+
+To run the advisory planner unit tests offline:
+
+```bash
+node --import tsx --test packages/migration/tests/advisory/planner.test.ts
 ```

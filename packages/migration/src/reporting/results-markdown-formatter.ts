@@ -36,6 +36,7 @@ export interface RepositoryFailureDetails {
 }
 
 export interface GranularMigrationItemRow {
+  readonly operationId?: string | undefined;
   readonly resourceName: string;
   readonly resourceType: string;
   readonly operationType:
@@ -45,6 +46,11 @@ export interface GranularMigrationItemRow {
   readonly verificationStatus: 'verified' | 'discrepancy' | 'not-verified';
   readonly notes?: string | undefined;
   readonly isSecret?: boolean | undefined;
+  readonly settingsUrl?: string | undefined;
+  readonly settingsLinkLabel?: string | undefined;
+  readonly secondaryUrl?: string | undefined;
+  readonly secondaryLinkLabel?: string | undefined;
+  readonly subDomain?: string | undefined;
 }
 
 export interface OrgModuleDetailModel {
@@ -142,16 +148,35 @@ function formatVerificationBadge(
   }
 }
 
+export interface ResultsReadmeOptions {
+  readonly nextSteps?: readonly string[] | undefined;
+  readonly operationalMode?: 'discovery' | 'dry-run' | 'live' | undefined;
+  readonly postCareSummary?:
+    | {
+        readonly totalItems: number;
+        readonly secretCount: number;
+        readonly appCount: number;
+        readonly webhookCount: number;
+        readonly runnerCount: number;
+        readonly otherCount: number;
+      }
+    | undefined;
+}
+
 /**
  * Generates Tier 1 root README.md executive overview for the migration results audit repository.
  */
 export function formatResultsReadmeMarkdown(
   manifest: MigrationResultsManifest,
-  options: { readonly nextSteps?: readonly string[] | undefined } = {},
+  options: ResultsReadmeOptions = {},
 ): string {
   const durationSec = (manifest.summary.durationMs / 1000).toFixed(1);
   const modeDisplay =
-    manifest.executionMode === 'live' ? 'Live Execution' : 'Dry-Run';
+    options.operationalMode === 'discovery'
+      ? 'Discovery Assessment'
+      : manifest.executionMode === 'live'
+        ? 'Live Execution'
+        : 'Dry-Run';
 
   const lines: string[] = [
     `# Migration Results: ${manifest.sourceOrg} ➔ ${manifest.targetOrg}`,
@@ -172,8 +197,14 @@ export function formatResultsReadmeMarkdown(
     `| Succeeded Repositories | ${manifest.summary.succeededCount} |`,
     `| Failed Repositories | ${manifest.summary.failedCount} |`,
     `| Success Rate | ${manifest.summary.successRatePercent}% |`,
-    '',
   ];
+
+  if (options.postCareSummary) {
+    lines.push(
+      `| Customer Post-Care Items | [${options.postCareSummary.totalItems} items (View Checklist)](POST-CARE-CHECKLIST.md) |`,
+    );
+  }
+  lines.push('');
 
   // Org-Level Modules Summary (Tier 1 -> Tier 2 organization/<module>.md)
   const orgModules = Object.entries(manifest.summary.orgModulesSummary);
@@ -278,6 +309,42 @@ export function formatResultsReadmeMarkdown(
     lines.push('');
   }
 
+  // Customer Post-Care Checklist & CSV Exports section
+  if (options.postCareSummary) {
+    lines.push('---');
+    lines.push('');
+    lines.push('## 📋 Customer Post-Care Package & CSV Exports');
+    lines.push('');
+    lines.push(
+      'Review the [**Customer Post-Care Checklist (`POST-CARE-CHECKLIST.md`)**](POST-CARE-CHECKLIST.md) for direct links to destination GitHub settings pages and copy-pasteable `gh` CLI commands.',
+    );
+    lines.push('');
+    lines.push('| Deliverable | Items | Format | Description |');
+    lines.push('| :--- | :--- | :--- | :--- |');
+    lines.push(
+      `| [**Customer Post-Care Checklist**](POST-CARE-CHECKLIST.md) | ${options.postCareSummary.totalItems} | Markdown | Grouped post-care runbook with direct GitHub Settings links |`,
+    );
+    lines.push(
+      `| [\`exports/post-care-items.csv\`](exports/post-care-items.csv) | ${options.postCareSummary.totalItems} | CSV | Master spreadsheet of all customer post-care action items |`,
+    );
+    lines.push(
+      `| [\`exports/secrets-to-populate.csv\`](exports/secrets-to-populate.csv) | ${options.postCareSummary.secretCount} | CSV | Organization, repository, and environment secrets requiring values |`,
+    );
+    lines.push(
+      `| [\`exports/github-apps-reinstall.csv\`](exports/github-apps-reinstall.csv) | ${options.postCareSummary.appCount} | CSV | GitHub Apps requiring target installation or recreation |`,
+    );
+    lines.push(
+      `| [\`exports/webhooks-reconfiguration.csv\`](exports/webhooks-reconfiguration.csv) | ${options.postCareSummary.webhookCount} | CSV | Webhooks requiring HMAC secrets and endpoint verification |`,
+    );
+    lines.push(
+      `| [\`exports/runners-registration.csv\`](exports/runners-registration.csv) | ${options.postCareSummary.runnerCount} | CSV | Self-hosted runners and runner groups requiring registration |`,
+    );
+    lines.push(
+      `| [\`exports/migration-operations-full.csv\`](exports/migration-operations-full.csv) | All | CSV | Complete ledger of every organization and repository operation |`,
+    );
+    lines.push('');
+  }
+
   // Next Steps & Runbook
   lines.push('---');
   lines.push('');
@@ -306,6 +373,35 @@ export function formatResultsReadmeMarkdown(
   return lines.join('\n');
 }
 
+function appendItemSettingsLinksToNotes(
+  baseNotes: string,
+  item: GranularMigrationItemRow,
+): string {
+  const linkParts: string[] = [];
+  if (item.settingsUrl) {
+    const label = escapeMarkdownTableCell(
+      item.settingsLinkLabel ?? 'Target Settings ↗',
+    );
+    const safeUrl = item.settingsUrl.endsWith('.md')
+      ? `${item.settingsUrl}#L1`
+      : item.settingsUrl;
+    linkParts.push(`[${label}](${safeUrl})`);
+  }
+  if (item.secondaryUrl && item.secondaryUrl !== item.settingsUrl) {
+    const secLabel = escapeMarkdownTableCell(
+      item.secondaryLinkLabel ?? 'Secondary Link ↗',
+    );
+    const safeSecUrl = item.secondaryUrl.endsWith('.md')
+      ? `${item.secondaryUrl}#L1`
+      : item.secondaryUrl;
+    linkParts.push(`[${secLabel}](${safeSecUrl})`);
+  }
+  if (linkParts.length === 0) {
+    return baseNotes;
+  }
+  return `${baseNotes} — ${linkParts.join(' · ')}`;
+}
+
 /**
  * Formats Tier 2 Organization Module Detail page (organization/<module>.md).
  */
@@ -321,7 +417,7 @@ export function formatOrgModuleDetailMarkdown(
     model.summary.discrepancyCount ?? model.discrepancies?.length ?? 0;
 
   const lines: string[] = [
-    '[← Back to Overview](../README.md)',
+    '[← Back to Overview](../README.md) | [Post-Care Checklist](../POST-CARE-CHECKLIST.md)',
     '',
     `# Organization Module: ${model.moduleId}`,
     '',
@@ -391,9 +487,10 @@ export function formatOrgModuleDetailMarkdown(
       const defaultNote = secretFlag
         ? '[SEALED] Write-only secret placeholder'
         : '-';
-      const notes = item.notes
+      const baseNotes = item.notes
         ? escapeMarkdownTableCell(item.notes)
         : defaultNote;
+      const notes = appendItemSettingsLinksToNotes(baseNotes, item);
 
       lines.push(
         `| ${displayName} | ${resourceType} | ${opType} | ${status} | ${verification} | ${notes} |`,
@@ -476,7 +573,7 @@ export function formatSuccessRepoMarkdown(
   const durationSec = (record.durationMs / 1000).toFixed(1);
 
   const lines: string[] = [
-    '[← Back to Overview](../README.md)',
+    '[← Back to Overview](../README.md) | [Post-Care Checklist](../POST-CARE-CHECKLIST.md)',
     '',
     `# Migration Result: ${record.targetRepo}`,
     '',
@@ -579,7 +676,7 @@ export function formatFailureRepoMarkdown(
   );
 
   const lines: string[] = [
-    '[← Back to Overview](../README.md)',
+    '[← Back to Overview](../README.md) | [Post-Care Checklist](../POST-CARE-CHECKLIST.md)',
     '',
     `# Migration Result: ${record.targetRepo}`,
     '',
@@ -708,7 +805,7 @@ export function formatRepoModuleDetailMarkdown(
   const statusBadge = formatModuleStatusBadge(model.summary.status);
 
   const lines: string[] = [
-    `[← Back to ${model.targetRepo}](${repoOverviewRelPath}) | [Overview](../../README.md)`,
+    `[← Back to ${model.targetRepo}](${repoOverviewRelPath}) | [Overview](../../README.md) | [Post-Care Checklist](../../POST-CARE-CHECKLIST.md)`,
     '',
     `# Repository Module Details: ${model.targetRepo} / ${model.moduleId}`,
     '',
@@ -779,9 +876,10 @@ export function formatRepoModuleDetailMarkdown(
       const defaultNote = secretFlag
         ? '[SEALED] Write-only secret placeholder'
         : '-';
-      const notes = item.notes
+      const baseNotes = item.notes
         ? escapeMarkdownTableCell(item.notes)
         : defaultNote;
+      const notes = appendItemSettingsLinksToNotes(baseNotes, item);
 
       lines.push(
         `| ${displayName} | ${resourceType} | ${opType} | ${status} | ${completedAt} | ${verification} | ${notes} |`,

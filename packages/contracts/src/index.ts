@@ -943,6 +943,7 @@ export {
   RepositoryOptionsSchema,
   GitTransferStrategySchema,
   MirrorPushModeSchema,
+  OrgItemsModeSchema,
   TargetTenantTypeSchema,
   TeamManagementSchema,
   validateMigrationScope,
@@ -950,6 +951,7 @@ export {
   type RepositoryOptions,
   type GitTransferStrategy,
   type MirrorPushMode,
+  type OrgItemsMode,
   type TargetTenantType,
   type TeamManagement,
 } from './scope/migration-scope.js';

@@ -123,6 +123,21 @@ jobs:
               fi
 
               echo -e "$SECTION" >> ./reports/pr-comment.md
+
+              RESULTS_OUT_DIR="./scans/results-repo-${BASENAME}"
+              PUSH_ARGS=(--dry-run --skip-push)
+              if [ -n "${GHEC_TARGET_TOKEN:-}" ]; then
+                PUSH_ARGS=(--dry-run --force-push)
+              fi
+              node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+                --scope "$SCOPE_FILE" \
+                --plan "$PLAN_OUTPUT" \
+                --evidence-dir ./scans \
+                --output-dir "$RESULTS_OUT_DIR" \
+                --append-step-summary \
+                "${PUSH_ARGS[@]}" || {
+                  echo "::warning::Generating post-care deliverables for $SCOPE_FILE encountered non-fatal issues."
+                }
             fi
           done
 
@@ -135,7 +150,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: migration-plans-${{ github.run_id }}
-          path: ./scans/*-plan.json
+          path: |
+            ./scans/*-plan.json
+            ./scans/results-repo-*
           retention-days: 14
 
       - name: Post or Update PR Comment
