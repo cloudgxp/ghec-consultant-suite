@@ -199,24 +199,49 @@ jobs:
 
           # Mode 2: Download Scope Artifact from generate-scope.yml (explicit scope_run_id or fallback when repo file missing)
           if [ -z "$RESOLVED_SCOPE" ] && { [ -n "$INPUT_SCOPE_RUN_ID" ] || [ ! -f "$INPUT_SCOPE" ]; }; then
+            export PATH="$HOME/.local/bin:$PATH"
             TARGET_SCOPE_RUN="$INPUT_SCOPE_RUN_ID"
             if [ -z "$TARGET_SCOPE_RUN" ] || [ "$TARGET_SCOPE_RUN" = "latest" ]; then
               echo "Looking up latest successful generate-scope.yml workflow run..."
-              TARGET_SCOPE_RUN=$(gh run list --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+              for TOK in "$GH_TOKEN" "$GHEC_SOURCE_TOKEN"; do
+                [ -n "$TOK" ] || continue
+                TARGET_SCOPE_RUN=$(GH_TOKEN="$TOK" gh run list -R "${{ github.repository }}" --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+                if [ -z "$TARGET_SCOPE_RUN" ] || [ "$TARGET_SCOPE_RUN" = "null" ]; then
+                  TARGET_SCOPE_RUN=$(curl -fsSL -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/workflows/generate-scope.yml/runs?status=success&per_page=1" | jq -r '.workflow_runs[0].id // empty' 2>/dev/null || true)
+                fi
+                if [ -n "$TARGET_SCOPE_RUN" ] && [ "$TARGET_SCOPE_RUN" != "null" ]; then
+                  break
+                fi
+              done
             fi
             if [ -n "$TARGET_SCOPE_RUN" ] && [ "$TARGET_SCOPE_RUN" != "null" ]; then
               echo "Downloading migration-scopes artifact from workflow run $TARGET_SCOPE_RUN..."
-              if gh run download "$TARGET_SCOPE_RUN" -n migration-scopes --dir ./downloaded-scope 2>/dev/null || gh run download "$TARGET_SCOPE_RUN" --dir ./downloaded-scope 2>/dev/null; then
-                if [ -n "$INPUT_SCOPE" ] && [ -f "./downloaded-scope/$(basename "$INPUT_SCOPE")" ]; then
-                  FOUND_SCOPE="./downloaded-scope/$(basename "$INPUT_SCOPE")"
-                else
-                  FOUND_SCOPE=$(find ./downloaded-scope -name '*.json' | sort | head -n 1 || true)
+              for TOK in "$GH_TOKEN" "$GHEC_SOURCE_TOKEN"; do
+                [ -n "$TOK" ] || continue
+                if GH_TOKEN="$TOK" gh run download "$TARGET_SCOPE_RUN" -R "${{ github.repository }}" -n migration-scopes --dir ./downloaded-scope 2>/dev/null; then
+                  break
                 fi
-                if [ -n "$FOUND_SCOPE" ] && [ -f "$FOUND_SCOPE" ]; then
-                  cp "$FOUND_SCOPE" ./scans/resolved-scope.json
-                  RESOLVED_SCOPE="./scans/resolved-scope.json"
-                  echo "scope_label=artifact:${TARGET_SCOPE_RUN}/$(basename "$FOUND_SCOPE")" >> "$GITHUB_OUTPUT"
+                ART_URL=$(curl -fsSL -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/actions/runs/${TARGET_SCOPE_RUN}/artifacts" | jq -r '.artifacts[] | select(.name == "migration-scopes") | .archive_download_url' | head -n 1 2>/dev/null || true)
+                if [ -n "$ART_URL" ] && [ "$ART_URL" != "null" ]; then
+                  if curl -fsSL -L -H "Authorization: Bearer $TOK" -H "Accept: application/vnd.github+json" "$ART_URL" -o ./scans/migration-scopes.zip 2>/dev/null; then
+                    python3 -m zipfile -e ./scans/migration-scopes.zip ./downloaded-scope
+                    rm -f ./scans/migration-scopes.zip
+                    break
+                  fi
                 fi
+              done
+              if [ -n "$INPUT_SCOPE" ] && [ -f "./downloaded-scope/$(basename "$INPUT_SCOPE")" ]; then
+                FOUND_SCOPE="./downloaded-scope/$(basename "$INPUT_SCOPE")"
+              else
+                FOUND_SCOPE=$(find ./downloaded-scope/generated-scopes -name '*.json' 2>/dev/null | sort | head -n 1 || true)
+                if [ -z "$FOUND_SCOPE" ]; then
+                  FOUND_SCOPE=$(find ./downloaded-scope -name '*.json' 2>/dev/null | sort | head -n 1 || true)
+                fi
+              fi
+              if [ -n "$FOUND_SCOPE" ] && [ -f "$FOUND_SCOPE" ]; then
+                cp "$FOUND_SCOPE" ./scans/resolved-scope.json
+                RESOLVED_SCOPE="./scans/resolved-scope.json"
+                echo "scope_label=artifact:${TARGET_SCOPE_RUN}/$(basename "$FOUND_SCOPE")" >> "$GITHUB_OUTPUT"
               fi
             fi
           fi
