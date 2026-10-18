@@ -327,21 +327,38 @@ export function generateRepositoriesCsv(
       (!filteredOrgId || e.organizationId === filteredOrgId),
   );
 
-  const lfsEntities = bundle.entities.filter((e) => e.kind === 'lfs');
-  const actionsEntities = bundle.entities.filter((e) => e.kind === 'actions');
-  const secEntities = bundle.entities.filter((e) => e.kind === 'security');
+  type LfsEntity = Extract<
+    DiscoveryBundle['entities'][number],
+    { kind: 'lfs' }
+  >;
+  type ActionsEntity = Extract<
+    DiscoveryBundle['entities'][number],
+    { kind: 'actions' }
+  >;
+  type SecurityEntity = Extract<
+    DiscoveryBundle['entities'][number],
+    { kind: 'security' }
+  >;
+
+  const lfsByRepo = new Map<string, LfsEntity>();
+  const actionsByRepo = new Map<string, ActionsEntity>();
+  const secByRepo = new Map<string, SecurityEntity>();
+
+  for (const e of bundle.entities) {
+    if (e.kind === 'lfs' && e.repositoryId) {
+      lfsByRepo.set(e.repositoryId, e as LfsEntity);
+    } else if (e.kind === 'actions' && e.repositoryId) {
+      actionsByRepo.set(e.repositoryId, e as ActionsEntity);
+    } else if (e.kind === 'security' && e.repositoryId) {
+      secByRepo.set(e.repositoryId, e as SecurityEntity);
+    }
+  }
 
   const rows = repos.map((repo) => {
     if (repo.kind !== 'repository') return '';
-    const lfs = lfsEntities.find(
-      (l) => l.kind === 'lfs' && l.repositoryId === repo.id,
-    );
-    const actions = actionsEntities.find(
-      (a) => a.kind === 'actions' && a.repositoryId === repo.id,
-    );
-    const sec = secEntities.find(
-      (s) => s.kind === 'security' && s.repositoryId === repo.id,
-    );
+    const lfs = lfsByRepo.get(repo.id);
+    const actions = actionsByRepo.get(repo.id);
+    const sec = secByRepo.get(repo.id);
 
     return buildCsvRow([
       repo.organizationId,

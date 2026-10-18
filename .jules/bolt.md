@@ -42,3 +42,8 @@
 
 **Learning:** When generating multiple metric cards in a React component (like `ProjectsTab.tsx`), using inline `.filter(...).length` expressions for each metric card causes multiple redundant O(N) passes over the same dataset during every render cycle.
 **Action:** Replace multiple inline `.filter(...).length` expressions with a single `useMemo` block that computes all required statistics in a single O(N) pass using a `for...of` loop.
+
+## 2025-02-12 - [Optimized export-csv O(N*M) array search with Map]
+
+**Learning:** In `export-csv.ts`, `.find()` was being used inside a `.map()` on the entire dataset (`bundle.entities`), causing O(N*M) performance when iterating over large datasets to generate export data.
+**Action:** Instead of multiple `.find()` iterations in the render loop, iterate `bundle.entities` once to precompute lookup `Map`s for entities like `lfs`, `actions`, and `security` keyed by `repositoryId`. Use these `Map`s to provide O(1) time complexity lookups in the CSV generation map loop, effectively changing the complexity to O(N + M).
