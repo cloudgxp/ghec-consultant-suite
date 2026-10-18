@@ -436,3 +436,177 @@ test('generatePostCareDeliverables produces POST-CARE-CHECKLIST.md and CSV expor
     ),
   );
 });
+
+test('post-care CSV headers start with resource_type,resource_name,action_required and checklist includes cutover, billing, IdP, and Marketplace/Custom Recreate Link columns', () => {
+  const plan: MigrationPlan = {
+    schemaVersion: '1.0.0',
+    id: 'plan-enhancements',
+    createdAt: '2026-10-17T12:00:00Z',
+    scopeName: 'wave-enhancements',
+    modules: [
+      {
+        moduleId: 'apps-inventory',
+        targetIdentifier: 'target-emu',
+        scopeLevel: 'organization',
+        operations: [
+          {
+            id: 'op-advisory-app-custom-bot',
+            resourceType: 'github_app_installation',
+            resourceName: 'custom-bot',
+            operation: 'warn',
+            reason:
+              'GitHub Apps cannot be installed programmatically via API. "custom-bot" (ID: 99) is a private custom app and must be recreated on target-emu as "custom-bot-target-emu" via URL parameters or GitHub App Manifest (Selected repositories: api-core, web-ui). Recreate URL: https://github.com/organizations/target-emu/settings/apps/new?name=custom-bot-target-emu | Install URL: https://github.com/apps/custom-bot/installations/new',
+            dependencies: [],
+          },
+        ],
+        warnings: [],
+      },
+      {
+        moduleId: 'actions-runners',
+        targetIdentifier: 'target-emu',
+        scopeLevel: 'organization',
+        operations: [
+          {
+            id: 'op-create-hosted-runner-ubuntu-16core',
+            resourceType: 'hosted-runner',
+            resourceName: 'ubuntu-16core',
+            operation: 'create',
+            reason:
+              'Create larger GitHub-hosted runner "ubuntu-16core" (size: 16-core, image: ubuntu-24.04) on target-emu; verify Actions spending limits are configured so runner machines can spin up.',
+            dependencies: [],
+          },
+        ],
+        warnings: [],
+      },
+      {
+        moduleId: 'teams',
+        targetIdentifier: 'target-emu',
+        scopeLevel: 'organization',
+        operations: [
+          {
+            id: 'op-create-team-plain',
+            resourceType: 'team',
+            resourceName: 'plain-team',
+            operation: 'create',
+            reason: 'Team does not exist on target organization',
+            dependencies: [],
+          },
+          {
+            id: 'op-bind-team-idp-secops',
+            resourceType: 'team-idp-group',
+            resourceName: 'secops:Okta-SecOps',
+            operation: 'update',
+            reason:
+              'Auto-binding team "secops" to IdP group(s): Okta-SecOps (ID: 42)',
+            dependencies: [],
+          },
+        ],
+        warnings: [],
+      },
+      {
+        moduleId: 'deploy-keys',
+        targetIdentifier: 'target-emu/demo',
+        scopeLevel: 'repository',
+        operations: [
+          {
+            id: 'deploy-key:skip:demo:Demogxp-test-deploy',
+            resourceType: 'deploy-key',
+            resourceName: 'Demogxp-test-deploy',
+            operation: 'skip',
+            reason:
+              'SSH deploy key "Demogxp-test-deploy" is locked to source repository by global SSH key uniqueness',
+            dependencies: [],
+          },
+        ],
+        warnings: [],
+      },
+      {
+        moduleId: 'webhooks',
+        targetIdentifier: 'target-emu/demo',
+        scopeLevel: 'repository',
+        operations: [
+          {
+            id: 'webhook:create:https://ci.example.com/hook',
+            resourceType: 'webhook',
+            resourceName: 'https://ci.example.com/hook',
+            operation: 'create',
+            reason:
+              'Create repository webhook (created INACTIVE because source had an HMAC secret configured)',
+            dependencies: [],
+          },
+        ],
+        warnings: [],
+      },
+    ],
+    executionOrder: [
+      'apps-inventory',
+      'actions-runners',
+      'teams',
+      'deploy-keys',
+      'webhooks',
+    ],
+  };
+
+  const deliverables = generatePostCareDeliverables({
+    sourceOrg: 'source-org',
+    targetOrg: 'target-emu',
+    mode: 'dry-run',
+    generatedAt: '2026-10-17T12:00:00Z',
+    plan,
+  });
+
+  // 1. Verify CSV column order starts with resource_type,resource_name,action_required and ends with item_id
+  for (const [csvPath, csvContent] of Object.entries(deliverables.csvFiles)) {
+    const headerLine = csvContent.split('\n')[0];
+    if (csvPath.endsWith('migration-operations-full.csv')) {
+      assert.ok(headerLine?.startsWith('resource_type,resource_name,'));
+    } else {
+      assert.equal(
+        headerLine,
+        'resource_type,resource_name,action_required,priority,category,migration_status,scope_level,target_org,target_repo,environment_name,module_id,sub_domain,settings_url,secondary_url,cli_command,notes,mode,item_id',
+      );
+    }
+  }
+
+  const md = deliverables.checklistMarkdown;
+
+  // 2. Verify GitHub Apps table uses fixed Marketplace Link | Custom Recreate Link headers and never swaps URLs
+  assert.ok(
+    md.includes(
+      '| App Slug | Classification | Action Required | Marketplace Link | Custom Recreate Link |',
+    ),
+  );
+  assert.ok(
+    md.includes(
+      '| [Install App on target-emu ↗](https://github.com/apps/custom-bot/installations/new) | [Recreate Custom App (Pre-Filled) ↗](https://github.com/organizations/target-emu/settings/apps/new?name=custom-bot-target-emu) |',
+    ),
+  );
+
+  // 3. Verify Larger GitHub-Hosted Runners billing warning callout
+  assert.ok(
+    md.includes(
+      'Billing & Spending Limits Required for Larger GitHub-Hosted Runners',
+    ),
+  );
+  assert.ok(
+    md.includes('https://github.com/organizations/target-emu/settings/billing'),
+  );
+
+  // 4. Verify IdP team filtering: plain-team without IdP group is omitted, while secops with Okta-SecOps is included with /Sync link
+  const idpItems = deliverables.items.filter((i) => i.category === 'idp-team');
+  assert.equal(idpItems.length, 1);
+  assert.equal(idpItems[0]?.resourceName, 'secops');
+  assert.ok(md.includes('Okta-SecOps'));
+  assert.ok(
+    md.includes('https://github.com/orgs/target-emu/teams/secops/Sync'),
+  );
+
+  // 5. Verify SSH Deploy Keys post-migration cutover workflow & CLI instructions
+  assert.ok(md.includes('Automated Post-Migration Source-Detach Cutover'));
+  assert.ok(md.includes('post-migration-cutover.yml'));
+  assert.ok(md.includes('ghec-consultant-cli cutover'));
+
+  // 6. Verify Webhooks activation instructions (setting secret + checking Active)
+  assert.ok(md.includes('check the **[x] Active** checkbox'));
+  assert.ok(md.includes('-f "config[secret]=<SECRET>" -F active=true'));
+});

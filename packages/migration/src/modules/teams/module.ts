@@ -27,6 +27,7 @@ import type {
 import { IdentityMappingEngine } from './identity-mapper.js';
 import type {
   TeamDefinition,
+  TeamIdpGroupBinding,
   TeamManagementConfig,
   TeamMember,
   TeamOrgRoleBinding,
@@ -62,6 +63,44 @@ interface RawTeamRepo {
       }
     | undefined;
   readonly role_name?: string | undefined;
+}
+
+function extractIdpGroupBindings(
+  data: unknown,
+  defaultType: 'external-group' | 'team-sync',
+): TeamIdpGroupBinding[] {
+  const rawList =
+    data &&
+    typeof data === 'object' &&
+    'groups' in data &&
+    Array.isArray((data as { groups: unknown }).groups)
+      ? (data as { groups: unknown[] }).groups
+      : Array.isArray(data)
+        ? data
+        : [];
+  const bindings: TeamIdpGroupBinding[] = [];
+  for (const entry of rawList) {
+    if (!entry || typeof entry !== 'object') continue;
+    const rec = entry as Record<string, unknown>;
+    const rawId = rec.group_id ?? rec.id;
+    const rawName = rec.group_name ?? rec.display_name ?? rec.name;
+    if (
+      (typeof rawId === 'string' || typeof rawId === 'number') &&
+      typeof rawName === 'string' &&
+      rawName.trim().length > 0
+    ) {
+      bindings.push({
+        groupId: rawId,
+        groupName: rawName.trim(),
+        groupDescription:
+          typeof rec.group_description === 'string'
+            ? rec.group_description
+            : undefined,
+        bindingType: defaultType,
+      });
+    }
+  }
+  return bindings;
 }
 
 /**
@@ -309,6 +348,9 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
       );
       assertFetchAllOk(teamsRes, `/orgs/${sourceOrg}/teams`);
 
+      let externalGroupsSupported = true;
+      let teamSyncSupported = true;
+
       for (const raw of teamsRes.items) {
         teamSlugMap[raw.slug] = raw.slug;
 
@@ -337,14 +379,68 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           );
         }
 
+        // Discover IdP / SCIM external group bindings on source team
+        let idpGroups: TeamIdpGroupBinding[] = [];
+        if (externalGroupsSupported) {
+          try {
+            const extRes = await ctx.sourceClient.readSingle<unknown>(
+              {
+                id: 'rest.teams.listExternalGroups',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/orgs/{org}/teams/{team_slug}/external-groups',
+                pathParams: { org: sourceOrg, team_slug: raw.slug },
+              },
+              ctx.signal,
+            );
+            if (extRes.status >= 400) {
+              externalGroupsSupported = false;
+            } else {
+              idpGroups = extractIdpGroupBindings(
+                extRes.data,
+                'external-group',
+              );
+            }
+          } catch {
+            externalGroupsSupported = false;
+          }
+        }
+        if (idpGroups.length === 0 && teamSyncSupported) {
+          try {
+            const syncRes = await ctx.sourceClient.readSingle<unknown>(
+              {
+                id: 'rest.teams.listIdpGroupMappings',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/orgs/{org}/teams/{team_slug}/team-sync/group-mappings',
+                pathParams: { org: sourceOrg, team_slug: raw.slug },
+              },
+              ctx.signal,
+            );
+            if (syncRes.status >= 400) {
+              teamSyncSupported = false;
+            } else {
+              idpGroups = extractIdpGroupBindings(syncRes.data, 'team-sync');
+            }
+          } catch {
+            teamSyncSupported = false;
+          }
+        }
+
         const isNonIdp =
           this.teamManagement?.defaultMode === 'native' ||
           this.teamManagement?.migrateMembers === true ||
           (this.teamManagement?.nonIdpTeams?.includes('*') ?? false) ||
           (this.teamManagement?.nonIdpTeams?.includes(raw.slug) ?? false);
 
+        const isExplicitlyIdp =
+          idpGroups.length > 0 ||
+          this.teamManagement?.defaultMode === 'idp' ||
+          (this.teamManagement?.idpTeams?.includes('*') ?? false) ||
+          (this.teamManagement?.idpTeams?.includes(raw.slug) ?? false);
+
         let members: TeamMember[] = [];
-        if (isNonIdp) {
+        if (isNonIdp && idpGroups.length === 0) {
           try {
             const membersRes = await ctx.sourceClient.fetchAll<{
               login: string;
@@ -399,7 +495,8 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           repositoryAccess,
           orgRoles: orgRoles.length > 0 ? orgRoles : undefined,
           members: members.length > 0 ? members : undefined,
-          isIdpManaged: !isNonIdp,
+          isIdpManaged: isExplicitlyIdp,
+          idpGroups: idpGroups.length > 0 ? idpGroups : undefined,
         });
       }
     } catch (err: unknown) {
@@ -511,6 +608,14 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
 
     for (const team of sortedTeams) {
       const targetTeam = targetTeamsBySlug.get(team.slug);
+      const idpSuffix =
+        team.idpGroups && team.idpGroups.length > 0
+          ? ` [IdP Group: ${team.idpGroups.map((g) => `${g.groupName} (ID: ${g.groupId})`).join(', ')}]`
+          : '';
+      const idpPayload =
+        team.idpGroups && team.idpGroups.length > 0
+          ? { idpGroups: team.idpGroups }
+          : undefined;
 
       if (!targetTeam) {
         operations.push({
@@ -520,7 +625,8 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
           operation: 'create',
           sourceState: team,
           destinationCurrentState: undefined,
-          reason: `Recreating team '${team.name}' (parent: ${team.parentSlug ?? 'none'})`,
+          payload: idpPayload,
+          reason: `Recreating team '${team.name}' (parent: ${team.parentSlug ?? 'none'})${idpSuffix}`,
         });
       } else {
         // Check for privacy or description updates
@@ -536,7 +642,8 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             operation: 'update',
             sourceState: team,
             destinationCurrentState: targetTeam,
-            reason: `Aligning team settings for '${team.name}'`,
+            payload: idpPayload,
+            reason: `Aligning team settings for '${team.name}'${idpSuffix}`,
           });
         } else {
           operations.push({
@@ -546,9 +653,34 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             operation: 'noop',
             sourceState: team,
             destinationCurrentState: targetTeam,
-            reason: `Team '${team.name}' already configured with matching settings`,
+            payload: idpPayload,
+            reason: `Team '${team.name}' already configured with matching settings${idpSuffix}`,
           });
         }
+      }
+
+      // Plan automatic IdP / SCIM group binding if source team had IdP group mappings
+      if (team.idpGroups && team.idpGroups.length > 0) {
+        const primaryGroup = team.idpGroups[0]!;
+        const groupSummary = team.idpGroups
+          .map((g) => `${g.groupName} (ID: ${g.groupId})`)
+          .join(', ');
+        operations.push({
+          id: `op-team-idp-${team.slug}`,
+          resourceType: 'team-idp-group',
+          resourceName: `${team.slug}:${primaryGroup.groupName}`,
+          operation: 'update',
+          sourceState: {
+            teamSlug: team.slug,
+            idpGroups: team.idpGroups,
+          },
+          destinationCurrentState: undefined,
+          payload: {
+            teamSlug: team.slug,
+            idpGroups: team.idpGroups,
+          },
+          reason: `Auto-binding team '${team.slug}' to IdP group(s): ${groupSummary}`,
+        });
       }
 
       // Plan repository access bindings
@@ -616,8 +748,12 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
         }
       }
 
-      // Plan team memberships for non-IdP teams
-      if (team.members && team.members.length > 0) {
+      // Plan team memberships for non-IdP teams (skip when IdP group is bound because IdP/SCIM owns membership)
+      if (
+        team.members &&
+        team.members.length > 0 &&
+        (!team.idpGroups || team.idpGroups.length === 0)
+      ) {
         const activeMapper = this.getIdentityMapper(ctx);
         for (const member of team.members) {
           const mapping = activeMapper.mapLogin(member.login);
@@ -1034,6 +1170,162 @@ export class TeamsMigrationModule implements MigrationModule<TeamsMigrationData>
             httpStatus: res.status,
             completedAt: new Date().toISOString(),
           });
+        } else if (op.resourceType === 'team-idp-group') {
+          const idpState = op.sourceState as {
+            teamSlug: string;
+            idpGroups: readonly TeamIdpGroupBinding[];
+          };
+          let bound = false;
+          let lastHttpStatus: number | undefined;
+
+          // 1. Check GHEC-EMU external groups on target (/orgs/{org}/external-groups)
+          let targetExternalGroups: TeamIdpGroupBinding[] = [];
+          try {
+            const extRes = await ctx.targetClient.readSingle<unknown>(
+              {
+                id: 'rest.teams.listTargetExternalGroups',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/orgs/{org}/external-groups',
+                pathParams: { org: targetOrg },
+              },
+              ctx.signal,
+            );
+            if (extRes.status < 400) {
+              targetExternalGroups = extractIdpGroupBindings(
+                extRes.data,
+                'external-group',
+              );
+            }
+          } catch {
+            // Target may not be EMU or may not have external groups
+          }
+
+          const primarySource = idpState.idpGroups[0];
+          const matchedExt = primarySource
+            ? targetExternalGroups.find(
+                (cand) =>
+                  cand.groupName.toLowerCase() ===
+                    primarySource.groupName.toLowerCase() ||
+                  String(cand.groupId) === String(primarySource.groupId),
+              )
+            : undefined;
+
+          if (matchedExt) {
+            try {
+              const numericGroupId =
+                typeof matchedExt.groupId === 'number'
+                  ? matchedExt.groupId
+                  : Number(matchedExt.groupId);
+              const writeOp: TargetWriteOperation = {
+                id: `mutate-${op.id}`,
+                method: 'PATCH',
+                path: '/orgs/{org}/teams/{team_slug}/external-groups',
+                pathParams: { org: targetOrg, team_slug: idpState.teamSlug },
+                body: {
+                  group_id: Number.isNaN(numericGroupId)
+                    ? matchedExt.groupId
+                    : numericGroupId,
+                },
+              };
+              const res = await ctx.targetWriteClient.mutate(
+                writeOp,
+                ctx.signal,
+              );
+              lastHttpStatus = res.status;
+              if (res.status >= 200 && res.status < 300) {
+                bound = true;
+              }
+            } catch (extErr: unknown) {
+              ctx.logger?.warn?.(
+                `[teams] Could not auto-bind external group '${matchedExt.groupName}' to team '${idpState.teamSlug}': ${extErr instanceof Error ? extErr.message : String(extErr)}`,
+              );
+            }
+          }
+
+          // 2. Fallback to standard GHEC SAML Team Sync (/orgs/{org}/team-sync/groups)
+          if (!bound) {
+            let targetSyncGroups: TeamIdpGroupBinding[] = [];
+            try {
+              const syncRes = await ctx.targetClient.readSingle<unknown>(
+                {
+                  id: 'rest.teams.listTargetTeamSyncGroups',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/orgs/{org}/team-sync/groups',
+                  pathParams: { org: targetOrg },
+                },
+                ctx.signal,
+              );
+              if (syncRes.status < 400) {
+                targetSyncGroups = extractIdpGroupBindings(
+                  syncRes.data,
+                  'team-sync',
+                );
+              }
+            } catch {
+              // Team sync may not be enabled on target
+            }
+
+            const matchedSync = idpState.idpGroups.flatMap((srcGroup) => {
+              const found = targetSyncGroups.find(
+                (cand) =>
+                  cand.groupName.toLowerCase() ===
+                    srcGroup.groupName.toLowerCase() ||
+                  String(cand.groupId) === String(srcGroup.groupId),
+              );
+              return found ? [found] : [];
+            });
+
+            if (matchedSync.length > 0) {
+              try {
+                const writeOp: TargetWriteOperation = {
+                  id: `mutate-${op.id}`,
+                  method: 'PATCH',
+                  path: '/orgs/{org}/teams/{team_slug}/team-sync/group-mappings',
+                  pathParams: { org: targetOrg, team_slug: idpState.teamSlug },
+                  body: {
+                    groups: matchedSync.map((g) => ({
+                      group_id: String(g.groupId),
+                      group_name: g.groupName,
+                      group_description: g.groupDescription ?? g.groupName,
+                    })),
+                  },
+                };
+                const res = await ctx.targetWriteClient.mutate(
+                  writeOp,
+                  ctx.signal,
+                );
+                lastHttpStatus = res.status;
+                if (res.status >= 200 && res.status < 300) {
+                  bound = true;
+                }
+              } catch (syncErr: unknown) {
+                ctx.logger?.warn?.(
+                  `[teams] Could not auto-bind team-sync group(s) to team '${idpState.teamSlug}': ${syncErr instanceof Error ? syncErr.message : String(syncErr)}`,
+                );
+              }
+            }
+          }
+
+          if (bound) {
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: lastHttpStatus ?? 200,
+              completedAt: new Date().toISOString(),
+            });
+          } else {
+            ctx.logger?.warn?.(
+              `[teams] IdP group(s) (${idpState.idpGroups.map((g) => g.groupName).join(', ')}) for team '${idpState.teamSlug}' are not yet provisioned on '${targetOrg}'; deferring binding to post-care.`,
+            );
+            results.push({
+              operationId: op.id,
+              status: 'skipped',
+              httpStatus: lastHttpStatus ?? 404,
+              completedAt: new Date().toISOString(),
+            });
+          }
         } else {
           results.push({
             operationId: op.id,

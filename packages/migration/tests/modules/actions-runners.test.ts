@@ -388,4 +388,103 @@ describe('ActionsRunnersMigrationModule', () => {
     );
     assert.ok(visibilityDiscrepancy);
   });
+
+  it('discovers, plans, auto-creates, and verifies larger GitHub-hosted runners without modifying billing spend limits', async () => {
+    const mod = new ActionsRunnersMigrationModule();
+    const rawSource = {
+      total_count: 1,
+      runner_groups: [
+        {
+          id: 1,
+          name: 'Default',
+          visibility: 'all',
+          default: true,
+          allows_public_repositories: false,
+          restricted_to_workflows: false,
+        },
+      ],
+      runners: [
+        {
+          id: 501,
+          name: 'ubuntu-16core-build',
+          runner_group_id: 1,
+          machine_size_details: { id: '16-core' },
+          image_details: { id: 'ubuntu-24.04', source: 'github' },
+          maximum_runners: 10,
+          public_ip_enabled: false,
+          status: 'Ready',
+          platform: 'linux-x64',
+        },
+      ],
+    };
+
+    const targetBeforeApply = {
+      total_count: 1,
+      runner_groups: [
+        {
+          id: 10,
+          name: 'Default',
+          visibility: 'all',
+          default: true,
+          allows_public_repositories: false,
+          restricted_to_workflows: false,
+        },
+      ],
+      runners: [],
+    };
+
+    const { ctx, writeClient } = createContext(rawSource, targetBeforeApply);
+    const discovered = await mod.discover(ctx);
+
+    assert.equal(discovered.hosted_runners?.length, 1);
+    assert.equal(discovered.hosted_runners?.[0]?.name, 'ubuntu-16core-build');
+    assert.equal(discovered.hosted_runners?.[0]?.size, '16-core');
+    assert.equal(discovered.hosted_runners?.[0]?.runner_group_name, 'Default');
+
+    const plan = await mod.plan(ctx, discovered);
+    const hostedRunnerOp = plan.operations.find(
+      (op) => op.resourceType === 'hosted-runner',
+    );
+    assert.ok(hostedRunnerOp);
+    assert.equal(hostedRunnerOp.operation, 'create');
+    assert.equal(hostedRunnerOp.resourceName, 'ubuntu-16core-build');
+    assert.ok(
+      plan.warnings?.some((w) => w.includes('Actions spending limits')),
+    );
+
+    const execResult = await mod.apply(ctx, plan);
+    assert.equal(execResult.status, 'complete');
+    const hostedMutation = writeClient.mutations.find(
+      (m) => m.path === '/orgs/{org}/actions/hosted-runners',
+    );
+    assert.ok(hostedMutation);
+    assert.equal(hostedMutation.method, 'POST');
+    assert.deepEqual(hostedMutation.body, {
+      name: 'ubuntu-16core-build',
+      size: '16-core',
+      image: { id: 'ubuntu-24.04', source: 'github' },
+      runner_group_id: 10,
+      maximum_runners: 10,
+      enable_static_ip: false,
+    });
+
+    // Verify when target now has the larger hosted runner registered
+    const targetAfterApply = {
+      ...targetBeforeApply,
+      runners: [
+        {
+          id: 901,
+          name: 'ubuntu-16core-build',
+          runner_group_id: 10,
+          size: '16-core',
+          image: { id: 'ubuntu-24.04', source: 'github' },
+          status: 'Shutdown',
+        },
+      ],
+    };
+    const { ctx: verifyCtx } = createContext(rawSource, targetAfterApply);
+    const verifyResult = await mod.verify(verifyCtx, plan);
+    assert.equal(verifyResult.verified, true);
+    assert.equal(verifyResult.discrepancies.length, 0);
+  });
 });

@@ -45,6 +45,10 @@ import {
   executeValidateScopeCommand,
 } from './commands/generate-scope.js';
 import {
+  parseCutoverOptions,
+  executeCutoverCommand,
+} from './commands/cutover.js';
+import {
   loadConfig,
   sanitizeDiagnostics,
   type CliConfig,
@@ -68,6 +72,7 @@ export {
 export interface CliOverrides extends CliConfig {
   sourceClient?: GitHubReadAdapter | undefined;
   targetClient?: GitHubReadAdapter | undefined;
+  sourceWriteClient?: TargetWriteClient | undefined;
   targetWriteClient?: TargetWriteClient | undefined;
 }
 
@@ -90,6 +95,7 @@ Commands:
   plan             Generate immutable MigrationPlan from MigrationScope
   migrate          Execute pre-approved MigrationPlan or Scope against target tenant
   verify           Audit destination tenant state against plan and produce VerificationReport
+  cutover          Detach source-locked items (deploy keys, Pages CNAME) and migrate to target
   console          Launch local loopback console server and dashboard proxy
   agent-review     Analyze verification report and generate automated remediation plan
   publish-results  Generate and publish migration audit repository to target organization
@@ -713,6 +719,66 @@ Options:
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`Scope validation failed: ${sanitizeDiagnostics(msg)}`);
       return 1;
+    }
+  }
+
+  if (command === 'cutover') {
+    if (commandArgs.includes('--help') || commandArgs.includes('-h')) {
+      console.log(`ghec-consultant-cli cutover — Post-migration source-detach cutover
+Usage: ghec-consultant-cli cutover (--scope <file> | --source-org <org> --target-org <org>) [options]
+Options:
+  --scope <file>                  Path to migration scope JSON file
+  --source-org <org>              Source organization slug
+  --target-org <org>              Target organization slug
+  --repos <list>                  Comma-separated repository names to cut over
+  --include-deploy-keys           Detach SSH deploy keys from source and recreate on target (default: true)
+  --include-pages-cname           Detach GitHub Pages custom CNAME from source and bind on target (default: true)
+  --deactivate-source-webhooks    Deactivate active webhooks on source repositories and organization
+  --disable-source-actions        Disable GitHub Actions on source repositories
+  --archive-source-repos          Archive source repositories (read-only) after cutover
+  --dry-run                       Simulate cutover operations without mutating source or target
+  --output <file>                 Output JSON report path (default: ./scans/cutover-report.json)
+  --append-step-summary           Append Markdown summary to GITHUB_STEP_SUMMARY
+  --source-token <token>          Source administrative token (defaults to GHEC_SOURCE_TOKEN)
+  --target-token <token>          Target administrative token (defaults to GHEC_TARGET_TOKEN)`);
+      return 0;
+    }
+
+    let cutoverOptions;
+    try {
+      cutoverOptions = parseCutoverOptions(commandArgs);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Invalid cutover options: ${sanitizeDiagnostics(msg)}`);
+      return 2;
+    }
+
+    const controller = new AbortController();
+    const onSigint = () => controller.abort();
+    process.once('SIGINT', onSigint);
+
+    try {
+      const { report, filePath } = await executeCutoverCommand(
+        cutoverOptions,
+        {
+          sourceClient: configOverride?.sourceClient,
+          targetClient: configOverride?.targetClient,
+          sourceWriteClient: configOverride?.sourceWriteClient,
+          targetWriteClient: configOverride?.targetWriteClient,
+        },
+        controller.signal,
+      );
+      console.log(`Cutover report saved: ${filePath}`);
+      console.log(
+        `Actions: ${report.summary.totalActions} (${report.summary.succeeded} succeeded, ${report.summary.planned} planned, ${report.summary.skipped} skipped, ${report.summary.rolledBack} rolled back, ${report.summary.failed} failed)`,
+      );
+      return report.summary.failed > 0 || report.summary.rolledBack > 0 ? 1 : 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Cutover failed: ${sanitizeDiagnostics(msg)}`);
+      return 1;
+    } finally {
+      process.removeListener('SIGINT', onSigint);
     }
   }
 

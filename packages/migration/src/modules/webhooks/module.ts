@@ -10,7 +10,11 @@ import type {
   PlannedOperation,
   VerificationDiscrepancy,
 } from '../../core/types.js';
-import { hooksMatch, webhookPayload } from './reconciler.js';
+import {
+  hooksMatch,
+  resolveTargetWebhookActive,
+  webhookPayload,
+} from './reconciler.js';
 import type {
   RawWebhook,
   WebhookDefinition,
@@ -122,27 +126,32 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       ctx.scope.level === 'organization'
         ? ctx.scope.targetOrg
         : `${ctx.scope.targetOrg}/${ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? ''}`;
+    const hasSecretProvider = this.secretProvider !== undefined;
     const operations: PlannedOperation[] = source.hooks.map((hook) => {
       const existing = target.find((candidate) => hooksMatch(hook, candidate));
+      const expectedActive = resolveTargetWebhookActive(
+        hook,
+        hasSecretProvider,
+      );
       let operation: 'create' | 'update' | 'noop';
       if (!existing) {
         operation = 'create';
       } else {
         const needsSecretRehydration =
-          hook.secretConfigured && this.secretProvider !== undefined;
+          hook.secretConfigured && hasSecretProvider;
         const configChanged =
-          existing.active !== hook.active ||
+          existing.active !== expectedActive ||
           existing.contentType !== hook.contentType ||
           existing.insecureSsl !== hook.insecureSsl;
         operation = configChanged || needsSecretRehydration ? 'update' : 'noop';
       }
-      if (hook.secretConfigured && !this.secretProvider)
+      if (hook.secretConfigured && !hasSecretProvider)
         warnings.push(
-          `Webhook "${hook.url}" has a source secret but no replacement secret provider.`,
+          `Webhook "${hook.url}" has a source secret but no replacement secret provider; it will remain inactive (active: false) until the secret is configured.`,
         );
       const reason =
         operation === 'create'
-          ? `Creating webhook for "${hook.url}"`
+          ? `Creating webhook for "${hook.url}"${hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ''}`
           : operation === 'update'
             ? `Reconciling webhook configuration for "${hook.url}"`
             : `Webhook "${hook.url}" already matches target configuration`;
@@ -154,7 +163,10 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
         reason,
         sourceState: hook,
         destinationCurrentState: existing,
-        payload: operation === 'noop' ? undefined : { hookId: existing?.id },
+        payload:
+          operation === 'noop'
+            ? undefined
+            : { hookId: existing?.id, expectedActive },
       };
     });
     return {
@@ -257,13 +269,21 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       },
     });
     const discrepancies: VerificationDiscrepancy[] = [];
+    const hasSecretProvider = this.secretProvider !== undefined;
     for (const op of plan.operations) {
       const expected = op.sourceState as WebhookDefinition;
+      const expectedActive = resolveTargetWebhookActive(
+        expected,
+        hasSecretProvider,
+      );
       const actual = current.hooks.find((hook) => hooksMatch(expected, hook));
-      if (!actual || actual.active !== expected.active)
+      const activeMatches =
+        actual !== undefined &&
+        (actual.active === expectedActive || actual.active === expected.active);
+      if (!actual || !activeMatches)
         discrepancies.push({
           resourceName: expected.url,
-          expected: String(expected.active),
+          expected: String(expectedActive),
           actual: actual ? String(actual.active) : 'missing',
           message: 'Webhook target state does not match the plan.',
         });

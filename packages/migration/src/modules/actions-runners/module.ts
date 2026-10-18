@@ -21,6 +21,8 @@ import type {
 } from '../../core/types.js';
 import type {
   ActionsRunnersData,
+  HostedRunnerDefinition,
+  RawHostedRunnersListResponse,
   RawRunnerGroupResponse,
   RawRunnerGroupsListResponse,
   RunnerGroupDefinition,
@@ -47,6 +49,45 @@ function parseRunnerGroups(
       ? [...g.selected_workflows]
       : [],
   }));
+}
+
+function parseHostedRunners(
+  data: RawHostedRunnersListResponse | unknown,
+  groupNameById?: ReadonlyMap<number, string>,
+): HostedRunnerDefinition[] {
+  if (!data || typeof data !== 'object') return [];
+  const list = data as RawHostedRunnersListResponse;
+  const rawRunners = Array.isArray(list.runners) ? list.runners : [];
+  const parsed: HostedRunnerDefinition[] = [];
+
+  for (const r of rawRunners) {
+    if (!r || typeof r !== 'object' || typeof r.name !== 'string') continue;
+    const size = r.size ?? r.machine_size_details?.id;
+    const imgId = r.image?.id ?? r.image_details?.id;
+    const imgSource = r.image?.source ?? r.image_details?.source ?? 'github';
+    if (!size && !imgId) continue;
+
+    parsed.push({
+      id: typeof r.id === 'number' ? r.id : undefined,
+      name: r.name,
+      runner_group_id: r.runner_group_id,
+      runner_group_name:
+        typeof r.runner_group_id === 'number'
+          ? groupNameById?.get(r.runner_group_id)
+          : undefined,
+      size: size ?? '4-core',
+      image: {
+        id: imgId ?? 'ubuntu-latest',
+        source: imgSource,
+      },
+      maximum_runners: r.maximum_runners,
+      enable_static_ip: r.enable_static_ip ?? r.public_ip_enabled,
+      status: r.status,
+      platform: r.platform,
+    });
+  }
+
+  return parsed;
 }
 
 function areWorkflowsEqual(
@@ -91,9 +132,37 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
       );
     }
 
+    const groupNameById = new Map<number, string>();
+    for (const g of runner_groups) {
+      if (typeof g.id === 'number') {
+        groupNameById.set(g.id, g.name);
+      }
+    }
+
+    let hosted_runners: HostedRunnerDefinition[] = [];
+    try {
+      const hrRes =
+        await ctx.sourceClient.readSingle<RawHostedRunnersListResponse>(
+          {
+            id: 'rest.actions.listHostedRunners',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/orgs/{org}/actions/hosted-runners',
+            pathParams: { org: sourceOrg },
+          },
+          ctx.signal,
+        );
+      if (hrRes.status < 400) {
+        hosted_runners = parseHostedRunners(hrRes.data, groupNameById);
+      }
+    } catch {
+      // Larger GitHub-hosted runners may not be enabled or accessible
+    }
+
     return {
       organization: sourceOrg,
       runner_groups,
+      ...(hosted_runners.length > 0 ? { hosted_runners } : {}),
     };
   }
 
@@ -268,6 +337,89 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
       }
     }
 
+    // Plan organization-level Larger GitHub-Hosted Runners
+    if (source.hosted_runners && source.hosted_runners.length > 0) {
+      warnings.push(
+        `Larger GitHub-hosted runners detected (${source.hosted_runners.length}). Ensure GitHub Actions spending limits are configured above $0 on ${targetOrg} so provisioned larger runners can execute jobs.`,
+      );
+
+      let targetHostedRunners: HostedRunnerDefinition[] = [];
+      try {
+        const hrRes =
+          await ctx.targetClient.readSingle<RawHostedRunnersListResponse>(
+            {
+              id: 'rest.actions.listTargetHostedRunners',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/orgs/{org}/actions/hosted-runners',
+              pathParams: { org: targetOrg },
+            },
+            ctx.signal,
+          );
+        if (hrRes.status < 400) {
+          targetHostedRunners = parseHostedRunners(hrRes.data);
+        }
+      } catch {
+        // Target may not have larger runners yet
+      }
+
+      const targetHostedByName = new Map(
+        targetHostedRunners.map((r) => [r.name.toLowerCase(), r]),
+      );
+
+      for (const hr of source.hosted_runners) {
+        const hrKey = hr.name.toLowerCase();
+        const existingHr = targetHostedByName.get(hrKey);
+        const targetGroupId =
+          (hr.runner_group_name
+            ? targetGroupMap.get(hr.runner_group_name.toLowerCase())?.id
+            : undefined) ??
+          targetGroupMap.get('default')?.id ??
+          hr.runner_group_id ??
+          1;
+
+        const hrPayload = {
+          name: hr.name,
+          size: hr.size,
+          image: hr.image,
+          runner_group_id: targetGroupId,
+          runner_group_name: hr.runner_group_name,
+          ...(hr.maximum_runners !== undefined
+            ? { maximum_runners: hr.maximum_runners }
+            : {}),
+          ...(hr.enable_static_ip !== undefined
+            ? { enable_static_ip: hr.enable_static_ip }
+            : {}),
+        };
+
+        if (existingHr) {
+          operations.push({
+            id: `op-noop-hosted-runner-${hrKey}`,
+            resourceType: 'hosted-runner',
+            resourceName: hr.name,
+            operation: 'noop',
+            sourceState: hr as unknown as Record<string, unknown>,
+            destinationCurrentState: existingHr as unknown as Record<
+              string,
+              unknown
+            >,
+            payload: hrPayload,
+            reason: `Larger GitHub-hosted runner "${hr.name}" (size: ${hr.size}) already exists on ${targetOrg} — verify Actions billing spending limits are set`,
+          });
+        } else {
+          operations.push({
+            id: `op-create-hosted-runner-${hrKey}`,
+            resourceType: 'hosted-runner',
+            resourceName: hr.name,
+            operation: 'create',
+            sourceState: hr as unknown as Record<string, unknown>,
+            payload: hrPayload,
+            reason: `Creating larger GitHub-hosted runner "${hr.name}" (size: ${hr.size}, image: ${hr.image.id}) on ${targetOrg} — verify Actions billing spending limits are set`,
+          });
+        }
+      }
+    }
+
     return {
       moduleId: this.id,
       scopeLevel: this.scopeLevel,
@@ -284,6 +436,7 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
     const startTime = Date.now();
     const results: OperationExecutionResult[] = [];
     const targetOrg = ctx.scope.targetOrg;
+    const createdGroupIdByName = new Map<string, number>();
 
     for (const op of plan.operations) {
       const completedAt = new Date().toISOString();
@@ -308,7 +461,7 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
 
       if (ctx.dryRun) {
         ctx.logger.info(
-          `[dry-run] Would execute ${op.operation} for runner group "${op.resourceName}"`,
+          `[dry-run] Would execute ${op.operation} for ${op.resourceType} "${op.resourceName}"`,
         );
         results.push({
           operationId: op.id,
@@ -326,6 +479,83 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
       }
 
       const client = ctx.targetWriteClient;
+
+      if (op.resourceType === 'hosted-runner') {
+        const hrPayload = op.payload as
+          | {
+              name: string;
+              size: string;
+              image: { id: string; source: string };
+              runner_group_id?: number | undefined;
+              runner_group_name?: string | undefined;
+              maximum_runners?: number | undefined;
+              enable_static_ip?: boolean | undefined;
+            }
+          | undefined;
+        const resolvedGroupId =
+          (hrPayload?.runner_group_name
+            ? createdGroupIdByName.get(
+                hrPayload.runner_group_name.toLowerCase(),
+              )
+            : undefined) ??
+          hrPayload?.runner_group_id ??
+          1;
+        const body: Record<string, unknown> = {
+          name: hrPayload?.name ?? op.resourceName,
+          size: hrPayload?.size ?? '4-core',
+          image: hrPayload?.image ?? { id: 'ubuntu-latest', source: 'github' },
+          runner_group_id: resolvedGroupId,
+          ...(hrPayload?.maximum_runners !== undefined
+            ? { maximum_runners: hrPayload.maximum_runners }
+            : {}),
+          ...(hrPayload?.enable_static_ip !== undefined
+            ? { enable_static_ip: hrPayload.enable_static_ip }
+            : {}),
+        };
+
+        const writeOp: TargetWriteOperation = {
+          id: `mutate-${op.id}`,
+          method: 'POST',
+          path: '/orgs/{org}/actions/hosted-runners',
+          pathParams: { org: targetOrg },
+          body,
+        };
+
+        try {
+          const res = await client.mutate(writeOp, ctx.signal);
+          if (res.status >= 200 && res.status < 300) {
+            results.push({
+              operationId: op.id,
+              status: 'succeeded',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          } else {
+            ctx.logger.warn(
+              `[actions-runners] Larger GitHub-hosted runner "${op.resourceName}" returned HTTP ${res.status} on ${targetOrg} (check Actions billing spending limits or custom image availability); deferring to post-care.`,
+            );
+            results.push({
+              operationId: op.id,
+              status: 'skipped',
+              httpStatus: res.status,
+              completedAt: new Date().toISOString(),
+            });
+          }
+        } catch (hrErr: unknown) {
+          const hrMsg = hrErr instanceof Error ? hrErr.message : String(hrErr);
+          ctx.logger.warn(
+            `[actions-runners] Could not auto-provision larger GitHub-hosted runner "${op.resourceName}" on ${targetOrg} (${hrMsg}); verify Actions billing spending limits in post-care.`,
+          );
+          results.push({
+            operationId: op.id,
+            status: 'skipped',
+            completedAt: new Date().toISOString(),
+            error: hrMsg,
+          });
+        }
+        continue;
+      }
+
       const payload = op.payload as
         | {
             id?: number | undefined;
@@ -382,6 +612,17 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
             } else {
               throw wfErr;
             }
+          }
+          if (
+            res.data &&
+            typeof res.data === 'object' &&
+            'id' in res.data &&
+            typeof (res.data as { id: unknown }).id === 'number'
+          ) {
+            createdGroupIdByName.set(
+              body.name.toLowerCase(),
+              (res.data as { id: number }).id,
+            );
           }
           results.push({
             operationId: op.id,
@@ -530,6 +771,10 @@ export class ActionsRunnersMigrationModule implements MigrationModule<ActionsRun
     }
 
     for (const op of plan.operations) {
+      if (op.resourceType === 'hosted-runner') {
+        continue;
+      }
+
       if (
         op.operation === 'noop' ||
         op.operation === 'update' ||

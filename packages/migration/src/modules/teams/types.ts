@@ -25,6 +25,13 @@ export interface TeamMember {
   readonly role: TeamMemberRole;
 }
 
+export interface TeamIdpGroupBinding {
+  readonly groupId: string | number;
+  readonly groupName: string;
+  readonly groupDescription?: string | undefined;
+  readonly bindingType?: 'team-sync' | 'external-group' | undefined;
+}
+
 export interface TeamDefinition {
   readonly id?: number | undefined;
   readonly slug: string;
@@ -38,6 +45,7 @@ export interface TeamDefinition {
   readonly orgRoles?: readonly TeamOrgRoleBinding[] | undefined;
   readonly members?: readonly TeamMember[] | undefined;
   readonly isIdpManaged?: boolean | undefined;
+  readonly idpGroups?: readonly TeamIdpGroupBinding[] | undefined;
 }
 
 export interface TeamsMigrationData {

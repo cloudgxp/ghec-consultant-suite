@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
@@ -2275,7 +2276,130 @@ export function generateMigrationResults(
     }
   }
 
+  files['evidence/README.md'] = formatEvidenceReadmeMarkdown({
+    sourceOrg: options.sourceOrg,
+    targetOrg: options.targetOrg,
+    runId,
+    generatedAt,
+    files,
+  });
+
   return { manifest, files, postCare };
+}
+
+const EVIDENCE_FILE_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  'discovery-bundle.json':
+    'Snapshot of your source organization repositories, teams, secrets, webhooks, runners, and apps before migration.',
+  'migration-scope.json':
+    'List of repositories and settings selected for this migration wave.',
+  'migration-plan.json':
+    'Step-by-step list of planned changes generated before making any updates to the target organization.',
+  'execution-report.json':
+    'Complete log of every migration step that ran, including timestamps, status, and duration.',
+  'verification-report.json':
+    'Post-migration check comparing your source and target organizations to confirm all items match.',
+  'remediation-plan.json':
+    'Suggested follow-up commands to fix any items that were skipped or reported differences during verification.',
+  'org-discovery-snapshot.json':
+    'Raw organization-level settings and inventory collected during discovery.',
+};
+
+function formatEvidenceReadmeMarkdown(params: {
+  readonly sourceOrg: string;
+  readonly targetOrg: string;
+  readonly runId: string;
+  readonly generatedAt: string;
+  readonly files: Readonly<Record<string, string>>;
+}): string {
+  const { sourceOrg, targetOrg, runId, generatedAt, files } = params;
+  const evidenceEntries = Object.entries(files)
+    .filter(
+      ([relPath]) =>
+        relPath.startsWith('evidence/') && relPath !== 'evidence/README.md',
+    )
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const lines: string[] = [
+    '[← Back to Overview](../README.md) | [Customer Post-Care Checklist](../POST-CARE-CHECKLIST.md)',
+    '',
+    `# Audit Evidence Bundle Guide: ${sourceOrg} ➔ ${targetOrg}`,
+    '',
+    `> **Run ID:** \`${runId}\`  `,
+    `> **Generated At:** \`${generatedAt}\`  `,
+    '',
+    'By default, the migration tool saves machine-readable JSON files in this `evidence/` folder alongside the human-readable Markdown reports and CSV spreadsheets.',
+    '',
+    'While AI assistants and CLI tools use these JSON files for automated checks, **human consultants and compliance reviewers** can also use them to:',
+    '- **Explore results visually** in the offline **GHEC Consultant Dashboard** web app without needing a live GitHub connection or token.',
+    '- **Prove compliance and auditability** using the SHA-256 checksums listed below.',
+    '- **Re-run verification or generate fix scripts** without re-scanning your source organization.',
+    '',
+    '---',
+    '',
+    '## What Is Inside This Folder',
+    '',
+  ];
+
+  if (evidenceEntries.length === 0) {
+    lines.push(
+      '_No JSON evidence artifacts were bundled for this run. See [`../manifest.json`](../manifest.json) for the run summary._',
+    );
+    lines.push('');
+  } else {
+    lines.push(
+      '| File | Plain-English Description | Size | SHA-256 Checksum |',
+    );
+    lines.push('| :--- | :--- | ---: | :--- |');
+    for (const [relPath, content] of evidenceEntries) {
+      const fileName = relPath.slice('evidence/'.length);
+      const byteLength = Buffer.byteLength(content, 'utf-8');
+      const sha256 = createHash('sha256')
+        .update(content, 'utf-8')
+        .digest('hex');
+      const desc =
+        EVIDENCE_FILE_DESCRIPTIONS[fileName] ??
+        'Structured JSON audit evidence artifact for this migration run.';
+      lines.push(
+        `| [\`${fileName}\`](${fileName}) | ${desc} | ${byteLength.toLocaleString('en-US')} B | \`sha256:${sha256.slice(0, 16)}…\` |`,
+      );
+    }
+    lines.push('');
+  }
+
+  lines.push('---');
+  lines.push('');
+  lines.push('## Viewing Evidence in the Visual Dashboard');
+  lines.push('');
+  lines.push(
+    'You can load the JSON files from this folder into the **GHEC Consultant Dashboard** to browse repositories, readiness scores, and verification results in your browser.',
+  );
+  lines.push('');
+  lines.push('To launch the visual dashboard locally and open these files:');
+  lines.push('');
+  lines.push('```bash');
+  lines.push('npm run dev');
+  lines.push('```');
+  lines.push('');
+  lines.push(
+    'Then click **Load Offline Bundle** in the dashboard and select `discovery-bundle.json`, `execution-report.json`, or `verification-report.json` from this `evidence/` folder.',
+  );
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+  lines.push('## Running Automated Follow-Up Checks from Evidence');
+  lines.push('');
+  lines.push(
+    'To generate a remediation plan from `verification-report.json` without re-running the full migration:',
+  );
+  lines.push('');
+  lines.push('```bash');
+  lines.push(
+    'ghec-consultant-cli agent-review --report ./evidence/verification-report.json --output ./evidence/remediation-plan.json',
+  );
+  lines.push('```');
+  lines.push('');
+
+  return lines.join('\n');
 }
 
 /**

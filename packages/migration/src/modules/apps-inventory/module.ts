@@ -18,6 +18,7 @@ import type {
   RawAppInstallationResponse,
   RawAppInstallationsListResponse,
   RawGitHubAppDetailsResponse,
+  RawInstallationRepositoriesResponse,
 } from './types.js';
 import {
   buildGitHubAppManifest,
@@ -45,6 +46,21 @@ function parseInstallations(
     events: Array.isArray(inst.events) ? [...inst.events] : [],
     html_url: inst.html_url ?? undefined,
   }));
+}
+
+function parseInstallationRepositories(
+  data: RawInstallationRepositoriesResponse | unknown,
+): string[] {
+  if (!data || typeof data !== 'object') return [];
+  const list = data as RawInstallationRepositoriesResponse;
+  const repos = Array.isArray(list.repositories) ? list.repositories : [];
+  const names: string[] = [];
+  for (const repo of repos) {
+    if (typeof repo?.name === 'string' && repo.name.trim().length > 0) {
+      names.push(repo.name.trim());
+    }
+  }
+  return names;
 }
 
 function comparePermissions(
@@ -116,6 +132,26 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
         details = null;
       }
 
+      let selectedRepositories: string[] = [];
+      if (inst.repository_selection === 'selected') {
+        try {
+          const reposRes =
+            await ctx.sourceClient.readSingle<RawInstallationRepositoriesResponse>(
+              {
+                id: 'rest.apps.listInstallationReposForAuthenticatedUser',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/user/installations/{installation_id}/repositories',
+                pathParams: { installation_id: String(inst.id) },
+              },
+              ctx.signal,
+            );
+          selectedRepositories = parseInstallationRepositories(reposRes.data);
+        } catch {
+          // Endpoint requires user-to-server token or specific permissions; gracefully ignore 403/404.
+        }
+      }
+
       const classified = classifyGitHubApp({
         sourceOrg,
         status,
@@ -136,6 +172,9 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
           : {}),
         classification: classified.classification,
         recommended_strategy: classified.recommendedStrategy,
+        ...(selectedRepositories.length > 0
+          ? { selected_repositories: selectedRepositories }
+          : {}),
       });
     }
 
@@ -225,6 +264,31 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
             reason: warnMsg,
           });
         }
+
+        if (
+          app.repository_selection === 'selected' &&
+          app.selected_repositories &&
+          app.selected_repositories.length > 0 &&
+          existing.repository_selection === 'selected'
+        ) {
+          operations.push({
+            id: `op-bind-app-repos-${slugKey}`,
+            resourceType: 'github_app_repository_binding',
+            resourceName: app.app_slug,
+            operation: 'update',
+            sourceState: app as unknown as Record<string, unknown>,
+            destinationCurrentState: existing as unknown as Record<
+              string,
+              unknown
+            >,
+            payload: {
+              app_slug: app.app_slug,
+              target_installation_id: existing.id,
+              selected_repositories: app.selected_repositories,
+            },
+            reason: `Bind selected repositories (${app.selected_repositories.join(', ')}) to GitHub App "${app.app_slug}" installation on ${targetOrg}`,
+          });
+        }
       } else {
         const classification = app.classification ?? 'third_party';
         const recommendedStrategy =
@@ -232,11 +296,15 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
         const destinationInstallUrl = `https://github.com/apps/${encodeURIComponent(app.app_slug)}/installations/new`;
         const recreateAppUrl = buildGitHubAppUrlParametersLink(app, targetOrg);
         const manifest = buildGitHubAppManifest(app, targetOrg);
+        const selectedReposSuffix =
+          app.selected_repositories && app.selected_repositories.length > 0
+            ? ` (Selected repositories: ${app.selected_repositories.join(', ')})`
+            : '';
 
         const advisory =
           classification === 'custom_private'
-            ? `GitHub Apps cannot be installed programmatically via API. "${app.app_slug}" (ID: ${app.app_id}) is a private custom app and must be recreated on ${targetOrg} as "${recreatedSlug}" via URL parameters or GitHub App Manifest. Recreate URL: ${recreateAppUrl} | Install URL: ${destinationInstallUrl}`
-            : `GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "${app.app_slug}" (ID: ${app.app_id}) on ${targetOrg}, or recreate it as "${recreatedSlug}". Install URL: ${destinationInstallUrl} | Recreate URL: ${recreateAppUrl}`;
+            ? `GitHub Apps cannot be installed programmatically via API. "${app.app_slug}" (ID: ${app.app_id}) is a private custom app and must be recreated on ${targetOrg} as "${recreatedSlug}" via URL parameters or GitHub App Manifest${selectedReposSuffix}. Recreate URL: ${recreateAppUrl} | Install URL: ${destinationInstallUrl}`
+            : `GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "${app.app_slug}" (ID: ${app.app_id}) on ${targetOrg}, or recreate it as "${recreatedSlug}"${selectedReposSuffix}. Install URL: ${destinationInstallUrl} | Recreate URL: ${recreateAppUrl}`;
         warnings.push(
           `Manual reinstallation advisory: GitHub App "${app.app_slug}" must be installed on ${targetOrg} manually.`,
         );
@@ -260,6 +328,10 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
             permissions: app.permissions,
             events: app.events,
             repository_selection: app.repository_selection,
+            ...(app.selected_repositories &&
+            app.selected_repositories.length > 0
+              ? { selected_repositories: app.selected_repositories }
+              : {}),
             advisory,
           },
           reason: advisory,
@@ -281,10 +353,91 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
     plan: ModulePlan,
   ): Promise<ModuleExecutionResult> {
     const startTime = Date.now();
+    const targetOrg = ctx.scope.targetOrg;
     const results: OperationExecutionResult[] = [];
 
     for (const op of plan.operations) {
       const completedAt = new Date().toISOString();
+
+      if (
+        op.resourceType === 'github_app_repository_binding' &&
+        op.operation === 'update'
+      ) {
+        if (ctx.dryRun) {
+          results.push({
+            operationId: op.id,
+            status: 'skipped',
+            completedAt,
+          });
+          continue;
+        }
+
+        const payload = op.payload as
+          | {
+              target_installation_id?: number;
+              selected_repositories?: readonly string[];
+            }
+          | undefined;
+        const installationId = payload?.target_installation_id;
+        const selectedRepos = payload?.selected_repositories ?? [];
+
+        if (
+          !installationId ||
+          selectedRepos.length === 0 ||
+          !ctx.targetWriteClient
+        ) {
+          results.push({
+            operationId: op.id,
+            status: 'skipped',
+            completedAt,
+          });
+          continue;
+        }
+
+        let boundCount = 0;
+        let failedReason: string | undefined;
+        for (const repoName of selectedRepos) {
+          try {
+            const repoRes = await ctx.targetClient.readSingle<{ id?: number }>(
+              {
+                id: 'rest.repos.get',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: targetOrg, repo: repoName },
+              },
+              ctx.signal,
+            );
+            const repoId = repoRes.data?.id;
+            if (typeof repoId !== 'number') {
+              continue;
+            }
+            await ctx.targetWriteClient.mutate(
+              {
+                id: 'rest.apps.addRepoToInstallationForAuthenticatedUser',
+                method: 'PUT',
+                path: '/user/installations/{installation_id}/repositories/{repository_id}',
+                pathParams: {
+                  installation_id: String(installationId),
+                  repository_id: String(repoId),
+                },
+              },
+              ctx.signal,
+            );
+            boundCount += 1;
+          } catch (err: unknown) {
+            failedReason = err instanceof Error ? err.message : String(err);
+          }
+        }
+
+        results.push({
+          operationId: op.id,
+          status: boundCount > 0 ? 'succeeded' : 'skipped',
+          ...(boundCount === 0 && failedReason ? { error: failedReason } : {}),
+          completedAt,
+        });
+        continue;
+      }
 
       if (op.operation === 'warn') {
         const payload = op.payload as { advisory?: string } | undefined;

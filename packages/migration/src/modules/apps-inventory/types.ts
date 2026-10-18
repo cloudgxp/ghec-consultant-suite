@@ -46,6 +46,7 @@ export interface AppInstallationState {
   readonly owner_login?: string | undefined;
   readonly classification?: GitHubAppClassification | undefined;
   readonly recommended_strategy?: RecommendedAppStrategy | undefined;
+  readonly selected_repositories?: readonly string[] | undefined;
 }
 
 export interface AppsInventoryData {
@@ -66,6 +67,18 @@ export interface RawAppInstallationResponse {
 export interface RawAppInstallationsListResponse {
   readonly total_count: number;
   readonly installations: readonly RawAppInstallationResponse[];
+}
+
+export interface RawInstallationRepositoryItem {
+  readonly id?: number | null | undefined;
+  readonly name?: string | null | undefined;
+  readonly full_name?: string | null | undefined;
+}
+
+export interface RawInstallationRepositoriesResponse {
+  readonly total_count?: number | null | undefined;
+  readonly repositories?:
+    readonly RawInstallationRepositoryItem[] | null | undefined;
 }
 
 export interface RawGitHubAppDetailsResponse {

@@ -550,4 +550,111 @@ describe('AppsInventoryMigrationModule', () => {
     assert.match(urlLink, /contents=write/);
     assert.match(urlLink, /events%5B%5D=release/);
   });
+
+  it('discovers selected_repositories for repo-scoped GitHub Apps and auto-binds them when installed on target', async () => {
+    const mod = new AppsInventoryMigrationModule();
+    const rawSource: RawAppInstallationsListResponse = {
+      total_count: 1,
+      installations: [
+        {
+          id: 5001,
+          app_id: 77,
+          app_slug: 'dependabot-helper',
+          repository_selection: 'selected',
+          permissions: { contents: 'read' },
+          events: ['push'],
+        },
+      ],
+    };
+
+    const rawTarget: RawAppInstallationsListResponse = {
+      total_count: 1,
+      installations: [
+        {
+          id: 9001,
+          app_id: 77,
+          app_slug: 'dependabot-helper',
+          repository_selection: 'selected',
+          permissions: { contents: 'read' },
+          events: ['push'],
+        },
+      ],
+    };
+
+    const mutations: Array<{
+      method: string;
+      path: string;
+      pathParams?: Record<string, string>;
+    }> = [];
+
+    const ctx: MigrationContext = {
+      ...createContext(rawSource, rawTarget, false, (op) => {
+        if (op.path === '/user/installations/{installation_id}/repositories') {
+          return {
+            status: 200,
+            data: {
+              total_count: 2,
+              repositories: [{ name: 'api-core' }, { name: 'web-ui' }],
+            },
+          };
+        }
+        return null;
+      }),
+      targetClient: new MockReadAdapter(rawTarget, (op) => {
+        if (op.path === '/repos/{owner}/{repo}') {
+          return {
+            status: 200,
+            data: {
+              id: op.pathParams?.repo === 'api-core' ? 401 : 402,
+              name: op.pathParams?.repo,
+            },
+          };
+        }
+        return null;
+      }),
+      targetWriteClient: {
+        async mutate(op) {
+          mutations.push({
+            method: op.method,
+            path: op.path,
+            pathParams: op.pathParams,
+          });
+          return { status: 204 };
+        },
+      },
+    };
+
+    const discovered = await mod.discover(ctx);
+    assert.deepEqual(discovered.installations[0]?.selected_repositories, [
+      'api-core',
+      'web-ui',
+    ]);
+
+    const plan = await mod.plan(ctx, discovered);
+    const bindOp = plan.operations.find(
+      (op) => op.resourceType === 'github_app_repository_binding',
+    );
+    assert.ok(bindOp);
+    assert.equal(bindOp.operation, 'update');
+
+    const applyResult = await mod.apply(ctx, plan);
+    assert.equal(applyResult.status, 'complete');
+    assert.equal(mutations.length, 2);
+    assert.deepEqual(mutations[0], {
+      method: 'PUT',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: {
+        installation_id: '9001',
+        repository_id: '401',
+      },
+    });
+    assert.deepEqual(mutations[1], {
+      method: 'PUT',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: {
+        installation_id: '9001',
+        repository_id: '402',
+      },
+    });
+  });
 });
