@@ -3,6 +3,7 @@ export interface ReadOperation {
   readonly id: string;
   readonly transport: 'graphql' | 'rest';
   readonly verifiedReadOnly: true;
+  readonly unauthenticated?: boolean | undefined;
   readonly path?: string;
   readonly pathParams?: Readonly<Record<string, string>>;
   readonly queryParams?: Readonly<Record<string, string | number | boolean>>;

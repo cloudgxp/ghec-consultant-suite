@@ -91,6 +91,7 @@ export interface RawGitHubAppDetailsResponse {
   readonly owner?:
     | {
         readonly login?: string | null | undefined;
+        readonly slug?: string | null | undefined;
         readonly type?: string | null | undefined;
       }
     | null

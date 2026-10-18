@@ -702,6 +702,13 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
   assert.ok(md.includes('Automated Post-Migration Source-Detach Cutover'));
   assert.ok(md.includes('post-migration-cutover.yml'));
   assert.ok(md.includes('ghec-consultant-cli cutover'));
+  assert.ok(
+    deliverables.csvFiles[
+      'exports/identity-and-access/deploy-keys-cutover.csv'
+    ]!.includes(
+      'ghec-consultant-cli cutover --source-org source-org --target-org target-emu --repos demo --include-deploy-keys',
+    ),
+  );
 
   // 6. Verify Webhooks developer HMAC guide and priority sorting (inactive-webhook first, active-no-secret last)
   assert.ok(md.includes('check the **[x] Active** checkbox'));

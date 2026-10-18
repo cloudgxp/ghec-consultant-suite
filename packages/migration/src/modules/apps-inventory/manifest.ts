@@ -132,24 +132,53 @@ export function classifyGitHubApp(params: {
 }): GitHubAppClassificationResult {
   const { sourceOrg, status, details } = params;
 
-  if (status === 200 && details && typeof details === 'object') {
-    const ownerLogin =
-      typeof details.owner?.login === 'string' && details.owner.login.length > 0
-        ? details.owner.login
+  const hasDetails = Boolean(details && typeof details === 'object');
+  const ownerLogin =
+    hasDetails &&
+    typeof details?.owner?.login === 'string' &&
+    details.owner.login.length > 0
+      ? details.owner.login
+      : hasDetails &&
+          typeof details?.owner?.slug === 'string' &&
+          details.owner.slug.length > 0
+        ? details.owner.slug
         : undefined;
-    const appName =
-      typeof details.name === 'string' && details.name.length > 0
-        ? details.name
-        : undefined;
-    const description =
-      typeof details.description === 'string' && details.description.length > 0
-        ? details.description
-        : undefined;
-    const externalUrl =
-      typeof details.external_url === 'string' &&
-      details.external_url.length > 0
-        ? details.external_url
-        : undefined;
+  const isEnterpriseOwner =
+    hasDetails &&
+    typeof details?.owner?.slug === 'string' &&
+    details.owner.slug.length > 0 &&
+    !(
+      typeof details?.owner?.login === 'string' &&
+      details.owner.login.length > 0
+    );
+  const appName =
+    hasDetails && typeof details?.name === 'string' && details.name.length > 0
+      ? details.name
+      : undefined;
+  const description =
+    hasDetails &&
+    typeof details?.description === 'string' &&
+    details.description.length > 0
+      ? details.description
+      : undefined;
+  const externalUrl =
+    hasDetails &&
+    typeof details?.external_url === 'string' &&
+    details.external_url.length > 0
+      ? details.external_url
+      : undefined;
+
+  if (status === 200 && hasDetails) {
+    if (isEnterpriseOwner) {
+      return {
+        classification: 'custom_private',
+        recommendedStrategy: 'recreate_app',
+        appName,
+        description,
+        externalUrl,
+        ownerLogin,
+      };
+    }
 
     if (ownerLogin) {
       if (ownerLogin.toLowerCase() === sourceOrg.toLowerCase()) {
@@ -185,6 +214,10 @@ export function classifyGitHubApp(params: {
   return {
     classification: 'custom_private',
     recommendedStrategy: 'recreate_app',
+    ...(appName ? { appName } : {}),
+    ...(description ? { description } : {}),
+    ...(externalUrl ? { externalUrl } : {}),
+    ...(ownerLogin ? { ownerLogin } : {}),
   };
 }
 
