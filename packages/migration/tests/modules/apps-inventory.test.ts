@@ -974,4 +974,102 @@ describe('AppsInventoryMigrationModule', () => {
       await rm(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('classifies private custom apps as custom_private via unauthenticated probe while enriching metadata from authenticated fallback', async () => {
+    const raw: RawAppInstallationsListResponse = {
+      total_count: 2,
+      installations: [
+        {
+          id: 5369870,
+          app_id: 3435494,
+          app_slug: 'demogxp-test-custom',
+          repository_selection: 'selected',
+          permissions: { administration: 'read', metadata: 'read' },
+          events: ['label'],
+          html_url:
+            'https://github.com/organizations/demogxp/settings/installations/5369870',
+        },
+        {
+          id: 37423,
+          app_id: 500,
+          app_slug: 'hackmd-hub',
+          repository_selection: 'all',
+          permissions: { contents: 'read' },
+          events: ['push'],
+          html_url:
+            'https://github.com/organizations/demogxp/settings/installations/37423',
+        },
+      ],
+    };
+
+    const seenOps: Array<{ id: string; unauthenticated?: boolean }> = [];
+    const mod = new AppsInventoryMigrationModule();
+    const ctx = createContext(raw, null, false, (op) => {
+      seenOps.push({ id: op.id, unauthenticated: op.unauthenticated });
+      if (op.id === 'rest.apps.getBySlug') {
+        assert.equal(op.unauthenticated, true);
+        if (op.pathParams?.app_slug === 'demogxp-test-custom') {
+          return { status: 404, data: new Error('Not Found') };
+        }
+        if (op.pathParams?.app_slug === 'hackmd-hub') {
+          return {
+            status: 200,
+            data: {
+              slug: 'hackmd-hub',
+              name: 'HackMD Hub',
+              external_url: 'https://hackmd.io',
+              owner: { login: 'hackmdio', type: 'Organization' },
+            },
+          };
+        }
+      }
+      if (op.id === 'rest.apps.getBySlugAuthenticated') {
+        assert.equal(op.unauthenticated, undefined);
+        if (op.pathParams?.app_slug === 'demogxp-test-custom') {
+          return {
+            status: 200,
+            data: {
+              slug: 'demogxp-test-custom',
+              name: 'DemoGXP Test Custom',
+              description: 'Internal custom GxP app',
+              external_url: 'https://internal.example.com',
+              owner: { slug: 'cloudgxp' },
+            },
+          };
+        }
+      }
+      return null;
+    });
+
+    const discovered = await mod.discover(ctx);
+    assert.equal(discovered.installations.length, 2);
+
+    const customApp = discovered.installations[0]!;
+    assert.equal(customApp.app_slug, 'demogxp-test-custom');
+    assert.equal(customApp.classification, 'custom_private');
+    assert.equal(customApp.recommended_strategy, 'recreate_app');
+    assert.equal(customApp.app_name, 'DemoGXP Test Custom');
+    assert.equal(customApp.description, 'Internal custom GxP app');
+    assert.equal(customApp.external_url, 'https://internal.example.com');
+    assert.equal(customApp.owner_login, 'cloudgxp');
+
+    const thirdPartyApp = discovered.installations[1]!;
+    assert.equal(thirdPartyApp.app_slug, 'hackmd-hub');
+    assert.equal(thirdPartyApp.classification, 'third_party');
+    assert.equal(thirdPartyApp.recommended_strategy, 'install_existing');
+
+    // Also verify classifyGitHubApp classifies status=200 Enterprise-owned apps (owner.slug) as custom_private
+    const enterpriseDirect = classifyGitHubApp({
+      sourceOrg: 'demogxp',
+      status: 200,
+      details: {
+        slug: 'enterprise-internal-app',
+        name: 'Enterprise Internal App',
+        owner: { slug: 'cloudgxp' },
+      },
+    });
+    assert.equal(enterpriseDirect.classification, 'custom_private');
+    assert.equal(enterpriseDirect.recommendedStrategy, 'recreate_app');
+    assert.equal(enterpriseDirect.ownerLogin, 'cloudgxp');
+  });
 });

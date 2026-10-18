@@ -156,3 +156,52 @@ test('readSingle preserves both JSON array and JSON object responses without unw
   assert.equal(emptyRes.status, 200);
   assert.deepEqual(emptyRes.data, []);
 });
+
+test('readSingle with unauthenticated: true omits Authorization header and preserves authenticated rate-limiter budget', async () => {
+  const seenHeaders: Array<string | null> = [];
+  const adapter = new HttpGitHubReadAdapter({
+    token: 'ghp_test_token_12345',
+    fetchImpl: async (_url, init) => {
+      const headers = new Headers(init?.headers);
+      seenHeaders.push(headers.get('authorization'));
+      const isAuth = Boolean(headers.get('authorization'));
+      return new Response(JSON.stringify({ slug: 'demo-app' }), {
+        status: isAuth ? 200 : 404,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-ratelimit-limit': isAuth ? '5000' : '60',
+          'x-ratelimit-remaining': isAuth ? '4999' : '58',
+        },
+      });
+    },
+  });
+
+  // 1. Authenticated read sets rate limiter to 4999/5000
+  const authRes = await adapter.readSingle<{ slug: string }>(
+    {
+      id: 'rest.apps.getBySlugAuthenticated',
+      transport: 'rest',
+      verifiedReadOnly: true,
+      path: '/apps/{app_slug}',
+      pathParams: { app_slug: 'demo-app' },
+    },
+    signal,
+  );
+  assert.equal(authRes.status, 200);
+  assert.equal(seenHeaders[0], 'token ghp_test_token_12345');
+
+  // 2. Unauthenticated read omits Authorization header and returns 404 for private app
+  const unauthRes = await adapter.readSingle<{ slug: string }>(
+    {
+      id: 'rest.apps.getBySlug',
+      transport: 'rest',
+      verifiedReadOnly: true,
+      unauthenticated: true,
+      path: '/apps/{app_slug}',
+      pathParams: { app_slug: 'demo-app' },
+    },
+    signal,
+  );
+  assert.equal(unauthRes.status, 404);
+  assert.equal(seenHeaders[1], null);
+});

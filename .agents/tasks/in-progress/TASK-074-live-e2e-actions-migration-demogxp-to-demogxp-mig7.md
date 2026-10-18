@@ -39,7 +39,7 @@ Expected files or directories to inspect/modify if issues arise during live exec
 
 ## 4. Implementation Checklist
 
-- [ ] **Phase 1: Prepare & Trigger Scope Generation via GitHub Actions (`generate-scope.yml`)**
+- [x] **Phase 1: Prepare & Trigger Scope Generation via GitHub Actions (`generate-scope.yml`)**
   - Ensure all pending code changes (`TASK-072`, `TASK-073`) are verified via `npm run check`, committed, and merged to `main`.
   - Verify `demogxp-mig7` target organization is in a clean state.
   - Trigger `generate-scope.yml` for `source_org="demogxp"` and `target_org="demogxp-mig7"` (`target_type="ghec"`, `scope_type="all_repositories"`, `source_visibility="all"`, `include_org_resources="true"`, `org_items_mode="all"`).

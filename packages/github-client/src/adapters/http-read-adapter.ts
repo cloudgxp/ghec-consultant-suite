@@ -106,6 +106,7 @@ function assertVerifiedReadOnly(operation: ReadOperation): void {
 
 export class HttpGitHubReadAdapter implements GitHubReadAdapter {
   private readonly octokit: Octokit;
+  private readonly unauthenticatedOctokit: Octokit;
   private readonly maxAttempts: number;
   private readonly maxRetrySeconds: number;
   private readonly authProvider?: TokenProvider | undefined;
@@ -131,8 +132,7 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
           ? false
           : true;
 
-    this.octokit = new Octokit({
-      auth: options.token,
+    const sharedOctokitConfig = {
       baseUrl,
       userAgent: 'ghec-consultant-cli/0.1.0',
       request: {
@@ -184,7 +184,13 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
         doNotRetry: [400, 401, 403, 404, 410, 422, 451],
         maxRetries: this.maxAttempts,
       },
+    };
+
+    this.octokit = new Octokit({
+      ...sharedOctokitConfig,
+      auth: options.token,
     });
+    this.unauthenticatedOctokit = new Octokit(sharedOctokitConfig);
 
     if (this.authProvider) {
       this.octokit.hook.wrap('request', async (request, requestOptions) => {
@@ -330,8 +336,12 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
         headers: Record<string, string | number | undefined>;
       };
 
+      const client = operation.unauthenticated
+        ? this.unauthenticatedOctokit
+        : this.octokit;
+
       if (cursor) {
-        response = await this.octokit.request(cursor, {
+        response = await client.request(cursor, {
           request: { signal },
         });
       } else {
@@ -341,7 +351,7 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
           operation.pathParams,
         );
         const queryParams = operation.queryParams ?? {};
-        response = await this.octokit.request(`GET ${path}`, {
+        response = await client.request(`GET ${path}`, {
           ...queryParams,
           request: { signal },
         });
@@ -359,11 +369,13 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
         ? parseInt(String(response.headers['x-ratelimit-limit']), 10)
         : undefined;
 
-      this.rateLimiter.updateREST(
-        remainingRequests ?? undefined,
-        resetAt ?? undefined,
-        limitRequests,
-      );
+      if (!operation.unauthenticated) {
+        this.rateLimiter.updateREST(
+          remainingRequests ?? undefined,
+          resetAt ?? undefined,
+          limitRequests,
+        );
+      }
 
       const linkHeader =
         typeof response.headers['link'] === 'string'
@@ -404,11 +416,13 @@ export class HttpGitHubReadAdapter implements GitHubReadAdapter {
           ? parseInt(String(headers['x-ratelimit-limit']), 10)
           : undefined;
 
-        this.rateLimiter.updateREST(
-          remainingRequests ?? undefined,
-          resetAt ?? undefined,
-          limitRequests,
-        );
+        if (!operation.unauthenticated) {
+          this.rateLimiter.updateREST(
+            remainingRequests ?? undefined,
+            resetAt ?? undefined,
+            limitRequests,
+          );
+        }
 
         return {
           body: undefined,

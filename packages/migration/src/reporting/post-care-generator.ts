@@ -213,6 +213,7 @@ export function resolveTargetSettingsLinks(params: {
   readonly moduleId: string;
   readonly resourceType: string;
   readonly resourceName: string;
+  readonly sourceOrg?: string | undefined;
   readonly targetOrg: string;
   readonly targetRepo?: string | undefined;
   readonly operationId?: string | undefined;
@@ -223,6 +224,7 @@ export function resolveTargetSettingsLinks(params: {
     moduleId,
     resourceType,
     resourceName,
+    sourceOrg,
     targetOrg,
     targetRepo,
     operationId,
@@ -516,11 +518,15 @@ export function resolveTargetSettingsLinks(params: {
     const settingsUrl = encRepo
       ? `https://github.com/${encOrg}/${encRepo}/settings/keys`
       : `https://github.com/organizations/${encOrg}/settings/keys`;
+    const resolvedSourceOrg =
+      typeof sourceOrg === 'string' && sourceOrg.trim().length > 0
+        ? sourceOrg.trim()
+        : '<SOURCE_ORG>';
     return {
       settingsUrl,
       settingsLinkLabel: 'Manage Deploy Keys ↗',
       cliCommand: targetRepo
-        ? `ghec-consultant-cli cutover --source-org <SOURCE_ORG> --target-org ${targetOrg} --repos ${targetRepo} --include-deploy-keys`
+        ? `ghec-consultant-cli cutover --source-org ${resolvedSourceOrg} --target-org ${targetOrg} --repos ${targetRepo} --include-deploy-keys`
         : undefined,
       subDomain: 'ssh-deploy-key',
       cleanResourceName: resourceName,
@@ -1253,6 +1259,7 @@ export function generatePostCareDeliverables(
           moduleId,
           resourceType: item.resourceType,
           resourceName: item.resourceName,
+          sourceOrg,
           targetOrg,
           operationId: item.operationId,
           notes: item.notes,
@@ -1365,6 +1372,7 @@ export function generatePostCareDeliverables(
           moduleId,
           resourceType: item.resourceType,
           resourceName: item.resourceName,
+          sourceOrg,
           targetOrg,
           targetRepo,
           operationId: item.operationId,
@@ -1502,6 +1510,7 @@ export function generatePostCareDeliverables(
           moduleId: modPlan.moduleId,
           resourceType: op.resourceType,
           resourceName: op.resourceName,
+          sourceOrg,
           targetOrg,
           targetRepo,
           operationId: op.id,
@@ -1868,6 +1877,7 @@ export function generatePostCareDeliverables(
             moduleId: 'deploy-keys',
             resourceType: 'deploy-key',
             resourceName: entity.label,
+            sourceOrg,
             targetOrg,
             targetRepo,
           });

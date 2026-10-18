@@ -121,6 +121,7 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
               id: 'rest.apps.getBySlug',
               transport: 'rest',
               verifiedReadOnly: true,
+              unauthenticated: true,
               path: '/apps/{app_slug}',
               pathParams: { app_slug: inst.app_slug },
             },
@@ -131,6 +132,30 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
       } catch {
         status = 404;
         details = null;
+      }
+
+      if (status !== 200) {
+        try {
+          const authAppRes =
+            await ctx.sourceClient.readSingle<RawGitHubAppDetailsResponse>(
+              {
+                id: 'rest.apps.getBySlugAuthenticated',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/apps/{app_slug}',
+                pathParams: { app_slug: inst.app_slug },
+              },
+              ctx.signal,
+            );
+          if (authAppRes.status === 200 && authAppRes.data) {
+            details = authAppRes.data;
+            if (status === 403 || status === 429) {
+              status = 200;
+            }
+          }
+        } catch {
+          // Ignore authenticated metadata enrichment errors
+        }
       }
 
       let selectedRepositories: string[] = [];

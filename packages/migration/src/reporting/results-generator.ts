@@ -411,6 +411,7 @@ function formatStateValue(val: unknown): string {
 
 function buildGranularItemsForModule(params: {
   readonly moduleId: string;
+  readonly sourceOrg?: string | undefined;
   readonly targetOrg: string;
   readonly targetRepo?: string | undefined;
   readonly operations: readonly OperationExecutionResult[];
@@ -422,6 +423,7 @@ function buildGranularItemsForModule(params: {
 }): GranularMigrationItemRow[] {
   const {
     moduleId,
+    sourceOrg,
     targetOrg,
     targetRepo,
     operations,
@@ -575,6 +577,7 @@ function buildGranularItemsForModule(params: {
       moduleId,
       resourceType,
       resourceName,
+      sourceOrg,
       targetOrg,
       targetRepo,
       operationId: op.operationId,
@@ -614,6 +617,7 @@ function buildGranularItemsForModule(params: {
       moduleId,
       resourceType,
       resourceName,
+      sourceOrg,
       targetOrg,
       targetRepo,
       notes: disc.message,
@@ -1197,6 +1201,7 @@ export function generateMigrationResults(
 
     const items = buildGranularItemsForModule({
       moduleId,
+      sourceOrg: options.sourceOrg,
       targetOrg: options.targetOrg,
       operations: allOps,
       discrepancies,
@@ -1600,6 +1605,7 @@ export function generateMigrationResults(
 
       const items = buildGranularItemsForModule({
         moduleId,
+        sourceOrg: options.sourceOrg,
         targetOrg: options.targetOrg,
         targetRepo,
         operations: allOps,
