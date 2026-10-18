@@ -544,4 +544,60 @@ describe('Task 035: Agentic Automation & Remediation Integration', () => {
       ),
     );
   });
+
+  it('collapses multiline execution errors in bash comments and uses --modules auto for gei-repo apply failures', () => {
+    const cleanReport = {
+      ...sampleReport,
+      modules: [],
+      summary: {
+        verifiedModuleCount: 34,
+        unverifiedModuleCount: 0,
+        discrepancyCount: 0,
+      },
+    };
+    const plan = generateRemediationPlan(cleanReport, undefined, [
+      {
+        schemaVersion: '1.0.0',
+        planId: 'plan-massive-01',
+        executedAt: '2026-10-18T05:09:57.071Z',
+        status: 'failed',
+        exitCode: 1,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            status: 'failed',
+            durationMs: 1000,
+            targetIdentifier: 'corp-target-emu/chromium',
+            scopeLevel: 'repository',
+            results: [
+              {
+                operationId: 'gei-repo-mirror-push-error-chromium',
+                status: 'failed',
+                resourceType: 'repository',
+                resourceName: 'chromium',
+                operationType: 'create',
+                error:
+                  'git push failed:\n ! [rejected] main -> main (fetch first)\nerror: failed to push some refs',
+                completedAt: '2026-10-18T05:09:57.067Z',
+                targetIdentifier: 'corp-target-emu/chromium',
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    assert.equal(plan.actionableCount, 1);
+    assert.match(
+      plan.script,
+      /ghec-consultant-cli migrate --modules "auto" --scope "\.\/scopes\/test-wave-scope\.json" --repos "chromium"/,
+    );
+    const uncommentedRejectedLines = plan.script
+      .split('\n')
+      .filter(
+        (line) => line.includes('[rejected]') && !line.trim().startsWith('#'),
+      );
+    assert.equal(uncommentedRejectedLines.length, 0);
+  });
 });

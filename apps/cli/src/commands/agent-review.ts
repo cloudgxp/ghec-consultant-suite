@@ -857,18 +857,22 @@ export function generateRemediationPlan(
 
   for (const group of unmatchedByKey.values()) {
     unverifiedExecutionFailures++;
-    const combinedError = Array.from(group.errors).join('; ');
+    const combinedError = Array.from(group.errors)
+      .map((e) => e.replace(/[\r\n]+/g, ' ').trim())
+      .join('; ');
     const warningMsg = `Unverified apply() failure detected: module "${group.moduleId}" failed on "${group.resourceLabel}" (${combinedError}), but VerificationReport recorded 0 discrepancies. Synthesized remediation action.`;
     warnings.push(warningMsg);
 
     const actionId = `action-${actionCounter++}`;
+    const targetModules =
+      group.moduleId === 'gei-repo' ? 'auto' : group.moduleId;
     actions.push({
       id: actionId,
       category: getCategoryForModule(group.moduleId),
       moduleId: group.moduleId,
       resourceName: group.resourceLabel,
       description: `[SYNTHESIZED FROM APPLY FAILURE] Module "${group.moduleId}" failed during apply() on "${group.resourceLabel}": ${combinedError}`,
-      command: `ghec-consultant-cli migrate --modules "${group.moduleId}" --scope "./scopes/${report.scopeName}.json"`,
+      command: `ghec-consultant-cli migrate --modules "${targetModules}" --scope "./scopes/${report.scopeName}.json"`,
       severity: 'high',
       executionError: combinedError,
       synthesizedFromExecution: true,
@@ -923,7 +927,8 @@ export function generateRemediationPlan(
           : a.command;
       const isDuplicate = executedCommands.has(effectiveCommand);
       executedCommands.add(effectiveCommand);
-      return `# [${a.severity.toUpperCase()}] ${a.description}\necho "Executing remediation for ${a.resourceName}..."\n${isDuplicate ? `# (Already executed in this batch): ${effectiveCommand.replace(/\n/g, ' ')}` : `${effectiveCommand} || echo "WARN: Remediation command for ${a.resourceName} exited non-zero; continuing..."`}\n`;
+      const safeDescription = a.description.replace(/[\r\n]+/g, ' ');
+      return `# [${a.severity.toUpperCase()}] ${safeDescription}\necho "Executing remediation for ${a.resourceName}..."\n${isDuplicate ? `# (Already executed in this batch): ${effectiveCommand.replace(/\n/g, ' ')}` : `${effectiveCommand} || echo "WARN: Remediation command for ${a.resourceName} exited non-zero; continuing..."`}\n`;
     })
     .join('\n');
 
@@ -992,7 +997,10 @@ export function formatRemediationMarkdown(plan: RemediationPlan): string {
       ? '**[SYNTHESIZED FROM APPLY FAILURE]** '
       : '';
     const rootCauseCell = action.executionError
-      ? `${synthTag}\`${action.executionError.replace(/\\/g, '\\\\').replace(/\|/g, '\\|')}\``
+      ? `${synthTag}\`${action.executionError
+          .replace(/[\r\n]+/g, ' ')
+          .replace(/\\/g, '\\\\')
+          .replace(/\|/g, '\\|')}\``
       : synthTag || '_Verification discrepancy_';
 
     lines.push(

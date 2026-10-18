@@ -235,26 +235,24 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           ctx.scope.options?.gitTransferStrategy === 'mirror-push'
         ) {
           let hasBranches = targetRepoData.size > 0;
-          if (hasBranches) {
-            try {
-              const branchesRes = await ctx.targetClient.readPage<
-                readonly unknown[]
-              >(
-                {
-                  id: 'rest.repos.listBranches',
-                  transport: 'rest',
-                  verifiedReadOnly: true,
-                  path: '/repos/{owner}/{repo}/branches',
-                  pathParams: { owner: targetOrg, repo: targetRepo },
-                  queryParams: { per_page: 1 },
-                },
-                null,
-                ctx.signal,
-              );
-              hasBranches = (branchesRes.items?.length ?? 0) > 0;
-            } catch {
-              hasBranches = false;
-            }
+          try {
+            const branchesRes = await ctx.targetClient.readPage<
+              readonly unknown[]
+            >(
+              {
+                id: 'rest.repos.listBranches',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/repos/{owner}/{repo}/branches',
+                pathParams: { owner: targetOrg, repo: targetRepo },
+                queryParams: { per_page: 1 },
+              },
+              null,
+              ctx.signal,
+            );
+            hasBranches = (branchesRes.items?.length ?? 0) > 0;
+          } catch {
+            // Fall back to targetRepoData.size > 0 if branch listing fails
           }
           if (!hasBranches) {
             ctx.logger.warn(

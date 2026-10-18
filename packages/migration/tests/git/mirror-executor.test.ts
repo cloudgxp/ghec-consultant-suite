@@ -225,6 +225,7 @@ describe('GitMirrorPushExecutor', () => {
     assert.equal(executedArgs.length, 2);
     assert.equal(executedArgs[0]?.includes('--depth'), true);
     assert.equal(executedArgs[0]?.includes('--single-branch'), true);
+    assert.equal(executedArgs[1]?.includes('--force'), true);
     assert.equal(executedArgs[1]?.includes('--all'), true);
   });
 

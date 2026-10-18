@@ -444,7 +444,7 @@ export class GitMirrorPushExecutor {
 
       pushArgs.push(
         'push',
-        useShallowPackGuard ? '--all' : '--mirror',
+        ...(useShallowPackGuard ? ['--force', '--all'] : ['--mirror']),
         '--',
         `https://github.com/${targetOrg}/${targetRepo}.git`,
       );
