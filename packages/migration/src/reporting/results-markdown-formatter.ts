@@ -167,6 +167,8 @@ export interface ResultsReadmeOptions {
         readonly webhookCount: number;
         readonly runnerCount: number;
         readonly otherCount: number;
+        readonly identityAndAccessCount?: number | undefined;
+        readonly governanceAndRemediationCount?: number | undefined;
       }
     | undefined;
   readonly verificationSummary?:
@@ -401,6 +403,11 @@ export function formatResultsReadmeMarkdown(
 
   // Customer Post-Care Checklist & CSV Exports section
   if (options.postCareSummary) {
+    const idAccessCount =
+      options.postCareSummary.identityAndAccessCount ??
+      options.postCareSummary.otherCount;
+    const govRemediationCount =
+      options.postCareSummary.governanceAndRemediationCount ?? 0;
     lines.push('---');
     lines.push('');
     lines.push('## 📋 Customer Post-Care Package & CSV Exports');
@@ -428,6 +435,12 @@ export function formatResultsReadmeMarkdown(
     );
     lines.push(
       `| [\`exports/runners-registration.csv\`](exports/runners-registration.csv) | ${options.postCareSummary.runnerCount} | CSV | Self-hosted runners and runner groups requiring registration |`,
+    );
+    lines.push(
+      `| [\`exports/identity-and-access.csv\`](exports/identity-and-access.csv) | ${idAccessCount} | CSV | Teams (IdP sync), mannequins, collaborators & deploy keys (plus focused CSVs in \`exports/identity-and-access/\`) |`,
+    );
+    lines.push(
+      `| [\`exports/governance-and-remediation.csv\`](exports/governance-and-remediation.csv) | ${govRemediationCount} | CSV | Policies, packages, security & failed/skipped items (plus focused CSVs in \`exports/governance-and-remediation/\`) |`,
     );
     lines.push(
       `| [\`exports/migration-operations-full.csv\`](exports/migration-operations-full.csv) | All | CSV | Complete ledger of every organization and repository operation |`,
@@ -466,10 +479,21 @@ export function formatResultsReadmeMarkdown(
   return lines.join('\n');
 }
 
+function stripEmbeddedAppUrlsFromMarkdownCell(notes: string): string {
+  return notes
+    .replace(
+      /\s*(?:\\?\|\s*)?(?:Install URL|Recreate URL):\s*https?:\/\/[^\s|)]+/gi,
+      '',
+    )
+    .replace(/\s+\\?\|\s*$/, '')
+    .trim();
+}
+
 function appendItemSettingsLinksToNotes(
   baseNotes: string,
   item: GranularMigrationItemRow,
 ): string {
+  const cleanedBaseNotes = stripEmbeddedAppUrlsFromMarkdownCell(baseNotes);
   const linkParts: string[] = [];
   if (item.settingsUrl) {
     const label = escapeMarkdownTableCell(
@@ -490,9 +514,9 @@ function appendItemSettingsLinksToNotes(
     linkParts.push(`[${secLabel}](${safeSecUrl})`);
   }
   if (linkParts.length === 0) {
-    return baseNotes;
+    return cleanedBaseNotes;
   }
-  return `${baseNotes} — ${linkParts.join(' · ')}`;
+  return `${cleanedBaseNotes} — ${linkParts.join(' · ')}`;
 }
 
 /**

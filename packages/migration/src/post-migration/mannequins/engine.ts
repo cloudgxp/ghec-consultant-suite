@@ -22,6 +22,8 @@ import {
 } from './reclaimer.js';
 import {
   COMMIT_AUTHORSHIP_LIMITATION_NOTICE,
+  GHEC_STANDARD_COMMIT_AUTHORSHIP_NOTICE,
+  buildZeroMannequinsSkipNotice,
   type MannequinDiscoveredData,
   type MannequinRecord,
   type MannequinReclamationOptions,
@@ -227,13 +229,24 @@ export class MannequinReclamationEngine implements MigrationModule<MannequinDisc
     }
 
     const planWarnings = [...warnings];
-    if (unmappedUsers.length > 0) {
+    if (discovered.records.length === 0) {
+      planWarnings.push(buildZeroMannequinsSkipNotice(targetOrg));
+    } else if (unmappedUsers.length > 0) {
       planWarnings.push(
         `Found ${unmappedUsers.length} unmapped mannequin(s) that cannot be reclaimed automatically: ${unmappedUsers.join(', ')}`,
       );
     }
-    // Always include commit authorship limitation advisory
-    planWarnings.push(COMMIT_AUTHORSHIP_LIMITATION_NOTICE);
+    const isEmuTarget =
+      ctx.scope.targetType === 'ghec'
+        ? false
+        : ctx.scope.targetType === 'emu'
+          ? true
+          : this.engineOptions.isEmu !== false;
+    planWarnings.push(
+      isEmuTarget
+        ? COMMIT_AUTHORSHIP_LIMITATION_NOTICE
+        : GHEC_STANDARD_COMMIT_AUTHORSHIP_NOTICE,
+    );
 
     return {
       moduleId: this.id,

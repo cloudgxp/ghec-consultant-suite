@@ -29,7 +29,7 @@ interface BranchSummaryItem {
 
 export class BranchProtectionReconciliationModule implements MigrationModule<BranchProtectionData> {
   readonly id = 'branch-protection';
-  readonly displayName = 'Branch Protection Reconciliation (DEC-009)';
+  readonly displayName = 'Branch Protection Reconciliation';
   readonly scopeLevel: MigrationScopeLevel = 'repository';
   readonly dependencies: readonly string[] = ['gei-repo'];
 

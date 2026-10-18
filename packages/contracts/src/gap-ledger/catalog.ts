@@ -94,8 +94,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     existingModuleId: 'releases',
     secretHandling: 'none',
     emuConstraints: [],
-    notes:
-      'Preflight skips releases in GEI; module streams assets in chunks (DEC-010).',
+    notes: 'Preflight skips releases in GEI; module streams assets in chunks.',
   },
   // 7. Git LFS Objects
   {
@@ -110,7 +109,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'none',
     emuConstraints: [],
     notes:
-      'Transfers LFS objects via streamed dual-remote push on persistent runners (DEC-011).',
+      'Transfers LFS objects via streamed dual-remote push on persistent runners.',
   },
   // 8. Classic Branch Protections
   {
@@ -125,7 +124,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'none',
     emuConstraints: [],
     notes:
-      'Reconciles the 7 specific settings dropped by GEI via in-place PUT (DEC-009).',
+      'Reconciles the 7 specific settings dropped by GEI via in-place PUT.',
   },
   // 9. Repository Rulesets
   {
@@ -199,7 +198,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'sealed_box_blank',
     emuConstraints: [],
     notes:
-      'Provisions target secrets with sealed empty strings or vault hooks (DEC-004).',
+      'Provisions target secrets with sealed empty strings or vault hooks.',
   },
   // 14. Organization Secrets
   {
@@ -214,7 +213,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'sealed_box_blank',
     emuConstraints: [],
     notes:
-      'Provisions target secrets with sealed empty strings or vault hooks (DEC-004).',
+      'Provisions target secrets with sealed empty strings or vault hooks.',
   },
   // 15. Deployment Environments
   {
@@ -244,7 +243,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'vault_hook',
     emuConstraints: [],
     notes:
-      'Matches GEI-created disabled hooks, rehydrates secret, enables active: true (DEC-014).',
+      'Matches GEI-created disabled hooks, rehydrates secret, enables active: true.',
   },
   // 17. Organization Webhooks
   {
@@ -274,7 +273,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'none',
     emuConstraints: [EMU_VISIBILITY_POLICY_CONSTRAINT],
     notes:
-      'Restores features and internal visibility without violating EMU public bans (DEC-015).',
+      'Restores features and internal visibility without violating EMU public bans.',
   },
   // 19. Organization Custom Properties
   {
@@ -350,7 +349,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
     secretHandling: 'none',
     emuConstraints: [EMU_IDP_GROUP_SYNC_CONSTRAINT],
     notes:
-      'Recreates team hierarchy and permissions while decoupling user membership (DEC-005).',
+      'Recreates team hierarchy and permissions while decoupling user membership.',
   },
   // 24. Custom Roles
   {
@@ -428,7 +427,7 @@ export const GAP_LEDGER_CATALOG: readonly CapabilityGapEntry[] = [
       EMU_SCIM_IDENTITY_CONSTRAINT,
     ],
     notes:
-      'Executes fast-track mannequin reattribution using --skip-invitation (DEC-013).',
+      'Executes fast-track mannequin reattribution using --skip-invitation.',
   },
   // 29. Autolinks (IMPLEMENTED)
   {

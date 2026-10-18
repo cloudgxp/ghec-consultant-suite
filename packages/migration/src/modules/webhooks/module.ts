@@ -147,14 +147,16 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       }
       if (hook.secretConfigured && !hasSecretProvider)
         warnings.push(
-          `Webhook "${hook.url}" has a source secret but no replacement secret provider; it will remain inactive (active: false) until the secret is configured.`,
+          `Webhook \`${hook.url}\` has a source secret but no replacement secret provider; it will remain inactive (active: false) until the secret is configured.`,
         );
       const reason =
         operation === 'create'
-          ? `Creating webhook for "${hook.url}"${hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ''}`
+          ? `Creating webhook for \`${hook.url}\`${hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ' (active; no signing secret configured on source)'}`
           : operation === 'update'
-            ? `Reconciling webhook configuration for "${hook.url}"`
-            : `Webhook "${hook.url}" already matches target configuration`;
+            ? `Reconciling webhook configuration for \`${hook.url}\`${hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ''}`
+            : hook.secretConfigured && !hasSecretProvider
+              ? `Webhook \`${hook.url}\` already matches target configuration (inactive until HMAC secret is configured)`
+              : `Webhook \`${hook.url}\` already matches target configuration (active; no signing secret configured on source)`;
       return {
         id: `${this.id}:${targetKey}:${hook.url}`,
         resourceType: 'webhook',
@@ -194,7 +196,15 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
       const completedAt = new Date().toISOString();
       const hook = op.sourceState as WebhookDefinition;
       if (op.operation === 'noop') {
-        results.push({ operationId: op.id, status: 'succeeded', completedAt });
+        results.push({
+          operationId: op.id,
+          status: 'succeeded',
+          completedAt,
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          reason: op.reason,
+        });
         continue;
       }
       if (ctx.dryRun) {
@@ -203,6 +213,10 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
           status: 'succeeded',
           completedAt,
           httpStatus: 200,
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          reason: op.reason,
         });
         continue;
       }
@@ -239,6 +253,10 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
             : 'failed',
         httpStatus: response.status,
         completedAt: new Date().toISOString(),
+        resourceType: op.resourceType,
+        resourceName: op.resourceName,
+        operationType: op.operation,
+        reason: op.reason,
       });
     }
     return {

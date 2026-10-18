@@ -42,7 +42,7 @@ gh secret set GHEC_TARGET_TOKEN
 ```
 
 > [!WARNING]
-> Never use the same token for both `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN`. Also remember that GitHub Actions secrets are write-only—the tool creates blank encrypted placeholders (`""`) at the target so secret values are never printed in logs (DEC-004).
+> Never use the same token for both `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN`. Also remember that GitHub Actions secrets are write-only—the tool creates blank encrypted placeholders (`""`) at the target so secret values are never printed in logs.
 
 ---
 
@@ -158,6 +158,17 @@ gh gei reclaim-mannequin \
   --github-target-org "target-emu-org" \
   --csv ./mannequin-mapping.csv \
   --skip-invitation
+```
+
+If you clicked any GitHub App install or create links in `POST-CARE-CHECKLIST.md` after the wave finished, run `apps-inventory` by itself to attach those apps to their specific repositories:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f source_org="source-enterprise-org" \
+  -f target_org="target-emu-org" \
+  -f repositories="org_only" \
+  -f modules="apps-inventory" \
+  -f dry_run="false"
 ```
 
 ---

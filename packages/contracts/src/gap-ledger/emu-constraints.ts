@@ -13,7 +13,7 @@ export const EMU_IDP_GROUP_SYNC_CONSTRAINT: EmuGovernanceConstraint = {
   description:
     'Team membership in EMU is synced from IdP groups; direct API assignment of members to teams is disallowed or overridden.',
   mitigation:
-    'Decouple team structure migration from user membership; map IdP groups to migrated team slugs post-cutover (DEC-005).',
+    'Decouple team structure migration from user membership; map IdP groups to migrated team slugs post-cutover.',
 };
 
 export const EMU_MANNEQUIN_FAST_TRACK_CONSTRAINT: EmuGovernanceConstraint = {
@@ -21,7 +21,7 @@ export const EMU_MANNEQUIN_FAST_TRACK_CONSTRAINT: EmuGovernanceConstraint = {
   description:
     'GEI assigns unmapped authors to mannequins; invitation-based reclamation emails are not supported for managed accounts.',
   mitigation:
-    'Reclaim mannequins with --skip-invitation via GraphQL mutation directly attributing activity to EMU accounts (DEC-013).',
+    'Reclaim mannequins with --skip-invitation via GraphQL mutation directly attributing activity to EMU accounts.',
 };
 
 export const EMU_VISIBILITY_POLICY_CONSTRAINT: EmuGovernanceConstraint = {
@@ -29,7 +29,7 @@ export const EMU_VISIBILITY_POLICY_CONSTRAINT: EmuGovernanceConstraint = {
   description:
     'EMU enterprise policy prohibits public repositories. GEI creates repositories as private by default.',
   mitigation:
-    'Constrain post-migration visibility reconciliation to internal or private; never attempt to promote to public without enterprise policy waiver (DEC-015).',
+    'Constrain post-migration visibility reconciliation to internal or private; never attempt to promote to public without enterprise policy waiver.',
 };
 
 export const EMU_OUTSIDE_COLLABORATOR_CONSTRAINT: EmuGovernanceConstraint = {
@@ -45,5 +45,5 @@ export const EMU_RUNNER_NETWORK_CONSTRAINT: EmuGovernanceConstraint = {
   description:
     'Enterprise policies often restrict GitHub Actions runners to private network subnets or require Azure Private Networking.',
   mitigation:
-    'Configure self-hosted runner groups with designated VNet routing and persistent disk storage (DEC-007).',
+    'Configure self-hosted runner groups with designated VNet routing and persistent disk storage.',
 };

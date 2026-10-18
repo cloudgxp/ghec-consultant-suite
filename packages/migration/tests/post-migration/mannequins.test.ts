@@ -127,7 +127,8 @@ describe('Mannequin Reclamation & Attribution Engine (Task 027)', () => {
       assert.equal(report.unmappedCount, 0);
       assert.equal(report.records[0]?.targetUser, 'monalisa_acme');
       assert.equal(report.records[1]?.targetUser, 'the-real-octocat_acme');
-      assert.match(report.limitationsNotice, /DEC-013/);
+      assert.match(report.limitationsNotice, /primary IdP-linked email/);
+      assert.doesNotMatch(report.limitationsNotice, /DEC-/);
 
       // Verify command had --skip-invitation
       assert.equal(executedCommands.length, 1);
@@ -370,6 +371,63 @@ describe('Mannequin Reclamation & Attribution Engine (Task 027)', () => {
         verifyResult.discrepancies[0]!.message,
         /could not be mapped/,
       );
+    });
+
+    it('emits explanatory skip warning when 0 mannequins exist and tailors authorship notice to targetType ghec vs emu', async () => {
+      const mod = new MannequinReclamationEngine({
+        targetOrg: 'dest-ghec-org',
+        isEmu: false,
+      });
+      const baseCtx: MigrationContext = {
+        runId: 'test-run-zero-mannequins',
+        scope: {
+          level: 'organization',
+          sourceOrg: 'src-org',
+          targetOrg: 'dest-ghec-org',
+          targetType: 'ghec',
+        },
+        sourceClient: createMockReadAdapter(),
+        targetClient: createMockReadAdapter(),
+        signal: new AbortController().signal,
+        dryRun: false,
+        continueOnError: true,
+        logger: {
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+          debug: () => {},
+        },
+      };
+
+      const ghecPlan = await mod.plan(baseCtx, { records: [] });
+      assert.equal(ghecPlan.operations.length, 0);
+      assert.equal(ghecPlan.warnings.length, 2);
+      assert.match(
+        ghecPlan.warnings[0]!,
+        /Skipped mannequin reclamation because 0 unclaimed mannequins were found in "dest-ghec-org"/,
+      );
+      assert.match(ghecPlan.warnings[0]!, /Attribution Invitations/);
+      assert.match(ghecPlan.warnings[1]!, /GitHub Email Settings/);
+      assert.ok(ghecPlan.warnings.every((w) => !/DEC-\d+/i.test(w)));
+
+      const emuCtx: MigrationContext = {
+        ...baseCtx,
+        scope: {
+          ...baseCtx.scope,
+          targetType: 'emu',
+        },
+      };
+      const emuPlan = await mod.plan(emuCtx, { records: [] });
+      assert.equal(emuPlan.warnings.length, 2);
+      assert.match(
+        emuPlan.warnings[0]!,
+        /Skipped mannequin reclamation because 0 unclaimed mannequins were found/,
+      );
+      assert.match(
+        emuPlan.warnings[1]!,
+        /Enterprise Managed Users \(GHEC-EMU\)/,
+      );
+      assert.ok(emuPlan.warnings.every((w) => !/DEC-\d+/i.test(w)));
     });
   });
 });

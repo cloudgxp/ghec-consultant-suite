@@ -53,7 +53,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
     mechanism: 'rest_rehydration',
     geiNativeSupport: 'none',
     droppedAttributes: ['Release binary assets exceeding 10 GiB'],
-    rehydrationStrategy: 'Chunked binary stream upload via REST API (DEC-010).',
+    rehydrationStrategy: 'Chunked binary stream upload via REST API.',
     thresholdLimits:
       'Total release asset size > 10 GiB or repository metadata > 40 GiB.',
   },
@@ -66,7 +66,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
       'LFS binary blobs (only pointer files migrated by GEI)',
     ],
     rehydrationStrategy:
-      'Dual-remote mirror-and-push stream on persistent runner (DEC-011).',
+      'Dual-remote mirror-and-push stream on persistent runner.',
   },
   {
     id: 'classic-branch-protections',
@@ -83,7 +83,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
       'dismissal_restrictions (review dismissal exemptions)',
     ],
     rehydrationStrategy:
-      'In-place PUT reconciliation restoring the 7 dropped rules (DEC-009).',
+      'In-place PUT reconciliation restoring the 7 dropped rules.',
   },
   {
     id: 'repository-rulesets',
@@ -131,7 +131,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
     geiNativeSupport: 'none',
     droppedAttributes: ['Actions secrets'],
     rehydrationStrategy:
-      'Create libsodium sealed empty placeholders ("") or vault hooks (DEC-004).',
+      'Create libsodium sealed empty placeholders ("") or vault hooks.',
   },
   {
     id: 'organization-secrets',
@@ -142,7 +142,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
       'Organization-level secrets and repository access allowlists',
     ],
     rehydrationStrategy:
-      'Create libsodium sealed empty placeholders ("") or vault hooks (DEC-004).',
+      'Create libsodium sealed empty placeholders ("") or vault hooks.',
   },
   {
     id: 'environments',
@@ -165,7 +165,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
       'Webhook secret tokens',
     ],
     rehydrationStrategy:
-      'Match target URL, assign secret from vault/env, and PATCH active: true (DEC-014).',
+      'Match target URL, assign secret from vault/env, and PATCH active: true.',
   },
   {
     id: 'organization-webhooks',
@@ -186,7 +186,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
     geiNativeSupport: 'partial',
     droppedAttributes: ['Repository visibility defaults to private'],
     rehydrationStrategy:
-      'Reconcile settings and restore internal/public visibility per policy (DEC-015).',
+      'Reconcile settings and restore internal/public visibility per policy.',
   },
   {
     id: 'organization-settings',
@@ -209,7 +209,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
       'User memberships',
     ],
     rehydrationStrategy:
-      'Recreate team slugs, parent-child DAG, and repository permissions (DEC-005).',
+      'Recreate team slugs, parent-child DAG, and repository permissions.',
   },
   {
     id: 'custom-repository-roles',
@@ -294,7 +294,7 @@ export const BOUNDARY_PROFILES: readonly BoundaryProfile[] = [
     geiNativeSupport: 'partial',
     droppedAttributes: ['Automatic user identity association'],
     rehydrationStrategy:
-      'Reclaim mannequins with --skip-invitation via GraphQL in GHEC-EMU (DEC-013).',
+      'Reclaim mannequins with --skip-invitation via GraphQL in GHEC-EMU.',
   },
   {
     id: 'actions-policies',

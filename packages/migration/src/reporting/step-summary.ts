@@ -154,7 +154,7 @@ export function formatStepSummaryMarkdown(
     };
 
     addModuleRow('Repository Variables', rh.variables);
-    addModuleRow('Repository Secrets (DEC-004)', rh.secrets);
+    addModuleRow('Repository Secrets', rh.secrets);
     addModuleRow('Deployment Environments', rh.environments);
     addModuleRow('Repository Rulesets', rh.rulesets);
     addModuleRow('Branch Protection Rules', rh.branchProtection);
@@ -162,7 +162,7 @@ export function formatStepSummaryMarkdown(
     addModuleRow('Repository Settings', rh.repoSettings);
     addModuleRow('Organization Settings', rh.orgSettings);
     addModuleRow('Organization Variables', rh.orgVariables);
-    addModuleRow('Organization Secrets (DEC-004)', rh.orgSecrets);
+    addModuleRow('Organization Secrets', rh.orgSecrets);
     addModuleRow('Organization Rulesets', rh.orgRulesets);
     addModuleRow('Custom Repository Roles', rh.customRoles);
     addModuleRow('Organization Custom Properties', rh.orgCustomProperties);
