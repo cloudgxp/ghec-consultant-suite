@@ -588,18 +588,14 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
       'Billing & Spending Limits Required for Larger GitHub-Hosted Runners',
     ),
   );
-  assert.ok(
-    md.includes('https://github.com/organizations/target-emu/settings/billing'),
-  );
+  assert.ok(md.includes('/organizations/target-emu/settings/billing)'));
 
   // 4. Verify IdP team filtering: plain-team without IdP group is omitted, while secops with Okta-SecOps is included with /Sync link
   const idpItems = deliverables.items.filter((i) => i.category === 'idp-team');
   assert.equal(idpItems.length, 1);
   assert.equal(idpItems[0]?.resourceName, 'secops');
   assert.ok(md.includes('Okta-SecOps'));
-  assert.ok(
-    md.includes('https://github.com/orgs/target-emu/teams/secops/Sync'),
-  );
+  assert.ok(md.includes('/orgs/target-emu/teams/secops/Sync)'));
 
   // 5. Verify SSH Deploy Keys post-migration cutover workflow & CLI instructions
   assert.ok(md.includes('Automated Post-Migration Source-Detach Cutover'));

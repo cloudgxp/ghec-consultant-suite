@@ -866,17 +866,42 @@ function extractIdpGroupFromNotes(
   notes?: string | undefined,
 ): string | undefined {
   if (!notes) return undefined;
-  const bracketMatch = /\[IdP Group:\s*([^\]]+)\]/i.exec(notes);
-  if (bracketMatch?.[1]) {
-    return bracketMatch[1].trim();
+  const lower = notes.toLowerCase();
+  const bracketPrefix = '[idp group:';
+  const bracketIdx = lower.indexOf(bracketPrefix);
+  if (bracketIdx !== -1) {
+    const start = bracketIdx + bracketPrefix.length;
+    const end = notes.indexOf(']', start);
+    if (end !== -1) {
+      const val = notes.slice(start, end).trim();
+      if (val) return val;
+    }
   }
-  const bindMatch = /to IdP group(?:s)?\s+(.+?)\s+on\s+/i.exec(notes);
-  if (bindMatch?.[1]) {
-    return bindMatch[1].trim();
-  }
-  const colonBindMatch = /to IdP group(?:\(s\)|s)?:\s*([^\n.]+)/i.exec(notes);
-  if (colonBindMatch?.[1]) {
-    return colonBindMatch[1].trim();
+  const bindPrefix = 'to idp group';
+  const bindIdx = lower.indexOf(bindPrefix);
+  if (bindIdx !== -1) {
+    let rest = notes.slice(bindIdx + bindPrefix.length);
+    const restLower = rest.toLowerCase();
+    if (restLower.startsWith('(s)')) {
+      rest = rest.slice(3);
+    } else if (restLower.startsWith('s')) {
+      rest = rest.slice(1);
+    }
+    if (rest.startsWith(':')) {
+      const afterColon = rest.slice(1);
+      const newlineIdx = afterColon.indexOf('\n');
+      const dotIdx = afterColon.indexOf('.');
+      let endIdx = afterColon.length;
+      if (newlineIdx !== -1 && newlineIdx < endIdx) endIdx = newlineIdx;
+      if (dotIdx !== -1 && dotIdx < endIdx) endIdx = dotIdx;
+      const val = afterColon.slice(0, endIdx).trim();
+      if (val) return val;
+    }
+    const onIdx = rest.toLowerCase().indexOf(' on ');
+    if (onIdx !== -1) {
+      const val = rest.slice(0, onIdx).trim();
+      if (val) return val;
+    }
   }
   return undefined;
 }
@@ -917,11 +942,20 @@ function buildActionInstruction(params: {
         ? `Enter webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}/${targetRepo}.`
         : `Enter organization webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}.`;
     case 'github-app': {
-      const selectedMatch = notes
-        ? /\(Selected repositories:\s*([^)]+)\)/i.exec(notes)
-        : null;
-      const selectedSuffix = selectedMatch?.[1]
-        ? ` Scope installation to selected repositories: ${selectedMatch[1].trim()}.`
+      let selectedRepos = '';
+      if (notes) {
+        const selPrefix = '(selected repositories:';
+        const selIdx = notes.toLowerCase().indexOf(selPrefix);
+        if (selIdx !== -1) {
+          const start = selIdx + selPrefix.length;
+          const end = notes.indexOf(')', start);
+          if (end !== -1) {
+            selectedRepos = notes.slice(start, end).trim();
+          }
+        }
+      }
+      const selectedSuffix = selectedRepos
+        ? ` Scope installation to selected repositories: ${selectedRepos}.`
         : '';
       return subDomain === 'custom_private'
         ? `Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the Custom Recreate Link or App Manifest, then install on target repositories.${selectedSuffix}`
