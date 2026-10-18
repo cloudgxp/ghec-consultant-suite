@@ -23,7 +23,7 @@ Run in a closed loop: diagnose any workflow, module, strategy resolution, or rep
 ## 2. Dependencies & Prerequisites
 
 - [x] Upstream tasks completed (`TASK-068`, `TASK-069`, `TASK-070`)
-- [ ] Target organization `demogxp-mig6` accessible and verified clean-slate ready for migration from `demogxp`
+- [x] Target organization `demogxp-mig6` accessible and verified clean-slate ready for migration from `demogxp`
 
 ## 3. Scope of Changes
 
@@ -40,7 +40,7 @@ Expected files or directories to inspect/modify if issues arise during live exec
 
 ## 4. Implementation Checklist
 
-- [ ] **Phase 1: Prepare & Trigger Scope Generation via GitHub Actions (`generate-scope.yml`)**
+- [x] **Phase 1: Prepare & Trigger Scope Generation via GitHub Actions (`generate-scope.yml`)**
   - Ensure all pending code changes (including `TASK-070`) are verified via `npm run check`, committed, and pushed to `main`.
   - Verify `demogxp-mig6` target organization is in a clean state.
   - Trigger `generate-scope.yml` for `source_org="demogxp"` and `target_org="demogxp-mig6"` (`target_type="ghec"`, `scope_type="all_repositories"`, `source_visibility="all"`, `include_org_resources="true"`, `org_items_mode="all"`).

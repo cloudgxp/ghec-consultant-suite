@@ -494,8 +494,12 @@ jobs:
           node --input-type=module -e '
             import { assertScratchDiskSpace } from "./packages/migration/dist/index.js";
             const estimatedBytes = ${{ matrix.estimatedScratchBytes }} || 45 * 1024 * 1024 * 1024;
-            const check = assertScratchDiskSpace(process.cwd(), estimatedBytes, 1.5);
-            console.log(`Scratch disk check passed: ${(check.freeBytes / 1024**3).toFixed(2)} GiB available (required: ${(check.requiredBytes / 1024**3).toFixed(2)} GiB).`);
+            const mirrorPushMode = "${{ inputs.mirror_push_mode || 'fast-snapshot' }}";
+            const effectiveBytes = mirrorPushMode === "full-history"
+              ? estimatedBytes
+              : Math.min(estimatedBytes, 30 * 1024 * 1024 * 1024);
+            const check = assertScratchDiskSpace(process.cwd(), effectiveBytes, 1.0);
+            console.log(`Scratch disk check passed (mode=${mirrorPushMode}): ${(check.freeBytes / 1024**3).toFixed(2)} GiB available (required: ${(check.requiredBytes / 1024**3).toFixed(2)} GiB).`);
           '
 
       - name: Execute Cohort Migration & Transfer Strategies
@@ -905,6 +909,11 @@ jobs:
           if [ -f ./scans/post-cohort-reconcile-report.json ]; then
             EXEC_REPORTS="${EXEC_REPORTS},./scans/post-cohort-reconcile-report.json"
           fi
+          for REM_EXEC in $(ls -1 ./scans/remediation-execution-*.json 2>/dev/null | sort -V || true); do
+            if [ -f "$REM_EXEC" ]; then
+              EXEC_REPORTS="${EXEC_REPORTS},${REM_EXEC}"
+            fi
+          done
           if [ -f ./scans/migration-execution.json ]; then
             EXEC_REPORTS="${EXEC_REPORTS},./scans/migration-execution.json"
           fi

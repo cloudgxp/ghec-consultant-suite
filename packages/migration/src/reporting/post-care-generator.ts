@@ -499,6 +499,15 @@ export function resolveTargetSettingsLinks(params: {
 
   // 9. Teams & EMU IdP Sync
   if (modLower === 'teams' || typeLower.startsWith('team')) {
+    if (typeLower === 'org-permission') {
+      return {
+        settingsUrl: `https://github.com/organizations/${encOrg}/settings/member_privileges`,
+        settingsLinkLabel: 'Configure Member Privileges ↗',
+        cliCommand: `gh api --method PATCH /orgs/${targetOrg} -f default_repository_permission=read`,
+        subDomain: 'org-permission',
+        cleanResourceName: resourceName,
+      };
+    }
     const teamSlug = resourceName.split(':')[0] ?? resourceName;
     const encTeam = encodeURIComponent(
       teamSlug.toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
