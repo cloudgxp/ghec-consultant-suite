@@ -36,7 +36,7 @@ export const collector: Collector = {
     const partialDomains = new Set<string>();
 
     const append = (
-      domain: 'actions' | 'dependabot' | 'codespaces',
+      domain: 'actions' | 'dependabot' | 'codespaces' | 'copilot',
       items: readonly ConfigurationItem[],
       configurationKind: 'secret' | 'variable',
       level: 'organization' | 'repository',
@@ -88,13 +88,14 @@ export const collector: Collector = {
       }
     };
     const collectScope = async (
-      domain: 'actions' | 'dependabot' | 'codespaces',
+      domain: 'actions' | 'dependabot' | 'codespaces' | 'copilot',
       kind: 'secret' | 'variable',
       level: 'organization' | 'repository',
       repository: Extract<Entity, { kind: 'repository' }> | null,
     ) => {
       const suffix = kind === 'secret' ? 'secrets' : 'variables';
-      const operation = `rest.${domain}.list-${level === 'organization' ? 'org' : 'repo'}-${suffix}`;
+      const apiDomain = domain === 'copilot' ? 'agents' : domain;
+      const operation = `rest.${apiDomain}.list-${level === 'organization' ? 'org' : 'repo'}-${suffix}`;
       try {
         const result = await context.adapter.fetchAll<ConfigurationItem>(
           {
@@ -103,8 +104,8 @@ export const collector: Collector = {
             verifiedReadOnly: true,
             path:
               level === 'organization'
-                ? `/orgs/{org}/${domain}/${suffix}`
-                : `/repos/{owner}/{repo}/${domain}/${suffix}`,
+                ? `/orgs/{org}/${apiDomain}/${suffix}`
+                : `/repos/{owner}/{repo}/${apiDomain}/${suffix}`,
             pathParams:
               level === 'organization'
                 ? { org: context.organizationId }
@@ -139,6 +140,8 @@ export const collector: Collector = {
     await collectScope('actions', 'variable', 'organization', null);
     await collectScope('dependabot', 'secret', 'organization', null);
     await collectScope('codespaces', 'secret', 'organization', null);
+    await collectScope('copilot', 'secret', 'organization', null);
+    await collectScope('copilot', 'variable', 'organization', null);
     for (const repo of context.sharedState?.repositories ?? []) {
       if (context.signal.aborted)
         throw context.signal.reason ?? new Error('Aborted');
@@ -147,6 +150,8 @@ export const collector: Collector = {
       await collectScope('actions', 'variable', 'repository', repo);
       await collectScope('dependabot', 'secret', 'repository', repo);
       await collectScope('codespaces', 'secret', 'repository', repo);
+      await collectScope('copilot', 'secret', 'repository', repo);
+      await collectScope('copilot', 'variable', 'repository', repo);
     }
 
     const domainCoverage = [
@@ -180,8 +185,10 @@ export const collector: Collector = {
       ],
       [
         'copilot',
-        'unsupported',
-        'No verified agent secret API and permission model is enabled',
+        partialDomains.has('copilot') ? 'partial' : 'complete',
+        partialDomains.has('copilot')
+          ? 'One or more Copilot agent scopes were inaccessible'
+          : 'Copilot agent metadata collection completed',
       ],
     ] as const;
     for (const [domain, state, reason] of domainCoverage)

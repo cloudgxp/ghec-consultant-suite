@@ -21,6 +21,7 @@ import type {
 } from '../../core/types.js';
 import type {
   OrganizationVariable,
+  OrgVariableDomain,
   OrgVariablesData,
   OrgVariablesModuleOptions,
   OrganizationVisibility,
@@ -29,7 +30,8 @@ import type {
   RepositoryIdMap,
 } from './types.js';
 
-const variablesPath = '/orgs/{org}/actions/variables';
+const variablesPathFor = (domain: OrgVariableDomain): string =>
+  `/orgs/{org}/${domain}/variables`;
 
 function isVisibility(value: unknown): value is OrganizationVisibility {
   return value === 'all' || value === 'private' || value === 'selected';
@@ -40,8 +42,11 @@ function variableFromOperation(
 ): OrganizationVariable | undefined {
   const source = operation.sourceState as
     Partial<OrganizationVariable> | undefined;
+  const isAgents =
+    source?.domain === 'agents' || operation.id.includes(':agents:');
   return source?.name && isVisibility(source.visibility)
     ? {
+        ...(isAgents ? { domain: 'agents' as const } : {}),
         name: source.name,
         value: source.value ?? '',
         visibility: source.visibility,
@@ -73,7 +78,7 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
           id: 'rest.actions.listOrgVariables',
           transport: 'rest',
           verifiedReadOnly: true,
-          path: variablesPath,
+          path: variablesPathFor('actions'),
           pathParams: { org: ctx.scope.sourceOrg },
         },
         ctx.signal,
@@ -95,11 +100,66 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
                 ctx.scope.sourceOrg,
                 variable.name,
                 ctx.signal,
+                'actions',
               )
             : [],
         updatedAt: variable.updated_at,
       });
     }
+
+    try {
+      const agentRes =
+        await ctx.sourceClient.readSingle<RawOrganizationVariablesResponse>(
+          {
+            id: 'rest.agents.listOrgVariables',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: variablesPathFor('agents'),
+            pathParams: { org: ctx.scope.sourceOrg },
+          },
+          ctx.signal,
+        );
+      if (agentRes.status === 200) {
+        for (const variable of agentRes.data?.variables ?? []) {
+          if (!variable.name) continue;
+          const visibility = isVisibility(variable.visibility)
+            ? variable.visibility
+            : 'all';
+          variables.push({
+            domain: 'agents',
+            name: variable.name,
+            value: variable.value ?? '',
+            visibility,
+            selectedRepositoryIds:
+              visibility === 'selected'
+                ? await this.listSelected(
+                    ctx.sourceClient,
+                    ctx.scope.sourceOrg,
+                    variable.name,
+                    ctx.signal,
+                    'agents',
+                  )
+                : [],
+            updatedAt: variable.updated_at,
+          });
+        }
+      } else {
+        const fallbackVars = await this.discoverOrgAgentVariablesViaRepos(
+          ctx.sourceClient,
+          ctx.scope.sourceOrg,
+          ctx.signal,
+        );
+        variables.push(...fallbackVars);
+      }
+    } catch {
+      const fallbackVars = await this.discoverOrgAgentVariablesViaRepos(
+        ctx.sourceClient,
+        ctx.scope.sourceOrg,
+        ctx.signal,
+      );
+      variables.push(...fallbackVars);
+    }
+
     return { organization: ctx.scope.sourceOrg, variables };
   }
 
@@ -108,9 +168,15 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
     source: OrgVariablesData,
   ): Promise<ModulePlan> {
     const warnings: string[] = [];
-    const target = await this.discoverTarget(ctx, ctx.scope.targetOrg);
-    const targetByName = new Map(
-      target.map((variable) => [variable.name, variable]),
+    const hasAgentVars = source.variables.some((v) => v.domain === 'agents');
+    const target = (
+      await this.discoverTargetWithMeta(ctx, ctx.scope.targetOrg, hasAgentVars)
+    ).variables;
+    const targetByKey = new Map(
+      target.map((variable) => [
+        `${variable.domain === 'agents' ? 'agents' : 'actions'}:${variable.name}`,
+        variable,
+      ]),
     );
     const operations: PlannedOperation[] = [];
     const associatedOnly = isAssociatedOnlyOrgMode(ctx);
@@ -131,6 +197,7 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
 
     for (const rawVariable of source.variables) {
       let variable = rawVariable;
+      const domain = variable.domain === 'agents' ? 'agents' : 'actions';
       if (associatedOnly) {
         if (variable.visibility === 'private' && publicOnlyScope) {
           warnings.push(
@@ -158,7 +225,7 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
         }
       }
 
-      const existing = targetByName.get(variable.name);
+      const existing = targetByKey.get(`${domain}:${variable.name}`);
       let desired: OrganizationVariable;
 
       if (
@@ -213,7 +280,10 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
           ? 'noop'
           : 'update';
       operations.push({
-        id: `org-variables:${ctx.scope.targetOrg}:${variable.name}`,
+        id:
+          domain === 'agents'
+            ? `org-variables:${ctx.scope.targetOrg}:agents:${variable.name}`
+            : `org-variables:${ctx.scope.targetOrg}:${variable.name}`,
         resourceType: 'organization-variable',
         resourceName: variable.name,
         operation,
@@ -222,7 +292,9 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
         payload: operation === 'noop' ? undefined : this.payload(desired),
         reason:
           operation === 'create'
-            ? 'Variable is missing on target organization.'
+            ? domain === 'agents'
+              ? 'Agent variable is missing on target organization.'
+              : 'Variable is missing on target organization.'
             : undefined,
       });
     }
@@ -275,15 +347,21 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
         });
         continue;
       }
+      const domain: OrgVariableDomain =
+        (operation.sourceState as { domain?: unknown } | undefined)?.domain ===
+          'agents' || operation.id.includes(':agents:')
+          ? 'agents'
+          : 'actions';
+      const basePath = variablesPathFor(domain);
       try {
         const response = await ctx.targetWriteClient!.mutate(
           {
-            id: `rest.actions.${operation.operation}OrgVariable`,
+            id: `rest.${domain}.${operation.operation}OrgVariable`,
             method: operation.operation === 'create' ? 'POST' : 'PATCH',
             path:
               operation.operation === 'create'
-                ? variablesPath
-                : `${variablesPath}/{name}`,
+                ? basePath
+                : `${basePath}/{name}`,
             pathParams: {
               org: ctx.scope.targetOrg,
               ...(operation.operation === 'update'
@@ -294,6 +372,19 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
           },
           ctx.signal,
         );
+        if (
+          domain === 'agents' &&
+          (response.status === 403 || response.status === 404)
+        ) {
+          results.push({
+            operationId: operation.id,
+            status: 'skipped',
+            httpStatus: response.status,
+            error: `Organization-level Copilot agent variables API returned HTTP ${response.status} on ${ctx.scope.targetOrg}; configure "${operation.resourceName}" manually in Organization Settings -> Secrets and variables -> Agents.`,
+            completedAt: new Date().toISOString(),
+          });
+          continue;
+        }
         results.push({
           operationId: operation.id,
           status:
@@ -334,8 +425,22 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
     ctx: MigrationContext,
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
-    const target = await this.discoverTarget(ctx, ctx.scope.targetOrg);
-    const byName = new Map(target.map((variable) => [variable.name, variable]));
+    const hasAgentOps = plan.operations.some(
+      (op) =>
+        (op.sourceState as { domain?: unknown } | undefined)?.domain ===
+          'agents' || op.id.includes(':agents:'),
+    );
+    const targetInfo = await this.discoverTargetWithMeta(
+      ctx,
+      ctx.scope.targetOrg,
+      hasAgentOps,
+    );
+    const byKey = new Map(
+      targetInfo.variables.map((variable) => [
+        `${variable.domain === 'agents' ? 'agents' : 'actions'}:${variable.name}`,
+        variable,
+      ]),
+    );
     const discrepancies: VerificationDiscrepancy[] = [];
     for (const operation of plan.operations) {
       const expected = variableFromOperation(operation);
@@ -344,7 +449,11 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
         !['create', 'update', 'noop'].includes(operation.operation)
       )
         continue;
-      const actual = byName.get(expected.name);
+      const domain = expected.domain === 'agents' ? 'agents' : 'actions';
+      const actual = byKey.get(`${domain}:${expected.name}`);
+      if (domain === 'agents' && !actual && targetInfo.agentsApiUnavailable) {
+        continue;
+      }
       if (
         !actual ||
         actual.value !== expected.value ||
@@ -366,17 +475,21 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
     };
   }
 
-  private async discoverTarget(
+  private async discoverTargetWithMeta(
     ctx: MigrationContext,
     organization: string,
-  ): Promise<OrganizationVariable[]> {
+    includeAgents = false,
+  ): Promise<{
+    variables: OrganizationVariable[];
+    agentsApiUnavailable: boolean;
+  }> {
     const response =
       await ctx.targetClient.readSingle<RawOrganizationVariablesResponse>(
         {
           id: 'rest.actions.listOrgVariables',
           transport: 'rest',
           verifiedReadOnly: true,
-          path: variablesPath,
+          path: variablesPathFor('actions'),
           pathParams: { org: organization },
         },
         ctx.signal,
@@ -398,12 +511,145 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
                 organization,
                 variable.name,
                 ctx.signal,
+                'actions',
               )
             : [],
         updatedAt: variable.updated_at,
       });
     }
-    return variables;
+
+    let agentsApiUnavailable = false;
+    if (includeAgents) {
+      try {
+        const agentRes =
+          await ctx.targetClient.readSingle<RawOrganizationVariablesResponse>(
+            {
+              id: 'rest.agents.listOrgVariables',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: variablesPathFor('agents'),
+              pathParams: { org: organization },
+            },
+            ctx.signal,
+          );
+        if (agentRes.status === 200) {
+          for (const variable of agentRes.data?.variables ?? []) {
+            if (!variable.name) continue;
+            const visibility = isVisibility(variable.visibility)
+              ? variable.visibility
+              : 'all';
+            variables.push({
+              domain: 'agents',
+              name: variable.name,
+              value: variable.value ?? '',
+              visibility,
+              selectedRepositoryIds:
+                visibility === 'selected'
+                  ? await this.listSelected(
+                      ctx.targetClient,
+                      organization,
+                      variable.name,
+                      ctx.signal,
+                      'agents',
+                    )
+                  : [],
+              updatedAt: variable.updated_at,
+            });
+          }
+        } else {
+          agentsApiUnavailable = true;
+          const fallbackVars = await this.discoverOrgAgentVariablesViaRepos(
+            ctx.targetClient,
+            organization,
+            ctx.signal,
+          );
+          variables.push(...fallbackVars);
+        }
+      } catch {
+        agentsApiUnavailable = true;
+        const fallbackVars = await this.discoverOrgAgentVariablesViaRepos(
+          ctx.targetClient,
+          organization,
+          ctx.signal,
+        );
+        variables.push(...fallbackVars);
+      }
+    }
+
+    return { variables, agentsApiUnavailable };
+  }
+
+  private async discoverOrgAgentVariablesViaRepos(
+    client: MigrationContext['sourceClient'],
+    org: string,
+    signal: AbortSignal,
+  ): Promise<OrganizationVariable[]> {
+    try {
+      const reposRes = await client.fetchAll<{
+        id?: number;
+        name?: string;
+        private?: boolean;
+        visibility?: string;
+        archived?: boolean;
+      }>(
+        {
+          id: 'rest.repos.listForOrg',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/orgs/{org}/repos',
+          pathParams: { org },
+          queryParams: { per_page: 100 },
+        },
+        signal,
+      );
+      const repos = (reposRes?.items ?? []).filter(
+        (r) => typeof r.name === 'string' && !r.archived,
+      );
+      const publicRepo = repos.find(
+        (r) => r.private === false || r.visibility === 'public',
+      );
+      const privateRepo = repos.find(
+        (r) => r.private === true || r.visibility === 'private',
+      );
+      const publicNames = new Set<string>();
+      const byName = new Map<string, OrganizationVariable>();
+
+      for (const candidate of [publicRepo, privateRepo]) {
+        if (!candidate?.name) continue;
+        const res = await client.readSingle<RawOrganizationVariablesResponse>(
+          {
+            id: 'rest.agents.listRepoOrgVariables',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/agents/organization-variables',
+            pathParams: { owner: org, repo: candidate.name },
+          },
+          signal,
+        );
+        if (res.status !== 200) continue;
+        const isPub = candidate === publicRepo;
+        for (const item of res.data?.variables ?? []) {
+          if (!item.name) continue;
+          if (isPub) publicNames.add(item.name);
+          if (!byName.has(item.name)) {
+            byName.set(item.name, {
+              domain: 'agents',
+              name: item.name,
+              value: item.value ?? '',
+              visibility: isPub ? 'all' : 'private',
+              selectedRepositoryIds: [],
+              updatedAt: item.updated_at,
+            });
+          }
+        }
+      }
+      return Array.from(byName.values()).map((variable) => ({
+        ...variable,
+        visibility: publicNames.has(variable.name) ? 'all' : 'private',
+      }));
+    } catch {
+      return [];
+    }
   }
 
   private async listSelected(
@@ -411,13 +657,14 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
     organization: string,
     name: string,
     signal: AbortSignal,
+    domain: OrgVariableDomain = 'actions',
   ): Promise<string[]> {
     const response = await client.readSingle<RawSelectedRepositoriesResponse>(
       {
-        id: 'rest.actions.listSelectedOrgVariableRepositories',
+        id: `rest.${domain}.listSelectedOrgVariableRepositories`,
         transport: 'rest',
         verifiedReadOnly: true,
-        path: `${variablesPath}/{name}/repositories`,
+        path: `${variablesPathFor(domain)}/{name}/repositories`,
         pathParams: { org: organization, name },
       },
       signal,
@@ -544,11 +791,14 @@ export class OrgVariablesMigrationModule implements MigrationModule<OrgVariables
       variables: bundle!.entities.flatMap((entity) =>
         entity.kind === 'configuration-metadata' &&
         entity.organizationId === org.id &&
-        entity.domain === 'actions' &&
+        (entity.domain === 'actions' || entity.domain === 'copilot') &&
         entity.configurationKind === 'variable' &&
         entity.level === 'organization'
           ? [
               {
+                ...(entity.domain === 'copilot'
+                  ? { domain: 'agents' as const }
+                  : {}),
                 name: entity.name,
                 value: '',
                 visibility: isVisibility(

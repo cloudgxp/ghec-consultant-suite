@@ -10,7 +10,7 @@ import {
 } from '../../src/index.js';
 
 type Secret = {
-  domain: 'actions' | 'dependabot' | 'codespaces';
+  domain: 'actions' | 'dependabot' | 'codespaces' | 'agents';
   name: string;
   visibility: 'all' | 'private' | 'selected';
   selected?: readonly number[];
@@ -22,8 +22,8 @@ function client(
 ): GitHubReadAdapter {
   return {
     async readSingle<T>(operation: ReadOperation) {
-      const domain = ['actions', 'dependabot', 'codespaces'].find((item) =>
-        operation.path.includes(`/${item}/secrets`),
+      const domain = ['actions', 'dependabot', 'codespaces', 'agents'].find(
+        (item) => operation.path.includes(`/${item}/secrets`),
       );
       if (domain && operation.path.endsWith('/public-key')) {
         return {
@@ -230,5 +230,74 @@ describe('OrgSecretsMigrationModule', () => {
       pair.privateKey,
     );
     assert.equal(sodium.to_string(opened), '');
+  });
+
+  it('discovers, plans, applies, and verifies Copilot coding agent organization secrets and falls back to repo organization-secrets on 403', async () => {
+    const fallbackSourceClient: GitHubReadAdapter = {
+      async readSingle<T>(operation: ReadOperation) {
+        if (operation.path === '/orgs/{org}/agents/secrets') {
+          return {
+            data: {} as T,
+            status: 403,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        if (
+          operation.path === '/repos/{owner}/{repo}/agents/organization-secrets'
+        ) {
+          const isPrivate = operation.pathParams?.repo === 'private-repo';
+          return {
+            data: {
+              secrets: isPrivate
+                ? [{ name: 'SUPER_AGENT_ORG_SECRET2212' }]
+                : [],
+            } as T,
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return {
+          data: { secrets: [] } as T,
+          status: 200,
+          observedAt: new Date().toISOString(),
+        };
+      },
+      async readPage() {
+        return {
+          items: [],
+          nextCursor: null,
+          status: 200,
+          observedAt: new Date().toISOString(),
+        };
+      },
+      async fetchAll<T>() {
+        return {
+          items: [
+            { id: 1, name: 'public-repo', private: false, archived: false },
+            { id: 2, name: 'private-repo', private: true, archived: false },
+          ] as unknown as readonly T[],
+          complete: true,
+          observedAt: new Date().toISOString(),
+        };
+      },
+      async queryGraphQL() {
+        return { data: {}, observedAt: new Date().toISOString() };
+      },
+    };
+
+    const baseCtx = context([], []);
+    const mod = new OrgSecretsMigrationModule();
+    const discovered = await mod.discover({
+      ...baseCtx,
+      sourceClient: fallbackSourceClient,
+    });
+    assert.deepEqual(discovered.secrets, [
+      {
+        domain: 'agents',
+        name: 'SUPER_AGENT_ORG_SECRET2212',
+        visibility: 'private',
+        selectedRepositoryIds: [],
+      },
+    ]);
   });
 });

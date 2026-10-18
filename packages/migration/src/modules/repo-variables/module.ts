@@ -51,7 +51,7 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
           const varEntities = bundle.entities.filter(
             (e) =>
               e.kind === 'configuration-metadata' &&
-              e.domain === 'actions' &&
+              (e.domain === 'actions' || e.domain === 'copilot') &&
               e.configurationKind === 'variable' &&
               e.level === 'repository' &&
               e.repositoryId === repoEntity.id,
@@ -60,6 +60,9 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
           const variables: RepoVariable[] = varEntities.map((e) => {
             if (e.kind === 'configuration-metadata') {
               return {
+                ...(e.domain === 'copilot'
+                  ? { domain: 'agents' as const }
+                  : {}),
                 name: e.name,
                 value: '', // Cached metadata redacts raw values
                 createdAt: e.createdAt ?? undefined,
@@ -101,6 +104,35 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
         }
       }
 
+      try {
+        const agentRes =
+          await ctx.sourceClient.readSingle<RawGitHubVariablesResponse>(
+            {
+              id: 'rest.agents.listRepoVariables',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}/agents/variables',
+              pathParams: { owner: ctx.scope.sourceOrg, repo },
+            },
+            ctx.signal,
+          );
+        if (agentRes.status === 200 && agentRes.data?.variables) {
+          for (const v of agentRes.data.variables) {
+            if (v.name && v.value !== undefined) {
+              variables.push({
+                domain: 'agents',
+                name: v.name,
+                value: v.value,
+                createdAt: v.created_at ?? undefined,
+                updatedAt: v.updated_at ?? undefined,
+              });
+            }
+          }
+        }
+      } catch {
+        // Ignore if Copilot coding agent variables endpoint is unavailable on source repo
+      }
+
       return { repo, variables };
     } catch (err) {
       ctx.logger.error(
@@ -139,7 +171,7 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
       if (res.status === 200 && res.data?.variables) {
         for (const v of res.data.variables) {
           if (v.name && v.value !== undefined) {
-            targetVarMap.set(v.name, {
+            targetVarMap.set(`actions:${v.name}`, {
               name: v.name,
               value: v.value,
               createdAt: v.created_at ?? undefined,
@@ -154,10 +186,47 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
       );
     }
 
+    if (sourceData.variables.some((v) => v.domain === 'agents')) {
+      try {
+        const agentRes =
+          await ctx.targetClient.readSingle<RawGitHubVariablesResponse>(
+            {
+              id: 'rest.agents.listRepoVariables',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}/agents/variables',
+              pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+            },
+            ctx.signal,
+          );
+        if (agentRes.status === 200 && agentRes.data?.variables) {
+          for (const v of agentRes.data.variables) {
+            if (v.name && v.value !== undefined) {
+              targetVarMap.set(`agents:${v.name}`, {
+                domain: 'agents',
+                name: v.name,
+                value: v.value,
+                createdAt: v.created_at ?? undefined,
+                updatedAt: v.updated_at ?? undefined,
+              });
+            }
+          }
+        }
+      } catch {
+        warnings.push(
+          `Could not query target agent variables on ${targetIdentifier}; assuming none exist.`,
+        );
+      }
+    }
+
     // Compare variables
     for (const srcVar of sourceData.variables) {
-      const opId = `repo-variables:${targetRepo}:${srcVar.name}`;
-      const targetVar = targetVarMap.get(srcVar.name);
+      const domain = srcVar.domain === 'agents' ? 'agents' : 'actions';
+      const opId =
+        domain === 'agents'
+          ? `repo-variables:${targetRepo}:agents:${srcVar.name}`
+          : `repo-variables:${targetRepo}:${srcVar.name}`;
+      const targetVar = targetVarMap.get(`${domain}:${srcVar.name}`);
 
       if (!targetVar) {
         operations.push({
@@ -167,7 +236,10 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
           operation: 'create',
           sourceState: srcVar,
           payload: { name: srcVar.name, value: srcVar.value },
-          reason: 'Variable exists in source but is missing in destination.',
+          reason:
+            domain === 'agents'
+              ? 'Agent variable exists in source but is missing in destination.'
+              : 'Variable exists in source but is missing in destination.',
         });
       } else if (targetVar.value !== srcVar.value) {
         operations.push({
@@ -178,7 +250,10 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
           sourceState: srcVar,
           destinationCurrentState: targetVar,
           payload: { value: srcVar.value },
-          reason: 'Variable value in destination differs from source value.',
+          reason:
+            domain === 'agents'
+              ? 'Agent variable value in destination differs from source value.'
+              : 'Variable value in destination differs from source value.',
         });
       } else {
         operations.push({
@@ -252,13 +327,19 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
         continue;
       }
 
+      const domain =
+        (op.sourceState as { domain?: unknown } | undefined)?.domain ===
+          'agents' || op.id.includes(':agents:')
+          ? 'agents'
+          : 'actions';
+
       try {
         if (op.operation === 'create') {
           const res = await ctx.targetWriteClient!.mutate(
             {
-              id: 'rest.actions.createRepoVariable',
+              id: `rest.${domain}.createRepoVariable`,
               method: 'POST',
-              path: '/repos/{owner}/{repo}/actions/variables',
+              path: `/repos/{owner}/{repo}/${domain}/variables`,
               pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
               body: op.payload,
             },
@@ -285,9 +366,9 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
         } else if (op.operation === 'update') {
           const res = await ctx.targetWriteClient!.mutate(
             {
-              id: 'rest.actions.updateRepoVariable',
+              id: `rest.${domain}.updateRepoVariable`,
               method: 'PATCH',
-              path: '/repos/{owner}/{repo}/actions/variables/{name}',
+              path: `/repos/{owner}/{repo}/${domain}/variables/{name}`,
               pathParams: {
                 owner: ctx.scope.targetOrg,
                 repo: targetRepo,
@@ -377,12 +458,44 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
       if (res.status === 200 && res.data?.variables) {
         for (const v of res.data.variables) {
           if (v.name && v.value !== undefined) {
-            targetVarMap.set(v.name, {
+            targetVarMap.set(`actions:${v.name}`, {
               name: v.name,
               value: v.value,
               createdAt: v.created_at ?? undefined,
               updatedAt: v.updated_at ?? undefined,
             });
+          }
+        }
+      }
+
+      const hasAgentOps = plan.operations.some(
+        (op) =>
+          (op.sourceState as { domain?: unknown } | undefined)?.domain ===
+            'agents' || op.id.includes(':agents:'),
+      );
+      if (hasAgentOps) {
+        const agentRes =
+          await ctx.targetClient.readSingle<RawGitHubVariablesResponse>(
+            {
+              id: 'rest.agents.listRepoVariables',
+              transport: 'rest',
+              verifiedReadOnly: true,
+              path: '/repos/{owner}/{repo}/agents/variables',
+              pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+            },
+            ctx.signal,
+          );
+        if (agentRes.status === 200 && agentRes.data?.variables) {
+          for (const v of agentRes.data.variables) {
+            if (v.name && v.value !== undefined) {
+              targetVarMap.set(`agents:${v.name}`, {
+                domain: 'agents',
+                name: v.name,
+                value: v.value,
+                createdAt: v.created_at ?? undefined,
+                updatedAt: v.updated_at ?? undefined,
+              });
+            }
           }
         }
       }
@@ -407,10 +520,15 @@ export class RepoVariablesMigrationModule implements MigrationModule<RepoVariabl
         op.operation === 'update' ||
         op.operation === 'noop'
       ) {
+        const domain =
+          (op.sourceState as { domain?: unknown } | undefined)?.domain ===
+            'agents' || op.id.includes(':agents:')
+            ? 'agents'
+            : 'actions';
         const expected =
           (op.sourceState as RepoVariable | undefined) ??
           (op.payload as { name?: string; value?: string } | undefined);
-        const actual = targetVarMap.get(op.resourceName);
+        const actual = targetVarMap.get(`${domain}:${op.resourceName}`);
 
         if (!actual) {
           discrepancies.push({

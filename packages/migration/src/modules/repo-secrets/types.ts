@@ -2,6 +2,7 @@ export const REPO_SECRET_DOMAINS = [
   'actions',
   'dependabot',
   'codespaces',
+  'agents',
 ] as const;
 
 export type RepoSecretDomain = (typeof REPO_SECRET_DOMAINS)[number];

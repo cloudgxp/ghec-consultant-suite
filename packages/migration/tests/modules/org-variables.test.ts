@@ -9,6 +9,7 @@ import {
 } from '../../src/index.js';
 
 type Variable = {
+  domain?: 'actions' | 'agents';
   name: string;
   value: string;
   visibility: 'all' | 'private' | 'selected';
@@ -18,10 +19,14 @@ type Variable = {
 function readClient(variables: readonly Variable[]): GitHubReadAdapter {
   return {
     async readSingle<T>(operation: ReadOperation) {
+      const domain = operation.path.includes('/agents/') ? 'agents' : 'actions';
+      const filtered = variables.filter(
+        (v) => (v.domain ?? 'actions') === domain,
+      );
       const name = operation.pathParams?.name;
       if (operation.path.endsWith('/repositories') && name) {
         const selected =
-          variables.find((variable) => variable.name === name)?.selected ?? [];
+          filtered.find((variable) => variable.name === name)?.selected ?? [];
         return {
           data: { repositories: selected.map((id) => ({ id })) } as T,
           status: 200,
@@ -30,7 +35,7 @@ function readClient(variables: readonly Variable[]): GitHubReadAdapter {
       }
       return {
         data: {
-          variables: variables.map((variable) => ({
+          variables: filtered.map((variable) => ({
             name: variable.name,
             value: variable.value,
             visibility: variable.visibility,
@@ -218,5 +223,39 @@ describe('OrgVariablesMigrationModule', () => {
       writes.map((write) => write.method),
       ['POST', 'PATCH'],
     );
+  });
+
+  it('discovers, plans, applies, and verifies Copilot coding agent organization variables', async () => {
+    const writes: TargetWriteOperation[] = [];
+    const module = new OrgVariablesMigrationModule();
+    const srcVars: Variable[] = [
+      {
+        domain: 'agents',
+        name: 'SUPER_AGENT_ORG_VARIABLE122',
+        value: 'aefawfwaf',
+        visibility: 'private',
+      },
+    ];
+    const discovered = await module.discover(context(srcVars, [], writes));
+    assert.equal(discovered.variables.length, 1);
+    assert.equal(discovered.variables[0]?.domain, 'agents');
+    assert.equal(discovered.variables[0]?.name, 'SUPER_AGENT_ORG_VARIABLE122');
+
+    const plan = await module.plan(context(srcVars, [], writes), discovered);
+    assert.equal(
+      plan.operations[0]?.id,
+      'org-variables:target-org:agents:SUPER_AGENT_ORG_VARIABLE122',
+    );
+    assert.equal(plan.operations[0]?.operation, 'create');
+
+    const exec = await module.apply(context(srcVars, [], writes), plan);
+    assert.equal(exec.status, 'complete');
+    assert.equal(writes[0]?.path, '/orgs/{org}/agents/variables');
+
+    const verified = await module.verify(
+      context(srcVars, srcVars, writes),
+      plan,
+    );
+    assert.equal(verified.verified, true);
   });
 });

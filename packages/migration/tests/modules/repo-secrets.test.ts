@@ -13,7 +13,7 @@ import {
 type SecretState = Record<string, readonly string[]>;
 
 function secretDomain(path: string): string | undefined {
-  return ['actions', 'dependabot', 'codespaces'].find((domain) =>
+  return ['actions', 'dependabot', 'codespaces', 'agents'].find((domain) =>
     path.includes(`/${domain}/secrets`),
   );
 }
@@ -285,5 +285,61 @@ describe('RepoSecretsMigrationModule', () => {
     );
     assert.equal(vaultCalls, 1);
     assert.equal(opened.length, 1);
+  });
+
+  it('discovers, plans, applies, and verifies Copilot coding agent repository secrets', async () => {
+    await sodium.ready;
+    const keyPair = sodium.crypto_box_keypair();
+    const writes: TargetWriteOperation[] = [];
+    const ctx = context({
+      source: {
+        agents: ['SUPER_AGENT_SECRET1'],
+      },
+      target: {},
+      publicKeys: {
+        agents: {
+          key_id: 'agents-key-1',
+          key: sodium.to_base64(
+            keyPair.publicKey,
+            sodium.base64_variants.ORIGINAL,
+          ),
+        },
+      },
+      writes,
+    });
+
+    const discovered = await module.discover(ctx);
+    assert.deepEqual(discovered.secrets, [
+      {
+        domain: 'agents',
+        name: 'SUPER_AGENT_SECRET1',
+        updatedAt: '2026-10-04T00:00:00Z',
+      },
+    ]);
+
+    const plan = await module.plan(ctx, discovered);
+    assert.equal(plan.operations.length, 1);
+    assert.equal(
+      plan.operations[0]?.id,
+      'repo-secrets:sample-repo:agents:SUPER_AGENT_SECRET1',
+    );
+    assert.equal(plan.operations[0]?.operation, 'create');
+
+    const execution = await module.apply(ctx, plan);
+    assert.equal(execution.status, 'complete');
+    assert.equal(
+      writes[0]?.path,
+      '/repos/{owner}/{repo}/agents/secrets/{secret_name}',
+    );
+    assert.equal(writes[0]?.pathParams?.secret_name, 'SUPER_AGENT_SECRET1');
+
+    const verifyCtx = context({
+      target: {
+        agents: ['SUPER_AGENT_SECRET1'],
+      },
+    });
+    const verification = await module.verify(verifyCtx, plan);
+    assert.equal(verification.verified, true);
+    assert.equal(verification.discrepancies.length, 0);
   });
 });

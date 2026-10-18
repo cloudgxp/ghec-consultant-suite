@@ -382,5 +382,37 @@ describe('RepoVariablesMigrationModule', () => {
       assert.ok(missing);
       assert.equal(missing.actual, 'missing');
     });
+
+    it('plans and applies Copilot coding agent repository variables via /repos/{owner}/{repo}/agents/variables', async () => {
+      const mutations: TargetWriteOperation[] = [];
+      const ctx = createMockContext({ trackMutations: mutations });
+
+      const plan = await module.plan(ctx, {
+        repo: 'sample-repo',
+        variables: [
+          {
+            domain: 'agents',
+            name: 'SUPER_AGENT_VARIBLE_1',
+            value: 'SUPER_AGENT_VARIABLE_2',
+          },
+        ],
+      });
+      assert.equal(plan.operations.length, 1);
+      assert.equal(
+        plan.operations[0]?.id,
+        'repo-variables:sample-repo:agents:SUPER_AGENT_VARIBLE_1',
+      );
+
+      const execRes = await module.apply(ctx, plan);
+      assert.equal(execRes.status, 'complete');
+      assert.equal(
+        mutations[0]?.path,
+        '/repos/{owner}/{repo}/agents/variables',
+      );
+      assert.deepEqual(mutations[0]?.body, {
+        name: 'SUPER_AGENT_VARIBLE_1',
+        value: 'SUPER_AGENT_VARIABLE_2',
+      });
+    });
   });
 });
