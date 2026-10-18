@@ -291,3 +291,99 @@ test('OrgWebhooksMigrationModule executes at organization scope level', async ()
   assert.equal(plan.operations.length, 1);
   assert.equal(plan.operations[0]?.operation, 'noop');
 });
+
+test('creates webhook with active: false when source hook has secretConfigured but no replacement secret is supplied', async () => {
+  const source = [
+    {
+      id: 42,
+      active: true,
+      events: ['push'],
+      config: {
+        url: 'https://secure.example.test/webhook',
+        content_type: 'json',
+        insecure_ssl: '0',
+        secret: '********',
+      },
+    },
+  ];
+  const writes: TargetWriteOperation[] = [];
+  const writer: TargetWriteClient = {
+    async mutate(operation) {
+      writes.push(operation);
+      return { status: 201 };
+    },
+  };
+  let targetHooks: unknown[] = [];
+  const dynamicTargetClient: GitHubReadAdapter = {
+    async readSingle<T>() {
+      return {
+        data: targetHooks as T,
+        status: 200,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async readPage() {
+      return {
+        items: [],
+        nextCursor: null,
+        status: 200,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async fetchAll() {
+      return {
+        items: [],
+        complete: true,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async queryGraphQL() {
+      return { data: {}, observedAt: new Date().toISOString() };
+    },
+  };
+  const ctx: MigrationContext = {
+    runId: 'test-inactive-secret-wh',
+    scope: {
+      level: 'repository',
+      sourceOrg: 'source',
+      targetOrg: 'target',
+      sourceRepo: 'repo',
+      targetRepo: 'repo',
+    },
+    sourceClient: client(source, true),
+    targetClient: dynamicTargetClient,
+    targetWriteClient: writer,
+    signal: new AbortController().signal,
+    dryRun: false,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+  const module = new WebhooksMigrationModule();
+  const plan = await module.plan(ctx, await module.discover(ctx));
+  assert.equal(plan.operations[0]?.operation, 'create');
+  assert.equal(
+    (plan.operations[0]?.payload as { expectedActive?: boolean })
+      .expectedActive,
+    false,
+  );
+  await module.apply(ctx, plan);
+  assert.equal(writes.length, 1);
+  assert.equal((writes[0]?.body as { active?: boolean }).active, false);
+
+  // Target now has the inactive webhook created
+  targetHooks = [
+    {
+      id: 900,
+      active: false,
+      events: ['push'],
+      config: {
+        url: 'https://secure.example.test/webhook',
+        content_type: 'json',
+        insecure_ssl: '0',
+      },
+    },
+  ];
+  const verifyResult = await module.verify(ctx, plan);
+  assert.equal(verifyResult.verified, true);
+  assert.equal(verifyResult.discrepancies.length, 0);
+});

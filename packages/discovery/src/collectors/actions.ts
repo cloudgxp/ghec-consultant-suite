@@ -467,6 +467,89 @@ export const collector: Collector = {
       // Self-hosted runners not accessible or not configured
     }
 
+    // 5. Organization Larger GitHub-Hosted Runners
+    try {
+      const hrRes = await context.adapter.readSingle<{
+        total_count?: number;
+        runners?: Array<{
+          id: number;
+          name: string;
+          runner_group_id?: number;
+          platform?: string;
+          status?: string;
+          size?: string;
+          machine_size_details?: { id?: string };
+          image?: { id?: string; source?: string };
+          image_details?: { id?: string; source?: string } | null;
+        }>;
+      }>(
+        {
+          id: 'rest.actions.list-hosted-runners-for-org',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/orgs/{org}/actions/hosted-runners',
+          pathParams: { org: context.organizationId },
+        },
+        context.signal,
+      );
+
+      const rawHosted = Array.isArray(hrRes.data?.runners)
+        ? hrRes.data.runners
+        : [];
+      const hostedRunners = rawHosted.filter((r) =>
+        Boolean(r.size || r.machine_size_details || r.image || r.image_details),
+      );
+
+      if (hostedRunners.length > 0) {
+        lastObservedAt = hrRes.observedAt;
+        provenanceList.push({
+          source: 'rest',
+          operation: 'rest.actions.list-hosted-runners-for-org',
+          observedAt: hrRes.observedAt,
+          apiVersion: '2026-03-10',
+        });
+      }
+
+      for (const hr of hostedRunners) {
+        const sizeLabel = hr.size ?? hr.machine_size_details?.id;
+        const imgSource = hr.image?.source ?? hr.image_details?.source;
+        const rawStatus = hr.status?.toLowerCase();
+        const status =
+          rawStatus === 'ready' || rawStatus === 'online'
+            ? 'online'
+            : rawStatus === 'shutdown' || rawStatus === 'offline'
+              ? 'offline'
+              : 'unknown';
+
+        entities.push({
+          id: `org:${context.organizationId}:hosted-runner:${hr.id}`,
+          organizationId: context.organizationId,
+          collectorExecutionId: context.executionId,
+          provenance: {
+            source: 'rest',
+            operation: 'rest.actions.list-hosted-runners-for-org',
+            observedAt: hrRes.observedAt,
+            apiVersion: '2026-03-10',
+          },
+          kind: 'action-runner',
+          repositoryId: null,
+          runnerGroupId:
+            typeof hr.runner_group_id === 'number'
+              ? `org:${context.organizationId}:runner-group:${hr.runner_group_id}`
+              : null,
+          name: hr.name,
+          runnerType: 'hosted',
+          operatingSystem: hr.platform ?? null,
+          labels: sizeLabel ? [sizeLabel] : [],
+          status,
+          busy: false,
+          customImage: imgSource === 'custom',
+        });
+      }
+    } catch {
+      // Larger GitHub-hosted runners not accessible or not configured
+    }
+
     const completedAt = new Date().toISOString();
 
     return {

@@ -432,6 +432,9 @@ export function formatResultsReadmeMarkdown(
     lines.push(
       `| [\`exports/migration-operations-full.csv\`](exports/migration-operations-full.csv) | All | CSV | Complete ledger of every organization and repository operation |`,
     );
+    lines.push(
+      `| [**Audit Evidence Bundle Guide (\`evidence/README.md\`)**](evidence/README.md) | Guide | Markdown | Plain-English guide, SHA-256 checksums, and Dashboard instructions for \`evidence/*.json\` |`,
+    );
     lines.push('');
   }
 

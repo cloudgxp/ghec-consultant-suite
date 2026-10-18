@@ -10,14 +10,31 @@ export function hooksMatch(
   );
 }
 
+/**
+ * Determines the safe `active` state for a migrated webhook on the target.
+ * If the source webhook had an HMAC secret configured (`secretConfigured: true`)
+ * and no replacement secret is supplied, the target webhook must be created/updated
+ * as `active: false` so unverified/unsigned payloads are not delivered before the
+ * customer configures their secret and activates the webhook.
+ */
+export function resolveTargetWebhookActive(
+  hook: WebhookDefinition,
+  hasReplacementSecret: boolean,
+): boolean {
+  if (!hook.active) return false;
+  if (hook.secretConfigured && !hasReplacementSecret) return false;
+  return true;
+}
+
 export function webhookPayload(
   hook: WebhookDefinition,
   secret?: string,
   isCreate = false,
 ): Record<string, unknown> {
+  const hasReplacementSecret = secret !== undefined && secret.length > 0;
   return {
     ...(isCreate ? { name: 'web' } : {}),
-    active: hook.active,
+    active: resolveTargetWebhookActive(hook, hasReplacementSecret),
     events: hook.events,
     config: {
       url: hook.url,

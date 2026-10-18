@@ -801,3 +801,94 @@ test('TeamsMigrationModule: migrates non-IdP team memberships with EMU identity 
   assert.equal(verification.verified, true);
   assert.equal(verification.discrepancies.length, 0);
 });
+
+test('TeamsMigrationModule: discovers IdP group bindings and auto-binds target team to matching SCIM external group', async () => {
+  const module = new TeamsMigrationModule();
+  const writeClient = new MockWriteClient();
+
+  const sourceTeams = [
+    {
+      id: 40,
+      slug: 'team-tactics',
+      name: 'Team Tactics',
+      privacy: 'closed',
+      description: 'IdP synced team',
+      members_count: 5,
+    },
+  ];
+
+  const sourceHandlers = new Map<string, unknown>();
+  sourceHandlers.set('team-tactics/repos', []);
+  sourceHandlers.set('team-tactics/external-groups', {
+    groups: [
+      {
+        group_id: 77,
+        group_name: 'Okta-Team-Tactics',
+      },
+    ],
+  });
+
+  const targetHandlers = new Map<string, unknown>();
+  targetHandlers.set('/orgs/dst-org/external-groups', {
+    groups: [
+      {
+        group_id: 888,
+        group_name: 'Okta-Team-Tactics',
+      },
+    ],
+  });
+
+  const ctx: MigrationContext = {
+    runId: 'teams-idp-bind-run',
+    scope: {
+      level: 'organization',
+      sourceOrg: 'src-org',
+      targetOrg: 'dst-org',
+    },
+    sourceClient: new MockReadAdapter(sourceTeams, new Map(), sourceHandlers),
+    targetClient: new MockReadAdapter([], new Map(), targetHandlers),
+    targetWriteClient: writeClient,
+    signal: new AbortController().signal,
+    dryRun: false,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+
+  // 1. Discover
+  const discovered = await module.discover(ctx);
+  const team = discovered.teams.find((t) => t.slug === 'team-tactics');
+  assert.ok(team);
+  assert.equal(team.idpGroups?.length, 1);
+  assert.equal(team.idpGroups?.[0]?.groupName, 'Okta-Team-Tactics');
+  assert.equal(team.idpGroups?.[0]?.groupId, 77);
+
+  // 2. Plan
+  const plan = await module.plan(ctx, discovered);
+  const createTeamOp = plan.operations.find(
+    (op) => op.resourceType === 'team' && op.resourceName === 'team-tactics',
+  );
+  assert.ok(createTeamOp);
+  assert.match(
+    createTeamOp.reason ?? '',
+    /\[IdP Group: Okta-Team-Tactics \(ID: 77\)\]/,
+  );
+
+  const idpBindOp = plan.operations.find(
+    (op) =>
+      op.resourceType === 'team-idp-group' &&
+      op.resourceName === 'team-tactics:Okta-Team-Tactics',
+  );
+  assert.ok(idpBindOp);
+
+  // 3. Apply
+  const execution = await module.apply(ctx, plan);
+  assert.equal(execution.status, 'complete');
+
+  const bindMutate = writeClient.calls.find(
+    (c) =>
+      c.path === '/orgs/{org}/teams/{team_slug}/external-groups' &&
+      c.pathParams?.team_slug === 'team-tactics',
+  );
+  assert.ok(bindMutate);
+  assert.equal((bindMutate.body as { group_id: number }).group_id, 888);
+});

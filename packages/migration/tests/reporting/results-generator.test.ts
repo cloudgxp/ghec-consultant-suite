@@ -1687,4 +1687,22 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
     rhmSkipSuccessMd.includes('`--skip-releases`'),
     `Expected --skip-releases in success/release-heavy-benchmark.md:\n${rhmSkipSuccessMd}`,
   );
+  const evidenceReadmeMd =
+    postCareSkipResults.files['evidence/README.md'] ?? '';
+  assert.ok(
+    evidenceReadmeMd.includes('# Audit Evidence Bundle Guide:'),
+    `Expected evidence/README.md to be generated:\n${evidenceReadmeMd}`,
+  );
+  assert.ok(
+    evidenceReadmeMd.includes('`execution-report.json`'),
+    'Expected evidence/README.md to document execution-report.json',
+  );
+  assert.ok(
+    evidenceReadmeMd.includes('`verification-report.json`'),
+    'Expected evidence/README.md to document verification-report.json',
+  );
+  assert.ok(
+    strategyReadme.includes('(evidence/README.md)'),
+    'Expected root README.md to link to evidence/README.md',
+  );
 });

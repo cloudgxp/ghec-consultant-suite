@@ -1,0 +1,162 @@
+name: Post-Migration Source-Detach Cutover
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_org:
+        description: 'Source GitHub organization to detach source-locked items from'
+        required: true
+        type: string
+      target_org:
+        description: 'Target GitHub organization to migrate detached items into'
+        required: true
+        type: string
+      scope_file:
+        description: 'Optional path to MigrationScope JSON file (e.g. scopes/wave-1.json)'
+        required: false
+        type: string
+        default: ''
+      repos:
+        description: 'Optional comma-separated list of repository names to cut over'
+        required: false
+        type: string
+        default: ''
+      include_deploy_keys:
+        description: 'Detach SSH deploy keys from source and recreate on target (with auto-rollback)'
+        required: false
+        type: boolean
+        default: true
+      include_pages_cname:
+        description: 'Detach GitHub Pages custom CNAME domain from source and bind on target (with auto-rollback)'
+        required: false
+        type: boolean
+        default: true
+      deactivate_source_webhooks:
+        description: 'Deactivate active webhooks on source repositories and organization to prevent duplicate deliveries'
+        required: false
+        type: boolean
+        default: false
+      disable_source_actions:
+        description: 'Disable GitHub Actions on source repositories so scheduled workflows stop running on source'
+        required: false
+        type: boolean
+        default: false
+      archive_source_repos:
+        description: 'Archive source repositories (read-only) after cutover completes'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Simulate cutover operations without mutating source or target organizations'
+        required: false
+        type: boolean
+        default: false
+      confirm_cutover:
+        description: 'Type CUTOVER to confirm live source detachment and cutover actions (ignored when dry_run=true)'
+        required: true
+        type: string
+        default: 'CUTOVER'
+
+permissions:
+  contents: read
+
+jobs:
+  cutover:
+    name: 'Execute Post-Migration Source-Detach Cutover'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+
+      - name: Verify Cutover Safety Guardrails
+        shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          CONFIRM: ${{ inputs.confirm_cutover }}
+          SOURCE_ORG: ${{ inputs.source_org }}
+          TARGET_ORG: ${{ inputs.target_org }}
+        run: |
+          if [ -z "$SOURCE_ORG" ] || [ -z "$TARGET_ORG" ]; then
+            echo "::error::Both source_org and target_org must be provided."
+            exit 1
+          fi
+
+          if [ "$DRY_RUN" != "true" ] && [ "$CONFIRM" != "CUTOVER" ]; then
+            echo "::error::Live post-migration cutover requires confirm_cutover=CUTOVER (or set dry_run=true to preview)."
+            exit 1
+          fi
+
+      - name: Execute Post-Migration Cutover
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SOURCE_ORG: ${{ inputs.source_org }}
+          TARGET_ORG: ${{ inputs.target_org }}
+          SCOPE_FILE: ${{ inputs.scope_file }}
+          REPOS: ${{ inputs.repos }}
+          INCLUDE_DEPLOY_KEYS: ${{ inputs.include_deploy_keys }}
+          INCLUDE_PAGES_CNAME: ${{ inputs.include_pages_cname }}
+          DEACTIVATE_WEBHOOKS: ${{ inputs.deactivate_source_webhooks }}
+          DISABLE_ACTIONS: ${{ inputs.disable_source_actions }}
+          ARCHIVE_REPOS: ${{ inputs.archive_source_repos }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          mkdir -p ./scans
+
+          ARGS=(
+            cutover
+            --source-org "$SOURCE_ORG"
+            --target-org "$TARGET_ORG"
+            --output ./scans/cutover-report.json
+            --append-step-summary
+          )
+
+          if [ -n "$SCOPE_FILE" ]; then
+            ARGS+=(--scope "$SCOPE_FILE")
+          fi
+
+          if [ -n "$REPOS" ]; then
+            ARGS+=(--repos "$REPOS")
+          fi
+
+          if [ "$INCLUDE_DEPLOY_KEYS" = "true" ]; then
+            ARGS+=(--include-deploy-keys)
+          else
+            ARGS+=(--no-include-deploy-keys)
+          fi
+
+          if [ "$INCLUDE_PAGES_CNAME" = "true" ]; then
+            ARGS+=(--include-pages-cname)
+          else
+            ARGS+=(--no-include-pages-cname)
+          fi
+
+          if [ "$DEACTIVATE_WEBHOOKS" = "true" ]; then
+            ARGS+=(--deactivate-source-webhooks)
+          fi
+
+          if [ "$DISABLE_ACTIONS" = "true" ]; then
+            ARGS+=(--disable-source-actions)
+          fi
+
+          if [ "$ARCHIVE_REPOS" = "true" ]; then
+            ARGS+=(--archive-source-repos)
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+
+          node ./apps/cli/bin/ghec-consultant-cli.mjs "${ARGS[@]}"
+
+      - name: Upload Cutover Execution Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-migration-cutover-report-${{ github.run_id }}
+          path: ./scans/cutover-report.json
+          if-no-files-found: ignore

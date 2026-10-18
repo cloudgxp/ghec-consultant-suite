@@ -342,7 +342,8 @@ export function resolveTargetSettingsLinks(params: {
     modLower === 'apps-inventory' ||
     typeLower === 'github_app_installation' ||
     typeLower === 'github-app-installation' ||
-    typeLower === 'github_app'
+    typeLower === 'github_app' ||
+    typeLower === 'github_app_repository_binding'
   ) {
     const appSlug = resourceName;
     const payload =
@@ -377,14 +378,10 @@ export function resolveTargetSettingsLinks(params: {
         : buildRecreatedAppSlug(appSlug, targetOrg);
 
     return {
-      settingsUrl: isCustomPrivate ? recreateUrl : installUrl,
-      settingsLinkLabel: isCustomPrivate
-        ? `Recreate App (${recreatedSlug}) ↗`
-        : 'Install GitHub App ↗',
-      secondaryUrl: isCustomPrivate ? installUrl : recreateUrl,
-      secondaryLinkLabel: isCustomPrivate
-        ? 'Install Existing App ↗'
-        : `Recreate Custom App (${recreatedSlug}) ↗`,
+      settingsUrl: installUrl,
+      settingsLinkLabel: 'Marketplace / Install Link ↗',
+      secondaryUrl: recreateUrl,
+      secondaryLinkLabel: `Custom Recreate Link (${recreatedSlug}) ↗`,
       cliCommand: `node scripts/register-app.mjs --org ${targetOrg} --app ${appSlug}`,
       subDomain: isCustomPrivate ? 'custom_private' : 'third_party_or_public',
       cleanResourceName: appSlug,
@@ -402,7 +399,7 @@ export function resolveTargetSettingsLinks(params: {
       return {
         settingsUrl: `https://github.com/${encOrg}/${encRepo}/settings/hooks`,
         settingsLinkLabel: 'Configure Repo Webhooks ↗',
-        cliCommand: `gh api /repos/${targetOrg}/${targetRepo}/hooks`,
+        cliCommand: `gh api --method PATCH /repos/${targetOrg}/${targetRepo}/hooks/<HOOK_ID> -f "config[url]=${resourceName}" -f "config[content_type]=json" -f "config[secret]=<SECRET>" -F active=true`,
         subDomain: 'repo-webhook',
         cleanResourceName: resourceName,
       };
@@ -410,20 +407,38 @@ export function resolveTargetSettingsLinks(params: {
     return {
       settingsUrl: `https://github.com/organizations/${encOrg}/settings/hooks`,
       settingsLinkLabel: 'Configure Org Webhooks ↗',
-      cliCommand: `gh api /orgs/${targetOrg}/hooks`,
+      cliCommand: `gh api --method PATCH /orgs/${targetOrg}/hooks/<HOOK_ID> -f "config[url]=${resourceName}" -f "config[content_type]=json" -f "config[secret]=<SECRET>" -F active=true`,
       subDomain: 'org-webhook',
       cleanResourceName: resourceName,
     };
   }
 
-  // 6. Self-Hosted Runners & Runner Groups
+  // 6. Self-Hosted Runners, Larger GitHub-Hosted Runners & Runner Groups
   if (
     modLower === 'actions-runners' ||
     typeLower === 'actions_runner_group' ||
     typeLower === 'actions-runner' ||
     typeLower === 'action-runner' ||
-    typeLower === 'action-runner-group'
+    typeLower === 'action-runner-group' ||
+    typeLower === 'hosted-runner'
   ) {
+    const combinedNotes =
+      `${notes ?? ''} ${plannedOp?.reason ?? ''}`.toLowerCase();
+    const isHostedRunner =
+      typeLower === 'hosted-runner' ||
+      (operationId?.toLowerCase().includes('hosted-runner') ?? false) ||
+      combinedNotes.includes('hosted runner');
+    if (isHostedRunner) {
+      return {
+        settingsUrl: `https://github.com/organizations/${encOrg}/settings/actions/runners`,
+        settingsLinkLabel: 'View GitHub-Hosted Runners ↗',
+        secondaryUrl: `https://github.com/organizations/${encOrg}/settings/billing`,
+        secondaryLinkLabel: 'Verify Actions Spending Limit ↗',
+        cliCommand: `gh api /orgs/${targetOrg}/actions/hosted-runners`,
+        subDomain: 'hosted-runner',
+        cleanResourceName: resourceName,
+      };
+    }
     if (targetRepo) {
       return {
         settingsUrl: `https://github.com/${encOrg}/${encRepo}/settings/actions/runners/new`,
@@ -460,7 +475,7 @@ export function resolveTargetSettingsLinks(params: {
       settingsUrl,
       settingsLinkLabel: 'Manage Deploy Keys ↗',
       cliCommand: targetRepo
-        ? `gh repo deploy-key add <KEY_FILE> --repo ${targetOrg}/${targetRepo} --title "${resourceName}"`
+        ? `ghec-consultant-cli cutover --source-org <SOURCE_ORG> --target-org ${targetOrg} --repos ${targetRepo} --include-deploy-keys`
         : undefined,
       subDomain: 'ssh-deploy-key',
       cleanResourceName: resourceName,
@@ -489,12 +504,13 @@ export function resolveTargetSettingsLinks(params: {
       teamSlug.toLowerCase().replace(/[^a-z0-9_-]/g, '-'),
     );
     return {
-      settingsUrl: `https://github.com/orgs/${encOrg}/teams/${encTeam}/edit`,
-      settingsLinkLabel: 'Edit Team / IdP Group Sync ↗',
-      secondaryUrl: `https://github.com/orgs/${encOrg}/teams/${encTeam}/members`,
-      secondaryLinkLabel: 'View Team Members ↗',
-      subDomain: typeLower,
-      cleanResourceName: resourceName,
+      settingsUrl: `https://github.com/orgs/${encOrg}/teams/${encTeam}/Sync`,
+      settingsLinkLabel: 'Open Team IdP Group Sync ↗',
+      secondaryUrl: `https://github.com/orgs/${encOrg}/teams/${encTeam}/edit`,
+      secondaryLinkLabel: 'Edit Team Settings ↗',
+      cliCommand: `gh api --method PATCH /orgs/${targetOrg}/teams/${encTeam}/external-groups -f group_id=<IDP_GROUP_ID>`,
+      subDomain: typeLower === 'team-idp-group' ? 'team' : typeLower,
+      cleanResourceName: teamSlug,
     };
   }
 
@@ -846,6 +862,50 @@ function classifyPostCareCategory(
   return 'failed-operation';
 }
 
+function extractIdpGroupFromNotes(
+  notes?: string | undefined,
+): string | undefined {
+  if (!notes) return undefined;
+  const lower = notes.toLowerCase();
+  const bracketPrefix = '[idp group:';
+  const bracketIdx = lower.indexOf(bracketPrefix);
+  if (bracketIdx !== -1) {
+    const start = bracketIdx + bracketPrefix.length;
+    const end = notes.indexOf(']', start);
+    if (end !== -1) {
+      const val = notes.slice(start, end).trim();
+      if (val) return val;
+    }
+  }
+  const bindPrefix = 'to idp group';
+  const bindIdx = lower.indexOf(bindPrefix);
+  if (bindIdx !== -1) {
+    let rest = notes.slice(bindIdx + bindPrefix.length);
+    const restLower = rest.toLowerCase();
+    if (restLower.startsWith('(s)')) {
+      rest = rest.slice(3);
+    } else if (restLower.startsWith('s')) {
+      rest = rest.slice(1);
+    }
+    if (rest.startsWith(':')) {
+      const afterColon = rest.slice(1);
+      const newlineIdx = afterColon.indexOf('\n');
+      const dotIdx = afterColon.indexOf('.');
+      let endIdx = afterColon.length;
+      if (newlineIdx !== -1 && newlineIdx < endIdx) endIdx = newlineIdx;
+      if (dotIdx !== -1 && dotIdx < endIdx) endIdx = dotIdx;
+      const val = afterColon.slice(0, endIdx).trim();
+      if (val) return val;
+    }
+    const onIdx = rest.toLowerCase().indexOf(' on ');
+    if (onIdx !== -1) {
+      const val = rest.slice(0, onIdx).trim();
+      if (val) return val;
+    }
+  }
+  return undefined;
+}
+
 function buildActionInstruction(params: {
   readonly category: PostCareCategory;
   readonly subDomain: string;
@@ -879,24 +939,48 @@ function buildActionInstruction(params: {
     }
     case 'webhook':
       return targetRepo
-        ? `Inject webhook HMAC signing secret and verify active delivery for ${cleanResourceName} on ${targetOrg}/${targetRepo}.`
-        : `Inject organization webhook HMAC signing secret and verify active delivery for ${cleanResourceName} on ${targetOrg}.`;
-    case 'github-app':
+        ? `Enter webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}/${targetRepo}.`
+        : `Enter organization webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}.`;
+    case 'github-app': {
+      let selectedRepos = '';
+      if (notes) {
+        const selPrefix = '(selected repositories:';
+        const selIdx = notes.toLowerCase().indexOf(selPrefix);
+        if (selIdx !== -1) {
+          const start = selIdx + selPrefix.length;
+          const end = notes.indexOf(')', start);
+          if (end !== -1) {
+            selectedRepos = notes.slice(start, end).trim();
+          }
+        }
+      }
+      const selectedSuffix = selectedRepos
+        ? ` Scope installation to selected repositories: ${selectedRepos}.`
+        : '';
       return subDomain === 'custom_private'
-        ? `Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the pre-filled registration URL or App Manifest, then install on target repositories.`
-        : `Install and authorize GitHub App "${cleanResourceName}" on ${targetOrg} (or recreate as a custom app if internal).`;
+        ? `Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the Custom Recreate Link or App Manifest, then install on target repositories.${selectedSuffix}`
+        : `Install and authorize GitHub App "${cleanResourceName}" on ${targetOrg} (or recreate as a custom app if internal).${selectedSuffix}`;
+    }
     case 'runner':
+      if (subDomain === 'hosted-runner') {
+        return `Verify larger GitHub-hosted runner "${cleanResourceName}" on ${targetOrg} and ensure GitHub Actions billing spending limits are configured (> $0) so jobs can provision runner VMs.`;
+      }
       return subDomain === 'runner-group'
         ? `Register self-hosted runner agents into runner group "${cleanResourceName}" on ${targetOrg}.`
         : targetRepo
           ? `Re-register self-hosted runner agent "${cleanResourceName}" against ${targetOrg}/${targetRepo}.`
           : `Re-register self-hosted runner agent "${cleanResourceName}" against ${targetOrg}.`;
     case 'deploy-key':
-      return `Verify or rotate SSH deploy key "${cleanResourceName}" on ${targetOrg}/${targetRepo ?? ''} (detach from source if blocked by global SSH key uniqueness).`;
+      return `SSH deploy key "${cleanResourceName}" on ${targetOrg}/${targetRepo ?? ''} is globally unique across GitHub. Either generate a new key pair, or run the manual Post-Migration Source-Detach Cutover workflow ("post-migration-cutover.yml") / CLI ("ghec-consultant-cli cutover") to delete the key from the source repository and migrate it to ${targetOrg}/${targetRepo ?? ''}.`;
     case 'mannequin':
       return `Map and reclaim mannequin "${cleanResourceName}" to target EMU user identity on ${targetOrg}.`;
-    case 'idp-team':
-      return `Verify team "${cleanResourceName}" on ${targetOrg} and bind to your Identity Provider (IdP) SCIM group if IdP-managed.`;
+    case 'idp-team': {
+      const idpGroup = extractIdpGroupFromNotes(notes);
+      if (idpGroup) {
+        return `Verify or bind team "${cleanResourceName}" on ${targetOrg} to Identity Provider (IdP) SCIM group ${idpGroup} at https://github.com/orgs/${targetOrg}/teams/${cleanResourceName}/Sync.`;
+      }
+      return `Verify team "${cleanResourceName}" on ${targetOrg} and bind to your Identity Provider (IdP) SCIM group at https://github.com/orgs/${targetOrg}/teams/${cleanResourceName}/Sync if IdP-managed.`;
+    }
     case 'collaborator':
       return `Review outside collaborator "${cleanResourceName}" on ${targetOrg}/${targetRepo ?? ''} and provision as an EMU guest/team member.`;
     case 'policy':
@@ -950,16 +1034,19 @@ function shouldIncludeGranularItemInPostCare(params: {
     return true;
   }
 
-  // Always include GitHub Apps inventory items (need installation / recreation)
+  // Always include GitHub Apps inventory items (need installation / recreation), except succeeded repo bindings
   if (
     modLower === 'apps-inventory' ||
     typeLower.includes('github_app') ||
     typeLower.includes('github-app')
   ) {
+    if (typeLower === 'github_app_repository_binding') {
+      return false;
+    }
     return true;
   }
 
-  // Always include self-hosted runner groups / runners (need physical/VM agent registration)
+  // Always include self-hosted runner groups / runners and larger GitHub-hosted runners (need registration or billing spend limit verification)
   if (modLower === 'actions-runners' || typeLower.includes('runner')) {
     return true;
   }
@@ -973,9 +1060,15 @@ function shouldIncludeGranularItemInPostCare(params: {
     return true;
   }
 
-  // Include top-level teams (IdP SCIM group binding verification in GHEC-EMU)
-  if (modLower === 'teams' && typeLower === 'team') {
-    return true;
+  // Include teams only when they have a discovered IdP / SCIM group binding
+  if (modLower === 'teams') {
+    if (typeLower === 'team-idp-group') {
+      return true;
+    }
+    if (typeLower === 'team' && Boolean(extractIdpGroupFromNotes(item.notes))) {
+      return true;
+    }
+    return false;
   }
 
   // Always include deploy keys (SSH public keys require rotation or detachment from source repo due to GitHub global key uniqueness)
@@ -1642,12 +1735,14 @@ export function generatePostCareDeliverables(
         }
       } else if (
         entity.kind === 'action-runner' &&
-        entity.runnerType === 'self-hosted'
+        (entity.runnerType === 'self-hosted' || entity.runnerType === 'hosted')
       ) {
+        const isHosted = entity.runnerType === 'hosted';
         const targetRepo = resolveRepoFromEntityId(entity.repositoryId);
+        const resourceType = isHosted ? 'hosted-runner' : 'action-runner';
         const links = resolveTargetSettingsLinks({
           moduleId: 'actions-runners',
-          resourceType: 'action-runner',
+          resourceType,
           resourceName: entity.name,
           targetOrg,
           targetRepo,
@@ -1664,7 +1759,7 @@ export function generatePostCareDeliverables(
           targetOrg,
           targetRepo,
           moduleId: 'actions-runners',
-          resourceType: 'action-runner',
+          resourceType,
           resourceName: links.cleanResourceName,
           subDomain: links.subDomain,
           migrationStatus: 'discovered',
@@ -1680,36 +1775,6 @@ export function generatePostCareDeliverables(
           secondaryUrl: links.secondaryUrl,
           cliCommand: links.cliCommand,
           notes: `OS: ${entity.operatingSystem ?? 'unknown'}, Labels: ${entity.labels.join(', ') || 'none'}`,
-        });
-      } else if (entity.kind === 'team') {
-        const links = resolveTargetSettingsLinks({
-          moduleId: 'teams',
-          resourceType: 'team',
-          resourceName: entity.name,
-          targetOrg,
-        });
-        addPostCareItem({
-          itemId: `postcare:org:teams:${links.subDomain}:${links.cleanResourceName}`,
-          mode,
-          priority: 'medium',
-          category: 'idp-team',
-          scopeLevel: 'organization',
-          targetOrg,
-          moduleId: 'teams',
-          resourceType: 'team',
-          resourceName: links.cleanResourceName,
-          subDomain: links.subDomain,
-          migrationStatus: 'discovered',
-          actionRequired: buildActionInstruction({
-            category: 'idp-team',
-            subDomain: links.subDomain,
-            cleanResourceName: links.cleanResourceName,
-            targetOrg,
-            migrationStatus: 'discovered',
-          }),
-          settingsUrl: links.settingsUrl,
-          secondaryUrl: links.secondaryUrl,
-          notes: `Members: ${entity.membershipCount.value ?? 0}`,
         });
       }
     }
@@ -1790,7 +1855,7 @@ export function formatPostCareChecklistMarkdown(params: {
     `| 🔐 Secrets to Populate (Org, Repo & Environment) | ${secretItems.length} | **High** | [\`exports/secrets-to-populate.csv\`](exports/secrets-to-populate.csv) |`,
     `| 🤖 GitHub Apps to Install or Recreate | ${appItems.length} | **High** | [\`exports/github-apps-reinstall.csv\`](exports/github-apps-reinstall.csv) |`,
     `| 🪝 Webhooks to Populate Secret & Activate | ${webhookItems.length} | **High** | [\`exports/webhooks-reconfiguration.csv\`](exports/webhooks-reconfiguration.csv) |`,
-    `| 🖥️ Self-Hosted Runners & Groups to Register | ${runnerItems.length} | **Medium** | [\`exports/runners-registration.csv\`](exports/runners-registration.csv) |`,
+    `| 🖥️ Self-Hosted & Larger Hosted Runners | ${runnerItems.length} | **Medium** | [\`exports/runners-registration.csv\`](exports/runners-registration.csv) |`,
     `| 👥 Teams (IdP Sync), Mannequins, Collaborators & Deploy Keys | ${accessItems.length} | **Medium** | [\`exports/post-care-items.csv\`](exports/post-care-items.csv) |`,
     `| ⚠️ Policies, Packages, Security & Failed/Skipped Items | ${otherItems.length} | **High / Medium** | [\`exports/post-care-items.csv\`](exports/post-care-items.csv) |`,
     '',
@@ -1881,28 +1946,28 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('## 2. GitHub Apps Requiring Installation or Recreation');
     lines.push('');
     lines.push(
-      'GitHub App installations and private keys cannot be transferred automatically across organizations. Use the **Direct Install Link** for public/marketplace apps or the **Pre-Filled Recreate Link** for internal custom apps.',
+      'GitHub App installations and private keys cannot be transferred automatically across organizations. Use the **Marketplace Link** for public/marketplace apps or the **Custom Recreate Link** for internal custom apps.',
+    );
+    lines.push('');
+    lines.push('> [!NOTE]');
+    lines.push(
+      `> **Enterprise-Owned & Repository-Scoped GitHub Apps:** Any Enterprise-owned GitHub App installed on \`${sourceOrg}\` is automatically detected via \`GET /orgs/${sourceOrg}/installations\` and listed below. When an app is scoped to selected repositories, the exact repository list is included in **Action Required** and will be automatically bound if the app is already installed on \`${targetOrg}\`.`,
     );
     lines.push('');
     lines.push(
-      '| App Slug | Classification | Action Required | Primary Action Link | Secondary / Recreate Link |',
+      '| App Slug | Classification | Action Required | Marketplace Link | Custom Recreate Link |',
     );
     lines.push('| :--- | :--- | :--- | :--- | :--- |');
     for (const app of appItems) {
       const slug = escapeMarkdownTableCell(app.resourceName);
       const cls = escapeMarkdownTableCell(app.subDomain);
       const action = escapeMarkdownTableCell(app.actionRequired);
-      const primaryLink =
-        app.subDomain === 'custom_private'
-          ? `[Recreate Custom App (Pre-Filled) ↗](${app.settingsUrl})`
-          : `[Install App on ${targetOrg} ↗](${app.settingsUrl})`;
-      const secondaryLink = app.secondaryUrl
-        ? app.subDomain === 'custom_private'
-          ? `[Install Existing App ↗](${app.secondaryUrl})`
-          : `[Recreate Custom App (Pre-Filled) ↗](${app.secondaryUrl})`
+      const marketplaceLink = `[Install App on ${targetOrg} ↗](${app.settingsUrl})`;
+      const customRecreateLink = app.secondaryUrl
+        ? `[Recreate Custom App (Pre-Filled) ↗](${app.secondaryUrl})`
         : '-';
       lines.push(
-        `| \`${slug}\` | \`${cls}\` | ${action} | ${primaryLink} | ${secondaryLink} |`,
+        `| \`${slug}\` | \`${cls}\` | ${action} | ${marketplaceLink} | ${customRecreateLink} |`,
       );
     }
     lines.push('');
@@ -1915,13 +1980,13 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('## 3. Webhooks Requiring Signing Secret & Activation');
     lines.push('');
     lines.push(
-      'Webhook HMAC signing secrets are write-only on source organizations. Update each webhook with its signing secret and verify active delivery on the destination.',
+      `Webhook HMAC signing secrets are write-only on source organizations. Any webhook that had a signing secret on \`${sourceOrg}\` is created in an **inactive** state (\`active: false\`) on \`${targetOrg}\` so unverified payloads are never sent before you supply the secret. **Important:** Entering a secret in the GitHub WebUI does **not** automatically re-enable an inactive webhook—you must both enter the **Secret** and check the **[x] Active** checkbox before clicking **Update webhook** (or run the \`gh api --method PATCH ... -F active=true\` CLI command).`,
     );
     lines.push('');
     lines.push(
-      '| Scope | Target | Webhook URL / Identifier | Status | Direct Settings Link |',
+      '| Scope | Target | Webhook URL / Identifier | Status | Direct Settings Link | CLI Command (`gh`) |',
     );
-    lines.push('| :--- | :--- | :--- | :--- | :--- |');
+    lines.push('| :--- | :--- | :--- | :--- | :--- | :--- |');
     for (const wh of webhookItems) {
       const scope = wh.targetRepo ? 'Repository' : 'Organization';
       const target = escapeMarkdownTableCell(
@@ -1930,27 +1995,39 @@ export function formatPostCareChecklistMarkdown(params: {
       const name = escapeMarkdownTableCell(wh.resourceName);
       const status = escapeMarkdownTableCell(wh.migrationStatus);
       const link = `[Configure Webhooks ↗](${wh.settingsUrl})`;
+      const cli = wh.cliCommand
+        ? `\`${escapeMarkdownTableCell(wh.cliCommand)}\``
+        : '-';
       lines.push(
-        `| ${scope} | \`${target}\` | \`${name}\` | \`${status}\` | ${link} |`,
+        `| ${scope} | \`${target}\` | \`${name}\` | \`${status}\` | ${link} | ${cli} |`,
       );
     }
     lines.push('');
   }
 
-  // Section 4: Self-Hosted Runners
+  // Section 4: Self-Hosted & Larger GitHub-Hosted Runners
   if (runnerItems.length > 0) {
+    const hasHostedRunners = runnerItems.some(
+      (r) =>
+        r.subDomain === 'hosted-runner' || r.resourceType === 'hosted-runner',
+    );
     lines.push('---');
     lines.push('');
-    lines.push(
-      '## 4. Self-Hosted Runners & Runner Groups Requiring Registration',
-    );
+    lines.push('## 4. Self-Hosted & Larger GitHub-Hosted Runners');
     lines.push('');
     lines.push(
-      'Runner groups are migrated automatically via API, but physical or VM runner machines must be registered against the destination using a registration token.',
+      'Runner groups and larger GitHub-hosted runner definitions are migrated automatically via API, while physical or VM self-hosted runner machines must be registered against the destination using a registration token.',
     );
     lines.push('');
+    if (hasHostedRunners) {
+      lines.push('> [!WARNING]');
+      lines.push(
+        `> **Billing & Spending Limits Required for Larger GitHub-Hosted Runners:** Larger GitHub-hosted runners are automatically created via the REST API without modifying your billing settings. However, GitHub will not provision runner VMs or start workflow jobs until an organization or enterprise billing manager configures a non-zero **GitHub Actions spending limit** at [Billing & Spending Limits ↗](https://github.com/organizations/${encodeURIComponent(targetOrg)}/settings/billing).`,
+      );
+      lines.push('');
+    }
     lines.push(
-      '| Scope | Runner / Group Name | Type | Direct Settings Link | CLI Registration Token Command |',
+      '| Scope | Runner / Group Name | Type | Direct Settings Link | CLI Command |',
     );
     lines.push('| :--- | :--- | :--- | :--- | :--- |');
     for (const r of runnerItems) {
@@ -1959,7 +2036,10 @@ export function formatPostCareChecklistMarkdown(params: {
         : `Org: \`${escapeMarkdownTableCell(targetOrg)}\``;
       const name = escapeMarkdownTableCell(r.resourceName);
       const sub = escapeMarkdownTableCell(r.subDomain);
-      const link = `[Open Runner Settings ↗](${r.settingsUrl})`;
+      const link =
+        r.subDomain === 'hosted-runner' && r.secondaryUrl
+          ? `[View Runners ↗](${r.settingsUrl}) / [Billing Limits ↗](${r.secondaryUrl})`
+          : `[Open Runner Settings ↗](${r.settingsUrl})`;
       const cli = r.cliCommand
         ? `\`${escapeMarkdownTableCell(r.cliCommand)}\``
         : '-';
@@ -1970,12 +2050,43 @@ export function formatPostCareChecklistMarkdown(params: {
 
   // Section 5: Teams (IdP Sync), Mannequins, Collaborators & Deploy Keys
   if (accessItems.length > 0) {
+    const hasDeployKeys = accessItems.some((a) => a.category === 'deploy-key');
     lines.push('---');
     lines.push('');
     lines.push(
       '## 5. Teams (IdP Group Sync), Mannequins, Collaborators & Deploy Keys',
     );
     lines.push('');
+    if (hasDeployKeys) {
+      lines.push(
+        '### 5.1 Automated Post-Migration Source-Detach Cutover (SSH Deploy Keys & Custom Domains)',
+      );
+      lines.push('');
+      lines.push(
+        `GitHub enforces global uniqueness across all organizations for **SSH deploy keys** (\`422 Key is already in use\`) and **GitHub Pages custom \`CNAME\` domains**. Standard migration never deletes resources from \`${sourceOrg}\`. When you are ready to cut over from \`${sourceOrg}\` to \`${targetOrg}\`, you can automatically detach these items from \`${sourceOrg}\` and recreate them on \`${targetOrg}\` (with automatic rollback if target creation fails):`,
+      );
+      lines.push('');
+      lines.push(
+        `To run the post-migration source-detach cutover from the CLI (add \`--dry-run\` first to preview):`,
+      );
+      lines.push('');
+      lines.push('```bash');
+      lines.push(
+        `ghec-consultant-cli cutover --source-org ${sourceOrg} --target-org ${targetOrg} --include-deploy-keys --include-pages-cname`,
+      );
+      lines.push('```');
+      lines.push('');
+      lines.push(
+        'Or trigger the manual **Post-Migration Source-Detach Cutover** GitHub Actions workflow:',
+      );
+      lines.push('');
+      lines.push('```bash');
+      lines.push(
+        `gh workflow run post-migration-cutover.yml -f source_org=${sourceOrg} -f target_org=${targetOrg} -f include_deploy_keys=true -f include_pages_cname=true -f confirm_cutover=CUTOVER`,
+      );
+      lines.push('```');
+      lines.push('');
+    }
     lines.push(
       '| Category | Target Scope | Resource Name | Action Required | Direct Settings Link |',
     );
@@ -2026,39 +2137,39 @@ export function formatPostCareChecklistMarkdown(params: {
   return lines.join('\n');
 }
 
-const POST_CARE_CSV_HEADERS = [
-  'item_id',
-  'mode',
+export const POST_CARE_CSV_HEADERS = [
+  'resource_type',
+  'resource_name',
+  'action_required',
   'priority',
   'category',
+  'migration_status',
   'scope_level',
   'target_org',
   'target_repo',
   'environment_name',
   'module_id',
-  'resource_type',
-  'resource_name',
   'sub_domain',
-  'migration_status',
-  'action_required',
   'settings_url',
   'secondary_url',
   'cli_command',
   'notes',
+  'mode',
+  'item_id',
 ] as const;
 
 const FULL_OPERATIONS_CSV_HEADERS = [
-  'scope_level',
-  'target_org',
-  'target_repo',
-  'module_id',
-  'resource_name',
   'resource_type',
-  'sub_domain',
+  'resource_name',
   'operation_type',
   'status',
   'verification_status',
   'requires_post_care',
+  'scope_level',
+  'target_org',
+  'target_repo',
+  'module_id',
+  'sub_domain',
   'settings_url',
   'cli_command',
   'notes',
@@ -2078,24 +2189,24 @@ export function serializePostCareItemsToCsv(
   const rows: string[] = [POST_CARE_CSV_HEADERS.join(',')];
   for (const item of items) {
     const cells = [
-      sanitizePostCareCsvCell(item.itemId),
-      sanitizePostCareCsvCell(item.mode),
+      sanitizePostCareCsvCell(item.resourceType),
+      sanitizePostCareCsvCell(item.resourceName),
+      sanitizePostCareCsvCell(item.actionRequired),
       sanitizePostCareCsvCell(item.priority),
       sanitizePostCareCsvCell(item.category),
+      sanitizePostCareCsvCell(item.migrationStatus),
       sanitizePostCareCsvCell(item.scopeLevel),
       sanitizePostCareCsvCell(item.targetOrg),
       sanitizePostCareCsvCell(item.targetRepo ?? ''),
       sanitizePostCareCsvCell(item.environmentName ?? ''),
       sanitizePostCareCsvCell(item.moduleId),
-      sanitizePostCareCsvCell(item.resourceType),
-      sanitizePostCareCsvCell(item.resourceName),
       sanitizePostCareCsvCell(item.subDomain),
-      sanitizePostCareCsvCell(item.migrationStatus),
-      sanitizePostCareCsvCell(item.actionRequired),
       sanitizePostCareCsvCell(item.settingsUrl),
       sanitizePostCareCsvCell(item.secondaryUrl ?? ''),
       sanitizePostCareCsvCell(item.cliCommand ?? ''),
       sanitizePostCareCsvCell(item.notes ?? ''),
+      sanitizePostCareCsvCell(item.mode),
+      sanitizePostCareCsvCell(item.itemId),
     ];
     rows.push(cells.join(','));
   }
@@ -2108,17 +2219,17 @@ export function serializeFullOperationsToCsv(
   const rows: string[] = [FULL_OPERATIONS_CSV_HEADERS.join(',')];
   for (const op of operations) {
     const cells = [
-      sanitizePostCareCsvCell(op.scopeLevel),
-      sanitizePostCareCsvCell(op.targetOrg),
-      sanitizePostCareCsvCell(op.targetRepo),
-      sanitizePostCareCsvCell(op.moduleId),
-      sanitizePostCareCsvCell(op.resourceName),
       sanitizePostCareCsvCell(op.resourceType),
-      sanitizePostCareCsvCell(op.subDomain),
+      sanitizePostCareCsvCell(op.resourceName),
       sanitizePostCareCsvCell(op.operationType),
       sanitizePostCareCsvCell(op.status),
       sanitizePostCareCsvCell(op.verificationStatus),
       sanitizePostCareCsvCell(op.requiresPostCare ? 'true' : 'false'),
+      sanitizePostCareCsvCell(op.scopeLevel),
+      sanitizePostCareCsvCell(op.targetOrg),
+      sanitizePostCareCsvCell(op.targetRepo),
+      sanitizePostCareCsvCell(op.moduleId),
+      sanitizePostCareCsvCell(op.subDomain),
       sanitizePostCareCsvCell(op.settingsUrl),
       sanitizePostCareCsvCell(op.cliCommand),
       sanitizePostCareCsvCell(op.notes),
