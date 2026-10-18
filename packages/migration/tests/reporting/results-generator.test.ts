@@ -1638,6 +1638,45 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
             },
           ],
         },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'lfs',
+          targetIdentifier: 'demogxp-mig5/demo',
+          scopeLevel: 'repository',
+          status: 'complete',
+          durationMs: 120,
+          results: [
+            {
+              operationId: 'lfs:demo:47ff7654289fb14ffefcd1fa193d07ef95fd2d86',
+              status: 'succeeded',
+              resourceType: 'lfs-object',
+              resourceName: '47ff7654289fb14ffefcd1fa193d07ef95fd2d86',
+              operationType: 'create',
+              reason:
+                'LFS object "47ff7654289fb14ffefcd1fa193d07ef95fd2d86" (52428800 bytes) is missing on target LFS store.',
+              completedAt: '2026-10-17T13:59:12Z',
+            },
+          ],
+        },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'teams',
+          targetIdentifier: 'demogxp-mig5',
+          scopeLevel: 'organization',
+          status: 'complete',
+          durationMs: 80,
+          results: [
+            {
+              operationId: 'org:default-permission:demogxp-mig5',
+              status: 'succeeded',
+              resourceType: 'org-permission',
+              resourceName: 'demogxp-mig5',
+              operationType: 'update',
+              reason: "Aligned default repository permission to 'none'",
+              completedAt: '2026-10-17T13:59:15Z',
+            },
+          ],
+        },
       ],
     },
     verificationReport: {
@@ -1664,6 +1703,22 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
   assert.ok(
     strategyReadme.includes('Large-Release Asset Streaming'),
     `Expected Large-Release Asset Streaming in README:\n${strategyReadme}`,
+  );
+  assert.ok(
+    strategyReadme.includes('50 MiB / 52,428,800 bytes'),
+    `Expected LFS byte total preserved from create operation in README:\n${strategyReadme}`,
+  );
+  const demoLfsMd = postCareSkipResults.files['repositories/demo/lfs.md'] ?? '';
+  assert.ok(
+    demoLfsMd.includes('Created and verified on target (52428800 bytes).'),
+    `Expected preserved byte size in repositories/demo/lfs.md:\n${demoLfsMd}`,
+  );
+  const teamsOrgMd = postCareSkipResults.files['organization/teams.md'] ?? '';
+  assert.ok(
+    teamsOrgMd.includes(
+      '[Configure Member Privileges ↗](https://github.com/organizations/demogxp-mig5/settings/member_privileges)',
+    ),
+    `Expected member_privileges link for org-permission in organization/teams.md:\n${teamsOrgMd}`,
   );
   assert.ok(
     strategyReadme.includes('🔄 `mirror-push`'),

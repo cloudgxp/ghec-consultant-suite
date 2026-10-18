@@ -506,14 +506,16 @@ function buildGranularItemsForModule(params: {
         if (secretFlag) {
           noteParts.push('[SEALED] Write-only secret placeholder');
         } else {
+          const byteMatch = /\((\d+\s+bytes)\)/i.exec(reason);
+          const byteSuffix = byteMatch?.[1] ? ` (${byteMatch[1]})` : '';
           noteParts.push(
             operationType === 'create'
               ? verificationStatus === 'verified'
-                ? 'Created and verified on target.'
-                : 'Created on target.'
+                ? `Created and verified on target${byteSuffix}.`
+                : `Created on target${byteSuffix}.`
               : verificationStatus === 'verified'
-                ? 'Updated and verified on target.'
-                : 'Updated on target.',
+                ? `Updated and verified on target${byteSuffix}.`
+                : `Updated on target${byteSuffix}.`,
           );
         }
       } else if (op.status === 'succeeded' && !matchedDisc) {
