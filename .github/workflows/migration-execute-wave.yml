@@ -87,7 +87,7 @@ on:
         type: number
         default: 5
       modules:
-        description: 'Modules to execute ("auto" for strategy-aware resolution across all 32 modules, "all", or comma-separated module IDs)'
+        description: 'Modules to execute ("auto" for strategy-aware resolution across all 34 modules, "all", or comma-separated module IDs)'
         required: false
         type: string
         default: 'auto'
@@ -494,6 +494,30 @@ jobs:
           pattern: cohort-results-*-${{ github.run_id }}
           path: ./downloaded-cohorts
           merge-multiple: true
+
+      - name: Reconcile Post-Cohort GitHub App Repository Bindings
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_MODULES: ${{ inputs.modules }}
+        run: |
+          mkdir -p ./downloaded-cohorts
+          EFFECTIVE_SCOPE="./scans/resolved-scope.json"
+          if [ ! -f "$EFFECTIVE_SCOPE" ]; then
+            EFFECTIVE_SCOPE="$INPUT_SCOPE"
+          fi
+          if [ -f "$EFFECTIVE_SCOPE" ] && { [ -z "$INPUT_MODULES" ] || [ "$INPUT_MODULES" = "auto" ] || [ "$INPUT_MODULES" = "all" ] || echo ",$INPUT_MODULES," | grep -q ",apps-inventory,"; }; then
+            echo "Reconciling GitHub App repository bindings after all parallel cohorts have completed..."
+            node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+              --scope "$EFFECTIVE_SCOPE" \
+              --modules apps-inventory \
+              --continue-on-error \
+              --verbose \
+              --output ./downloaded-cohorts/cohort-report-post-apps-reconcile.json || true
+          fi
 
       - name: Execute Target Verification
         id: verify

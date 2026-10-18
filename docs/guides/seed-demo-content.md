@@ -132,5 +132,5 @@ You can run the demo tool in a test organization without worrying about breaking
 
 - **Safe to run more than once:** If the sample items already exist, the tool updates them instead of failing or making duplicates.
 - **Only touches demo items:** Every item the tool creates starts with `demo-`. When you run `--cleanup`, it only deletes items that start with `demo-` and leaves your real repositories and teams alone.
-- **Keeps tokens and secrets private:** Sample secrets are encrypted before they are sent to GitHub (DEC-004), and your personal access token is automatically hidden in all logs and reports.
+- **Keeps tokens and secrets private:** Sample secrets are encrypted before they are sent to GitHub, and your personal access token is automatically hidden in all logs and reports.
 - **Skips missing Enterprise features automatically:** If your test organization does not have a GitHub Enterprise plan, the tool skips Enterprise-only settings and prints a friendly note instead of crashing.

@@ -508,14 +508,21 @@ function buildGranularItemsForModule(params: {
         } else {
           const byteMatch = /\((\d+\s+bytes)\)/i.exec(reason);
           const byteSuffix = byteMatch?.[1] ? ` (${byteMatch[1]})` : '';
+          const webhookSecretMatch =
+            /\((inactive[^)]+|active;\s*no signing secret[^)]+)\)/i.exec(
+              reason,
+            );
+          const webhookSuffix = webhookSecretMatch?.[1]
+            ? ` (${webhookSecretMatch[1]})`
+            : '';
           noteParts.push(
             operationType === 'create'
               ? verificationStatus === 'verified'
-                ? `Created and verified on target${byteSuffix}.`
-                : `Created on target${byteSuffix}.`
+                ? `Created and verified on target${byteSuffix}${webhookSuffix}.`
+                : `Created on target${byteSuffix}${webhookSuffix}.`
               : verificationStatus === 'verified'
-                ? `Updated and verified on target${byteSuffix}.`
-                : `Updated on target${byteSuffix}.`,
+                ? `Updated and verified on target${byteSuffix}${webhookSuffix}.`
+                : `Updated on target${byteSuffix}${webhookSuffix}.`,
           );
         }
       } else if (op.status === 'succeeded' && !matchedDisc) {
@@ -2003,6 +2010,20 @@ export function generateMigrationResults(
   const runnerCount = postCare.items.filter(
     (i) => i.category === 'runner',
   ).length;
+  const identityAndAccessCount = postCare.items.filter(
+    (i) =>
+      i.category === 'idp-team' ||
+      i.category === 'mannequin' ||
+      i.category === 'collaborator' ||
+      i.category === 'deploy-key',
+  ).length;
+  const governanceAndRemediationCount = postCare.items.filter(
+    (i) =>
+      i.category === 'policy' ||
+      i.category === 'package' ||
+      i.category === 'security' ||
+      i.category === 'failed-operation',
+  ).length;
   const otherCount =
     postCare.items.length - secretCount - appCount - webhookCount - runnerCount;
 
@@ -2147,6 +2168,8 @@ export function generateMigrationResults(
       webhookCount,
       runnerCount,
       otherCount,
+      identityAndAccessCount,
+      governanceAndRemediationCount,
     },
     ...(options.verificationReport?.summary
       ? {

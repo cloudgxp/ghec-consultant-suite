@@ -4,10 +4,24 @@ import type { IdentityMappingEngine } from '../../modules/teams/identity-mapper.
 
 /**
  * Notice documenting GHEC-EMU platform limitation regarding Git commit authorship reattribution.
- * Per DEC-013, managed users cannot add secondary emails to their EMU profiles.
+ * Managed users cannot add secondary emails to their EMU profiles.
  */
 export const COMMIT_AUTHORSHIP_LIMITATION_NOTICE =
-  'In GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU), managed users cannot add personal or secondary email addresses to their enterprise accounts. Consequently, Git commits authored using non-primary or legacy email addresses will remain attributed to author strings rather than linked to the user’s EMU profile. Only commits authored using the user’s primary IdP-linked email address can be attributed to the managed user account. (DEC-013)';
+  'In GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU), managed users cannot add personal or secondary email addresses to their enterprise accounts. Consequently, Git commits authored using non-primary or legacy email addresses will remain attributed to author strings rather than linked to the user’s EMU profile. Only commits authored using the user’s primary IdP-linked email address can be attributed to the managed user account.';
+
+/**
+ * Notice documenting standard GHEC Git commit authorship linking via personal email settings.
+ */
+export const GHEC_STANDARD_COMMIT_AUTHORSHIP_NOTICE =
+  'Mannequins only apply to Issues and Pull Requests. Git commits are linked to GitHub user profiles by matching the commit email address—developers can link historical commits by adding their legacy email addresses under [GitHub Email Settings ↗](https://github.com/settings/emails).';
+
+/**
+ * Builds an explanatory notice when 0 mannequins are discovered on the target organization.
+ */
+export function buildZeroMannequinsSkipNotice(targetOrg: string): string {
+  const encodedOrg = encodeURIComponent(targetOrg);
+  return `Skipped mannequin reclamation because 0 unclaimed mannequins were found in "${targetOrg}". Why this happens: Either all Issue and Pull Request authors already matched existing users in "${targetOrg}", repositories had no external Issue/PR history creating mannequins, or mannequins were already reclaimed. Next steps: Verify attribution status at [Attribution Invitations ↗](https://github.com/organizations/${encodedOrg}/settings/import_export) or run \`gh gei generate-mannequin-csv --github-target-org ${targetOrg}\`.`;
+}
 
 /**
  * Represents a single mannequin identity parsed from `generate-mannequin-csv` output.

@@ -25,6 +25,7 @@ import {
   buildGitHubAppUrlParametersLink,
   buildRecreatedAppSlug,
   classifyGitHubApp,
+  getCandidateTargetAppSlugs,
 } from './manifest.js';
 
 function parseInstallations(
@@ -217,11 +218,19 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
       targetMap.set(inst.app_slug.toLowerCase(), inst);
     }
 
+    const emuSuffix = ctx.scope.identityMapping?.suffix;
+
     for (const app of source.installations) {
       const slugKey = app.app_slug.toLowerCase();
       const recreatedSlug = buildRecreatedAppSlug(app.app_slug, targetOrg);
-      const existing =
-        targetMap.get(slugKey) ?? targetMap.get(recreatedSlug.toLowerCase());
+      const candidateSlugs = getCandidateTargetAppSlugs(
+        app.app_slug,
+        targetOrg,
+        emuSuffix,
+      );
+      const existing = candidateSlugs
+        .map((candidate) => targetMap.get(candidate))
+        .find((inst): inst is AppInstallationState => inst !== undefined);
 
       if (existing) {
         const { matches, diffs } = comparePermissions(
@@ -303,8 +312,10 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
 
         const advisory =
           classification === 'custom_private'
-            ? `GitHub Apps cannot be installed programmatically via API. "${app.app_slug}" (ID: ${app.app_id}) is a private custom app and must be recreated on ${targetOrg} as "${recreatedSlug}" via URL parameters or GitHub App Manifest${selectedReposSuffix}. Recreate URL: ${recreateAppUrl} | Install URL: ${destinationInstallUrl}`
-            : `GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "${app.app_slug}" (ID: ${app.app_id}) on ${targetOrg}, or recreate it as "${recreatedSlug}"${selectedReposSuffix}. Install URL: ${destinationInstallUrl} | Recreate URL: ${recreateAppUrl}`;
+            ? `GitHub Apps cannot be installed programmatically via API. "${app.app_slug}" (ID: ${app.app_id}) is a private custom app and must be recreated on ${targetOrg} as "${recreatedSlug}"${selectedReposSuffix}. Recreate URL: ${recreateAppUrl}`
+            : classification === 'custom_public'
+              ? `GitHub Apps cannot be installed programmatically via API. "${app.app_slug}" (ID: ${app.app_id}) is a public organization-owned app; install the existing app on ${targetOrg} or recreate it as "${recreatedSlug}"${selectedReposSuffix}. Install URL: ${destinationInstallUrl} | Recreate URL: ${recreateAppUrl}`
+              : `GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "${app.app_slug}" (ID: ${app.app_id}) on ${targetOrg}${selectedReposSuffix}.`;
         warnings.push(
           `Manual reinstallation advisory: GitHub App "${app.app_slug}" must be installed on ${targetOrg} manually.`,
         );
@@ -433,7 +444,7 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
         results.push({
           operationId: op.id,
           status: boundCount > 0 ? 'succeeded' : 'skipped',
-          ...(boundCount === 0 && failedReason ? { error: failedReason } : {}),
+          ...(boundCount === 0 && failedReason ? { reason: failedReason } : {}),
           completedAt,
         });
         continue;
@@ -503,19 +514,25 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
       targetMap.set(inst.app_slug.toLowerCase(), inst);
     }
 
+    const emuSuffix = ctx.scope.identityMapping?.suffix;
+
     for (const op of plan.operations) {
       if (op.operation === 'warn' || op.operation === 'noop') {
         const appSlug = op.resourceName;
         const payloadRecreatedSlug = (
           op.payload as { recreated_app_slug?: string } | undefined
         )?.recreated_app_slug;
-        const fallbackRecreatedSlug = buildRecreatedAppSlug(appSlug, targetOrg);
-        const act =
-          targetMap.get(appSlug.toLowerCase()) ??
-          (payloadRecreatedSlug
-            ? targetMap.get(payloadRecreatedSlug.toLowerCase())
-            : undefined) ??
-          targetMap.get(fallbackRecreatedSlug.toLowerCase());
+        const candidateSlugs = getCandidateTargetAppSlugs(
+          appSlug,
+          targetOrg,
+          emuSuffix,
+        );
+        if (payloadRecreatedSlug) {
+          candidateSlugs.push(payloadRecreatedSlug.toLowerCase());
+        }
+        const act = candidateSlugs
+          .map((candidate) => targetMap.get(candidate))
+          .find((inst): inst is AppInstallationState => inst !== undefined);
 
         if (!act) {
           const isManualInstallAdvisory =

@@ -269,6 +269,103 @@ gh workflow run migration-execute-wave.yml \
 
 ---
 
+## Recreating GitHub Apps and automatically binding repositories
+
+By default, GitHub does not allow any API to copy a private `.pem` key or install a GitHub App onto a new organization without a human administrator clicking **Install** in their browser. Instead, the `apps-inventory` module builds **1-click pre-filled registration and installation links** in `POST-CARE-CHECKLIST.md` (`migration-audit-results`) and **automatically binds all selected repositories** via the GitHub API once the app is installed.
+
+To install your apps after a migration wave and automatically attach them to the exact same repositories in 15 seconds:
+
+1. Open `POST-CARE-CHECKLIST.md` in your `migration-audit-results` repository and click the **Marketplace Link** (for third-party apps) or **Custom Recreate Link** (for private custom apps) to install the app on your target organization.
+2. If the app only had access to specific repositories (`Selection: selected`), select **"Only select repositories"** in the GitHub page and pick **just 1 repository** so the green **Install** button unlocks—you do not need to click 50 repositories by hand.
+3. Run the `apps-inventory` module on its own to automatically attach every remaining repository to the app:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f source_org="acme-source" \
+  -f target_org="acme-emu" \
+  -f repositories="org_only" \
+  -f modules="apps-inventory" \
+  -f dry_run="false"
+```
+
+> [!NOTE]
+> **How to handle shared Enterprise-owned GitHub Apps across multiple organizations:**
+>
+> - GitHub does not support App Manifests for Enterprise-owned apps, but **does** support URL query parameters at `https://github.com/enterprises/<target-enterprise>/settings/apps/new?...`.
+> - If your customer has an Enterprise-owned app installed across several organizations, recreate it **once** at the target Enterprise level using the query parameters from the **Custom Recreate Link** and name it `<app-slug>-emu` (or `<app-slug>-<shortcode>`).
+> - Then install that single Enterprise app onto each target organization as its wave arrives. Our tool automatically recognizes `<app-slug>`, `<app-slug>-<target-org>`, `<app-slug>-emu`, and `<app-slug>-<shortcode>` and binds the selected repositories for that organization.
+
+---
+
+## Planning a multi-wave Enterprise migration across multiple organizations
+
+By default, you can migrate a large GitHub Enterprise with dozens of organizations in scheduled waves over several weeks without blocking daily engineering work. Set up your Enterprise-level foundation once in **Wave 0**, move shared platform organizations first in **Wave 1**, and move business unit organizations in **Waves 2 and beyond**.
+
+```text
+Enterprise Migration Waves
+├── Wave 0: Enterprise Foundation (SCIM, Enterprise Apps, Custom Property Schemas)
+├── Wave 1: Shared Platform & Tooling Orgs (Reusable Workflows & Shared Packages)
+├── Wave 2: Business Unit Orgs — Cohort A
+└── Wave 3: Business Unit Orgs — Cohort B + Source Cutover (post-migration-cutover.yml)
+```
+
+### Step 1: Set up the target Enterprise foundation once (Wave 0)
+
+Before running your first organization wave, check these five Enterprise-level settings at `https://github.com/enterprises/<target-enterprise>/settings/`:
+
+- **SCIM Users and IdP Groups:** Connect your Identity Provider (Okta, Entra ID, or PingFederate) so managed users (`<user>_<shortcode>`) and SCIM groups exist before the `teams` and `collaborators` modules run.
+- **Enterprise Policies:** Leave repository visibility, base permissions, and GitHub Actions policies set to **"No policy"** (delegated to organizations) during active migration waves so organization modules are not blocked.
+- **Enterprise Rulesets:** If you recreate Enterprise-level rulesets, keep their enforcement status set to **`Evaluate`** or **`Disabled`** until all organization waves finish so branch rules do not block code pushes.
+- **Enterprise Custom Property Schemas & Runner Groups:** Recreate any Enterprise-wide repository custom property schemas (`/enterprises/{enterprise}/properties/schema`), Enterprise runner groups, and Actions spending limits so every organization wave can use them right away.
+- **Shared Enterprise GitHub Apps:** Recreate any shared Enterprise-owned GitHub Apps once at the Enterprise level (`<app-slug>-emu`).
+
+### Step 2: Move shared platform organizations first (Wave 1)
+
+To migrate a shared platform or DevOps organization (such as the organization that hosts shared `.github` reusable workflows and base packages) so downstream organizations can reference it:
+
+```bash
+gh workflow run migration-e2e-autonomous.yml \
+  -f source_org="acme-platform" \
+  -f target_org="acme-platform-emu" \
+  -f target_type="emu" \
+  -f emu_shortcode="acme" \
+  -f modules="auto" \
+  -f dry_run="false"
+```
+
+### Step 3: Move a large organization in smaller repository sub-waves (`associated-only`)
+
+If a single organization has hundreds of repositories and you want to move Batch 1 this week and Batch 2 next week into the same target organization, set `org_items_mode="associated-only"` so each batch copies only the teams, secrets, variables, and rulesets linked to those repositories without overwriting earlier batches:
+
+```bash
+gh workflow run migration-e2e-autonomous.yml \
+  -f source_org="acme-payments" \
+  -f target_org="acme-payments-emu" \
+  -f target_type="emu" \
+  -f emu_shortcode="acme" \
+  -f repositories="payments-core,billing-api,ledger-service" \
+  -f org_items_mode="associated-only" \
+  -f dry_run="false"
+```
+
+### Step 4: Detach unique SSH deploy keys and custom domains at cutover
+
+Once an organization wave passes verification and is ready to go live, run `post-migration-cutover.yml` to move globally unique SSH deploy keys and GitHub Pages custom domains from the source organization to the target organization and freeze the old repositories:
+
+```bash
+gh workflow run post-migration-cutover.yml \
+  -f source_org="acme-payments" \
+  -f target_org="acme-payments-emu" \
+  -f include_deploy_keys="true" \
+  -f include_pages_cname="true" \
+  -f deactivate_source_webhooks="true" \
+  -f disable_source_actions="true" \
+  -f archive_source_repos="true" \
+  -f confirm_cutover="CUTOVER"
+```
+
+---
+
 ## Resuming a paused migration or fixing missing items
 
 By default, every migration run saves checkpoints as it finishes each step and automatically runs up to 3 self-healing passes at the end of the workflow to fix any temporary rate-limit misses.
@@ -299,23 +396,23 @@ By default, setting `modules` to `"auto"` selects the appropriate modules automa
 
 ### Organization-level modules
 
-| Module ID                   | Category      | What It Migrates                                                                                 |
-| :-------------------------- | :------------ | :----------------------------------------------------------------------------------------------- |
-| `org-settings`              | Governance    | Organization profile, default repository permissions, member privileges, and security            |
-| `teams`                     | Governance    | Team hierarchy (parent and child teams), descriptions, privacy, and repo permissions             |
-| `custom-roles`              | Governance    | Custom organization and repository roles                                                         |
-| `org-custom-properties`     | Governance    | Organization custom property schemas, allowed values, and defaults                               |
-| `org-rulesets`              | Security      | Organization-level branch and tag rulesets and bypass actors                                     |
-| `ip-allow-lists`            | Security      | Organization IP allow list entries (created disabled by default to avoid lockouts)               |
-| `actions-policies`          | Actions       | Allowed GitHub Actions policies, fork workflow approvals, and default `GITHUB_TOKEN` permissions |
-| `actions-runners`           | Actions       | Organization self-hosted runner group definitions and repository access lists                    |
-| `org-variables`             | Actions       | Organization-level GitHub Actions configuration variables (plaintext values)                     |
-| `org-secrets`               | Actions       | Organization-level GitHub Actions & Dependabot secret names (sealed blank placeholders)          |
-| `org-webhooks`              | Integrations  | Organization webhooks (created inactive by default until cutover)                                |
-| `apps-inventory`            | Integrations  | Inventory of installed GitHub Apps and OAuth authorizations for manual re-installation           |
-| `projects-v2`               | Collaboration | Organization Projects v2 boards, custom fields (text, number, date, single-select), and views    |
-| `packages`                  | Artifacts     | Organization GitHub Packages (npm, Maven, NuGet, Docker/OCI containers, RubyGems)                |
-| `post-migration-mannequins` | Identity      | Mannequin inventory and CSV mapping generation for `gh gei reclaim-mannequin`                    |
+| Module ID                   | Category      | What It Migrates                                                                                       |
+| :-------------------------- | :------------ | :----------------------------------------------------------------------------------------------------- |
+| `org-settings`              | Governance    | Organization profile, default repository permissions, member privileges, and security                  |
+| `teams`                     | Governance    | Team hierarchy (parent and child teams), descriptions, privacy, SCIM IdP group sync, and repo access   |
+| `custom-roles`              | Governance    | Custom organization and repository roles                                                               |
+| `org-custom-properties`     | Governance    | Organization custom property schemas, allowed values, and defaults                                     |
+| `org-rulesets`              | Security      | Organization-level branch and tag rulesets and bypass actors                                           |
+| `ip-allow-lists`            | Security      | Organization IP allow list entries (created disabled by default to avoid lockouts)                     |
+| `actions-policies`          | Actions       | Allowed GitHub Actions policies, fork workflow approvals, and default `GITHUB_TOKEN` permissions       |
+| `actions-runners`           | Actions       | Organization self-hosted runner groups, larger GitHub-hosted runners, and repository access lists      |
+| `org-variables`             | Actions       | Organization-level GitHub Actions, Dependabot, Codespaces, and Agent configuration variables           |
+| `org-secrets`               | Actions       | Organization-level Actions, Dependabot, Codespaces, and Agent secret names (sealed blank placeholders) |
+| `org-webhooks`              | Integrations  | Organization webhooks (created inactive when a signing secret is required)                             |
+| `apps-inventory`            | Integrations  | 1-click GitHub App installation/recreation links, manifest exports, and automatic repository binding   |
+| `projects-v2`               | Collaboration | Organization Projects v2 boards, custom fields (text, number, date, single-select), and views          |
+| `packages`                  | Artifacts     | Organization GitHub Packages (npm, Maven, NuGet, Docker/OCI containers, RubyGems)                      |
+| `post-migration-mannequins` | Identity      | Mannequin inventory and CSV mapping generation for `gh gei reclaim-mannequin`                          |
 
 ### Repository-level modules
 
@@ -384,7 +481,7 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `org_items_mode`    | `'auto'`                 |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                              |
 | `target_type`       | `'ghec'`                 |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                   |
 | `emu_shortcode`     | `''`                     |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                         |
-| `modules`           | `'auto'`                 |    No    | `'auto'` (strategy-aware selection across all 32 modules), `'all'`, or comma-separated module IDs.                          |
+| `modules`           | `'auto'`                 |    No    | `'auto'` (strategy-aware selection across all 34 modules), `'all'`, or comma-separated module IDs.                          |
 | `runner_capacity`   | `5`                      |    No    | Available parallel runner capacity.                                                                                         |
 | `batch_size`        | `5`                      |    No    | Maximum number of repositories per parallel runner cohort.                                                                  |
 | `dry_run`           | `true`                   |    No    | Preview mode (`true` makes zero changes; `false` runs the live migration).                                                  |
@@ -404,7 +501,7 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `source_visibility`        | `'all'`                |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).   |
 | `exclude_forks`            | `false`                |    No    | **Inline 1-Click Mode:** Skip forked repositories (`true` or `false`).                                                      |
 | `org_items_mode`           | `'auto'`               |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                              |
-| `modules`                  | `'auto'`               |    No    | `'auto'` (strategy-aware selection across all 32 modules) or comma-separated module IDs.                                    |
+| `modules`                  | `'auto'`               |    No    | `'auto'` (strategy-aware selection across all 34 modules) or comma-separated module IDs.                                    |
 | `exclude_modules`          | `''`                   |    No    | Optional comma-separated module IDs to skip (for example, `'teams,packages'`).                                              |
 | `target_type`              | `'ghec'`               |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                   |
 | `emu_shortcode`            | `''`                   |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                         |

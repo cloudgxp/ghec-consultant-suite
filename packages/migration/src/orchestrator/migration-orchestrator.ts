@@ -440,6 +440,68 @@ export class MigrationOrchestrator {
       }
     }
 
+    const hasFreshlyMigratedRepos = Array.from(freshlyMigratedTargets).some(
+      (targetId) => targetId.includes('/'),
+    );
+    if (!this.dryRun && hasFreshlyMigratedRepos) {
+      for (const modulePlan of queuedPlans) {
+        if (this.signal.aborted) break;
+        if (
+          modulePlan.moduleId !== 'apps-inventory' ||
+          !modulePlan.operations.some(
+            (op) =>
+              op.resourceType === 'github_app_repository_binding' &&
+              op.operation === 'update',
+          )
+        ) {
+          continue;
+        }
+
+        const existingIdx = executionResults.findIndex(
+          (r) =>
+            r.moduleId === 'apps-inventory' &&
+            r.targetIdentifier === modulePlan.targetIdentifier,
+        );
+        if (existingIdx === -1) continue;
+
+        const mod = this.registry.getOrThrow('apps-inventory');
+        const scopeTarget = this.resolveScopeTarget(modulePlan);
+        const ctx: MigrationContext = {
+          runId: this.runId,
+          scope: scopeTarget,
+          sourceClient: this.sourceClient,
+          targetClient: this.targetClient,
+          targetWriteClient: this.targetWriteClient,
+          signal: this.signal,
+          dryRun: this.dryRun,
+          continueOnError: this.continueOnError,
+          logger: this.logger,
+        };
+
+        try {
+          this.logger.info(
+            `Reconciling GitHub App repository bindings for "${modulePlan.targetIdentifier}" after repository creation...`,
+          );
+          const reconciled = await mod.apply(ctx, modulePlan);
+          const enriched = enrichModuleExecutionResult(reconciled, modulePlan, {
+            targetIdentifier: modulePlan.targetIdentifier,
+            scopeLevel: modulePlan.scopeLevel,
+          });
+          const validated = validateModuleExecutionResult(enriched);
+          if (validated.success) {
+            executionResults[existingIdx] = validated.data;
+          }
+        } catch (err) {
+          const msg = sanitizeDiagnostics(
+            err instanceof Error ? err.message : String(err),
+          );
+          this.logger.warn(
+            `Post-repository reconciliation for "apps-inventory" on "${modulePlan.targetIdentifier}" encountered an error: ${msg}`,
+          );
+        }
+      }
+    }
+
     let status: 'complete' | 'partial' | 'failed';
     let exitCode: 0 | 1 | 4;
 

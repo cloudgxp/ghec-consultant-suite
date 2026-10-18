@@ -37,6 +37,7 @@ export type PostCarePriority = 'high' | 'medium' | 'low';
 export type PostCareMigrationStatus =
   | 'sealed-placeholder'
   | 'inactive-webhook'
+  | 'active-no-secret'
   | 'manual-action-required'
   | 'failed'
   | 'skipped'
@@ -351,18 +352,34 @@ export function resolveTargetSettingsLinks(params: {
         ? (plannedOp.payload as Record<string, unknown>)
         : undefined;
     const combinedNotes = `${notes ?? ''} ${plannedOp?.reason ?? ''}`;
+    const lowerNotes = combinedNotes.toLowerCase();
+    const extractedInstallUrl = extractUrlFromText(
+      combinedNotes,
+      'Install URL:',
+    );
+    const extractedRecreateUrl = extractUrlFromText(
+      combinedNotes,
+      'Recreate URL:',
+    );
     const isCustomPrivate =
       payload?.classification === 'custom_private' ||
-      combinedNotes.toLowerCase().includes('private custom app');
+      lowerNotes.includes('private custom app');
+    const isCustomPublic =
+      !isCustomPrivate &&
+      (payload?.classification === 'custom_public' ||
+        lowerNotes.includes('public organization-owned app') ||
+        lowerNotes.includes('public custom app') ||
+        (payload?.classification === undefined &&
+          Boolean(extractedInstallUrl && extractedRecreateUrl)));
     const installUrl =
       typeof payload?.destination_install_url === 'string'
         ? payload.destination_install_url
-        : (extractUrlFromText(combinedNotes, 'Install URL:') ??
+        : (extractedInstallUrl ??
           `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`);
     const recreateUrl =
       typeof payload?.recreate_app_url === 'string'
         ? payload.recreate_app_url
-        : (extractUrlFromText(combinedNotes, 'Recreate URL:') ??
+        : (extractedRecreateUrl ??
           buildGitHubAppUrlParametersLink(
             {
               app_id: 0,
@@ -377,13 +394,33 @@ export function resolveTargetSettingsLinks(params: {
         ? payload.recreated_app_slug
         : buildRecreatedAppSlug(appSlug, targetOrg);
 
+    if (isCustomPrivate) {
+      return {
+        settingsUrl: recreateUrl,
+        settingsLinkLabel: `Custom Recreate Link (${recreatedSlug}) ↗`,
+        cliCommand: `node scripts/register-app.mjs --org ${targetOrg} --app ${appSlug}`,
+        subDomain: 'custom_private',
+        cleanResourceName: appSlug,
+      };
+    }
+
+    if (isCustomPublic) {
+      return {
+        settingsUrl: installUrl,
+        settingsLinkLabel: 'Marketplace / Install Link ↗',
+        secondaryUrl: recreateUrl,
+        secondaryLinkLabel: `Custom Recreate Link (${recreatedSlug}) ↗`,
+        cliCommand: `node scripts/register-app.mjs --org ${targetOrg} --app ${appSlug}`,
+        subDomain: 'custom_public',
+        cleanResourceName: appSlug,
+      };
+    }
+
     return {
       settingsUrl: installUrl,
       settingsLinkLabel: 'Marketplace / Install Link ↗',
-      secondaryUrl: recreateUrl,
-      secondaryLinkLabel: `Custom Recreate Link (${recreatedSlug}) ↗`,
-      cliCommand: `node scripts/register-app.mjs --org ${targetOrg} --app ${appSlug}`,
-      subDomain: isCustomPrivate ? 'custom_private' : 'third_party_or_public',
+      cliCommand: `gh api /orgs/${targetOrg}/installations`,
+      subDomain: 'third_party',
       cleanResourceName: appSlug,
     };
   }
@@ -395,11 +432,17 @@ export function resolveTargetSettingsLinks(params: {
     typeLower === 'webhook' ||
     typeLower === 'org-webhook'
   ) {
+    const activeNoSecret = isWebhookAlreadyActiveWithoutSecret({
+      notes,
+      plannedOp,
+    });
     if (targetRepo && modLower !== 'org-webhooks') {
       return {
         settingsUrl: `https://github.com/${encOrg}/${encRepo}/settings/hooks`,
         settingsLinkLabel: 'Configure Repo Webhooks ↗',
-        cliCommand: `gh api --method PATCH /repos/${targetOrg}/${targetRepo}/hooks/<HOOK_ID> -f "config[url]=${resourceName}" -f "config[content_type]=json" -f "config[secret]=<SECRET>" -F active=true`,
+        cliCommand: activeNoSecret
+          ? `gh api /repos/${targetOrg}/${targetRepo}/hooks`
+          : `gh api --method PATCH /repos/${targetOrg}/${targetRepo}/hooks/<HOOK_ID> -f "config[url]=${resourceName}" -f "config[content_type]=json" -f "config[secret]=<SECRET>" -F active=true`,
         subDomain: 'repo-webhook',
         cleanResourceName: resourceName,
       };
@@ -407,7 +450,9 @@ export function resolveTargetSettingsLinks(params: {
     return {
       settingsUrl: `https://github.com/organizations/${encOrg}/settings/hooks`,
       settingsLinkLabel: 'Configure Org Webhooks ↗',
-      cliCommand: `gh api --method PATCH /orgs/${targetOrg}/hooks/<HOOK_ID> -f "config[url]=${resourceName}" -f "config[content_type]=json" -f "config[secret]=<SECRET>" -F active=true`,
+      cliCommand: activeNoSecret
+        ? `gh api /orgs/${targetOrg}/hooks`
+        : `gh api --method PATCH /orgs/${targetOrg}/hooks/<HOOK_ID> -f "config[url]=${resourceName}" -f "config[content_type]=json" -f "config[secret]=<SECRET>" -F active=true`,
       subDomain: 'org-webhook',
       cleanResourceName: resourceName,
     };
@@ -795,6 +840,45 @@ function extractUrlFromText(text: string, marker: string): string | undefined {
   return match ? match[0] : undefined;
 }
 
+function stripEmbeddedAppUrls(notes: string): string {
+  return notes
+    .replace(
+      /\s*(?:\|\s*)?(?:Install URL|Recreate URL):\s*https?:\/\/[^\s|)]+/gi,
+      '',
+    )
+    .replace(/\s+\|\s*$/, '')
+    .trim();
+}
+
+function isWebhookAlreadyActiveWithoutSecret(params: {
+  readonly notes?: string | undefined;
+  readonly plannedOp?: PlannedOperation | undefined;
+}): boolean {
+  const { notes, plannedOp } = params;
+  const sourceState =
+    plannedOp?.sourceState && typeof plannedOp.sourceState === 'object'
+      ? (plannedOp.sourceState as {
+          secretConfigured?: unknown;
+          active?: unknown;
+        })
+      : undefined;
+  if (
+    sourceState?.secretConfigured === false &&
+    sourceState?.active !== false
+  ) {
+    return true;
+  }
+  const combined = `${notes ?? ''} ${plannedOp?.reason ?? ''}`.toLowerCase();
+  if (
+    combined.includes('no signing secret configured on source') ||
+    combined.includes('no signing secret was configured on source') ||
+    combined.includes('active-no-secret')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function classifyPostCareCategory(
   moduleId: string,
   resourceType: string,
@@ -947,6 +1031,11 @@ function buildActionInstruction(params: {
       return `Populate plaintext value for ${subDomain} organization secret "${cleanResourceName}" on ${targetOrg}.`;
     }
     case 'webhook':
+      if (migrationStatus === 'active-no-secret') {
+        return targetRepo
+          ? `Already active on ${targetOrg}/${targetRepo} (no signing secret was configured on source). Optional: verify endpoint reachability for ${cleanResourceName} or add an HMAC signing secret if desired.`
+          : `Already active on ${targetOrg} (no signing secret was configured on source). Optional: verify organization webhook endpoint reachability for ${cleanResourceName} or add an HMAC signing secret if desired.`;
+      }
       return targetRepo
         ? `Enter webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}/${targetRepo}.`
         : `Enter organization webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}.`;
@@ -966,9 +1055,13 @@ function buildActionInstruction(params: {
       const selectedSuffix = selectedRepos
         ? ` Scope installation to selected repositories: ${selectedRepos}.`
         : '';
-      return subDomain === 'custom_private'
-        ? `Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the Custom Recreate Link or App Manifest, then install on target repositories.${selectedSuffix}`
-        : `Install and authorize GitHub App "${cleanResourceName}" on ${targetOrg} (or recreate as a custom app if internal).${selectedSuffix}`;
+      if (subDomain === 'custom_private') {
+        return `Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the Custom Recreate Link or App Manifest, then install on target repositories.${selectedSuffix}`;
+      }
+      if (subDomain === 'custom_public') {
+        return `Install public organization-owned GitHub App "${cleanResourceName}" on ${targetOrg} using the Marketplace Link, or recreate it under ${targetOrg} using the Custom Recreate Link.${selectedSuffix}`;
+      }
+      return `Install and authorize third-party / Marketplace GitHub App "${cleanResourceName}" on ${targetOrg} using the Marketplace Link.${selectedSuffix}`;
     }
     case 'runner':
       if (subDomain === 'hosted-runner') {
@@ -985,10 +1078,11 @@ function buildActionInstruction(params: {
       return `Map and reclaim mannequin "${cleanResourceName}" to target EMU user identity on ${targetOrg}.`;
     case 'idp-team': {
       const idpGroup = extractIdpGroupFromNotes(notes);
+      const syncLink = `[Team IdP Sync Settings ↗](https://github.com/orgs/${targetOrg}/teams/${cleanResourceName}/Sync)`;
       if (idpGroup) {
-        return `Verify or bind team "${cleanResourceName}" on ${targetOrg} to Identity Provider (IdP) SCIM group ${idpGroup} at https://github.com/orgs/${targetOrg}/teams/${cleanResourceName}/Sync.`;
+        return `Verify or bind team "${cleanResourceName}" on ${targetOrg} to Identity Provider (IdP) SCIM group ${idpGroup} at ${syncLink}.`;
       }
-      return `Verify team "${cleanResourceName}" on ${targetOrg} and bind to your Identity Provider (IdP) SCIM group at https://github.com/orgs/${targetOrg}/teams/${cleanResourceName}/Sync if IdP-managed.`;
+      return `Verify team "${cleanResourceName}" on ${targetOrg} and bind to your Identity Provider (IdP) SCIM group at ${syncLink} if IdP-managed.`;
     }
     case 'collaborator':
       return `Review outside collaborator "${cleanResourceName}" on ${targetOrg}/${targetRepo ?? ''} and provision as an EMU guest/team member.`;
@@ -1000,7 +1094,7 @@ function buildActionInstruction(params: {
       return `Review ${subDomain} configuration ("${cleanResourceName}") on ${targetRepo ? `${targetOrg}/${targetRepo}` : targetOrg}.`;
     case 'failed-operation':
       return notes && notes.trim().length > 0
-        ? `Resolve ${migrationStatus} item "${cleanResourceName}": ${notes}`
+        ? `Resolve ${migrationStatus} item "${cleanResourceName}": ${stripEmbeddedAppUrls(notes)}`
         : `Investigate and remediate ${migrationStatus} operation for "${cleanResourceName}".`;
   }
 }
@@ -1154,6 +1248,9 @@ export function generatePostCareDeliverables(
           item,
         });
 
+        const cleanedItemNotes = item.notes
+          ? stripEmbeddedAppUrls(item.notes)
+          : '';
         operationRows.push({
           scopeLevel: 'organization',
           targetOrg,
@@ -1168,7 +1265,7 @@ export function generatePostCareDeliverables(
           requiresPostCare,
           settingsUrl: links.settingsUrl,
           cliCommand: links.cliCommand ?? '',
-          notes: sanitizeDiagnostics(item.notes ?? ''),
+          notes: sanitizeDiagnostics(cleanedItemNotes),
         });
 
         if (requiresPostCare) {
@@ -1176,6 +1273,12 @@ export function generatePostCareDeliverables(
             moduleId,
             item.resourceType,
           );
+          const activeNoSecretWebhook =
+            category === 'webhook' &&
+            isWebhookAlreadyActiveWithoutSecret({
+              notes: item.notes,
+              plannedOp,
+            });
           const migrationStatus: PostCareMigrationStatus =
             item.status === 'failed'
               ? 'failed'
@@ -1186,7 +1289,9 @@ export function generatePostCareDeliverables(
                   : category === 'secret'
                     ? 'sealed-placeholder'
                     : category === 'webhook'
-                      ? 'inactive-webhook'
+                      ? activeNoSecretWebhook
+                        ? 'active-no-secret'
+                        : 'inactive-webhook'
                       : mode === 'dry-run'
                         ? 'planned'
                         : 'manual-action-required';
@@ -1194,10 +1299,12 @@ export function generatePostCareDeliverables(
             item.status === 'failed' ||
             item.verificationStatus === 'discrepancy' ||
             category === 'secret' ||
-            category === 'webhook' ||
-            category === 'github-app'
+            category === 'github-app' ||
+            (category === 'webhook' && !activeNoSecretWebhook)
               ? 'high'
-              : 'medium';
+              : activeNoSecretWebhook
+                ? 'low'
+                : 'medium';
 
           const itemId = `postcare:org:${moduleId}:${links.subDomain}:${links.cleanResourceName}`;
           addPostCareItem({
@@ -1223,7 +1330,9 @@ export function generatePostCareDeliverables(
             settingsUrl: links.settingsUrl,
             secondaryUrl: links.secondaryUrl,
             cliCommand: links.cliCommand,
-            notes: item.notes ? sanitizeDiagnostics(item.notes) : undefined,
+            notes: cleanedItemNotes
+              ? sanitizeDiagnostics(cleanedItemNotes)
+              : undefined,
           });
         }
       }
@@ -1254,6 +1363,9 @@ export function generatePostCareDeliverables(
         const scopeLevel: 'repository' | 'environment' = links.environmentName
           ? 'environment'
           : 'repository';
+        const cleanedItemNotes = item.notes
+          ? stripEmbeddedAppUrls(item.notes)
+          : '';
 
         operationRows.push({
           scopeLevel,
@@ -1269,7 +1381,7 @@ export function generatePostCareDeliverables(
           requiresPostCare,
           settingsUrl: links.settingsUrl,
           cliCommand: links.cliCommand ?? '',
-          notes: sanitizeDiagnostics(item.notes ?? ''),
+          notes: sanitizeDiagnostics(cleanedItemNotes),
         });
 
         if (requiresPostCare) {
@@ -1277,6 +1389,12 @@ export function generatePostCareDeliverables(
             moduleId,
             item.resourceType,
           );
+          const activeNoSecretWebhook =
+            category === 'webhook' &&
+            isWebhookAlreadyActiveWithoutSecret({
+              notes: item.notes,
+              plannedOp,
+            });
           const migrationStatus: PostCareMigrationStatus =
             item.status === 'failed'
               ? 'failed'
@@ -1287,7 +1405,9 @@ export function generatePostCareDeliverables(
                   : category === 'secret'
                     ? 'sealed-placeholder'
                     : category === 'webhook'
-                      ? 'inactive-webhook'
+                      ? activeNoSecretWebhook
+                        ? 'active-no-secret'
+                        : 'inactive-webhook'
                       : mode === 'dry-run'
                         ? 'planned'
                         : 'manual-action-required';
@@ -1295,10 +1415,12 @@ export function generatePostCareDeliverables(
             item.status === 'failed' ||
             item.verificationStatus === 'discrepancy' ||
             category === 'secret' ||
-            category === 'webhook' ||
-            category === 'github-app'
+            category === 'github-app' ||
+            (category === 'webhook' && !activeNoSecretWebhook)
               ? 'high'
-              : 'medium';
+              : activeNoSecretWebhook
+                ? 'low'
+                : 'medium';
 
           const itemId = `postcare:repo:${targetRepo}:${moduleId}:${links.environmentName ?? ''}:${links.subDomain}:${links.cleanResourceName}`;
           addPostCareItem({
@@ -1328,7 +1450,9 @@ export function generatePostCareDeliverables(
             settingsUrl: links.settingsUrl,
             secondaryUrl: links.secondaryUrl,
             cliCommand: links.cliCommand,
-            notes: item.notes ? sanitizeDiagnostics(item.notes) : undefined,
+            notes: cleanedItemNotes
+              ? sanitizeDiagnostics(cleanedItemNotes)
+              : undefined,
           });
         }
       }
@@ -1378,6 +1502,9 @@ export function generatePostCareDeliverables(
           : links.environmentName
             ? 'environment'
             : 'repository';
+        const cleanedOpReason = op.reason
+          ? stripEmbeddedAppUrls(op.reason)
+          : '';
 
         const orgModelsCount = orgModuleModels
           ? Array.isArray(orgModuleModels)
@@ -1410,7 +1537,7 @@ export function generatePostCareDeliverables(
             requiresPostCare,
             settingsUrl: links.settingsUrl,
             cliCommand: links.cliCommand ?? '',
-            notes: sanitizeDiagnostics(op.reason ?? ''),
+            notes: sanitizeDiagnostics(cleanedOpReason),
           });
         }
 
@@ -1419,20 +1546,30 @@ export function generatePostCareDeliverables(
             modPlan.moduleId,
             op.resourceType,
           );
+          const activeNoSecretWebhook =
+            category === 'webhook' &&
+            isWebhookAlreadyActiveWithoutSecret({
+              notes: op.reason,
+              plannedOp: op,
+            });
           const migrationStatus: PostCareMigrationStatus =
             op.operation === 'skip'
               ? 'skipped'
               : category === 'secret'
                 ? 'sealed-placeholder'
                 : category === 'webhook'
-                  ? 'inactive-webhook'
+                  ? activeNoSecretWebhook
+                    ? 'active-no-secret'
+                    : 'inactive-webhook'
                   : 'planned';
           const priority: PostCarePriority =
             category === 'secret' ||
-            category === 'webhook' ||
-            category === 'github-app'
+            category === 'github-app' ||
+            (category === 'webhook' && !activeNoSecretWebhook)
               ? 'high'
-              : 'medium';
+              : activeNoSecretWebhook
+                ? 'low'
+                : 'medium';
           const itemId = isOrg
             ? `postcare:org:${modPlan.moduleId}:${links.subDomain}:${links.cleanResourceName}`
             : `postcare:repo:${targetRepo ?? ''}:${modPlan.moduleId}:${links.environmentName ?? ''}:${links.subDomain}:${links.cleanResourceName}`;
@@ -1464,7 +1601,9 @@ export function generatePostCareDeliverables(
             settingsUrl: links.settingsUrl,
             secondaryUrl: links.secondaryUrl,
             cliCommand: links.cliCommand,
-            notes: op.reason ? sanitizeDiagnostics(op.reason) : undefined,
+            notes: cleanedOpReason
+              ? sanitizeDiagnostics(cleanedOpReason)
+              : undefined,
           });
         }
       }
@@ -1789,7 +1928,28 @@ export function generatePostCareDeliverables(
     }
   }
 
-  const items = Array.from(postCareMap.values());
+  const priorityRank: Record<PostCarePriority, number> = {
+    high: 0,
+    medium: 1,
+    low: 2,
+  };
+  const items = Array.from(postCareMap.values()).sort((a, b) => {
+    const pDiff = priorityRank[a.priority] - priorityRank[b.priority];
+    if (pDiff !== 0) return pDiff;
+    if (
+      a.migrationStatus === 'active-no-secret' &&
+      b.migrationStatus !== 'active-no-secret'
+    ) {
+      return 1;
+    }
+    if (
+      a.migrationStatus !== 'active-no-secret' &&
+      b.migrationStatus === 'active-no-secret'
+    ) {
+      return -1;
+    }
+    return 0;
+  });
   const checklistMarkdown = formatPostCareChecklistMarkdown({
     sourceOrg,
     targetOrg,
@@ -1865,8 +2025,8 @@ export function formatPostCareChecklistMarkdown(params: {
     `| 🤖 GitHub Apps to Install or Recreate | ${appItems.length} | **High** | [\`exports/github-apps-reinstall.csv\`](exports/github-apps-reinstall.csv) |`,
     `| 🪝 Webhooks to Populate Secret & Activate | ${webhookItems.length} | **High** | [\`exports/webhooks-reconfiguration.csv\`](exports/webhooks-reconfiguration.csv) |`,
     `| 🖥️ Self-Hosted & Larger Hosted Runners | ${runnerItems.length} | **Medium** | [\`exports/runners-registration.csv\`](exports/runners-registration.csv) |`,
-    `| 👥 Teams (IdP Sync), Mannequins, Collaborators & Deploy Keys | ${accessItems.length} | **Medium** | [\`exports/post-care-items.csv\`](exports/post-care-items.csv) |`,
-    `| ⚠️ Policies, Packages, Security & Failed/Skipped Items | ${otherItems.length} | **High / Medium** | [\`exports/post-care-items.csv\`](exports/post-care-items.csv) |`,
+    `| 👥 Teams (IdP Sync), Mannequins, Collaborators & Deploy Keys | ${accessItems.length} | **Medium** | [\`exports/identity-and-access.csv\`](exports/identity-and-access.csv) |`,
+    `| ⚠️ Policies, Packages, Security & Failed/Skipped Items | ${otherItems.length} | **High / Medium** | [\`exports/governance-and-remediation.csv\`](exports/governance-and-remediation.csv) |`,
     '',
   ];
 
@@ -1887,7 +2047,7 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('## 1. Secrets Requiring Value Population');
     lines.push('');
     lines.push(
-      'GitHub APIs never expose plaintext secret values (`DEC-004`). Secrets are created at the destination as sealed blank placeholders (`""`) so your workflows and environments have their names reserved. Click **Edit Secret in GitHub** or run the **CLI Command** to set each secret value.',
+      'GitHub APIs never expose plaintext secret values. Secrets are created at the destination as sealed blank placeholders (`""`) so your workflows and environments have their names reserved. Click **Edit Secret in GitHub** or run the **CLI Command** to set each secret value.',
     );
     lines.push('');
 
@@ -1955,13 +2115,25 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('## 2. GitHub Apps Requiring Installation or Recreation');
     lines.push('');
     lines.push(
-      'GitHub App installations and private keys cannot be transferred automatically across organizations. Use the **Marketplace Link** for public/marketplace apps or the **Custom Recreate Link** for internal custom apps.',
+      'GitHub App installations and private keys cannot be transferred automatically across organizations. Use the **Marketplace Link** for third-party or public apps, or the **Custom Recreate Link** for internal custom apps.',
     );
     lines.push('');
     lines.push('> [!NOTE]');
     lines.push(
-      `> **Enterprise-Owned & Repository-Scoped GitHub Apps:** Any Enterprise-owned GitHub App installed on \`${sourceOrg}\` is automatically detected via \`GET /orgs/${sourceOrg}/installations\` and listed below. When an app is scoped to selected repositories, the exact repository list is included in **Action Required** and will be automatically bound if the app is already installed on \`${targetOrg}\`.`,
+      `> **Enterprise-Owned & Repository-Scoped GitHub Apps:** Any Enterprise-owned GitHub App installed on \`${sourceOrg}\` is automatically detected via \`GET /orgs/${sourceOrg}/installations\` and listed below.`,
     );
+    lines.push(
+      `> - **Shared Enterprise-Owned Apps:** If a custom app is owned by your Enterprise account and shared across multiple organizations, recreate it **once** at the Enterprise level (\`https://github.com/enterprises/<target-enterprise>/settings/apps/new?...\` using the query parameters from the **Custom Recreate Link** and naming it \`<app_slug>-emu\`), then install that single Enterprise app onto \`${targetOrg}\`.`,
+    );
+    lines.push(
+      `> - **Automatic Repository Binding (\`Selection: selected\`):** When installing a repository-scoped app on \`${targetOrg}\`, choose **"Only select repositories"** (select any 1 repository in the GitHub UI if required to click Install) and keep the pre-filled app name (\`<app_slug>-${targetOrg}\` or \`<app_slug>-emu\`). Then run the 15-second command below to automatically bind every repository from **Action Required** via API:`,
+    );
+    lines.push('');
+    lines.push('```bash');
+    lines.push(
+      `gh workflow run migration-execute-wave.yml -f source_org=${sourceOrg} -f target_org=${targetOrg} -f repositories=org_only -f modules=apps-inventory -f dry_run=false`,
+    );
+    lines.push('```');
     lines.push('');
     lines.push(
       '| App Slug | Classification | Action Required | Marketplace Link | Custom Recreate Link |',
@@ -1971,10 +2143,16 @@ export function formatPostCareChecklistMarkdown(params: {
       const slug = escapeMarkdownTableCell(app.resourceName);
       const cls = escapeMarkdownTableCell(app.subDomain);
       const action = escapeMarkdownTableCell(app.actionRequired);
-      const marketplaceLink = `[Install App on ${targetOrg} ↗](${app.settingsUrl})`;
-      const customRecreateLink = app.secondaryUrl
-        ? `[Recreate Custom App (Pre-Filled) ↗](${app.secondaryUrl})`
-        : '-';
+      const marketplaceLink =
+        app.subDomain === 'custom_private'
+          ? '—'
+          : `[Install App on ${targetOrg} ↗](${app.settingsUrl})`;
+      const customRecreateLink =
+        app.subDomain === 'custom_private'
+          ? `[Recreate Custom App (Pre-Filled) ↗](${app.settingsUrl})`
+          : app.secondaryUrl
+            ? `[Recreate Custom App (Pre-Filled) ↗](${app.secondaryUrl})`
+            : '—';
       lines.push(
         `| \`${slug}\` | \`${cls}\` | ${action} | ${marketplaceLink} | ${customRecreateLink} |`,
       );
@@ -1990,6 +2168,18 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('');
     lines.push(
       `Webhook HMAC signing secrets are write-only on source organizations. Any webhook that had a signing secret on \`${sourceOrg}\` is created in an **inactive** state (\`active: false\`) on \`${targetOrg}\` so unverified payloads are never sent before you supply the secret. **Important:** Entering a secret in the GitHub WebUI does **not** automatically re-enable an inactive webhook—you must both enter the **Secret** and check the **[x] Active** checkbox before clicking **Update webhook** (or run the \`gh api --method PATCH ... -F active=true\` CLI command).`,
+    );
+    lines.push('');
+    lines.push('> [!TIP]');
+    lines.push('> **How Developers Should Populate Webhook HMAC Secrets:**');
+    lines.push(
+      '> - **Option 1 — Re-use your existing secret:** Copy the webhook secret string from your receiving service’s configuration or secret vault (e.g., `GITHUB_WEBHOOK_SECRET` in AWS Secrets Manager, Vault, Jenkins, or `.env`), paste it into the GitHub webhook **Secret** field, and check **[x] Active**.',
+    );
+    lines.push(
+      '> - **Option 2 — Rotate to a new secret:** Generate a new random secret string (e.g., `openssl rand -hex 32`), update your receiving server’s configuration, paste the same string into the GitHub webhook **Secret** field, and check **[x] Active**.',
+    );
+    lines.push(
+      '> - **Already-Active Webhooks (Listed Last):** Webhooks with status `active-no-secret` had no signing secret configured on the source organization and are already active on the destination. They are listed at the bottom for optional endpoint verification.',
     );
     lines.push('');
     lines.push(
@@ -2066,6 +2256,13 @@ export function formatPostCareChecklistMarkdown(params: {
       '## 5. Teams (IdP Group Sync), Mannequins, Collaborators & Deploy Keys',
     );
     lines.push('');
+    lines.push(
+      '> **Category Overview CSV:** [`exports/identity-and-access.csv`](exports/identity-and-access.csv)  ',
+    );
+    lines.push(
+      '> **Focused Task CSVs:** [`teams-idp-sync.csv`](exports/identity-and-access/teams-idp-sync.csv) · [`mannequins-reclaim.csv`](exports/identity-and-access/mannequins-reclaim.csv) · [`collaborators-review.csv`](exports/identity-and-access/collaborators-review.csv) · [`deploy-keys-cutover.csv`](exports/identity-and-access/deploy-keys-cutover.csv)',
+    );
+    lines.push('');
     if (hasDeployKeys) {
       lines.push(
         '### 5.1 Automated Post-Migration Source-Detach Cutover (SSH Deploy Keys & Custom Domains)',
@@ -2121,6 +2318,13 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('');
     lines.push(
       '## 6. Policies, Packages, Security & Failed/Skipped Operations',
+    );
+    lines.push('');
+    lines.push(
+      '> **Category Overview CSV:** [`exports/governance-and-remediation.csv`](exports/governance-and-remediation.csv)  ',
+    );
+    lines.push(
+      '> **Focused Task CSVs:** [`policies-and-rulesets.csv`](exports/governance-and-remediation/policies-and-rulesets.csv) · [`packages-migration.csv`](exports/governance-and-remediation/packages-migration.csv) · [`security-settings.csv`](exports/governance-and-remediation/security-settings.csv) · [`failed-and-skipped-items.csv`](exports/governance-and-remediation/failed-and-skipped-items.csv)',
     );
     lines.push('');
     lines.push(
@@ -2252,6 +2456,21 @@ function buildPostCareCsvFiles(
   items: readonly PostCareItem[],
   operationRows: readonly FullMigrationOperationRow[],
 ): Record<string, string> {
+  const identityAndAccessItems = items.filter(
+    (i) =>
+      i.category === 'idp-team' ||
+      i.category === 'mannequin' ||
+      i.category === 'collaborator' ||
+      i.category === 'deploy-key',
+  );
+  const governanceAndRemediationItems = items.filter(
+    (i) =>
+      i.category === 'policy' ||
+      i.category === 'package' ||
+      i.category === 'security' ||
+      i.category === 'failed-operation',
+  );
+
   return {
     'exports/post-care-items.csv': serializePostCareItemsToCsv(items),
     'exports/secrets-to-populate.csv': serializePostCareItemsToCsv(
@@ -2266,6 +2485,42 @@ function buildPostCareCsvFiles(
     'exports/runners-registration.csv': serializePostCareItemsToCsv(
       items.filter((i) => i.category === 'runner'),
     ),
+    'exports/identity-and-access.csv': serializePostCareItemsToCsv(
+      identityAndAccessItems,
+    ),
+    'exports/identity-and-access/teams-idp-sync.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'idp-team'),
+      ),
+    'exports/identity-and-access/mannequins-reclaim.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'mannequin'),
+      ),
+    'exports/identity-and-access/collaborators-review.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'collaborator'),
+      ),
+    'exports/identity-and-access/deploy-keys-cutover.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'deploy-key'),
+      ),
+    'exports/governance-and-remediation.csv': serializePostCareItemsToCsv(
+      governanceAndRemediationItems,
+    ),
+    'exports/governance-and-remediation/policies-and-rulesets.csv':
+      serializePostCareItemsToCsv(items.filter((i) => i.category === 'policy')),
+    'exports/governance-and-remediation/packages-migration.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'package'),
+      ),
+    'exports/governance-and-remediation/security-settings.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'security'),
+      ),
+    'exports/governance-and-remediation/failed-and-skipped-items.csv':
+      serializePostCareItemsToCsv(
+        items.filter((i) => i.category === 'failed-operation'),
+      ),
     'exports/migration-operations-full.csv':
       serializeFullOperationsToCsv(operationRows),
   };

@@ -75,6 +75,47 @@ export function buildRecreatedAppSlug(
 }
 
 /**
+ * Returns all candidate target app slugs (lowercase, deduplicated) that match a
+ * source GitHub App on the target organization or target EMU enterprise:
+ * 1. Exact source slug (`{sourceSlug}`)
+ * 2. Org-recreated slug (`{sourceSlug}-{targetOrg}`, capped at 34 chars)
+ * 3. Enterprise-recreated `-emu` slug (`{sourceSlug}-emu`, capped at 34 chars)
+ * 4. Enterprise-recreated shortcode slugs (`{sourceSlug}-{emuShortcode}` and `{sourceSlug}-{emuShortcode}-emu`)
+ */
+export function getCandidateTargetAppSlugs(
+  sourceSlug: string,
+  targetOrg: string,
+  emuSuffix?: string | undefined,
+): string[] {
+  const candidates = new Set<string>();
+  const trimmedSource = sourceSlug.trim().toLowerCase();
+  if (trimmedSource) {
+    candidates.add(trimmedSource);
+  }
+  candidates.add(buildRecreatedAppSlug(sourceSlug, targetOrg).toLowerCase());
+  candidates.add(buildRecreatedAppSlug(sourceSlug, 'emu').toLowerCase());
+
+  if (typeof emuSuffix === 'string' && emuSuffix.trim().length > 0) {
+    const cleanShortcode = sanitizeSlugSegment(
+      emuSuffix.trim().replace(/^_+/, ''),
+    );
+    if (cleanShortcode && cleanShortcode !== 'app') {
+      candidates.add(
+        buildRecreatedAppSlug(sourceSlug, cleanShortcode).toLowerCase(),
+      );
+      candidates.add(
+        buildRecreatedAppSlug(
+          sourceSlug,
+          `${cleanShortcode}-emu`,
+        ).toLowerCase(),
+      );
+    }
+  }
+
+  return Array.from(candidates);
+}
+
+/**
  * Classifies a discovered GitHub App installation based on the result of probing
  * `GET /apps/{app_slug}`.
  *
@@ -220,6 +261,52 @@ export function buildGitHubAppUrlParametersLink(
   const description =
     app.description ??
     `Recreated from source GitHub App "${app.app_slug}" for ${targetOrg}`;
+
+  const params = new URLSearchParams();
+  params.set('name', name);
+  params.set('description', description);
+  params.set('url', url);
+  params.set('public', 'false');
+  params.set('webhook_active', 'false');
+
+  for (const key of Object.keys(app.permissions).sort()) {
+    const val = app.permissions[key];
+    if (typeof val === 'string') {
+      params.append(key, val);
+    }
+  }
+
+  for (const eventName of app.events) {
+    params.append('events[]', eventName);
+  }
+
+  return `${endpoint}?${params.toString()}`;
+}
+
+/**
+ * Builds a 1-click Enterprise-level GitHub App registration URL using query
+ * parameters (`https://github.com/enterprises/{enterprise}/settings/apps/new?...`)
+ * so an Enterprise Owner can recreate a shared Enterprise-owned app once at the
+ * Enterprise level (`{app_slug}-emu`) instead of separately per organization.
+ *
+ * See: references/github-docs/content/apps/sharing-github-apps/registering-a-github-app-using-url-parameters.md
+ */
+export function buildEnterpriseGitHubAppUrlParametersLink(
+  app: GitHubAppManifestInput | AppInstallationState,
+  targetEnterprise: string,
+  baseWebUrl = 'https://github.com',
+  appNameSuffix = 'emu',
+): string {
+  const cleanBase = baseWebUrl.replace(/\/+$/g, '');
+  const endpoint = `${cleanBase}/enterprises/${encodeURIComponent(targetEnterprise)}/settings/apps/new`;
+  const name = buildRecreatedAppSlug(app.app_slug, appNameSuffix);
+  const url =
+    app.external_url ??
+    app.html_url ??
+    `${cleanBase}/enterprises/${encodeURIComponent(targetEnterprise)}/settings/apps`;
+  const description =
+    app.description ??
+    `Recreated from source Enterprise GitHub App "${app.app_slug}" for ${targetEnterprise}`;
 
   const params = new URLSearchParams();
   params.set('name', name);

@@ -1,14 +1,25 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   AppsInventoryMigrationModule,
+  buildEnterpriseGitHubAppUrlParametersLink,
   buildGitHubAppManifest,
   buildGitHubAppUrlParametersLink,
   buildRecreatedAppSlug,
   classifyGitHubApp,
+  getCandidateTargetAppSlugs,
   MAX_GITHUB_APP_NAME_LENGTH,
+  MigrationOrchestrator,
+  ModuleRegistry,
   type AppsInventoryData,
   type GitHubAppManifestPayload,
+  type MigrationModule,
+  type ModuleExecutionPlan,
+  type ModuleExecutionResult,
+  type ModuleVerificationResult,
   type RawAppInstallationsListResponse,
 } from '../../src/index.js';
 import type { MigrationContext } from '../../src/core/types.js';
@@ -656,5 +667,311 @@ describe('AppsInventoryMigrationModule', () => {
         repository_id: '402',
       },
     });
+  });
+
+  it('matches Enterprise-recreated GitHub App slugs ({app_slug}-emu and {app_slug}-{shortcode}) in plan and verify', async () => {
+    const slugs = getCandidateTargetAppSlugs(
+      'internal-deploy-bot',
+      'target-emu-org',
+      '_acme',
+    );
+    assert.ok(slugs.includes('internal-deploy-bot'));
+    assert.ok(slugs.includes('internal-deploy-bot-target-emu-org'));
+    assert.ok(slugs.includes('internal-deploy-bot-emu'));
+    assert.ok(slugs.includes('internal-deploy-bot-acme'));
+
+    const enterpriseUrl = buildEnterpriseGitHubAppUrlParametersLink(
+      {
+        app_slug: 'internal-deploy-bot',
+        permissions: { deployments: 'write', contents: 'read' },
+        events: ['deployment'],
+      },
+      'acme-emu-enterprise',
+    );
+    assert.match(
+      enterpriseUrl,
+      /^https:\/\/github\.com\/enterprises\/acme-emu-enterprise\/settings\/apps\/new\?/,
+    );
+    assert.match(enterpriseUrl, /name=internal-deploy-bot-emu/);
+
+    const mod = new AppsInventoryMigrationModule();
+    const sourceData: AppsInventoryData = {
+      organization: 'source-org',
+      installations: [
+        {
+          id: 77,
+          app_id: 700,
+          app_slug: 'internal-deploy-bot',
+          repository_selection: 'selected',
+          selected_repositories: ['payments-api'],
+          permissions: { deployments: 'write' },
+          events: ['deployment'],
+          classification: 'custom_private',
+          recommended_strategy: 'recreate_app',
+        },
+      ],
+    };
+
+    const targetData: RawAppInstallationsListResponse = {
+      total_count: 1,
+      installations: [
+        {
+          id: 977,
+          app_id: 800,
+          app_slug: 'internal-deploy-bot-emu',
+          repository_selection: 'selected',
+          permissions: { deployments: 'write' },
+          events: ['deployment'],
+        },
+      ],
+    };
+
+    const ctx = createContext(null, targetData);
+    const plan = await mod.plan(ctx, sourceData);
+
+    const appOp = plan.operations.find(
+      (op) => op.resourceType === 'github_app_installation',
+    );
+    assert.ok(appOp);
+    assert.equal(appOp.operation, 'noop');
+
+    const bindOp = plan.operations.find(
+      (op) => op.resourceType === 'github_app_repository_binding',
+    );
+    assert.ok(bindOp);
+    assert.equal(bindOp.operation, 'update');
+
+    const verifyResult = await mod.verify(ctx, plan);
+    assert.equal(verifyResult.verified, true);
+    assert.equal(verifyResult.discrepancies.length, 0);
+  });
+
+  it('reconciles apps-inventory repository bindings after gei-repo creates repositories in the same wave', async () => {
+    const registry = new ModuleRegistry();
+
+    const dummyOrgSettings: MigrationModule<unknown> = {
+      id: 'org-settings',
+      displayName: 'Org Settings',
+      scopeLevel: 'organization',
+      dependencies: [],
+      async discover() {
+        return {};
+      },
+      async plan(): Promise<ModuleExecutionPlan> {
+        return {
+          moduleId: 'org-settings',
+          scopeLevel: 'organization',
+          targetIdentifier: 'target-emu-org',
+          operations: [],
+          warnings: [],
+        };
+      },
+      async apply(): Promise<ModuleExecutionResult> {
+        return {
+          schemaVersion: '1.0.0',
+          moduleId: 'org-settings',
+          scopeLevel: 'organization',
+          targetIdentifier: 'target-emu-org',
+          status: 'complete',
+          results: [],
+          durationMs: 1,
+        };
+      },
+      async verify(): Promise<ModuleVerificationResult> {
+        return {
+          moduleId: 'org-settings',
+          scopeLevel: 'organization',
+          targetIdentifier: 'target-emu-org',
+          verified: true,
+          discrepancies: [],
+          verifiedAt: new Date().toISOString(),
+        };
+      },
+    };
+
+    let repoCreatedOnTarget = false;
+    const dummyGeiRepo: MigrationModule<unknown> = {
+      id: 'gei-repo',
+      displayName: 'GEI Repo',
+      scopeLevel: 'repository',
+      dependencies: [],
+      async discover() {
+        return {};
+      },
+      async plan(): Promise<ModuleExecutionPlan> {
+        return {
+          moduleId: 'gei-repo',
+          scopeLevel: 'repository',
+          targetIdentifier: 'target-emu-org/api-core',
+          operations: [
+            {
+              id: 'gei-repo:create:api-core',
+              operation: 'create',
+              resourceType: 'repository',
+              resourceName: 'api-core',
+            },
+          ],
+          warnings: [],
+        };
+      },
+      async apply(): Promise<ModuleExecutionResult> {
+        repoCreatedOnTarget = true;
+        return {
+          schemaVersion: '1.0.0',
+          moduleId: 'gei-repo',
+          scopeLevel: 'repository',
+          targetIdentifier: 'target-emu-org/api-core',
+          status: 'complete',
+          results: [
+            {
+              operationId: 'gei-repo:create:api-core',
+              status: 'succeeded',
+              completedAt: new Date().toISOString(),
+            },
+          ],
+          durationMs: 1,
+        };
+      },
+      async verify(): Promise<ModuleVerificationResult> {
+        return {
+          moduleId: 'gei-repo',
+          scopeLevel: 'repository',
+          targetIdentifier: 'target-emu-org/api-core',
+          verified: true,
+          discrepancies: [],
+          verifiedAt: new Date().toISOString(),
+        };
+      },
+    };
+
+    registry.register(dummyOrgSettings);
+    registry.register(new AppsInventoryMigrationModule());
+    registry.register(dummyGeiRepo);
+
+    const rawSource: RawAppInstallationsListResponse = {
+      total_count: 1,
+      installations: [
+        {
+          id: 5001,
+          app_id: 77,
+          app_slug: 'shared-bot-emu',
+          repository_selection: 'selected',
+          permissions: { contents: 'read' },
+          events: ['push'],
+        },
+      ],
+    };
+
+    const rawTarget: RawAppInstallationsListResponse = {
+      total_count: 1,
+      installations: [
+        {
+          id: 9001,
+          app_id: 88,
+          app_slug: 'shared-bot-emu',
+          repository_selection: 'selected',
+          permissions: { contents: 'read' },
+          events: ['push'],
+        },
+      ],
+    };
+
+    const mutations: Array<{
+      method: string;
+      path: string;
+      pathParams?: Record<string, string>;
+    }> = [];
+
+    const sourceClient = new MockReadAdapter(rawSource, (op) => {
+      if (op.path === '/user/installations/{installation_id}/repositories') {
+        return {
+          status: 200,
+          data: {
+            total_count: 1,
+            repositories: [{ name: 'api-core' }],
+          },
+        };
+      }
+      return null;
+    });
+
+    const targetClient = new MockReadAdapter(rawTarget, (op) => {
+      if (op.path === '/repos/{owner}/{repo}') {
+        if (!repoCreatedOnTarget) {
+          return {
+            status: 404,
+            data: new Error('Not Found'),
+          };
+        }
+        return {
+          status: 200,
+          data: {
+            id: 401,
+            name: 'api-core',
+          },
+        };
+      }
+      return null;
+    });
+
+    const tmpDir = await mkdtemp(join(tmpdir(), 'ghec-apps-reconcile-'));
+    try {
+      const orchestrator = new MigrationOrchestrator({
+        registry,
+        sourceClient,
+        targetClient,
+        targetWriteClient: {
+          async mutate(op) {
+            mutations.push({
+              method: op.method,
+              path: op.path,
+              pathParams: op.pathParams,
+            });
+            return { status: 204 };
+          },
+        },
+        scope: {
+          version: '1.0.0',
+          name: 'wave-reconcile-test',
+          organizations: [
+            {
+              source: 'source-org',
+              target: 'target-emu-org',
+              modules: ['org-settings', 'apps-inventory'],
+            },
+          ],
+          repositories: [
+            {
+              sourceOrg: 'source-org',
+              sourceRepo: 'api-core',
+              targetOrg: 'target-emu-org',
+              targetRepo: 'api-core',
+              useGei: true,
+              modules: ['gei-repo'],
+            },
+          ],
+          identityMapping: {
+            strategy: 'emu-saml',
+            suffix: '_acme',
+            mappings: {},
+          },
+        },
+        dryRun: false,
+      });
+
+      const summary = await orchestrator.run();
+      assert.equal(summary.status, 'complete', JSON.stringify(summary.results));
+      assert.equal(mutations.length, 1);
+      assert.deepEqual(mutations[0], {
+        method: 'PUT',
+        path: '/user/installations/{installation_id}/repositories/{repository_id}',
+        pathParams: {
+          installation_id: '9001',
+          repository_id: '401',
+        },
+      });
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
   });
 });

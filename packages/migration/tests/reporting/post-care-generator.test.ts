@@ -455,7 +455,25 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
             resourceName: 'custom-bot',
             operation: 'warn',
             reason:
-              'GitHub Apps cannot be installed programmatically via API. "custom-bot" (ID: 99) is a private custom app and must be recreated on target-emu as "custom-bot-target-emu" via URL parameters or GitHub App Manifest (Selected repositories: api-core, web-ui). Recreate URL: https://github.com/organizations/target-emu/settings/apps/new?name=custom-bot-target-emu | Install URL: https://github.com/apps/custom-bot/installations/new',
+              'GitHub Apps cannot be installed programmatically via API. "custom-bot" (ID: 99) is a private custom app and must be recreated on target-emu as "custom-bot-target-emu" (Selected repositories: api-core, web-ui). Recreate URL: https://github.com/organizations/target-emu/settings/apps/new?name=custom-bot-target-emu',
+            dependencies: [],
+          },
+          {
+            id: 'op-advisory-app-hackmd-hub',
+            resourceType: 'github_app_installation',
+            resourceName: 'hackmd-hub',
+            operation: 'warn',
+            reason:
+              'GitHub Apps cannot be installed programmatically via API. An organization administrator must authorize and install "hackmd-hub" (ID: 859894) on target-emu.',
+            dependencies: [],
+          },
+          {
+            id: 'op-advisory-app-org-public-bot',
+            resourceType: 'github_app_installation',
+            resourceName: 'org-public-bot',
+            operation: 'warn',
+            reason:
+              'GitHub Apps cannot be installed programmatically via API. "org-public-bot" (ID: 100) is a public organization-owned app; install the existing app on target-emu or recreate it as "org-public-bot-target-emu". Install URL: https://github.com/apps/org-public-bot/installations/new | Recreate URL: https://github.com/organizations/target-emu/settings/apps/new?name=org-public-bot-target-emu',
             dependencies: [],
           },
         ],
@@ -526,12 +544,32 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
         scopeLevel: 'repository',
         operations: [
           {
+            // Placed first in input to verify that sorting moves active-no-secret (low priority) AFTER inactive-webhook (high priority)
+            id: 'webhook:noop:https://httpbin.org/post',
+            resourceType: 'webhook',
+            resourceName: 'https://httpbin.org/post',
+            operation: 'noop',
+            reason:
+              'Webhook `https://httpbin.org/post` configuration matches target (active; no signing secret configured on source)',
+            sourceState: {
+              url: 'https://httpbin.org/post',
+              active: true,
+              secretConfigured: false,
+            },
+            dependencies: [],
+          },
+          {
             id: 'webhook:create:https://ci.example.com/hook',
             resourceType: 'webhook',
             resourceName: 'https://ci.example.com/hook',
             operation: 'create',
             reason:
               'Create repository webhook (created INACTIVE because source had an HMAC secret configured)',
+            sourceState: {
+              url: 'https://ci.example.com/hook',
+              active: true,
+              secretConfigured: true,
+            },
             dependencies: [],
           },
         ],
@@ -568,17 +606,76 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
     }
   }
 
-  const md = deliverables.checklistMarkdown;
+  // Verify all hierarchical CSV files exist at top-level and in subfolders
+  const expectedCsvPaths = [
+    'exports/post-care-items.csv',
+    'exports/secrets-to-populate.csv',
+    'exports/github-apps-reinstall.csv',
+    'exports/webhooks-reconfiguration.csv',
+    'exports/runners-registration.csv',
+    'exports/identity-and-access.csv',
+    'exports/identity-and-access/teams-idp-sync.csv',
+    'exports/identity-and-access/mannequins-reclaim.csv',
+    'exports/identity-and-access/collaborators-review.csv',
+    'exports/identity-and-access/deploy-keys-cutover.csv',
+    'exports/governance-and-remediation.csv',
+    'exports/governance-and-remediation/policies-and-rulesets.csv',
+    'exports/governance-and-remediation/packages-migration.csv',
+    'exports/governance-and-remediation/security-settings.csv',
+    'exports/governance-and-remediation/failed-and-skipped-items.csv',
+    'exports/migration-operations-full.csv',
+  ];
+  for (const expectedPath of expectedCsvPaths) {
+    assert.ok(
+      expectedPath in deliverables.csvFiles,
+      `Missing expected CSV export: ${expectedPath}`,
+    );
+  }
 
-  // 2. Verify GitHub Apps table uses fixed Marketplace Link | Custom Recreate Link headers and never swaps URLs
+  // Verify identity-and-access.csv has 2 rows (secops team + deploy key) while focused subfolders each have 1 row
+  assert.equal(
+    deliverables.csvFiles['exports/identity-and-access.csv']!.trim().split('\n')
+      .length,
+    2 + 1,
+  );
+  assert.equal(
+    deliverables.csvFiles[
+      'exports/identity-and-access/teams-idp-sync.csv'
+    ]!.trim().split('\n').length,
+    1 + 1,
+  );
+  assert.equal(
+    deliverables.csvFiles[
+      'exports/identity-and-access/deploy-keys-cutover.csv'
+    ]!.trim().split('\n').length,
+    1 + 1,
+  );
+
+  const md = deliverables.checklistMarkdown;
+  assert.doesNotMatch(md, /DEC-\d+/i);
+
+  // 2. Verify GitHub Apps table offers only the appropriate link based on classification
   assert.ok(
     md.includes(
       '| App Slug | Classification | Action Required | Marketplace Link | Custom Recreate Link |',
     ),
   );
+  // custom_private -> only Custom Recreate Link
   assert.ok(
     md.includes(
-      '| [Install App on target-emu ↗](https://github.com/apps/custom-bot/installations/new) | [Recreate Custom App (Pre-Filled) ↗](https://github.com/organizations/target-emu/settings/apps/new?name=custom-bot-target-emu) |',
+      '| — | [Recreate Custom App (Pre-Filled) ↗](https://github.com/organizations/target-emu/settings/apps/new?name=custom-bot-target-emu) |',
+    ),
+  );
+  // third_party -> only Marketplace Link
+  assert.ok(
+    md.includes(
+      '| [Install App on target-emu ↗](https://github.com/apps/hackmd-hub/installations/new) | — |',
+    ),
+  );
+  // custom_public -> both Marketplace Link and Custom Recreate Link
+  assert.ok(
+    md.includes(
+      '| [Install App on target-emu ↗](https://github.com/apps/org-public-bot/installations/new) | [Recreate Custom App (Pre-Filled) ↗](https://github.com/organizations/target-emu/settings/apps/new?name=org-public-bot-target-emu) |',
     ),
   );
 
@@ -590,19 +687,39 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
   );
   assert.ok(md.includes('/organizations/target-emu/settings/billing)'));
 
-  // 4. Verify IdP team filtering: plain-team without IdP group is omitted, while secops with Okta-SecOps is included with /Sync link
+  // 4. Verify IdP team filtering: plain-team without IdP group is omitted, while secops with Okta-SecOps is included with formatted Markdown /Sync link
   const idpItems = deliverables.items.filter((i) => i.category === 'idp-team');
   assert.equal(idpItems.length, 1);
   assert.equal(idpItems[0]?.resourceName, 'secops');
   assert.ok(md.includes('Okta-SecOps'));
-  assert.ok(md.includes('/orgs/target-emu/teams/secops/Sync)'));
+  assert.ok(
+    md.includes(
+      '[Team IdP Sync Settings ↗](https://github.com/orgs/target-emu/teams/secops/Sync)',
+    ),
+  );
 
   // 5. Verify SSH Deploy Keys post-migration cutover workflow & CLI instructions
   assert.ok(md.includes('Automated Post-Migration Source-Detach Cutover'));
   assert.ok(md.includes('post-migration-cutover.yml'));
   assert.ok(md.includes('ghec-consultant-cli cutover'));
 
-  // 6. Verify Webhooks activation instructions (setting secret + checking Active)
+  // 6. Verify Webhooks developer HMAC guide and priority sorting (inactive-webhook first, active-no-secret last)
   assert.ok(md.includes('check the **[x] Active** checkbox'));
+  assert.ok(md.includes('How Developers Should Populate Webhook HMAC Secrets'));
   assert.ok(md.includes('-f "config[secret]=<SECRET>" -F active=true'));
+
+  const webhookItems = deliverables.items.filter(
+    (i) => i.category === 'webhook',
+  );
+  assert.equal(webhookItems.length, 2);
+  assert.equal(webhookItems[0]?.resourceName, 'https://ci.example.com/hook');
+  assert.equal(webhookItems[0]?.migrationStatus, 'inactive-webhook');
+  assert.equal(webhookItems[0]?.priority, 'high');
+  assert.equal(webhookItems[1]?.resourceName, 'https://httpbin.org/post');
+  assert.equal(webhookItems[1]?.migrationStatus, 'active-no-secret');
+  assert.equal(webhookItems[1]?.priority, 'low');
+  assert.ok(
+    md.indexOf('https://ci.example.com/hook') <
+      md.indexOf('https://httpbin.org/post'),
+  );
 });

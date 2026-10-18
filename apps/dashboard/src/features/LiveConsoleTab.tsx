@@ -197,7 +197,7 @@ const SAMPLE_STEP_SUMMARY_MD = `## 🚀 Migration Execution Summary
 | Component | Planned | Succeeded | Failed | Status |
 | :--- | :---: | :---: | :---: | :---: |
 | **Repository Variables** | 24 | 24 | 0 | ✅ Complete |
-| **Repository Secrets (DEC-004)** | 18 | 18 | 0 | ✅ Complete |
+| **Repository Secrets** | 18 | 18 | 0 | ✅ Complete |
 | **Deployment Environments** | 6 | 6 | 0 | ✅ Complete |
 | **Repository Rulesets** | 5 | 5 | 0 | ✅ Complete |
 | **Branch Protection Rules** | 2 | 2 | 0 | ✅ Complete |
