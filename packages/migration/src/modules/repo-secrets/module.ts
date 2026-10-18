@@ -59,7 +59,8 @@ async function encryptSecret(
  */
 export class RepoSecretsMigrationModule implements MigrationModule<RepoSecretsData> {
   readonly id = 'repo-secrets';
-  readonly displayName = 'Repository Secrets (Actions, Dependabot, Codespaces)';
+  readonly displayName =
+    'Repository Secrets (Actions, Dependabot, Codespaces, Agents)';
   readonly scopeLevel: MigrationScopeLevel = 'repository';
   readonly dependencies: readonly string[] = ['gei-repo'];
 
@@ -432,15 +433,17 @@ export class RepoSecretsMigrationModule implements MigrationModule<RepoSecretsDa
     if (!repoEntity) return undefined;
     const secrets: RepoSecretMetadata[] = [];
     for (const entity of bundle!.entities) {
+      if (entity.kind !== 'configuration-metadata') continue;
+      const mappedDomain =
+        entity.domain === 'copilot' ? 'agents' : entity.domain;
       if (
-        entity.kind === 'configuration-metadata' &&
         entity.configurationKind === 'secret' &&
         entity.level === 'repository' &&
         entity.repositoryId === repoEntity.id &&
-        isSecretDomain(entity.domain)
+        isSecretDomain(mappedDomain)
       ) {
         secrets.push({
-          domain: entity.domain,
+          domain: mappedDomain,
           name: entity.name,
           updatedAt: entity.updatedAt ?? undefined,
         });

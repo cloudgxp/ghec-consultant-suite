@@ -1,6 +1,9 @@
 export type OrganizationVisibility = 'all' | 'private' | 'selected';
+export const ORG_VARIABLE_DOMAINS = ['actions', 'agents'] as const;
+export type OrgVariableDomain = (typeof ORG_VARIABLE_DOMAINS)[number];
 
 export interface OrganizationVariable {
+  readonly domain?: OrgVariableDomain | undefined;
   readonly name: string;
   readonly value: string;
   readonly visibility: OrganizationVisibility;

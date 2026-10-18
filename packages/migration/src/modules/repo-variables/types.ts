@@ -1,7 +1,11 @@
+export const REPO_VARIABLE_DOMAINS = ['actions', 'agents'] as const;
+export type RepoVariableDomain = (typeof REPO_VARIABLE_DOMAINS)[number];
+
 /**
- * Concrete variable entity from GitHub Actions.
+ * Concrete variable entity from GitHub Actions or Copilot Coding Agent.
  */
 export interface RepoVariable {
+  readonly domain?: RepoVariableDomain | undefined;
   readonly name: string;
   readonly value: string;
   readonly createdAt?: string | undefined;

@@ -122,7 +122,7 @@ export interface GeneratedPostCareDeliverables {
 export type PostCareDeliverables = GeneratedPostCareDeliverables;
 
 /**
- * Extracts secret domain ('actions' | 'dependabot' | 'codespaces') from available operation context.
+ * Extracts secret domain ('actions' | 'dependabot' | 'codespaces' | 'agents') from available operation context.
  */
 export function extractSecretDomain(params: {
   readonly operationId?: string | undefined;
@@ -130,7 +130,7 @@ export function extractSecretDomain(params: {
   readonly resourceName?: string | undefined;
   readonly notes?: string | undefined;
   readonly plannedOp?: PlannedOperation | undefined;
-}): 'actions' | 'dependabot' | 'codespaces' {
+}): 'actions' | 'dependabot' | 'codespaces' | 'agents' {
   const { operationId, resourceType, resourceName, notes, plannedOp } = params;
 
   const payloadDomain =
@@ -142,9 +142,13 @@ export function extractSecretDomain(params: {
   if (
     payloadDomain === 'actions' ||
     payloadDomain === 'dependabot' ||
-    payloadDomain === 'codespaces'
+    payloadDomain === 'codespaces' ||
+    payloadDomain === 'agents'
   ) {
     return payloadDomain;
+  }
+  if (payloadDomain === 'copilot') {
+    return 'agents';
   }
 
   const stateDomain =
@@ -156,9 +160,13 @@ export function extractSecretDomain(params: {
   if (
     stateDomain === 'actions' ||
     stateDomain === 'dependabot' ||
-    stateDomain === 'codespaces'
+    stateDomain === 'codespaces' ||
+    stateDomain === 'agents'
   ) {
     return stateDomain;
+  }
+  if (stateDomain === 'copilot') {
+    return 'agents';
   }
 
   const combined = [
@@ -177,14 +185,23 @@ export function extractSecretDomain(params: {
   if (combined.includes('codespaces')) {
     return 'codespaces';
   }
+  if (
+    combined.includes(':agents:') ||
+    combined.includes('agents:') ||
+    combined.includes('agents secret') ||
+    combined.includes('agent secret') ||
+    combined.includes('copilot')
+  ) {
+    return 'agents';
+  }
   return 'actions';
 }
 
 /**
- * Strips leading domain prefix ('actions:', 'dependabot:', 'codespaces:') from a secret name if present.
+ * Strips leading domain prefix ('actions:', 'dependabot:', 'codespaces:', 'agents:') from a secret or variable name if present.
  */
 export function stripSecretDomainPrefix(name: string): string {
-  return name.replace(/^(actions|dependabot|codespaces):/i, '');
+  return name.replace(/^(actions|dependabot|codespaces|agents):/i, '');
 }
 
 /**
@@ -583,25 +600,65 @@ export function resolveTargetSettingsLinks(params: {
 
   // 14. Variables, Custom Properties, Settings, Policies, Roles, IP Allow Lists, Releases, Issues, PRs, Discussions, Projects
   if (modLower === 'org-variables' || typeLower === 'org-variable') {
+    const isAgentsVar =
+      (operationId?.includes(':agents:') ?? false) ||
+      /^agents:/i.test(resourceName) ||
+      (plannedOp?.sourceState as { domain?: unknown } | undefined)?.domain ===
+        'agents' ||
+      /\bagent(?:s)?\s+variable\b/i.test(
+        `${notes ?? ''} ${plannedOp?.reason ?? ''}`,
+      );
+    const cleanName = stripSecretDomainPrefix(resourceName);
+    if (isAgentsVar) {
+      return {
+        settingsUrl: `https://github.com/organizations/${encOrg}/settings/variables/agents`,
+        settingsLinkLabel: 'Org Agents Variables ↗',
+        cliCommand: `gh api -X POST /orgs/${targetOrg}/agents/variables -f name=${cleanName} -f value="<VALUE>" -f visibility=private`,
+        subDomain: 'agents-variable',
+        cleanResourceName: cleanName,
+      };
+    }
     return {
       settingsUrl: `https://github.com/organizations/${encOrg}/settings/variables/actions`,
       settingsLinkLabel: 'Org Actions Variables ↗',
-      cliCommand: `gh variable set ${resourceName} --org ${targetOrg}`,
+      cliCommand: `gh variable set ${cleanName} --org ${targetOrg}`,
       subDomain: 'actions-variable',
-      cleanResourceName: resourceName,
+      cleanResourceName: cleanName,
     };
   }
   if (modLower === 'repo-variables' || typeLower === 'repo-variable') {
+    const isAgentsVar =
+      (operationId?.includes(':agents:') ?? false) ||
+      /^agents:/i.test(resourceName) ||
+      (plannedOp?.sourceState as { domain?: unknown } | undefined)?.domain ===
+        'agents' ||
+      /\bagent(?:s)?\s+variable\b/i.test(
+        `${notes ?? ''} ${plannedOp?.reason ?? ''}`,
+      );
+    const cleanName = stripSecretDomainPrefix(resourceName);
+    if (isAgentsVar) {
+      return {
+        settingsUrl: encRepo
+          ? `https://github.com/${encOrg}/${encRepo}/settings/variables/agents`
+          : `https://github.com/organizations/${encOrg}/settings/variables/agents`,
+        settingsLinkLabel: 'Repo Agents Variables ↗',
+        cliCommand: targetRepo
+          ? `gh api -X POST /repos/${targetOrg}/${targetRepo}/agents/variables -f name=${cleanName} -f value="<VALUE>"`
+          : undefined,
+        subDomain: 'agents-variable',
+        cleanResourceName: cleanName,
+      };
+    }
     return {
       settingsUrl: encRepo
         ? `https://github.com/${encOrg}/${encRepo}/settings/variables/actions`
         : `https://github.com/organizations/${encOrg}/settings/variables/actions`,
       settingsLinkLabel: 'Repo Actions Variables ↗',
       cliCommand: targetRepo
-        ? `gh variable set ${resourceName} --repo ${targetOrg}/${targetRepo}`
+        ? `gh variable set ${cleanName} --repo ${targetOrg}/${targetRepo}`
         : undefined,
       subDomain: 'actions-variable',
-      cleanResourceName: resourceName,
+      cleanResourceName: cleanName,
     };
   }
   if (
@@ -1364,7 +1421,9 @@ export function generatePostCareDeliverables(
         const domain =
           entity.domain === 'dependabot' || entity.domain === 'codespaces'
             ? entity.domain
-            : 'actions';
+            : entity.domain === 'copilot'
+              ? 'agents'
+              : 'actions';
         const links = resolveTargetSettingsLinks({
           moduleId,
           resourceType,

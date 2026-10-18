@@ -56,7 +56,7 @@ async function encrypt(value: string, publicKey: string): Promise<string> {
 export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData> {
   readonly id = 'org-secrets';
   readonly displayName =
-    'Organization Secrets (Actions, Dependabot, Codespaces)';
+    'Organization Secrets (Actions, Dependabot, Codespaces, Agents)';
   readonly scopeLevel: MigrationScopeLevel = 'organization';
   readonly dependencies: readonly string[] = [];
   private readonly repositoryIdMap: RepositoryIdMap;
@@ -83,6 +83,15 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
           },
           ctx.signal,
         );
+      if (domain === 'agents' && response.status !== 200) {
+        const fallbackSecrets = await this.discoverOrgAgentSecretsViaRepos(
+          ctx.sourceClient,
+          ctx.scope.sourceOrg,
+          ctx.signal,
+        );
+        secrets.push(...fallbackSecrets);
+        continue;
+      }
       for (const item of response.data?.secrets ?? [])
         if (item.name) {
           const visibility = isVisibility(item.visibility)
@@ -302,6 +311,19 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
             },
             ctx.signal,
           );
+        if (
+          secret.domain === 'agents' &&
+          (key.status === 403 || key.status === 404)
+        ) {
+          results.push({
+            operationId: operation.id,
+            status: 'skipped',
+            httpStatus: key.status,
+            error: `Organization-level Copilot agent secrets API returned HTTP ${key.status} on ${ctx.scope.targetOrg}; configure "${secret.name}" manually in Organization Settings -> Secrets and variables -> Agents.`,
+            completedAt: new Date().toISOString(),
+          });
+          continue;
+        }
         if (!key.data?.key || !key.data.key_id)
           throw new Error('Target organization public key is unavailable.');
         const value =
@@ -334,6 +356,19 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
           },
           ctx.signal,
         );
+        if (
+          secret.domain === 'agents' &&
+          (response.status === 403 || response.status === 404)
+        ) {
+          results.push({
+            operationId: operation.id,
+            status: 'skipped',
+            httpStatus: response.status,
+            error: `Organization-level Copilot agent secrets API returned HTTP ${response.status} on ${ctx.scope.targetOrg}; configure "${secret.name}" manually in Organization Settings -> Secrets and variables -> Agents.`,
+            completedAt: new Date().toISOString(),
+          });
+          continue;
+        }
         results.push({
           operationId: operation.id,
           status:
@@ -374,8 +409,9 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
     ctx: MigrationContext,
     plan: ModulePlan,
   ): Promise<ModuleVerificationResult> {
+    const targetInfo = await this.targetWithMeta(ctx);
     const target = new Map(
-      (await this.target(ctx)).map((secret) => [
+      targetInfo.secrets.map((secret) => [
         `${secret.domain}:${secret.name}`,
         secret,
       ]),
@@ -385,6 +421,14 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
       const expected = operation.sourceState as OrganizationSecret | undefined;
       const actual =
         expected && target.get(`${expected.domain}:${expected.name}`);
+      if (
+        expected &&
+        expected.domain === 'agents' &&
+        !actual &&
+        targetInfo.agentsApiUnavailable
+      ) {
+        continue;
+      }
       if (
         expected &&
         ['create', 'update', 'noop'].includes(operation.operation) &&
@@ -410,7 +454,15 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
   }
 
   private async target(ctx: MigrationContext): Promise<OrganizationSecret[]> {
+    return (await this.targetWithMeta(ctx)).secrets;
+  }
+
+  private async targetWithMeta(ctx: MigrationContext): Promise<{
+    secrets: OrganizationSecret[];
+    agentsApiUnavailable: boolean;
+  }> {
     const secrets: OrganizationSecret[] = [];
+    let agentsApiUnavailable = false;
     for (const domain of REPO_SECRET_DOMAINS) {
       const response =
         await ctx.targetClient.readSingle<RawOrganizationSecretsResponse>(
@@ -423,6 +475,16 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
           },
           ctx.signal,
         );
+      if (domain === 'agents' && response.status !== 200) {
+        agentsApiUnavailable = true;
+        const fallbackSecrets = await this.discoverOrgAgentSecretsViaRepos(
+          ctx.targetClient,
+          ctx.scope.targetOrg,
+          ctx.signal,
+        );
+        secrets.push(...fallbackSecrets);
+        continue;
+      }
       for (const item of response.data?.secrets ?? [])
         if (item.name) {
           const visibility = isVisibility(item.visibility)
@@ -445,7 +507,78 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
           });
         }
     }
-    return secrets;
+    return { secrets, agentsApiUnavailable };
+  }
+
+  private async discoverOrgAgentSecretsViaRepos(
+    client: MigrationContext['sourceClient'],
+    org: string,
+    signal: AbortSignal,
+  ): Promise<OrganizationSecret[]> {
+    try {
+      const reposRes = await client.fetchAll<{
+        id?: number;
+        name?: string;
+        private?: boolean;
+        visibility?: string;
+        archived?: boolean;
+      }>(
+        {
+          id: 'rest.repos.listForOrg',
+          transport: 'rest',
+          verifiedReadOnly: true,
+          path: '/orgs/{org}/repos',
+          pathParams: { org },
+          queryParams: { per_page: 100 },
+        },
+        signal,
+      );
+      const repos = (reposRes?.items ?? []).filter(
+        (r) => typeof r.name === 'string' && !r.archived,
+      );
+      const publicRepo = repos.find(
+        (r) => r.private === false || r.visibility === 'public',
+      );
+      const privateRepo = repos.find(
+        (r) => r.private === true || r.visibility === 'private',
+      );
+      const publicNames = new Set<string>();
+      const byName = new Map<string, OrganizationSecret>();
+
+      for (const candidate of [publicRepo, privateRepo]) {
+        if (!candidate?.name) continue;
+        const res = await client.readSingle<RawOrganizationSecretsResponse>(
+          {
+            id: 'rest.agents.listRepoOrgSecrets',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/agents/organization-secrets',
+            pathParams: { owner: org, repo: candidate.name },
+          },
+          signal,
+        );
+        if (res.status !== 200) continue;
+        const isPub = candidate === publicRepo;
+        for (const item of res.data?.secrets ?? []) {
+          if (!item.name) continue;
+          if (isPub) publicNames.add(item.name);
+          if (!byName.has(item.name)) {
+            byName.set(item.name, {
+              domain: 'agents',
+              name: item.name,
+              visibility: isPub ? 'all' : 'private',
+              selectedRepositoryIds: [],
+            });
+          }
+        }
+      }
+      return Array.from(byName.values()).map((secret) => ({
+        ...secret,
+        visibility: publicNames.has(secret.name) ? 'all' : 'private',
+      }));
+    } catch {
+      return [];
+    }
   }
   private async selected(
     client: MigrationContext['sourceClient'],
@@ -567,16 +700,18 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
     );
     if (!org) return undefined;
     const secrets: OrganizationSecret[] = [];
-    for (const entity of bundle!.entities)
+    for (const entity of bundle!.entities) {
+      if (entity.kind !== 'configuration-metadata') continue;
+      const mappedDomain =
+        entity.domain === 'copilot' ? 'agents' : entity.domain;
       if (
-        entity.kind === 'configuration-metadata' &&
         entity.organizationId === org.id &&
         entity.configurationKind === 'secret' &&
         entity.level === 'organization' &&
-        REPO_SECRET_DOMAINS.includes(entity.domain as RepoSecretDomain)
+        REPO_SECRET_DOMAINS.includes(mappedDomain as RepoSecretDomain)
       )
         secrets.push({
-          domain: entity.domain as RepoSecretDomain,
+          domain: mappedDomain as RepoSecretDomain,
           name: entity.name,
           visibility:
             entity.accessMode === 'private_repositories'
@@ -586,6 +721,7 @@ export class OrgSecretsMigrationModule implements MigrationModule<OrgSecretsData
                 : 'all',
           selectedRepositoryIds: entity.selectedRepositoryIds,
         });
+    }
     return { organization, secrets };
   }
 }

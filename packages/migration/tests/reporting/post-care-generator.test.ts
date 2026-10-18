@@ -8,7 +8,7 @@ import {
   generatePostCareDeliverables,
 } from '../../src/reporting/post-care-generator.js';
 
-test('extractSecretDomain identifies actions, dependabot, and codespaces secret domains', () => {
+test('extractSecretDomain identifies actions, dependabot, codespaces, and agents secret domains', () => {
   assert.equal(
     extractSecretDomain({
       operationId: 'org-secret:dependabot:NPM_TOKEN',
@@ -25,6 +25,15 @@ test('extractSecretDomain identifies actions, dependabot, and codespaces secret 
       resourceName: 'DEV_KEY',
     }),
     'codespaces',
+  );
+
+  assert.equal(
+    extractSecretDomain({
+      operationId: 'repo-secrets:demo:agents:SUPER_AGENT_SECRET1',
+      resourceType: 'repo-secret',
+      resourceName: 'SUPER_AGENT_SECRET1',
+    }),
+    'agents',
   );
 
   assert.equal(
@@ -87,6 +96,36 @@ test('resolveTargetSettingsLinks resolves direct GitHub Settings URLs and gh CLI
       'gh secret set CODESPACE_PAT --repo acme-emu/payments-api --app codespaces',
     ),
   );
+
+  // 2b. Org & Repo Agents secret & variable
+  const orgAgentSecret = resolveTargetSettingsLinks({
+    moduleId: 'org-secrets',
+    targetOrg: 'acme-emu',
+    operationId: 'org-secrets:acme-emu:agents:SUPER_AGENT_ORG_SECRET2212',
+    resourceType: 'organization-secret',
+    resourceName: 'agents:SUPER_AGENT_ORG_SECRET2212',
+  });
+  assert.equal(
+    orgAgentSecret.settingsUrl,
+    'https://github.com/organizations/acme-emu/settings/secrets/agents/SUPER_AGENT_ORG_SECRET2212',
+  );
+  assert.equal(orgAgentSecret.subDomain, 'agents');
+  assert.equal(orgAgentSecret.cleanResourceName, 'SUPER_AGENT_ORG_SECRET2212');
+
+  const repoAgentVar = resolveTargetSettingsLinks({
+    moduleId: 'repo-variables',
+    targetOrg: 'acme-emu',
+    targetRepo: 'demo',
+    operationId: 'repo-variables:demo:agents:SUPER_AGENT_VARIBLE_1',
+    resourceType: 'repo-variable',
+    resourceName: 'agents:SUPER_AGENT_VARIBLE_1',
+  });
+  assert.equal(
+    repoAgentVar.settingsUrl,
+    'https://github.com/acme-emu/demo/settings/variables/agents',
+  );
+  assert.equal(repoAgentVar.subDomain, 'agents-variable');
+  assert.equal(repoAgentVar.cleanResourceName, 'SUPER_AGENT_VARIBLE_1');
 
   // 3. Environment secret
   const envSecret = resolveTargetSettingsLinks({
