@@ -239,6 +239,14 @@ export function buildGitHubAppManifest(
   };
 }
 
+function trimTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+  return end === url.length ? url : url.slice(0, end);
+}
+
 /**
  * Builds a 1-click GitHub App registration URL using query parameters so an
  * organization owner can recreate a custom app directly in the browser without
@@ -251,7 +259,7 @@ export function buildGitHubAppUrlParametersLink(
   targetOrg: string,
   baseWebUrl = 'https://github.com',
 ): string {
-  const cleanBase = baseWebUrl.replace(/\/+$/g, '');
+  const cleanBase = trimTrailingSlashes(baseWebUrl);
   const endpoint = `${cleanBase}/organizations/${encodeURIComponent(targetOrg)}/settings/apps/new`;
   const name = buildRecreatedAppSlug(app.app_slug, targetOrg);
   const url =
@@ -297,7 +305,7 @@ export function buildEnterpriseGitHubAppUrlParametersLink(
   baseWebUrl = 'https://github.com',
   appNameSuffix = 'emu',
 ): string {
-  const cleanBase = baseWebUrl.replace(/\/+$/g, '');
+  const cleanBase = trimTrailingSlashes(baseWebUrl);
   const endpoint = `${cleanBase}/enterprises/${encodeURIComponent(targetEnterprise)}/settings/apps/new`;
   const name = buildRecreatedAppSlug(app.app_slug, appNameSuffix);
   const url =

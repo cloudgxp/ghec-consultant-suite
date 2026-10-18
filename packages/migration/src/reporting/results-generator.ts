@@ -508,13 +508,20 @@ function buildGranularItemsForModule(params: {
         } else {
           const byteMatch = /\((\d+\s+bytes)\)/i.exec(reason);
           const byteSuffix = byteMatch?.[1] ? ` (${byteMatch[1]})` : '';
-          const webhookSecretMatch =
-            /\((inactive[^)]+|active;\s*no signing secret[^)]+)\)/i.exec(
-              reason,
-            );
-          const webhookSuffix = webhookSecretMatch?.[1]
-            ? ` (${webhookSecretMatch[1]})`
-            : '';
+          let webhookSuffix = '';
+          const lowerReason = reason.toLowerCase();
+          const inactiveIdx = lowerReason.indexOf('(inactive');
+          const activeNoSecretIdx = lowerReason.indexOf(
+            '(active; no signing secret',
+          );
+          const startParenIdx =
+            inactiveIdx !== -1 ? inactiveIdx : activeNoSecretIdx;
+          if (startParenIdx !== -1) {
+            const closeParenIdx = reason.indexOf(')', startParenIdx);
+            if (closeParenIdx !== -1) {
+              webhookSuffix = ` ${reason.slice(startParenIdx, closeParenIdx + 1)}`;
+            }
+          }
           noteParts.push(
             operationType === 'create'
               ? verificationStatus === 'verified'

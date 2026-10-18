@@ -840,14 +840,29 @@ function extractUrlFromText(text: string, marker: string): string | undefined {
   return match ? match[0] : undefined;
 }
 
+function stripEmbeddedUrlMarker(segment: string, marker: string): string {
+  const lower = segment.toLowerCase();
+  const markerLower = marker.toLowerCase();
+  const idx = lower.indexOf(markerLower);
+  if (idx === -1) return segment;
+  const before = segment.slice(0, idx).trimEnd();
+  const afterMarker = segment.slice(idx + marker.length).trimStart();
+  const spaceIdx = afterMarker.search(/\s/);
+  const remainder =
+    spaceIdx === -1 ? '' : afterMarker.slice(spaceIdx).trimStart();
+  return [before, remainder].filter(Boolean).join(' ');
+}
+
 function stripEmbeddedAppUrls(notes: string): string {
-  return notes
-    .replace(
-      /\s*(?:\|\s*)?(?:Install URL|Recreate URL):\s*https?:\/\/[^\s|)]+/gi,
-      '',
-    )
-    .replace(/\s+\|\s*$/, '')
-    .trim();
+  const segments = notes
+    .split('|')
+    .map((part) => {
+      let cleaned = stripEmbeddedUrlMarker(part.trim(), 'Install URL:');
+      cleaned = stripEmbeddedUrlMarker(cleaned, 'Recreate URL:');
+      return cleaned.trim();
+    })
+    .filter((part) => part.length > 0);
+  return segments.join(' | ');
 }
 
 function isWebhookAlreadyActiveWithoutSecret(params: {
