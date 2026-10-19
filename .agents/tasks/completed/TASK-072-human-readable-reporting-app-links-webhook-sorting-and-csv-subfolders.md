@@ -2,7 +2,7 @@
 id: TASK-072
 title: 'Human-Readable Reporting, Smart GitHub App Links, Webhook Secret Sorting & Hierarchical CSV Exports'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-18
 completed_at: 2026-10-18
 dependencies: [TASK-071]
@@ -14,7 +14,7 @@ packages_affected:
 
 ## 1. Objective & Context
 
-Refine migration reporting, post-care deliverables, and module advisories based on operator review of `demogxp-mig6/migration-audit-results`:
+Refine migration reporting, post-care deliverables, and module advisories based on operator review of `sandbox-mig6/migration-audit-results`:
 
 1. **Human-Readable Advisories (Zero `DEC-*` Jargon) & Target-Aware Mannequin Warnings:**
    - Remove internal `(DEC-XXX)` codes from all customer-facing Markdown reports, GitHub Actions step summaries, module display names, remediation scripts, dashboard views, and user guides.

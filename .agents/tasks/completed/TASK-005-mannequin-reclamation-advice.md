@@ -2,7 +2,7 @@
 id: TASK-005
 title: 'Surface Mannequin reclamation advice and planning info in Dashboard'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-06
 dependencies: []
 packages_affected: ['@ghec/dashboard']

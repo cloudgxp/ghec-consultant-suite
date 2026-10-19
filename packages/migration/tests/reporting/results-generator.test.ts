@@ -823,13 +823,13 @@ test('replaces pre-migration absence/drift planning reasons with post-migration 
       {
         schemaVersion: '1.0.0',
         moduleId: 'org-rulesets',
-        targetIdentifier: 'demogxp-mig2',
+        targetIdentifier: 'target-org-2',
         scopeLevel: 'organization',
         status: 'complete',
         durationMs: 200,
         results: [
           {
-            operationId: 'ruleset:skip-org:demogxp-mig2:demo-ruleset',
+            operationId: 'ruleset:skip-org:target-org-2:demo-ruleset',
             status: 'skipped',
             resourceType: 'ruleset',
             resourceName: 'demo-ruleset',
@@ -838,7 +838,7 @@ test('replaces pre-migration absence/drift planning reasons with post-migration 
               'Selected target repositories have not been migrated yet; deferring.',
           },
           {
-            operationId: 'ruleset:create-org:demogxp-mig2:demo-ruleset',
+            operationId: 'ruleset:create-org:target-org-2:demo-ruleset',
             status: 'succeeded',
             resourceType: 'ruleset',
             resourceName: 'demo-ruleset',
@@ -846,7 +846,7 @@ test('replaces pre-migration absence/drift planning reasons with post-migration 
             reason: 'Ruleset is missing on target.',
           },
           {
-            operationId: 'ruleset:noop-org:demogxp-mig2:demo-ruleset',
+            operationId: 'ruleset:noop-org:target-org-2:demo-ruleset',
             status: 'succeeded',
             resourceType: 'ruleset',
             resourceName: 'demo-ruleset',
@@ -863,8 +863,8 @@ test('replaces pre-migration absence/drift planning reasons with post-migration 
     reportId: 'ver-notes',
     verifiedAt: '2026-10-15T12:05:00Z',
     scopeName: 'notes-scope',
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig2',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-2',
     modules: [
       {
         moduleId: 'org-rulesets',
@@ -880,8 +880,8 @@ test('replaces pre-migration absence/drift planning reasons with post-migration 
   };
 
   const results = generateMigrationResults({
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig2',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-2',
     executionMode: 'live',
     executionReport,
     verificationReport,
@@ -908,7 +908,7 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
       {
         schemaVersion: '1.0.0',
         moduleId: 'org-variables',
-        targetIdentifier: 'demogxp-mig2',
+        targetIdentifier: 'target-org-2',
         scopeLevel: 'organization',
         status: 'complete',
         durationMs: 120,
@@ -926,7 +926,7 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
       {
         schemaVersion: '1.0.0',
         moduleId: 'gei-repo',
-        targetIdentifier: 'demogxp-mig2/demo',
+        targetIdentifier: 'target-org-2/demo',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 90,
@@ -935,7 +935,7 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
       {
         schemaVersion: '1.0.0',
         moduleId: 'autolinks',
-        targetIdentifier: 'demogxp-mig2/demo',
+        targetIdentifier: 'target-org-2/demo',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 40,
@@ -954,7 +954,7 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
       {
         schemaVersion: '1.0.0',
         moduleId: 'post-migration-codeowners',
-        targetIdentifier: 'demogxp-mig2/demo',
+        targetIdentifier: 'target-org-2/demo',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 50,
@@ -985,8 +985,8 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
     reportId: 'ver-consistency',
     verifiedAt: '2026-10-15T18:35:00Z',
     scopeName: 'consistency-scope',
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig2',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-2',
     modules: [
       {
         moduleId: 'org-variables',
@@ -1009,7 +1009,7 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
         verified: true,
         discrepancies: [],
         warnings: [
-          '[demogxp-mig2/demo] CODEOWNERS verified with pass-through team ownership.',
+          '[target-org-2/demo] CODEOWNERS verified with pass-through team ownership.',
         ],
       },
     ],
@@ -1021,8 +1021,8 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
   };
 
   const results = generateMigrationResults({
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig2',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-2',
     executionMode: 'live',
     generatedAt: '2026-10-15T19:00:00Z',
     executionReport,
@@ -1032,9 +1032,9 @@ test('filters legacy autolinks/codeowners noise, marks 0-item modules as skipped
       name: 'consistency-scope',
       repositories: [
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'demo',
-          targetOrg: 'demogxp-mig2',
+          targetOrg: 'target-org-2',
           targetRepo: 'demo',
           useGei: true,
         },
@@ -1106,7 +1106,7 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
   const duplicateOrgModule: ModuleExecutionResult = {
     schemaVersion: '1.0.0',
     moduleId: 'teams',
-    targetIdentifier: 'demogxp-mig4',
+    targetIdentifier: 'target-org-4',
     scopeLevel: 'organization',
     status: 'complete',
     durationMs: 2500,
@@ -1136,7 +1136,7 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
       {
         schemaVersion: '1.0.0',
         moduleId: 'gei-repo',
-        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        targetIdentifier: 'target-org-4/release-heavy-benchmark',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 120000,
@@ -1152,7 +1152,7 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
       {
         schemaVersion: '1.0.0',
         moduleId: 'releases',
-        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        targetIdentifier: 'target-org-4/release-heavy-benchmark',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 480000,
@@ -1183,17 +1183,17 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
       {
         schemaVersion: '1.0.0',
         moduleId: 'repo-settings',
-        targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+        targetIdentifier: 'target-org-4/release-heavy-benchmark',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 500,
         results: [
           {
             operationId:
-              'repo-settings:update:demogxp-mig4/release-heavy-benchmark',
+              'repo-settings:update:target-org-4/release-heavy-benchmark',
             status: 'succeeded',
             resourceType: 'repository-settings',
-            resourceName: 'demogxp-mig4/release-heavy-benchmark',
+            resourceName: 'target-org-4/release-heavy-benchmark',
             operationType: 'update',
             reason:
               'Update repository settings (auto-merge, branch deletion, merge strategies) on target.',
@@ -1204,7 +1204,7 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
       {
         schemaVersion: '1.0.0',
         moduleId: 'gei-repo',
-        targetIdentifier: 'demogxp-mig4/chromium',
+        targetIdentifier: 'target-org-4/chromium',
         scopeLevel: 'repository',
         status: 'complete',
         durationMs: 300000,
@@ -1225,14 +1225,14 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
     reportId: 'ver-audit-fixes',
     verifiedAt: '2026-10-16T08:15:00Z',
     scopeName: 'audit-fixes-scope',
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig4',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-4',
     modules: [
       {
         moduleId: 'teams',
         verified: true,
         discrepancies: [],
-        warnings: ['[demogxp-mig4] Team IdP group bindings verified.'],
+        warnings: ['[target-org-4] Team IdP group bindings verified.'],
       },
       {
         moduleId: 'gei-repo',
@@ -1258,8 +1258,8 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
   };
 
   const results = generateMigrationResults({
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig4',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-4',
     targetResultsRepo: 'migration-audit-results',
     executionMode: 'live',
     executionReport,
@@ -1269,16 +1269,16 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
       name: 'audit-fixes-scope',
       repositories: [
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'release-heavy-benchmark',
-          targetOrg: 'demogxp-mig4',
+          targetOrg: 'target-org-4',
           targetRepo: 'release-heavy-benchmark',
           useGei: true,
         },
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'chromium',
-          targetOrg: 'demogxp-mig4',
+          targetOrg: 'target-org-4',
           targetRepo: 'chromium',
           useGei: true,
         },
@@ -1290,12 +1290,12 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
   const readmeMd = results.files['README.md'] ?? '';
   assert.ok(
     readmeMd.includes(
-      '> **Audit Repository:** [`migration-audit-results`](https://github.com/demogxp-mig4/migration-audit-results)',
+      '> **Audit Repository:** [`migration-audit-results`](https://github.com/target-org-4/migration-audit-results)',
     ),
     'README missing clickable Audit Repository link',
   );
 
-  // 2. Duplicate org module execution is deduplicated (durationMs = 2500, not 5000) and [demogxp-mig4] warning prefix is stripped
+  // 2. Duplicate org module execution is deduplicated (durationMs = 2500, not 5000) and [target-org-4] warning prefix is stripped
   assert.equal(
     results.manifest.summary.orgModulesSummary['teams']?.durationMs,
     2500,
@@ -1310,8 +1310,8 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
     `orgTeamsMd missing stripped warning: ${orgTeamsMd}`,
   );
   assert.ok(
-    !orgTeamsMd.includes('[demogxp-mig4] Team IdP'),
-    'orgTeamsMd still has [demogxp-mig4] prefix',
+    !orgTeamsMd.includes('[target-org-4] Team IdP'),
+    'orgTeamsMd still has [target-org-4] prefix',
   );
 
   // 3. gei-repo.md parses clean resource name and strategy note
@@ -1359,7 +1359,7 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
     `rhmReleasesMd missing Recreated release note: ${rhmReleasesMd}`,
   );
 
-  // 7. repo-settings.md strips demogxp-mig4/ prefix and uses past-tense "Updated repository settings..."
+  // 7. repo-settings.md strips target-org-4/ prefix and uses past-tense "Updated repository settings..."
   const rhmSettingsMd =
     results.files['repositories/release-heavy-benchmark/repo-settings.md'] ??
     '';
@@ -1370,7 +1370,7 @@ test('parses gei-repo sub-action operation IDs, synthesizes strategy-aware GEI l
     `rhmSettingsMd missing stripped row: ${rhmSettingsMd}`,
   );
   assert.ok(
-    !rhmSettingsMd.includes('`demogxp-mig4/release-heavy-benchmark`'),
+    !rhmSettingsMd.includes('`target-org-4/release-heavy-benchmark`'),
     `rhmSettingsMd still has org prefix: ${rhmSettingsMd}`,
   );
   assert.ok(
@@ -1517,8 +1517,8 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
 
   // Verify skipped post-care stage note and existing-target strategy preservation
   const postCareSkipResults = generateMigrationResults({
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig5',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org-5',
     targetResultsRepo: 'migration-audit-results',
     executionMode: 'live',
     scope: {
@@ -1526,24 +1526,24 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
       name: 'strategy-scope',
       repositories: [
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'demo',
-          targetOrg: 'demogxp-mig5',
+          targetOrg: 'target-org-5',
           targetRepo: 'demo',
           useGei: true,
         },
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'chromium',
-          targetOrg: 'demogxp-mig5',
+          targetOrg: 'target-org-5',
           targetRepo: 'chromium',
           useGei: false,
           gitTransferStrategy: 'mirror-push',
         },
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'release-heavy-benchmark',
-          targetOrg: 'demogxp-mig5',
+          targetOrg: 'target-org-5',
           targetRepo: 'release-heavy-benchmark',
           useGei: true,
           skipReleases: true,
@@ -1561,7 +1561,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'gei-repo',
-          targetIdentifier: 'demogxp-mig5/demo',
+          targetIdentifier: 'target-org-5/demo',
           scopeLevel: 'repository',
           status: 'complete',
           durationMs: 100,
@@ -1570,7 +1570,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'deploy-keys',
-          targetIdentifier: 'demogxp-mig5/demo',
+          targetIdentifier: 'target-org-5/demo',
           scopeLevel: 'repository',
           status: 'skipped',
           durationMs: 50,
@@ -1590,7 +1590,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'gei-repo',
-          targetIdentifier: 'demogxp-mig5/chromium',
+          targetIdentifier: 'target-org-5/chromium',
           scopeLevel: 'repository',
           status: 'complete',
           durationMs: 100,
@@ -1600,7 +1600,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'gei-repo',
-          targetIdentifier: 'demogxp-mig5/release-heavy-benchmark',
+          targetIdentifier: 'target-org-5/release-heavy-benchmark',
           scopeLevel: 'repository',
           status: 'complete',
           durationMs: 100,
@@ -1610,7 +1610,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'releases',
-          targetIdentifier: 'demogxp-mig5/release-heavy-benchmark',
+          targetIdentifier: 'target-org-5/release-heavy-benchmark',
           scopeLevel: 'repository',
           status: 'complete',
           durationMs: 200,
@@ -1641,7 +1641,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'lfs',
-          targetIdentifier: 'demogxp-mig5/demo',
+          targetIdentifier: 'target-org-5/demo',
           scopeLevel: 'repository',
           status: 'complete',
           durationMs: 120,
@@ -1661,16 +1661,16 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
         {
           schemaVersion: '1.0.0',
           moduleId: 'teams',
-          targetIdentifier: 'demogxp-mig5',
+          targetIdentifier: 'target-org-5',
           scopeLevel: 'organization',
           status: 'complete',
           durationMs: 80,
           results: [
             {
-              operationId: 'org:default-permission:demogxp-mig5',
+              operationId: 'org:default-permission:target-org-5',
               status: 'succeeded',
               resourceType: 'org-permission',
-              resourceName: 'demogxp-mig5',
+              resourceName: 'target-org-5',
               operationType: 'update',
               reason: "Aligned default repository permission to 'none'",
               completedAt: '2026-10-17T13:59:15Z',
@@ -1684,8 +1684,8 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
       reportId: 'ver-strategy',
       verifiedAt: '2026-10-17T14:01:00Z',
       scopeName: 'strategy-scope',
-      sourceOrg: 'demogxp',
-      targetOrg: 'demogxp-mig5',
+      sourceOrg: 'source-org',
+      targetOrg: 'target-org-5',
       modules: [],
       summary: {
         verifiedModuleCount: 34,
@@ -1716,7 +1716,7 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
   const teamsOrgMd = postCareSkipResults.files['organization/teams.md'] ?? '';
   assert.ok(
     teamsOrgMd.includes(
-      '[Configure Member Privileges ↗](https://github.com/organizations/demogxp-mig5/settings/member_privileges)',
+      '[Configure Member Privileges ↗](https://github.com/organizations/target-org-5/settings/member_privileges)',
     ),
     `Expected member_privileges link for org-permission in organization/teams.md:\n${teamsOrgMd}`,
   );
@@ -1784,8 +1784,8 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
   const parsedHydration = JSON.parse(resultsHydrationJson);
   assert.equal(parsedHydration.schemaVersion, '1.0.0');
   assert.equal(parsedHydration.operationalMode, 'live');
-  assert.equal(parsedHydration.manifest.sourceOrg, 'demogxp');
-  assert.equal(parsedHydration.manifest.targetOrg, 'demogxp-mig5');
+  assert.equal(parsedHydration.manifest.sourceOrg, 'source-org');
+  assert.equal(parsedHydration.manifest.targetOrg, 'target-org-5');
   assert.ok(Array.isArray(parsedHydration.postCare.items));
   assert.ok(parsedHydration.postCare.items.length > 0);
   assert.ok(Array.isArray(parsedHydration.postCare.operationRows));

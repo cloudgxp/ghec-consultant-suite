@@ -100,7 +100,7 @@ Commands:
   agent-review     Analyze verification report and generate automated remediation plan
   publish-results  Generate and publish migration audit repository to target organization
   audit-gap-ledger Audit platform migration capabilities against suite modules and emit GapLedgerManifest
-  seed-demo        Provision synthetic source content across 32 migration modules
+  seed-demo        Provision synthetic source content across 34 migration modules
   teardown-sandbox Purge test resources matching prefix filter from target organization
 
 Global Options:
@@ -255,7 +255,7 @@ Options: --output <file> --verbose
     if (commandArgs.includes('--help')) {
       console.log(`ghec-consultant-cli plan — Generate migration plan
 Usage: ghec-consultant-cli plan --scope <file> [options]
-Options: --input <bundle.json> --modules <list> --output <file> --split-matrix <batch-size> --runner-capacity <capacity> --output-matrix <file> --verbose
+Options: --input <bundle.json> --modules <list> --output <file> --split-matrix <batch-size> --runner-capacity <capacity> --output-matrix <file> --sandbox-rehearsal --verbose
          --app-id <id> --private-key-path <path> --installation-id <id>
          --source-token <token> --target-token <token>`);
       return 0;
@@ -312,7 +312,7 @@ Options: --input <bundle.json> --modules <list> --output <file> --split-matrix <
       console.log(`ghec-consultant-cli migrate — Execute migration
 Usage: ghec-consultant-cli migrate (--plan <file> | --scope <file>) [options]
 Options: --input <bundle.json> --modules <list> --resume [checkpoint-id|latest]
-         --continue-on-error --dry-run --output <file> --verbose
+         --continue-on-error --dry-run --sandbox-rehearsal --output <file> --verbose
          --app-id <id> --private-key-path <path> --installation-id <id>
          --source-token <token> --target-token <token>`);
       return 0;
@@ -384,7 +384,7 @@ Options: --input <bundle.json> --modules <list> --resume [checkpoint-id|latest]
     if (commandArgs.includes('--help')) {
       console.log(`ghec-consultant-cli verify — Verify migration compliance
 Usage: ghec-consultant-cli verify --plan <file> [options]
-Options: --scope <file> --output <file> --verbose
+Options: --scope <file> --sandbox-rehearsal --output <file> --verbose
          --app-id <id> --private-key-path <path> --installation-id <id>
          --source-token <token> --target-token <token>`);
       return 0;
@@ -663,6 +663,7 @@ Options:
   --include-org-resources <b>  Include org-level modules ('true' default or 'false')
   --org-modules <list>         Comma-separated org modules to include
   --repo-modules <list>        Comma-separated repo modules to include
+  --sandbox-rehearsal          Keep all target Webhooks and GitHub Actions disabled during rehearsal
   --dry-run                    Print generated scope JSON to stdout without writing to disk`);
       return 0;
     }
@@ -697,7 +698,8 @@ Options:
   --target-type <ghec|emu>     Optional targetType override to apply before validation
   --emu-shortcode <shortcode>  Optional EMU shortcode override when target-type is 'emu'
   --mirror-push-mode <mode>    Optional mirrorPushMode override ('fast-snapshot' or 'full-history')
-  --org-items <mode>           Optional orgItemsMode override ('all', 'associated-only', or 'none')`);
+  --org-items <mode>           Optional orgItemsMode override ('all', 'associated-only', or 'none')
+  --sandbox-rehearsal          Enable sandboxRehearsal across scope organizations and repositories`);
       return 0;
     }
 

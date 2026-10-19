@@ -16,6 +16,7 @@ export function buildOrganizationScopeTarget(
     readonly target: string;
     readonly targetType?: 'ghec' | 'emu' | undefined;
     readonly orgItemsMode?: OrgItemsMode | undefined;
+    readonly sandboxRehearsal?: boolean | undefined;
   },
 ): MigrationScopeTarget {
   const effectiveTargetType =
@@ -25,6 +26,9 @@ export function buildOrganizationScopeTarget(
 
   const effectiveOrgItemsMode: OrgItemsMode | undefined =
     orgMapping.orgItemsMode ?? scope?.orgItemsMode;
+
+  const effectiveSandboxRehearsal: boolean | undefined =
+    orgMapping.sandboxRehearsal ?? scope?.sandboxRehearsal;
 
   const sourceLower = orgMapping.source.toLowerCase();
   const targetLower = orgMapping.target.toLowerCase();
@@ -61,6 +65,9 @@ export function buildOrganizationScopeTarget(
     targetOrg: orgMapping.target,
     targetType: effectiveTargetType,
     ...(effectiveOrgItemsMode ? { orgItemsMode: effectiveOrgItemsMode } : {}),
+    ...(effectiveSandboxRehearsal !== undefined
+      ? { sandboxRehearsal: effectiveSandboxRehearsal }
+      : {}),
     ...(scopedRepositories ? { scopedRepositories } : {}),
     ...(targetOrgCount > 1 ? { isMultiOrgConsolidation: true } : {}),
     identityMapping: scope?.identityMapping,

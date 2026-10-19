@@ -214,6 +214,7 @@ export interface ResultsReadmeOptions {
   readonly repoStrategyBadges?: Readonly<Record<string, string>> | undefined;
   readonly pagesUrl?: string | undefined;
   readonly hasEmbeddedDashboard?: boolean | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
 }
 
 /**
@@ -228,7 +229,9 @@ export function formatResultsReadmeMarkdown(
     options.operationalMode === 'discovery'
       ? 'Discovery Assessment'
       : manifest.executionMode === 'live'
-        ? 'Live Execution'
+        ? options.sandboxRehearsal
+          ? '🛡️ Sandbox Rehearsal (Live Data — Target Webhooks & Actions Disabled)'
+          : 'Live Execution'
         : 'Dry-Run';
 
   const lines: string[] = [
@@ -312,6 +315,11 @@ export function formatResultsReadmeMarkdown(
     const ar = options.transferStrategies.archivedRepos;
     lines.push(
       `| Archived Repositories Migrated | ${ar.length} (\`${ar.join('`, `')}\` — unarchived during metadata apply, re-archived at finalization) |`,
+    );
+  }
+  if (options.sandboxRehearsal && manifest.executionMode === 'live') {
+    lines.push(
+      `| Sandbox Rehearsal Safeguards | 🛡️ Enabled — 0 source mutations/locks; target org Actions (\`enabled_repositories: 'none'\`), repo Actions (\`enabled: false\`), and webhooks (\`active: false\`) disabled |`,
     );
   }
   if (options.postCareSummary) {

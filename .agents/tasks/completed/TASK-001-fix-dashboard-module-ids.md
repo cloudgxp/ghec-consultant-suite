@@ -2,7 +2,7 @@
 id: TASK-001
 title: 'fix-dashboard-module-ids'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-06
 dependencies: []
 packages_affected: ['apps/dashboard']

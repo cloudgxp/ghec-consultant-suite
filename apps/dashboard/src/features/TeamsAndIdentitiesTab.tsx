@@ -349,7 +349,7 @@ export const TeamsAndIdentitiesTab: React.FC<TeamsAndIdentitiesTabProps> = ({
           <div className="p-3 rounded-lg border border-[var(--borderColor-default)] bg-[var(--canvas-subtle)] flex items-center justify-between text-xs text-[var(--fgColor-muted)]">
             <span>
               Enterprise Managed Users (EMU) identity flow. Suffix rule{' '}
-              <code>_gxp</code> applied to all mapped logins.
+              <code>_emu</code> applied to all mapped logins.
             </span>
             <span className="font-mono">
               {emuIdentitiesList.length} total identities

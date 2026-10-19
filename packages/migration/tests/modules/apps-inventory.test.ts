@@ -982,12 +982,12 @@ describe('AppsInventoryMigrationModule', () => {
         {
           id: 5369870,
           app_id: 3435494,
-          app_slug: 'demogxp-test-custom',
+          app_slug: 'acme-test-custom',
           repository_selection: 'selected',
           permissions: { administration: 'read', metadata: 'read' },
           events: ['label'],
           html_url:
-            'https://github.com/organizations/demogxp/settings/installations/5369870',
+            'https://github.com/organizations/source-org/settings/installations/5369870',
         },
         {
           id: 37423,
@@ -997,7 +997,7 @@ describe('AppsInventoryMigrationModule', () => {
           permissions: { contents: 'read' },
           events: ['push'],
           html_url:
-            'https://github.com/organizations/demogxp/settings/installations/37423',
+            'https://github.com/organizations/source-org/settings/installations/37423',
         },
       ],
     };
@@ -1008,7 +1008,7 @@ describe('AppsInventoryMigrationModule', () => {
       seenOps.push({ id: op.id, unauthenticated: op.unauthenticated });
       if (op.id === 'rest.apps.getBySlug') {
         assert.equal(op.unauthenticated, true);
-        if (op.pathParams?.app_slug === 'demogxp-test-custom') {
+        if (op.pathParams?.app_slug === 'acme-test-custom') {
           return { status: 404, data: new Error('Not Found') };
         }
         if (op.pathParams?.app_slug === 'hackmd-hub') {
@@ -1025,15 +1025,15 @@ describe('AppsInventoryMigrationModule', () => {
       }
       if (op.id === 'rest.apps.getBySlugAuthenticated') {
         assert.equal(op.unauthenticated, undefined);
-        if (op.pathParams?.app_slug === 'demogxp-test-custom') {
+        if (op.pathParams?.app_slug === 'acme-test-custom') {
           return {
             status: 200,
             data: {
-              slug: 'demogxp-test-custom',
-              name: 'DemoGXP Test Custom',
-              description: 'Internal custom GxP app',
+              slug: 'acme-test-custom',
+              name: 'Acme Test Custom',
+              description: 'Internal custom enterprise app',
               external_url: 'https://internal.example.com',
-              owner: { slug: 'cloudgxp' },
+              owner: { slug: 'acme-corp' },
             },
           };
         }
@@ -1045,13 +1045,13 @@ describe('AppsInventoryMigrationModule', () => {
     assert.equal(discovered.installations.length, 2);
 
     const customApp = discovered.installations[0]!;
-    assert.equal(customApp.app_slug, 'demogxp-test-custom');
+    assert.equal(customApp.app_slug, 'acme-test-custom');
     assert.equal(customApp.classification, 'custom_private');
     assert.equal(customApp.recommended_strategy, 'recreate_app');
-    assert.equal(customApp.app_name, 'DemoGXP Test Custom');
-    assert.equal(customApp.description, 'Internal custom GxP app');
+    assert.equal(customApp.app_name, 'Acme Test Custom');
+    assert.equal(customApp.description, 'Internal custom enterprise app');
     assert.equal(customApp.external_url, 'https://internal.example.com');
-    assert.equal(customApp.owner_login, 'cloudgxp');
+    assert.equal(customApp.owner_login, 'acme-corp');
 
     const thirdPartyApp = discovered.installations[1]!;
     assert.equal(thirdPartyApp.app_slug, 'hackmd-hub');
@@ -1060,28 +1060,28 @@ describe('AppsInventoryMigrationModule', () => {
 
     // Also verify classifyGitHubApp classifies status=200 Enterprise-owned apps (owner.slug) as custom_private
     const enterpriseDirect = classifyGitHubApp({
-      sourceOrg: 'demogxp',
+      sourceOrg: 'source-org',
       status: 200,
       details: {
         slug: 'enterprise-internal-app',
         name: 'Enterprise Internal App',
-        owner: { slug: 'cloudgxp' },
+        owner: { slug: 'acme-corp' },
       },
     });
     assert.equal(enterpriseDirect.classification, 'custom_private');
     assert.equal(enterpriseDirect.recommendedStrategy, 'recreate_app');
-    assert.equal(enterpriseDirect.ownerLogin, 'cloudgxp');
+    assert.equal(enterpriseDirect.ownerLogin, 'acme-corp');
   });
 
   it('prunes extra placeholder repositories on target installation after binding selected_repositories', async () => {
     const mod = new AppsInventoryMigrationModule();
     const sourceData: AppsInventoryData = {
-      organization: 'demogxp',
+      organization: 'source-org',
       installations: [
         {
           id: 172736491,
           app_id: 5369870,
-          app_slug: 'demogxp-test-custom',
+          app_slug: 'acme-test-custom',
           repository_selection: 'selected',
           selected_repositories: ['react', 'demo'],
           permissions: { actions: 'write', metadata: 'read' },
@@ -1098,7 +1098,7 @@ describe('AppsInventoryMigrationModule', () => {
         {
           id: 173020003,
           app_id: 5379776,
-          app_slug: 'demogxp-test-custom-demogxp-mig8',
+          app_slug: 'acme-test-custom-target-org',
           repository_selection: 'selected',
           permissions: { actions: 'write', metadata: 'read' },
           events: [],
@@ -1116,8 +1116,8 @@ describe('AppsInventoryMigrationModule', () => {
       ...createContext(null, rawTarget, false),
       scope: {
         level: 'organization',
-        sourceOrg: 'demogxp',
-        targetOrg: 'demogxp-mig8',
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org',
       },
       targetClient: new MockReadAdapter(rawTarget, (op) => {
         if (op.path === '/repos/{owner}/{repo}') {
@@ -1181,12 +1181,12 @@ describe('AppsInventoryMigrationModule', () => {
   it('warns on repository_selection mismatch and binds all existing org repos when source is all and target is selected', async () => {
     const mod = new AppsInventoryMigrationModule();
     const sourceData: AppsInventoryData = {
-      organization: 'demogxp',
+      organization: 'source-org',
       installations: [
         {
           id: 1,
           app_id: 5369870,
-          app_slug: 'demogxp-test-custom',
+          app_slug: 'acme-test-custom',
           repository_selection: 'selected',
           selected_repositories: ['react', 'demo'],
           permissions: { metadata: 'read' },
@@ -1209,12 +1209,12 @@ describe('AppsInventoryMigrationModule', () => {
         {
           id: 173020003,
           app_id: 5379776,
-          app_slug: 'demogxp-test-custom-demogxp-mig8',
+          app_slug: 'acme-test-custom-target-org',
           repository_selection: 'all',
           permissions: { metadata: 'read' },
           events: [],
           html_url:
-            'https://github.com/organizations/demogxp-mig8/settings/installations/173020003',
+            'https://github.com/organizations/target-org/settings/installations/173020003',
         },
         {
           id: 173020440,
@@ -1224,7 +1224,7 @@ describe('AppsInventoryMigrationModule', () => {
           permissions: { metadata: 'read' },
           events: [],
           html_url:
-            'https://github.com/organizations/demogxp-mig8/settings/installations/173020440',
+            'https://github.com/organizations/target-org/settings/installations/173020440',
         },
       ],
     };
@@ -1239,8 +1239,8 @@ describe('AppsInventoryMigrationModule', () => {
       ...createContext(null, rawTarget, false),
       scope: {
         level: 'organization',
-        sourceOrg: 'demogxp',
-        targetOrg: 'demogxp-mig8',
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org',
       },
       targetClient: new MockReadAdapter(rawTarget, (op) => {
         if (op.path === '/orgs/{org}/repos') {

@@ -135,9 +135,9 @@ describe('Task 042 (DASH-27): Teams, Outside Collaborators & EMU Identity Visual
   });
 
   describe('EMU SAML Username Prediction', () => {
-    it('appends default _gxp suffix to source usernames', () => {
-      assert.equal(predictEmuUsername('jdoe'), 'jdoe_gxp');
-      assert.equal(predictEmuUsername('alice.smith'), 'alice.smith_gxp');
+    it('appends default _emu suffix to source usernames', () => {
+      assert.equal(predictEmuUsername('jdoe'), 'jdoe_emu');
+      assert.equal(predictEmuUsername('alice.smith'), 'alice.smith_emu');
     });
 
     it('handles custom suffix with or without leading underscore', () => {
@@ -146,7 +146,7 @@ describe('Task 042 (DASH-27): Teams, Outside Collaborators & EMU Identity Visual
     });
 
     it('handles whitespace cleanly', () => {
-      assert.equal(predictEmuUsername('  bob  '), 'bob_gxp');
+      assert.equal(predictEmuUsername('  bob  '), 'bob_emu');
       assert.equal(predictEmuUsername(''), '');
     });
   });

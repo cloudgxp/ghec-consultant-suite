@@ -20,7 +20,7 @@ describe('Task 038: Dynamic Scope Builder & Preflight Readiness Gate', () => {
         ],
         targetRepoVisibility: 'inherit',
         identityStrategy: 'emu-saml',
-        identitySuffix: '_gxp',
+        identitySuffix: '_emu',
         lfsStrategy: 'dual-remote-stream',
         releasesStrategy: 'stream',
         selectedModules: [
@@ -62,7 +62,7 @@ describe('Task 038: Dynamic Scope Builder & Preflight Readiness Gate', () => {
       assert.equal(scope.repositories[2]?.targetRepoVisibility, 'public');
 
       assert.equal(scope.identityMapping?.strategy, 'emu-saml');
-      assert.equal(scope.identityMapping?.suffix, '_gxp');
+      assert.equal(scope.identityMapping?.suffix, '_emu');
     });
 
     it('enforces specific target repository visibility override', () => {

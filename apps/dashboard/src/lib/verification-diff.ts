@@ -651,8 +651,7 @@ export function generateRemediationScopeJson(
   );
 
   return {
-    $schema:
-      'https://raw.githubusercontent.com/cloudgxp/ghec-consultant-suite/main/packages/contracts/src/schemas/migration-scope.json',
+    $schema: './packages/contracts/src/schemas/migration-scope.json',
     scopeName: 'remediation-' + (report.scopeName || 'scope'),
     description:
       'Auto-generated remediation scope addressing ' +
@@ -679,9 +678,9 @@ export const sampleCleanVerificationReport: VerificationReport = {
   schemaVersion: '1.0.0',
   reportId: 'vr-clean-wave-01',
   verifiedAt: '2026-10-06T12:00:00.000Z',
-  scopeName: 'cloudgxp-production-wave-1',
-  sourceOrg: 'cloudgxp-source',
-  targetOrg: 'cloudgxp-target',
+  scopeName: 'acme-production-wave-1',
+  sourceOrg: 'acme-source',
+  targetOrg: 'acme-target',
   modules: [
     { moduleId: 'teams', verified: true, discrepancies: [] },
     { moduleId: 'rulesets', verified: true, discrepancies: [] },
@@ -719,9 +718,9 @@ export const sampleDiscrepantVerificationReport: VerificationReport = {
   schemaVersion: '1.0.0',
   reportId: 'vr-audit-wave-02',
   verifiedAt: '2026-10-06T12:30:00.000Z',
-  scopeName: 'cloudgxp-wave-2-core-apps',
-  sourceOrg: 'cloudgxp-source',
-  targetOrg: 'cloudgxp-target',
+  scopeName: 'acme-wave-2-core-apps',
+  sourceOrg: 'acme-source',
+  targetOrg: 'acme-target',
   modules: [
     {
       moduleId: 'deploy-keys',
@@ -809,7 +808,7 @@ export const sampleDiscrepantVerificationReport: VerificationReport = {
       discrepancies: [
         {
           resourceName: 'former-engineer-ghost',
-          expected: { emuLogin: 'former-engineer_gxp', status: 'reclaimed' },
+          expected: { emuLogin: 'former-engineer_emu', status: 'reclaimed' },
           actual: { emuLogin: null, status: 'unmapped_mannequin' },
           message:
             'Mannequin former-engineer-ghost has not been reclaimed or mapped to an EMU target user.',

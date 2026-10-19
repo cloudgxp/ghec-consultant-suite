@@ -121,6 +121,50 @@ gh workflow run migration-execute-wave.yml \
   -f dry_run="false"
 ```
 
+### Option 3: Running a sandbox rehearsal into a dummy organization (`sandbox_rehearsal: true`)
+
+By default, a live migration (`dry_run="false"`) leaves your source repositories unlocked and untouched, and copies your code, issues, pull requests, teams, and settings into the target organization. If you are rehearsing into a dummy or sandbox organization to show your client the migrated repositories without anything running in the background, turn on **`sandbox_rehearsal="true"`** (or pass `--sandbox-rehearsal` on the CLI) so all target Webhooks and GitHub Actions stay turned off.
+
+To copy real repositories and organization settings into a dummy target organization while keeping all target Webhooks and GitHub Actions disabled:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f source_org="acme-source" \
+  -f target_org="acme-sandbox-emu" \
+  -f target_type="emu" \
+  -f emu_shortcode="acme" \
+  -f dry_run="false" \
+  -f sandbox_rehearsal="true"
+```
+
+To run the full autonomous migration and self-healing workflow in sandbox rehearsal mode:
+
+```bash
+gh workflow run migration-e2e-autonomous.yml \
+  -f source_org="acme-source" \
+  -f target_org="acme-sandbox-emu" \
+  -f target_type="emu" \
+  -f emu_shortcode="acme" \
+  -f dry_run="false" \
+  -f sandbox_rehearsal="true"
+```
+
+To run a sandbox rehearsal from the command line using `--sandbox-rehearsal`:
+
+```bash
+node ./bin/ghec-consultant-cli.mjs migrate \
+  --scope scopes/wave-1.json \
+  --sandbox-rehearsal
+```
+
+> [!NOTE]
+> **What `sandbox_rehearsal` turns off on the target organization:**
+>
+> - **Source repositories stay unlocked:** Your source organization is only read and is never locked or changed.
+> - **All target Webhooks stay inactive (`active: false`):** Both organization and repository webhooks are created in an inactive state, even if a webhook had no secret on the source.
+> - **Organization GitHub Actions stay off (`enabled_repositories: "none"`):** The `actions-policies` module disables GitHub Actions across the target organization.
+> - **Repository GitHub Actions stay off (`enabled: false`):** Every migrated repository has GitHub Actions disabled right after import (and before any `mirror-push` code push) so workflows never run in the sandbox.
+
 > [!NOTE]
 > Need to generate scopes from the command line, filter by repository URL files, or look up every `generate-scope` and `validate-scope` flag? See the dedicated **[Generating and Validating Migration Scopes](generating-migration-scopes.md)** guide.
 
@@ -465,52 +509,55 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `include_org_resources` | `true`               |    No    | Include organization-level settings, teams, custom roles, and secrets (`true` or `false`).                                                                                      |
 | `org_modules`           | `''` (`auto`)        |    No    | Optional comma-separated organization module IDs (leave blank for `auto`).                                                                                                      |
 | `repo_modules`          | `''` (`auto`)        |    No    | Optional comma-separated repository module IDs (leave blank for `auto`).                                                                                                        |
+| `sandbox_rehearsal`     | `false`              |    No    | Sandbox rehearsal mode: keep all target Webhooks and GitHub Actions disabled (`true` or `false`).                                                                               |
 | `commit_to_branch`      | `false`              |    No    | Commit `scopes/<scope_name>.json` to the git branch. Keep `false` for pure artifact handoff.                                                                                    |
 
 ### 2. `migration-execute-wave.yml` — Parallel Matrix Migration Wave
 
-| Input Name          | Default                  | Required | Description                                                                                                                 |
-| :------------------ | :----------------------- | :------: | :-------------------------------------------------------------------------------------------------------------------------- |
-| `scope`             | `'scopes/wave-1.json'`   |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                          |
-| `scope_run_id`      | `''`                     |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                 |
-| `source_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.  |
-| `target_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Target organization login.                                                                         |
-| `repositories`      | `'all'`                  |    No    | **Inline 1-Click Mode:** `'all'`, `'public'`, `'private'`, `'internal'`, `'org_only'`, or comma-separated repository names. |
-| `source_visibility` | `'all'`                  |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).   |
-| `exclude_forks`     | `false`                  |    No    | **Inline 1-Click Mode:** Skip forked repositories when discovering organization repositories (`true` or `false`).           |
-| `org_items_mode`    | `'auto'`                 |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                              |
-| `target_type`       | `'ghec'`                 |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                   |
-| `emu_shortcode`     | `''`                     |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                         |
-| `modules`           | `'auto'`                 |    No    | `'auto'` (strategy-aware selection across all 34 modules), `'all'`, or comma-separated module IDs.                          |
-| `runner_capacity`   | `5`                      |    No    | Available parallel runner capacity.                                                                                         |
-| `batch_size`        | `5`                      |    No    | Maximum number of repositories per parallel runner cohort.                                                                  |
-| `dry_run`           | `true`                   |    No    | Preview mode (`true` makes zero changes; `false` runs the live migration).                                                  |
-| `runner_labels`     | `'ubuntu-latest'`        |    No    | Runner label (`'ubuntu-latest'` or `'self-hosted,linux'`).                                                                  |
-| `environment_gate`  | `'production-migration'` |    No    | GitHub Environment name for manual approval gates.                                                                          |
-| `discovery_run_id`  | `''`                     |    No    | Optional run ID from `discovery-scan.yml` (or `'latest'`) if using a pre-collected discovery bundle.                        |
+| Input Name          | Default                  | Required | Description                                                                                                                  |
+| :------------------ | :----------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
+| `scope`             | `'scopes/wave-1.json'`   |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                           |
+| `scope_run_id`      | `''`                     |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                  |
+| `source_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.   |
+| `target_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Target organization login.                                                                          |
+| `repositories`      | `'all'`                  |    No    | **Inline 1-Click Mode:** `'all'`, `'public'`, `'private'`, `'internal'`, `'org_only'`, or comma-separated repository names.  |
+| `source_visibility` | `'all'`                  |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).    |
+| `exclude_forks`     | `false`                  |    No    | **Inline 1-Click Mode:** Skip forked repositories when discovering organization repositories (`true` or `false`).            |
+| `org_items_mode`    | `'auto'`                 |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                               |
+| `target_type`       | `'ghec'`                 |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                    |
+| `emu_shortcode`     | `''`                     |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                          |
+| `modules`           | `'auto'`                 |    No    | `'auto'` (strategy-aware selection across all 34 modules), `'all'`, or comma-separated module IDs.                           |
+| `runner_capacity`   | `5`                      |    No    | Available parallel runner capacity.                                                                                          |
+| `batch_size`        | `5`                      |    No    | Maximum number of repositories per parallel runner cohort.                                                                   |
+| `dry_run`           | `true`                   |    No    | Preview mode (`true` makes zero changes; `false` runs the live migration).                                                   |
+| `sandbox_rehearsal` | `false`                  |    No    | Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled (`true` or `false`). |
+| `runner_labels`     | `'ubuntu-latest'`        |    No    | Runner label (`'ubuntu-latest'` or `'self-hosted,linux'`).                                                                   |
+| `environment_gate`  | `'production-migration'` |    No    | GitHub Environment name for manual approval gates.                                                                           |
+| `discovery_run_id`  | `''`                     |    No    | Optional run ID from `discovery-scan.yml` (or `'latest'`) if using a pre-collected discovery bundle.                         |
 
 ### 3. `migration-e2e-autonomous.yml` — Autonomous Scale-Adaptive Migration & Remediation
 
-| Input Name                 | Default                | Required | Description                                                                                                                 |
-| :------------------------- | :--------------------- | :------: | :-------------------------------------------------------------------------------------------------------------------------- |
-| `scope`                    | `'scopes/wave-1.json'` |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                          |
-| `scope_run_id`             | `''`                   |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                 |
-| `source_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.  |
-| `target_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Target organization login.                                                                         |
-| `repositories`             | `'all'`                |    No    | **Inline 1-Click Mode:** `'all'`, `'public'`, `'private'`, `'internal'`, `'org_only'`, or comma-separated repository names. |
-| `source_visibility`        | `'all'`                |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).   |
-| `exclude_forks`            | `false`                |    No    | **Inline 1-Click Mode:** Skip forked repositories (`true` or `false`).                                                      |
-| `org_items_mode`           | `'auto'`               |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                              |
-| `modules`                  | `'auto'`               |    No    | `'auto'` (strategy-aware selection across all 34 modules) or comma-separated module IDs.                                    |
-| `exclude_modules`          | `''`                   |    No    | Optional comma-separated module IDs to skip (for example, `'teams,packages'`).                                              |
-| `target_type`              | `'ghec'`               |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                   |
-| `emu_shortcode`            | `''`                   |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                         |
-| `mirror_push_mode`         | `'fast-snapshot'`      |    No    | Mirror-push mode for massive (>40 GiB) repos (`'fast-snapshot'` or `'full-history'`).                                       |
-| `dry_run`                  | `false`                |    No    | Set `true` for dry-run preview or `false` for live execution.                                                               |
-| `auto_remediate`           | `true`                 |    No    | Automatically synthesize and execute self-healing remediation rounds.                                                       |
-| `max_remediation_rounds`   | `3`                    |    No    | Maximum self-healing retry iterations.                                                                                      |
-| `default_runner_labels`    | `'ubuntu-latest'`      |    No    | Runner pool for standard repositories.                                                                                      |
-| `large_repo_runner_labels` | `'ubuntu-latest'`      |    No    | High-capacity runner pool for massive (>40 GiB) repositories.                                                               |
+| Input Name                 | Default                | Required | Description                                                                                                                  |
+| :------------------------- | :--------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
+| `scope`                    | `'scopes/wave-1.json'` |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                           |
+| `scope_run_id`             | `''`                   |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                  |
+| `source_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.   |
+| `target_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Target organization login.                                                                          |
+| `repositories`             | `'all'`                |    No    | **Inline 1-Click Mode:** `'all'`, `'public'`, `'private'`, `'internal'`, `'org_only'`, or comma-separated repository names.  |
+| `source_visibility`        | `'all'`                |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).    |
+| `exclude_forks`            | `false`                |    No    | **Inline 1-Click Mode:** Skip forked repositories (`true` or `false`).                                                       |
+| `org_items_mode`           | `'auto'`               |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                               |
+| `modules`                  | `'auto'`               |    No    | `'auto'` (strategy-aware selection across all 34 modules) or comma-separated module IDs.                                     |
+| `exclude_modules`          | `''`                   |    No    | Optional comma-separated module IDs to skip (for example, `'teams,packages'`).                                               |
+| `target_type`              | `'ghec'`               |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                    |
+| `emu_shortcode`            | `''`                   |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                          |
+| `mirror_push_mode`         | `'fast-snapshot'`      |    No    | Mirror-push mode for massive (>40 GiB) repos (`'fast-snapshot'` or `'full-history'`).                                        |
+| `dry_run`                  | `false`                |    No    | Set `true` for dry-run preview or `false` for live execution.                                                                |
+| `sandbox_rehearsal`        | `false`                |    No    | Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled (`true` or `false`). |
+| `auto_remediate`           | `true`                 |    No    | Automatically synthesize and execute self-healing remediation rounds.                                                        |
+| `max_remediation_rounds`   | `3`                    |    No    | Maximum self-healing retry iterations.                                                                                       |
+| `default_runner_labels`    | `'ubuntu-latest'`      |    No    | Runner pool for standard repositories.                                                                                       |
+| `large_repo_runner_labels` | `'ubuntu-latest'`      |    No    | High-capacity runner pool for massive (>40 GiB) repositories.                                                                |
 
 ### 4. `discovery-scan.yml`, `migration-resume.yml`, `migration-apply-remediation.yml`, and `seed-demo-content.yml`
 
@@ -527,18 +574,19 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 
 If you ever run `node ./bin/ghec-consultant-cli.mjs <command>` directly on a runner or jumphost, every command supports `--help` and the flags below:
 
-| Subcommand             | Supported Flags                                                                                                                                                                                                                                                                                                                                                                                                            |
-| :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `discover`             | `-o, --organization <org>`, `-m, --modules <list>`, `--output-dir <dir>`, `--verbose`                                                                                                                                                                                                                                                                                                                                      |
-| `generate-scope`       | `--source <org1,org2>`, `--target <org>`, `--name <wave>`, `--output <path>`, `--all`, `--source-visibility <all\|public\|private\|internal>`, `--exclude-forks`, `--include-archived`, `--org-items <all\|associated-only\|none>`, `--repos <csv>`, `--file <path>`, `--org-only`, `--include-org-resources <bool>`, `--org-modules <csv>`, `--repo-modules <csv>`, `--target-type <ghec\|emu>`, `--emu-shortcode <code>` |
-| `validate-scope`       | `--scope <path>`, `--target-type <ghec\|emu>`, `--emu-shortcode <code>`, `--mirror-push-mode <fast-snapshot\|full-history>`, `--org-items <all\|associated-only\|none>`                                                                                                                                                                                                                                                    |
-| `preflight`            | `--scope <path>`, `--modules <list>`, `--verbose`                                                                                                                                                                                                                                                                                                                                                                          |
-| `plan`                 | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--input <bundle>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                                                                                       |
-| `migrate`              | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--dry-run`, `--resume <runId\|latest>`, `--checkpoint-dir <dir>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                                        |
-| `verify`               | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--input <bundle>`, `--execution-report <path>`, `--execution-reports <dir>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                             |
-| `agent-review`         | `--report <path>`, `--scope <path>`, `--output <path>`, `--script-output <path>`, `--pr-comment <path>`, `--apply`, `--verbose`                                                                                                                                                                                                                                                                                            |
-| `publish-results`      | `--target-org <org>`, `--results-repo <name>`, `--verification-report <path>`, `--remediation-plan <path>`, `--scope <path>`, `--execution-reports <dir>`, `--discovery-dir <dir>`, `--run-id <id>`, `--create-issues`                                                                                                                                                                                                     |
-| `seed-demo`            | `--org <org>`, `--repo <repo>`, `--scope <both\|organization\|repository>`, `--preset <all\|core-governance\|actions-and-security\|collaboration\|artifacts-and-code>`, `--dry-run`, `--cleanup`                                                                                                                                                                                                                           |
-| `slice-matrix`         | `--scope <path>`, `--discovery-dir <dir>`, `--max-repos <n>`, `--max-weight-bytes <bytes>`                                                                                                                                                                                                                                                                                                                                 |
-| `reconcile-visibility` | `--scope <path>`, `--discovery-dir <dir>`, `--dry-run`                                                                                                                                                                                                                                                                                                                                                                     |
-| `disk-check`           | `--path <dir>`, `--min-free-gb <n>`                                                                                                                                                                                                                                                                                                                                                                                        |
+| Subcommand         | Supported Flags                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `discover`         | `-o, --organization <org>`, `-m, --modules <list>`, `--output-dir <dir>`, `--verbose`                                                                                                                                                                                                                                                                                                                                                             |
+| `generate-scope`   | `--source <org1,org2>`, `--target <org>`, `--name <wave>`, `--output <path>`, `--all`, `--source-visibility <all\|public\|private\|internal>`, `--exclude-forks`, `--include-archived`, `--org-items <all\|associated-only\|none>`, `--repos <csv>`, `--file <path>`, `--org-only`, `--include-org-resources <bool>`, `--org-modules <csv>`, `--repo-modules <csv>`, `--target-type <ghec\|emu>`, `--emu-shortcode <code>`, `--sandbox-rehearsal` |
+| `validate-scope`   | `--scope <path>`, `--target-type <ghec\|emu>`, `--emu-shortcode <code>`, `--mirror-push-mode <fast-snapshot\|full-history>`, `--org-items <all\|associated-only\|none>`, `--sandbox-rehearsal`                                                                                                                                                                                                                                                    |
+| `preflight`        | `--scope <path>`, `--modules <list>`, `--verbose`                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `plan`             | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--input <bundle>`, `--sandbox-rehearsal`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                                                                                       |
+| `migrate`          | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--dry-run`, `--sandbox-rehearsal`, `--resume <runId\|latest>`, `--checkpoint-dir <dir>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                                        |
+| `verify`           | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--input <bundle>`, `--sandbox-rehearsal`, `--execution-report <path>`, `--execution-reports <dir>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                             |
+| `agent-review`     | `--report <path>`, `--scope <path>`, `--output <path>`, `--script-output <path>`, `--pr-comment <path>`, `--apply`, `--verbose`                                                                                                                                                                                                                                                                                                                   |
+| `publish-results`  | `--target-org <org>`, `--results-repo <name>`, `--verification-report <path>`, `--remediation-plan <path>`, `--scope <path>`, `--execution-reports <dir>`, `--discovery-dir <dir>`, `--run-id <id>`, `--create-issues`                                                                                                                                                                                                                            |
+| `seed-demo`        | `--org <org>`, `--repo <repo>`, `--scope <both\|organization\|repository>`, `--preset <all\|core-governance\|actions-and-security\|collaboration\|artifacts-and-code>`, `--dry-run`, `--cleanup`                                                                                                                                                                                                                                                  |
+| `cutover`          | `--scope <path>`, `--source-org <org>`, `--target-org <org>`, `--repos <list>`, `--include-deploy-keys`, `--include-pages-cname`, `--deactivate-source-webhooks`, `--disable-source-actions`, `--archive-source-repos`, `--dry-run`, `--output <path>`                                                                                                                                                                                            |
+| `console`          | `--port <number>`, `--host <address>`, `--no-open`                                                                                                                                                                                                                                                                                                                                                                                                |
+| `audit-gap-ledger` | `--format <json\|table\|markdown>`, `--output <path>`, `--category <category>`, `--status <status>`                                                                                                                                                                                                                                                                                                                                               |
+| `teardown-sandbox` | `--org <name>`, `--prefix <string>`, `--confirm`, `--dry-run`                                                                                                                                                                                                                                                                                                                                                                                     |

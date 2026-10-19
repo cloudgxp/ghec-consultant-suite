@@ -2,7 +2,7 @@
 id: TASK-070
 title: 'Post-Migration Source Cutover Workflow, Safe Inactive Webhooks, IdP Team Auto-Binding, Larger Hosted Runners, App Repo Scoping, and Post-Care UX Enhancements'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-17
 completed_at: 2026-10-17
 dependencies: ['TASK-068', 'TASK-069']
@@ -14,7 +14,7 @@ packages_affected:
 
 ## 1. Objective & Context
 
-Implement the 6 consultant-approved enhancements identified during the `demogxp` ➔ `demogxp-mig5` post-migration report audit:
+Implement the 6 consultant-approved enhancements identified during the `sandbox-org` ➔ `sandbox-mig5` post-migration report audit:
 
 1. **Post-Migration Source-Detach Cutover Workflow & CLI Command**:
    - Keep standard migration non-destructive on the source organization.

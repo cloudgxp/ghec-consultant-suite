@@ -2,7 +2,7 @@
 id: TASK-030
 title: 'Integrate Metadata Failure Remediation in Agent Review and Wave Orchestrator'
 status: completed
-owner: Antigravity
+owner: copilot
 created_at: 2026-10-08
 dependencies: ['TASK-025', 'TASK-026', 'TASK-027', 'TASK-028', 'TASK-029']
 packages_affected: ['apps/cli', 'packages/migration', '@ghec/dashboard']

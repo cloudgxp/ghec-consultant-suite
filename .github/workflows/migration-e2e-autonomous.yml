@@ -78,6 +78,11 @@ on:
         required: false
         type: boolean
         default: false
+      sandbox_rehearsal:
+        description: 'Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled'
+        required: false
+        type: boolean
+        default: false
       allow_same_credential:
         description: 'Allow source and target tenants to share credentials (for testing)'
         required: false
@@ -157,6 +162,7 @@ jobs:
           INPUT_TARGET_TYPE: ${{ inputs.target_type || '' }}
           INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
           INPUT_MIRROR_PUSH_MODE: ${{ inputs.mirror_push_mode || 'fast-snapshot' }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           mkdir -p ./scans ./downloaded-scope
@@ -180,6 +186,9 @@ jobs:
             fi
             if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
               GEN_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+            fi
+            if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+              GEN_ARGS+=(--sandbox-rehearsal)
             fi
             if [ "$INPUT_REPOS" = "all" ] || [ -z "$INPUT_REPOS" ]; then
               GEN_ARGS+=(--all --source-visibility "${INPUT_SOURCE_VISIBILITY:-all}")
@@ -257,6 +266,9 @@ jobs:
           fi
           if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
             VAL_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+          fi
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            VAL_ARGS+=(--sandbox-rehearsal)
           fi
           node ./apps/cli/bin/ghec-consultant-cli.mjs "${VAL_ARGS[@]}"
 
@@ -962,6 +974,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Scope**: \`${{ inputs.scope }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Dry Run**: \`${{ inputs.dry_run }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Sandbox Rehearsal**: \`${{ inputs.sandbox_rehearsal }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Auto Remediate**: \`${{ inputs.auto_remediate }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 

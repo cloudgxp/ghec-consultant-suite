@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="ghec-consultant-suite-banner.jpeg" alt="GHEC Consultant Suite Banner" width="100%" />
-</p>
-
 # GHEC Consultant Suite
 
 The **GHEC Consultant Suite** helps you plan, run, and verify migrations from **GitHub Enterprise Cloud (GHEC)** to **GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU)**. You can collect organization data for offline review, move repositories and settings in parallel waves, and check that nothing was missed.
@@ -15,13 +11,13 @@ By default, this repository uses `npm` workspaces to manage both apps (`apps/*`)
 To download the repository, install dependencies, and build all tools:
 
 ```bash
-git clone https://github.com/cloudgxp/ghec-consultant-suite.git
+git clone https://github.com/<your-org>/ghec-consultant-suite.git
 cd ghec-consultant-suite
 npm ci
 npm run build
 ```
 
-To run the full quality check (code formatting, type checks, app builds, and 740+ offline tests):
+To run the full quality check (code formatting, type checks, app builds, and 800+ offline tests):
 
 ```bash
 npm run check
@@ -127,7 +123,7 @@ gh workflow run migration-resume.yml \
 | :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------: |
 | **Consultant CLI** (`apps/cli`)                   | Command-line tool to collect data, check readiness, plan waves, migrate items, verify results, and fix gaps.        |         [CLI Guide](apps/cli/README.md)          |
 | **Offline Dashboard** (`apps/dashboard`)          | Local web app (`http://localhost:5173`) to explore discovery files, check repo sizes, and export PDF reports.       |   [Dashboard Guide](apps/dashboard/README.md)    |
-| **Migration Engine** (`packages/migration`)       | 29 migration modules (`discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`) and GEI runner. | [Migration Guide](packages/migration/README.md)  |
+| **Migration Engine** (`packages/migration`)       | 34 migration modules (`discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`) and GEI runner. | [Migration Guide](packages/migration/README.md)  |
 | **Discovery Engine** (`packages/discovery`)       | Collects organization and repository data via REST and GraphQL while hiding personal user names.                    | [Discovery Guide](packages/discovery/README.md)  |
 | **Readiness Analysis** (`packages/analysis`)      | Scores migration risks, flags oversized repos or LFS files, and maps dependencies between teams and repos.          |  [Analysis Guide](packages/analysis/README.md)   |
 | **Dual GitHub Client** (`packages/github-client`) | Keeps source (read-only) and target (write) connections and rate limits strictly separated.                         | [Client Guide](packages/github-client/README.md) |
@@ -138,12 +134,14 @@ gh workflow run migration-resume.yml \
 ## User guides & documentation
 
 - **Step-by-Step User Guides ([`docs/guides/`](docs/guides/README.md)):**
+  - [Consultant Operator's Manual: Running Migrations in GitHub Actions](docs/guides/consultant-operators-manual.md)
+  - [Customer Migration Handbook: Preparation & Post-Care](docs/guides/customer-migration-handbook.md)
+  - [Generating and Validating Migration Scopes](docs/guides/generating-migration-scopes.md)
   - [Downloading Discovery Data & Running Offline Assessments](docs/guides/offline-discovery-and-assessment.md)
   - [Running Migrations with GitHub Actions](docs/guides/github-actions-migration.md)
   - [Setting Up a GHEC to GHEC-EMU Test Migration](docs/guides/ghec-to-emu-test-migration-setup.md)
   - [Verifying Migrations & Fixing Missing Items](docs/guides/verification-and-remediation.md)
   - [Creating Sample Data for a Demo (`seed-demo`)](docs/guides/seed-demo-content.md)
-  - [Setting Up Jules Automated Maintenance](docs/guides/jules-automation-setup.md)
 - **Collaboration & Community:**
   - [Collaborators & Team Roles](COLLABORATORS.md)
   - [Contributing Guide](CONTRIBUTING.md)
@@ -152,6 +150,7 @@ gh workflow run migration-resume.yml \
   - [Code of Conduct](CODE_OF_CONDUCT.md)
 - **Engineering Specs & Architecture ([`docs/`](docs/README.md)):**
   - [Repository Charter (`AGENTS.md`)](AGENTS.md)
+  - [GitHub Copilot Instructions (`.github/copilot-instructions.md`)](.github/copilot-instructions.md)
   - [Architectural Decisions (`DEC-001`–`DEC-020+`)](docs/architecture/decisions.md)
   - [Specifications Index](docs/specs/README.md)
   - [Data Contracts Reference](docs/data-contracts/README.md)

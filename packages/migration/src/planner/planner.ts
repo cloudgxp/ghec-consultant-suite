@@ -43,6 +43,8 @@ export interface MigrationPlannerOptions {
   readonly excludeModules?: readonly string[] | undefined;
   /** When true, resolves full verification module set even under "auto" mode. */
   readonly verificationMode?: boolean | undefined;
+  /** When true, plans webhooks and GitHub Actions in a disabled state for sandbox rehearsal. */
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly runId?: string | undefined;
   readonly signal?: AbortSignal | undefined;
@@ -63,6 +65,7 @@ export class MigrationPlanner {
   private readonly modules?: readonly string[] | undefined;
   private readonly excludeModules?: readonly string[] | undefined;
   private readonly verificationMode: boolean;
+  private readonly sandboxRehearsal: boolean;
   private readonly logger: StructuredLogger;
   private readonly runId: string;
   private readonly signal: AbortSignal;
@@ -75,6 +78,9 @@ export class MigrationPlanner {
     this.modules = options.modules;
     this.excludeModules = options.excludeModules;
     this.verificationMode = options.verificationMode ?? false;
+    this.sandboxRehearsal = Boolean(
+      options.sandboxRehearsal || options.scope.sandboxRehearsal,
+    );
     this.logger = options.logger ?? defaultLogger;
     this.runId =
       options.runId ?? `plan-${Date.now()}-${randomBytes(4).toString('hex')}`;
@@ -117,7 +123,13 @@ export class MigrationPlanner {
 
     // 1. Process Organization-level Scopes
     for (const orgMapping of this.scope.organizations) {
-      const orgScope = buildOrganizationScopeTarget(this.scope, orgMapping);
+      const baseOrgScope = buildOrganizationScopeTarget(this.scope, orgMapping);
+      const effectiveOrgSandbox = Boolean(
+        this.sandboxRehearsal || baseOrgScope.sandboxRehearsal,
+      );
+      const orgScope: MigrationScopeTarget = effectiveOrgSandbox
+        ? { ...baseOrgScope, sandboxRehearsal: true }
+        : baseOrgScope;
       if (orgScope.orgItemsMode === 'none') {
         continue;
       }
@@ -187,6 +199,7 @@ export class MigrationPlanner {
           signal: this.signal,
           dryRun: true,
           continueOnError: false,
+          ...(effectiveOrgSandbox ? { sandboxRehearsal: true } : {}),
           logger: this.logger,
         };
 
@@ -268,6 +281,12 @@ export class MigrationPlanner {
         (this.scope.identityMapping?.strategy === 'pass-through'
           ? 'ghec'
           : 'emu');
+      const effectiveRepoSandbox = Boolean(
+        this.sandboxRehearsal ||
+        repoMapping.sandboxRehearsal ||
+        repoOptions?.sandboxRehearsal ||
+        matchingOrg?.sandboxRehearsal,
+      );
 
       const repoScope: MigrationScopeTarget = {
         level: 'repository',
@@ -277,6 +296,7 @@ export class MigrationPlanner {
         targetRepo: repoMapping.targetRepo,
         targetType: effectiveTargetType,
         identityMapping: this.scope.identityMapping,
+        ...(effectiveRepoSandbox ? { sandboxRehearsal: true } : {}),
         options: repoOptions,
       };
 
@@ -337,6 +357,7 @@ export class MigrationPlanner {
           signal: this.signal,
           dryRun: true,
           continueOnError: false,
+          ...(effectiveRepoSandbox ? { sandboxRehearsal: true } : {}),
           logger: this.logger,
         };
 
@@ -379,6 +400,7 @@ export class MigrationPlanner {
       planId: this.runId,
       createdAt: new Date().toISOString(),
       scopeName: this.scope.name,
+      ...(this.sandboxRehearsal ? { sandboxRehearsal: true } : {}),
       summary,
       modules: modulePlans,
     };

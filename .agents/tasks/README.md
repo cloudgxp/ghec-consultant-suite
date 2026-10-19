@@ -54,9 +54,9 @@ git mv .agents/tasks/in-progress/TASK-044-*.md .agents/tasks/completed/
 
 By default, the table below lists tasks currently in `backlog/` or `in-progress/`.
 
-| ID       | Title                                                                               | Status        | Owner   | Dependencies                       |
-| :------- | :---------------------------------------------------------------------------------- | :------------ | :------ | :--------------------------------- |
-| TASK-068 | Live End-to-End GitHub Actions Migration: demogxp to demogxp-mig5 & Reporting Audit | `in-progress` | `agent` | `TASK-064`, `TASK-065`, `TASK-067` |
+| ID       | Title                                                                                   | Status        | Owner   | Dependencies                       |
+| :------- | :-------------------------------------------------------------------------------------- | :------------ | :------ | :--------------------------------- |
+| TASK-068 | Live End-to-End GitHub Actions Migration: sandbox-org to sandbox-mig5 & Reporting Audit | `in-progress` | `agent` | `TASK-064`, `TASK-065`, `TASK-067` |
 
 > [!NOTE]
 > See [`.agents/rules/task-planning.md`](../rules/task-planning.md) for the full rules on planning and completing tasks.

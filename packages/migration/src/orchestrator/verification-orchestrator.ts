@@ -41,6 +41,7 @@ export class VerificationOrchestrator {
   private readonly sourceClient?: GitHubReadAdapter | undefined;
   private readonly plan: MigrationPlan;
   private readonly scope?: MigrationScope | undefined;
+  private readonly sandboxRehearsal: boolean;
   private readonly runId: string;
   private readonly logger: StructuredLogger;
   private readonly signal: AbortSignal;
@@ -57,6 +58,11 @@ export class VerificationOrchestrator {
     this.targetClient = options.targetClient;
     this.sourceClient = options.sourceClient;
     this.scope = options.scope;
+    this.sandboxRehearsal = Boolean(
+      options.sandboxRehearsal ||
+      options.scope?.sandboxRehearsal ||
+      this.plan.sandboxRehearsal,
+    );
     this.runId =
       options.runId ?? `verify-${Date.now()}-${randomBytes(4).toString('hex')}`;
     this.logger = options.logger ?? defaultLogger;
@@ -93,6 +99,9 @@ export class VerificationOrchestrator {
         signal: this.signal,
         dryRun: true,
         continueOnError: true,
+        ...(this.sandboxRehearsal || scopeTarget.sandboxRehearsal
+          ? { sandboxRehearsal: true }
+          : {}),
         logger: this.logger,
       };
 
@@ -274,13 +283,15 @@ export class VerificationOrchestrator {
         repoMapping?.lfsStrategy !== undefined ||
         repoMapping?.targetRepoVisibility !== undefined ||
         repoMapping?.gitTransferStrategy !== undefined ||
-        repoMapping?.mirrorPushMode !== undefined
+        repoMapping?.mirrorPushMode !== undefined ||
+        repoMapping?.sandboxRehearsal !== undefined
           ? {
               skipReleases: repoMapping.skipReleases,
               lfsStrategy: repoMapping.lfsStrategy,
               targetRepoVisibility: repoMapping.targetRepoVisibility,
               gitTransferStrategy: repoMapping.gitTransferStrategy,
               mirrorPushMode: repoMapping.mirrorPushMode,
+              sandboxRehearsal: repoMapping.sandboxRehearsal,
             }
           : undefined);
       const effectiveMirrorPushMode =
@@ -302,6 +313,13 @@ export class VerificationOrchestrator {
         (this.scope?.identityMapping?.strategy === 'pass-through'
           ? 'ghec'
           : 'emu');
+      const effectiveSandboxRehearsal = Boolean(
+        this.sandboxRehearsal ||
+        repoMapping?.sandboxRehearsal ||
+        repoOptions?.sandboxRehearsal ||
+        matchingOrg?.sandboxRehearsal ||
+        this.scope?.sandboxRehearsal,
+      );
 
       return {
         level: 'repository',
@@ -311,6 +329,7 @@ export class VerificationOrchestrator {
         targetRepo: targetRepo!,
         targetType: effectiveTargetType,
         identityMapping: this.scope?.identityMapping,
+        ...(effectiveSandboxRehearsal ? { sandboxRehearsal: true } : {}),
         options: repoOptions,
       };
     }
@@ -329,6 +348,8 @@ export class VerificationOrchestrator {
       target: targetId,
       targetType: orgMapping?.targetType,
       orgItemsMode: orgMapping?.orgItemsMode,
+      sandboxRehearsal:
+        this.sandboxRehearsal || orgMapping?.sandboxRehearsal || undefined,
     });
   }
 }

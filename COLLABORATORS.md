@@ -8,39 +8,39 @@ This guide explains who maintains the **GHEC Consultant Suite**, how team permis
 
 By default, everyone working in this repository fits into one of four roles. Each role has specific permissions to keep customer migration tools safe and reliable.
 
-| Role                      |  GitHub Permission   | What They Do                                                                                                      |
-| :------------------------ | :------------------: | :---------------------------------------------------------------------------------------------------------------- |
-| **Core Maintainers**      | `Admin` / `Maintain` | Approve pull requests, manage GitHub Actions secrets, approve production migration gates, and publish releases.   |
-| **Migration Consultants** |       `Write`        | Create wave scope files (`scopes/*.json`), run discovery scans, review verification reports, and improve modules. |
-| **External Contributors** |  `Read` / `Triage`   | Report bugs, propose new collectors or migration modules via pull requests, and improve user guides.              |
-| **Automated Assistants**  |     Bot / Scoped     | Run automated code checks, combine maintenance pull requests (`@google-labs-jules[bot]`), and verify test suites. |
+| Role                      |  GitHub Permission   | What They Do                                                                                                        |
+| :------------------------ | :------------------: | :------------------------------------------------------------------------------------------------------------------ |
+| **Core Maintainers**      | `Admin` / `Maintain` | Approve pull requests, manage GitHub Actions secrets, approve production migration gates, and publish releases.     |
+| **Migration Consultants** |       `Write`        | Create wave scope files (`scopes/*.json`), run discovery scans, review verification reports, and improve modules.   |
+| **External Contributors** |  `Read` / `Triage`   | Report bugs, propose new collectors or migration modules via pull requests, and improve user guides.                |
+| **Automated Assistants**  |     Bot / Scoped     | Run automated code checks, assist with verification and security audits via GitHub Copilot, and verify test suites. |
 
 ---
 
 ## Working together on a migration wave
 
-By default, migration consultants collaborate on customer cutovers by committing scope files to the `scopes/` folder and reviewing the automated plan in a Pull Request before moving any data.
+By default, migration consultants collaborate on customer cutovers by generating scope artifacts in GitHub Actions or committing scope files to the `scopes/` folder and reviewing the automated plan in a Pull Request before moving any data.
 
 ```text
 scopes/
-├── cloudgxp-wave.json
-├── demogxp-wave.json
+├── test-org-wave.json
+├── test-repo-wave.json
 └── test-all-wave.json
 ```
 
-To propose a new migration wave for your team to review, generate a scope file:
+To propose a new migration wave for your team to review, generate a plan from your scope file:
 
 ```bash
-npm run dev:cli -- plan --scope ./scopes/demogxp-wave.json
+npm run dev:cli -- plan --scope ./scopes/wave-1.json
 ```
 
 To open a Pull Request so another collaborator can review the planned changes before you run the migration:
 
 ```bash
-git checkout -b wave/demogxp-cutover
-git add scopes/demogxp-wave.json
-git commit -m "docs(scope): add demogxp wave scope"
-git push -u origin wave/demogxp-cutover
+git checkout -b wave/acme-corp-cutover
+git add scopes/wave-1.json
+git commit -m "docs(scope): add acme-corp wave-1 scope"
+git push -u origin wave/acme-corp-cutover
 gh pr create --fill
 ```
 
@@ -80,21 +80,15 @@ gh api repos/{owner}/{repo}/collaborators/USERNAME/permission --jq '.permission'
 
 ---
 
-## Delegating tasks to automated collaborators
+## Using GitHub Copilot custom agents and skills
 
-You can also assign routine bug fixes, test coverage tasks, or documentation updates to our automated AI collaborator (**Jules**) directly from GitHub Issues.
+By default, this repository includes custom GitHub Copilot instructions (`.github/copilot-instructions.md`), path-scoped instructions (`.github/instructions/`), reusable skills (`.github/skills/`), and specialized custom agents (`.github/agents/`):
 
-To ask Jules to fix an issue and open a Pull Request, add the `jules` label:
+- **`@migration-verifier`** (`.github/agents/migration-verifier.agent.md`): Reviews `verification-report.json` files and generates idempotent remediation plans (`remediation-plan.json` and `remediation.sh`).
+- **`@security-auditor`** (`.github/agents/security-auditor.agent.md`): Audits code changes and logs to ensure zero plaintext secrets (`DEC-004`) or unsanitized tokens ever reach disk.
 
-```bash
-gh issue edit ISSUE_NUMBER --add-label "jules"
-```
-
-To combine all passing Jules pull requests into a single reviewable branch:
+To combine all passing Dependabot pull requests into a single maintenance branch:
 
 ```bash
-gh workflow run combine-jules-prs.yml
+gh workflow run combine-dependabot-prs.yml
 ```
-
-> [!NOTE]
-> Only repository `OWNER`, `MEMBER`, and `COLLABORATOR` accounts can trigger automated agent workflows. See the [Jules Automation Setup Guide](docs/guides/jules-automation-setup.md) for more details.

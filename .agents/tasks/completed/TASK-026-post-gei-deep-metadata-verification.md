@@ -2,7 +2,7 @@
 id: TASK-026
 title: 'Post-GEI Deep Metadata and Parity Verification'
 status: completed
-owner: Antigravity
+owner: copilot
 created_at: 2026-10-08
 dependencies: ['TASK-025']
 packages_affected: ['@ghec/migration', '@ghec/contracts']

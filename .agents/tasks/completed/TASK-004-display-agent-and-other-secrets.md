@@ -2,7 +2,7 @@
 id: TASK-004
 title: 'Surface Agent, Dependabot, and Codespaces secrets in Discovery and Dashboard'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-06
 dependencies: []
 packages_affected: ['@ghec/discovery', '@ghec/dashboard', '@ghec/contracts']

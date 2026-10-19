@@ -14,7 +14,7 @@ packages_affected:
 
 ## 1. Objective & Context
 
-In the `demogxp` source organization used for E2E migrations:
+In the `sandbox-org` source organization used for E2E migrations:
 
 1. `apps/cli/src/commands/seeder/org/index.ts` has no organization-level ruleset provisioner, so organization-level rulesets are never seeded by `seed-demo`.
 2. `apps/cli/src/commands/seeder/repo/index.ts` only seeds a single branch ruleset without tag rulesets or bypass actors, and `scripts/seed-dummy-resources.mjs` does not seed any rulesets at all.

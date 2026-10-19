@@ -56,7 +56,7 @@ export const MigrationControlPlaneTab: React.FC<
   selectedOrgIds = [],
   apiBaseUrl = '',
   fetchFn = fetch,
-  defaultOwner = 'cloudgxp',
+  defaultOwner = '',
   defaultRepo = 'ghec-consultant-suite',
 }) => {
   // Dispatch configuration state

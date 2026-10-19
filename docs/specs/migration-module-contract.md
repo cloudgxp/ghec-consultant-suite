@@ -2,7 +2,7 @@
 
 **Specification Status:** Authoritative Architectural Standard  
 **Target:** Modular API Migration Architecture in `@ghec/migration`  
-**Applicability:** All implementation agents (Antigravity)
+**Applicability:** All engineers and AI coding agents
 
 ---
 

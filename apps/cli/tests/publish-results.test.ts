@@ -371,12 +371,12 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
           {
             version: '1.0.0',
             name: 'step-summary-scope',
-            organizations: [{ source: 'demogxp', target: 'demogxp-mig4' }],
+            organizations: [{ source: 'source-org', target: 'target-org' }],
             repositories: [
               {
-                sourceOrg: 'demogxp',
+                sourceOrg: 'source-org',
                 sourceRepo: 'release-heavy-benchmark',
-                targetOrg: 'demogxp-mig4',
+                targetOrg: 'target-org',
                 targetRepo: 'release-heavy-benchmark',
                 useGei: true,
               },
@@ -403,17 +403,17 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
       const stepSummaryMd = readFileSync(stepSummaryPath, 'utf-8');
       assert.ok(
         stepSummaryMd.includes(
-          '[View Log](https://github.com/demogxp-mig4/migration-audit-results/blob/main/success/release-heavy-benchmark.md)',
+          '[View Log](https://github.com/target-org/migration-audit-results/blob/main/success/release-heavy-benchmark.md)',
         ),
       );
       assert.ok(
         stepSummaryMd.includes(
-          'https://github.com/demogxp-mig4/migration-audit-results/blob/main/POST-CARE-CHECKLIST.md',
+          'https://github.com/target-org/migration-audit-results/blob/main/POST-CARE-CHECKLIST.md',
         ),
       );
       assert.ok(
         stepSummaryMd.includes(
-          'https://github.com/demogxp-mig4/migration-audit-results/blob/main/exports/post-care-items.csv',
+          'https://github.com/target-org/migration-audit-results/blob/main/exports/post-care-items.csv',
         ),
       );
       assert.ok(!stepSummaryMd.includes('](success/'));

@@ -464,6 +464,7 @@ function normalizeSucceededOperationReason(reason: string): string {
     .replace(/^Stream(?:ing)?\b/, 'Streamed')
     .replace(/^Transfer(?:ring)?\b/, 'Transferred')
     .replace(/^Enabl(?:e|ing)\b/, 'Enabled')
+    .replace(/^Disabl(?:e|ing)\b/, 'Disabled')
     .replace(/^Sync(?:ing)?\b/, 'Synced')
     .replace(/^Provision(?:ing)?\b/, 'Provisioned');
 }
@@ -1605,6 +1606,30 @@ export function generateMigrationResults(
           return op;
         });
       }
+      if (
+        moduleId === 'gei-repo' &&
+        Boolean(
+          options.scope?.sandboxRehearsal ||
+          options.executionReport?.sandboxRehearsal ||
+          options.plan?.sandboxRehearsal,
+        )
+      ) {
+        const sandboxSuffix =
+          ' GitHub Actions disabled on target repository (enabled: false) for sandbox rehearsal mode.';
+        allOps = allOps.map((op) => {
+          if (
+            op.status === 'succeeded' &&
+            op.reason &&
+            !op.reason.includes('sandbox rehearsal mode')
+          ) {
+            return {
+              ...op,
+              reason: `${op.reason.replace(/\.?\s*$/, '.')}${sandboxSuffix}`,
+            };
+          }
+          return op;
+        });
+      }
       const modDiscs = [
         ...(repoModuleDiscrepancies.get(`${targetRepo}::${moduleId}`) ?? []),
         ...(sourceRepo !== targetRepo
@@ -2329,6 +2354,11 @@ export function generateMigrationResults(
     ...(options.pagesUrl ? { pagesUrl: options.pagesUrl } : {}),
     ...(options.dashboardFiles && Object.keys(options.dashboardFiles).length > 0
       ? { hasEmbeddedDashboard: true }
+      : {}),
+    ...(options.scope?.sandboxRehearsal ||
+    options.executionReport?.sandboxRehearsal ||
+    options.plan?.sandboxRehearsal
+      ? { sandboxRehearsal: true }
       : {}),
   });
   files['manifest.json'] = JSON.stringify(manifest, null, 2);

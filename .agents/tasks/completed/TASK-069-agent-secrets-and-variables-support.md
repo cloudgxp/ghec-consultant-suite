@@ -2,7 +2,7 @@
 id: TASK-069
 title: 'Vendor GitHub Agent Secrets & Variables Docs and Implement Full Discovery, Migration, and Reporting Support'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-17
 completed_at: 2026-10-17
 dependencies: ['TASK-068']

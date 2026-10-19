@@ -33,6 +33,8 @@ research/**/sources/*.json
 research/**/sources/*.json.gz
 
 scans/
+bundles/
+cohort-results-*/
 /reports/
 !docs/reports/
 customer-data/

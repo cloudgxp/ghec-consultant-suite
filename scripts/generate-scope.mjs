@@ -295,7 +295,7 @@ export async function generateScope(options) {
             ? rawSuffix
             : `_${rawSuffix}`
           : undefined
-        : '_gxp'
+        : '_emu'
       : undefined;
 
   const targetReposFilePath = reposFile || file;

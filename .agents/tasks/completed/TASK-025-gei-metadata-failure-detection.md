@@ -2,7 +2,7 @@
 id: TASK-025
 title: 'Detect GEI Metadata Failures and Warning Diagnostics'
 status: completed
-owner: Antigravity
+owner: copilot
 created_at: 2026-10-08
 dependencies: []
 packages_affected: ['@ghec/migration', '@ghec/contracts']

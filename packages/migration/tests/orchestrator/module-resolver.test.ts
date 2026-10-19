@@ -35,9 +35,9 @@ describe('Strategy-Aware Automatic Module Resolution (--modules auto & --exclude
 
   it('resolves standard GEI repository modules by excluding issues, pull-requests, and releases from applyModules and verifyModules (verified via gei-repo parity inspector)', () => {
     const standardRepo: MigrationScope['repositories'][number] = {
-      sourceOrg: 'demogxp',
+      sourceOrg: 'source-org',
       sourceRepo: 'service-a',
-      targetOrg: 'demogxp-mig',
+      targetOrg: 'target-org',
       targetRepo: 'service-a',
       gitTransferStrategy: 'auto',
       lfsStrategy: 'dual-remote-stream',
@@ -56,9 +56,9 @@ describe('Strategy-Aware Automatic Module Resolution (--modules auto & --exclude
 
   it('includes issues, pull-requests, and releases in applyModules and verifyModules for mirror-push repositories', () => {
     const massiveRepo: MigrationScope['repositories'][number] = {
-      sourceOrg: 'demogxp',
+      sourceOrg: 'source-org',
       sourceRepo: 'chromium',
-      targetOrg: 'demogxp-mig',
+      targetOrg: 'target-org',
       targetRepo: 'chromium',
       gitTransferStrategy: 'mirror-push',
     };

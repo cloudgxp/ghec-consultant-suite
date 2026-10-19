@@ -111,7 +111,7 @@ export function buildMigrationScope(
       : {}),
     identityMapping: {
       strategy: options.identityStrategy ?? 'emu-saml',
-      suffix: options.identitySuffix ?? '_gxp',
+      suffix: options.identitySuffix ?? '_emu',
     },
   };
 

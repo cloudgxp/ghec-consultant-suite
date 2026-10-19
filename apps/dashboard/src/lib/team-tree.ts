@@ -206,7 +206,7 @@ export function filterTeamTree(
  */
 export function predictEmuUsername(
   sourceUsername: string,
-  suffix: string = '_gxp',
+  suffix: string = '_emu',
 ): string {
   const trimmed = sourceUsername.trim();
   if (!trimmed) return trimmed;

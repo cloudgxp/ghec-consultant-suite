@@ -106,6 +106,7 @@ export interface MigrationRunSummary {
   readonly targetOrg: string;
   readonly status: 'complete' | 'partial' | 'failed' | 'skipped';
   readonly dryRun: boolean;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly preflight?: PreflightSummary | undefined;
   readonly coreTransfer?: CoreTransferSummary | undefined;
   readonly rehydration?: RehydrationSummary | undefined;

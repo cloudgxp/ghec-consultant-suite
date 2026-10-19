@@ -36,6 +36,7 @@ const OPERATIONAL_WORKFLOWS = [
   'migration-e2e-autonomous.yml',
   'migration-resume.yml',
   'migration-apply-remediation.yml',
+  'post-migration-cutover.yml',
   'seed-demo-content.yml',
   'teardown-target-sandbox.yml',
 ];

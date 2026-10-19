@@ -45,7 +45,7 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          owner: 'cloudgxp',
+          owner: 'acme-corp',
           repo: 'ghec-consultant-suite',
           ref: 'main',
           inputs: {
@@ -63,7 +63,7 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
     );
 
     assert.equal(res.ok, true);
-    assert.equal(dispatchedPayload.owner, 'cloudgxp');
+    assert.equal(dispatchedPayload.owner, 'acme-corp');
     assert.equal(dispatchedPayload.inputs.scope, 'scopes/test-all-wave.json');
     assert.equal(dispatchedPayload.inputs.runner_capacity, 4);
     assert.equal(dispatchedPayload.inputs.dry_run, true);
@@ -124,7 +124,7 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
     };
 
     const jobsRes = await mockFetch(
-      'http://localhost:3000/api/actions/runs/881230/jobs?owner=cloudgxp&repo=ghec-consultant-suite',
+      'http://localhost:3000/api/actions/runs/881230/jobs?owner=acme-corp&repo=ghec-consultant-suite',
     );
     assert.equal(jobsRes.ok, true);
     const data = (await jobsRes.json()) as typeof mockJobsResponse;
@@ -162,7 +162,7 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          owner: 'cloudgxp',
+          owner: 'acme-corp',
           repo: 'ghec-consultant-suite',
         }),
       },

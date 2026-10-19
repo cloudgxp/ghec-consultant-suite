@@ -2,7 +2,7 @@
 id: TASK-028
 title: 'Implement Standalone Issues and Milestones Migration Module'
 status: completed
-owner: Antigravity
+owner: copilot
 created_at: 2026-10-08
 dependencies: ['TASK-025', 'TASK-026']
 packages_affected: ['@ghec/migration', '@ghec/contracts', '@ghec/dashboard']

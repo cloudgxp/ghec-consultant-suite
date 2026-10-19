@@ -11,8 +11,7 @@ docs/guides/
 ├── ghec-to-emu-test-migration-setup.md
 ├── github-actions-migration.md
 ├── verification-and-remediation.md
-├── seed-demo-content.md
-└── jules-automation-setup.md
+└── seed-demo-content.md
 ```
 
 ---
@@ -29,7 +28,6 @@ docs/guides/
 | Set up tokens, SSO, and test scopes for an EMU test migration                             | [GHEC to EMU Test Migration Setup](ghec-to-emu-test-migration-setup.md)        |
 | Run parallel migration waves and weekend cutovers in GitHub Actions                       | [Running Migrations with GitHub Actions](github-actions-migration.md)          |
 | Compare source and target organizations and fix missing items                             | [Verifying Migrations & Fixing Missing Items](verification-and-remediation.md) |
-| Set up automated CI healing and daily code cleanup with Jules                             | [Setting Up Jules Automated Maintenance](jules-automation-setup.md)            |
 
 ---
 

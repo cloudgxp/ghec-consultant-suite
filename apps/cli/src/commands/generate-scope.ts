@@ -64,6 +64,7 @@ export interface GenerateScopeOptions {
   readonly orgItems?: OrgItemsMode | undefined;
   readonly orgModules?: string | undefined;
   readonly repoModules?: string | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly dryRun?: boolean | undefined;
   readonly silent?: boolean | undefined;
   readonly repoFetcher?:
@@ -76,6 +77,7 @@ export interface ValidateScopeOptions {
   readonly emuShortcode?: string | undefined;
   readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
   readonly orgItems?: OrgItemsMode | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
 }
 
 export interface ParsedRepoEntry {
@@ -421,6 +423,7 @@ export function parseGenerateScopeOptions(
       'org-items': { type: 'string' },
       'org-modules': { type: 'string' },
       'repo-modules': { type: 'string' },
+      'sandbox-rehearsal': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
     },
     allowPositionals: false,
@@ -506,6 +509,7 @@ export function parseGenerateScopeOptions(
     orgItems,
     orgModules: values['org-modules'],
     repoModules: values['repo-modules'],
+    sandboxRehearsal: values['sandbox-rehearsal'],
     dryRun: values['dry-run'],
   };
 }
@@ -544,6 +548,7 @@ export async function executeGenerateScopeCommand(
     orgItems,
     orgModules,
     repoModules,
+    sandboxRehearsal = false,
     dryRun = false,
     silent = false,
     repoFetcher,
@@ -563,7 +568,7 @@ export async function executeGenerateScopeCommand(
             ? rawSuffix
             : `_${rawSuffix}`
           : undefined
-        : '_gxp'
+        : '_emu'
       : undefined;
 
   const targetReposFilePath = reposFile || file;
@@ -722,6 +727,7 @@ export async function executeGenerateScopeCommand(
     target,
     ...(resolvedTargetType ? { targetType: resolvedTargetType } : {}),
     ...(resolvedOrgItemsMode ? { orgItemsMode: resolvedOrgItemsMode } : {}),
+    ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
     modules: resolvedOrgModules,
   }));
 
@@ -764,6 +770,7 @@ export async function executeGenerateScopeCommand(
     modules: string[];
     targetRepoVisibility?: 'private' | 'internal' | 'public';
     mirrorPushMode?: 'fast-snapshot' | 'full-history';
+    sandboxRehearsal?: boolean;
   }> = [];
 
   for (const srcOrg of sourceOrgs) {
@@ -794,6 +801,7 @@ export async function executeGenerateScopeCommand(
         mirrorPushMode === 'full-history'
           ? { mirrorPushMode }
           : {}),
+        ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
       });
     }
   }
@@ -806,6 +814,7 @@ export async function executeGenerateScopeCommand(
     ...(mirrorPushMode === 'fast-snapshot' || mirrorPushMode === 'full-history'
       ? { mirrorPushMode }
       : {}),
+    ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
     organizations,
     repositories: repositoryMappings,
     ...(skippedArchivedRepositories.length > 0
@@ -859,6 +868,7 @@ export function parseValidateScopeOptions(
       'emu-shortcode': { type: 'string' },
       'mirror-push-mode': { type: 'string' },
       'org-items': { type: 'string' },
+      'sandbox-rehearsal': { type: 'boolean', default: false },
     },
     allowPositionals: true,
     strict: true,
@@ -889,6 +899,7 @@ export function parseValidateScopeOptions(
     emuShortcode: values['emu-shortcode'],
     mirrorPushMode,
     orgItems,
+    sandboxRehearsal: values['sandbox-rehearsal'],
   };
 }
 
@@ -955,6 +966,28 @@ export function executeValidateScopeCommand(options: ValidateScopeOptions): {
         org.orgItemsMode = options.orgItems;
         if (options.orgItems === 'none') {
           org.modules = [];
+        }
+      }
+    }
+    modified = true;
+  }
+
+  if (options.sandboxRehearsal) {
+    parsed.sandboxRehearsal = true;
+    if (Array.isArray(parsed.organizations)) {
+      for (const org of parsed.organizations as Array<
+        Record<string, unknown>
+      >) {
+        org.sandboxRehearsal = true;
+      }
+    }
+    if (Array.isArray(parsed.repositories)) {
+      for (const repo of parsed.repositories as Array<
+        Record<string, unknown>
+      >) {
+        repo.sandboxRehearsal = true;
+        if (repo.options && typeof repo.options === 'object') {
+          (repo.options as Record<string, unknown>).sandboxRehearsal = true;
         }
       }
     }

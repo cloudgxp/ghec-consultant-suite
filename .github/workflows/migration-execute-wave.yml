@@ -96,6 +96,11 @@ on:
         required: false
         type: boolean
         default: true
+      sandbox_rehearsal:
+        description: 'Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled'
+        required: false
+        type: boolean
+        default: false
       continue_on_error:
         description: 'Continue executing remaining modules/cohorts on non-fatal failures'
         required: false
@@ -158,6 +163,7 @@ jobs:
           INPUT_ORG_ITEMS_MODE: ${{ inputs.org_items_mode || 'auto' }}
           INPUT_TARGET_TYPE: ${{ inputs.target_type }}
           INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
           INPUT_DISCOVERY_RUN_ID: ${{ inputs.discovery_run_id }}
           INPUT_CACHED_BUNDLE: ${{ inputs.cached_bundle }}
         run: |
@@ -182,6 +188,9 @@ jobs:
             fi
             if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
               GEN_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+            fi
+            if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+              GEN_ARGS+=(--sandbox-rehearsal)
             fi
             if [ "$INPUT_REPOS" = "all" ] || [ -z "$INPUT_REPOS" ]; then
               GEN_ARGS+=(--all --source-visibility "${INPUT_SOURCE_VISIBILITY:-all}")
@@ -282,6 +291,7 @@ jobs:
           INPUT_TARGET_TYPE: ${{ inputs.target_type }}
           INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode }}
           INPUT_ORG_ITEMS_MODE: ${{ inputs.org_items_mode || 'auto' }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
         run: |
           VAL_ARGS=(validate-scope --scope ./scans/resolved-scope.json)
           if [ -n "$INPUT_TARGET_TYPE" ]; then
@@ -292,6 +302,9 @@ jobs:
           fi
           if [ -n "$INPUT_ORG_ITEMS_MODE" ] && [ "$INPUT_ORG_ITEMS_MODE" != "auto" ]; then
             VAL_ARGS+=(--org-items "$INPUT_ORG_ITEMS_MODE")
+          fi
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            VAL_ARGS+=(--sandbox-rehearsal)
           fi
           node ./apps/cli/bin/ghec-consultant-cli.mjs "${VAL_ARGS[@]}"
 
@@ -341,6 +354,7 @@ jobs:
         env:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
         run: |
           mkdir -p ./scans ./cohorts
 
@@ -349,10 +363,16 @@ jobs:
             INPUT_ARG=(--input ./scans/resolved-discovery-bundle.json)
           fi
 
+          SANDBOX_ARG=()
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            SANDBOX_ARG=(--sandbox-rehearsal)
+          fi
+
           echo "Generating plan and slicing into cohorts (runner capacity: ${{ inputs.runner_capacity }})..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs plan \
             --scope ./scans/resolved-scope.json \
             "${INPUT_ARG[@]}" \
+            "${SANDBOX_ARG[@]}" \
             --modules "${{ inputs.modules }}" \
             --runner-capacity "${{ inputs.runner_capacity }}" \
             --split-matrix "${{ inputs.batch_size }}" \
@@ -423,6 +443,7 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
           INPUT_CONTINUE_ON_ERROR: ${{ inputs.continue_on_error }}
           INPUT_CACHED_BUNDLE: ${{ inputs.cached_bundle }}
           INPUT_MODULES: ${{ inputs.modules }}
@@ -436,6 +457,11 @@ jobs:
           DRY_RUN_ARG=()
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             DRY_RUN_ARG=(--dry-run)
+          fi
+
+          SANDBOX_ARG=()
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            SANDBOX_ARG=(--sandbox-rehearsal)
           fi
 
           CONT_ARG=()
@@ -456,6 +482,7 @@ jobs:
             "${INPUT_ARG[@]}" \
             --modules "$INPUT_MODULES" \
             "${DRY_RUN_ARG[@]}" \
+            "${SANDBOX_ARG[@]}" \
             "${CONT_ARG[@]}" \
             --verbose \
             --output "$REPORT_OUTPUT" || true
@@ -526,6 +553,7 @@ jobs:
           GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
           GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
           INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
         run: |
           mkdir -p ./scans
           EFFECTIVE_SCOPE="./scans/resolved-scope.json"
@@ -533,11 +561,17 @@ jobs:
             EFFECTIVE_SCOPE="$INPUT_SCOPE"
           fi
 
+          SANDBOX_ARG=()
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            SANDBOX_ARG=(--sandbox-rehearsal)
+          fi
+
           if [ -f ./scans/migration-plan.json ]; then
             echo "Running post-migration verification against target enterprise..."
             node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
               --plan ./scans/migration-plan.json \
               --scope "$EFFECTIVE_SCOPE" \
+              "${SANDBOX_ARG[@]}" \
               --verbose \
               --output ./scans/verification-report.json || {
                 echo "Verification reported discrepancies or failed."
@@ -571,6 +605,7 @@ jobs:
         env:
           INPUT_SCOPE: ${{ needs.slicer.outputs.resolved_scope_label || inputs.scope }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
           NEEDS_COHORT_COUNT: ${{ needs.slicer.outputs.cohort_count }}
         run: |
           SUMMARY_FILE="$GITHUB_STEP_SUMMARY"
@@ -579,6 +614,8 @@ jobs:
           echo "- **Scope:** \`$INPUT_SCOPE\`" >> "$SUMMARY_FILE"
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             echo "- **Mode:** 🧪 Dry-Run (Simulation)" >> "$SUMMARY_FILE"
+          elif [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            echo "- **Mode:** 🛡️ Sandbox Rehearsal (Live Data, Webhooks & Actions Disabled)" >> "$SUMMARY_FILE"
           else
             echo "- **Mode:** ⚡ Live Migration" >> "$SUMMARY_FILE"
           fi

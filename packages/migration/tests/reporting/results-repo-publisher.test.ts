@@ -316,7 +316,7 @@ test('starts from clean root tree on batch 1 and chains base_tree on subsequent 
   };
 
   const publisher = new MigrationResultsRepoPublisher({
-    targetOrg: 'demogxp-mig2',
+    targetOrg: 'target-org',
     repoName: 'migration-audit-results',
     targetClient: mockTargetClient,
     targetWriteClient: mockTargetWriteClient,

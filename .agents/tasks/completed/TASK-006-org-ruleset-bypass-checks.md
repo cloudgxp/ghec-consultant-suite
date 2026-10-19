@@ -2,7 +2,7 @@
 id: TASK-006
 title: 'Collect Organization-level Rulesets and check for migration bypasses'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-06
 dependencies: []
 packages_affected: ['@ghec/discovery', '@ghec/dashboard', '@ghec/contracts']

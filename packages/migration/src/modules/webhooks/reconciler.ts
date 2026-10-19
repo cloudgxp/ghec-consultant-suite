@@ -20,7 +20,9 @@ export function hooksMatch(
 export function resolveTargetWebhookActive(
   hook: WebhookDefinition,
   hasReplacementSecret: boolean,
+  sandboxRehearsal = false,
 ): boolean {
+  if (sandboxRehearsal) return false;
   if (!hook.active) return false;
   if (hook.secretConfigured && !hasReplacementSecret) return false;
   return true;
@@ -30,11 +32,16 @@ export function webhookPayload(
   hook: WebhookDefinition,
   secret?: string,
   isCreate = false,
+  sandboxRehearsal = false,
 ): Record<string, unknown> {
   const hasReplacementSecret = secret !== undefined && secret.length > 0;
   return {
     ...(isCreate ? { name: 'web' } : {}),
-    active: resolveTargetWebhookActive(hook, hasReplacementSecret),
+    active: resolveTargetWebhookActive(
+      hook,
+      hasReplacementSecret,
+      sandboxRehearsal,
+    ),
     events: hook.events,
     config: {
       url: hook.url,

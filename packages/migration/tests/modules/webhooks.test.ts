@@ -387,3 +387,123 @@ test('creates webhook with active: false when source hook has secretConfigured b
   assert.equal(verifyResult.verified, true);
   assert.equal(verifyResult.discrepancies.length, 0);
 });
+
+test('sandboxRehearsal forces active: false on webhooks even without a secret and verifies inactive state', async () => {
+  const source = [
+    {
+      id: 77,
+      active: true,
+      events: ['push', 'release'],
+      config: {
+        url: 'https://sandbox.example.test/webhook',
+        content_type: 'json',
+        insecure_ssl: '0',
+      },
+    },
+  ];
+  const writes: TargetWriteOperation[] = [];
+  const writer: TargetWriteClient = {
+    async mutate(operation) {
+      writes.push(operation);
+      return { status: 201 };
+    },
+  };
+  let targetHooks: unknown[] = [];
+  const dynamicTargetClient: GitHubReadAdapter = {
+    async readSingle<T>() {
+      return {
+        data: targetHooks as T,
+        status: 200,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async readPage() {
+      return {
+        items: [],
+        nextCursor: null,
+        status: 200,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async fetchAll() {
+      return {
+        items: [],
+        complete: true,
+        observedAt: new Date().toISOString(),
+      };
+    },
+    async queryGraphQL() {
+      return { data: {}, observedAt: new Date().toISOString() };
+    },
+  };
+  const ctx: MigrationContext = {
+    runId: 'test-sandbox-rehearsal-wh',
+    scope: {
+      level: 'repository',
+      sourceOrg: 'source',
+      targetOrg: 'target',
+      sourceRepo: 'repo',
+      targetRepo: 'repo',
+      sandboxRehearsal: true,
+    },
+    sourceClient: client(source, true),
+    targetClient: dynamicTargetClient,
+    targetWriteClient: writer,
+    signal: new AbortController().signal,
+    dryRun: false,
+    sandboxRehearsal: true,
+    continueOnError: false,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  };
+  const module = new WebhooksMigrationModule();
+  const plan = await module.plan(ctx, await module.discover(ctx));
+  assert.equal(plan.operations[0]?.operation, 'create');
+  assert.equal(
+    (plan.operations[0]?.payload as { expectedActive?: boolean })
+      .expectedActive,
+    false,
+  );
+  assert.ok(
+    plan.warnings.some((w) =>
+      w.toLowerCase().includes('sandbox rehearsal mode'),
+    ),
+  );
+
+  await module.apply(ctx, plan);
+  assert.equal(writes.length, 1);
+  assert.equal((writes[0]?.body as { active?: boolean }).active, false);
+
+  // If target webhook is accidentally active, verify() reports a discrepancy
+  targetHooks = [
+    {
+      id: 901,
+      active: true,
+      events: ['push', 'release'],
+      config: {
+        url: 'https://sandbox.example.test/webhook',
+        content_type: 'json',
+        insecure_ssl: '0',
+      },
+    },
+  ];
+  const badVerify = await module.verify(ctx, plan);
+  assert.equal(badVerify.verified, false);
+  assert.equal(badVerify.discrepancies.length, 1);
+
+  // When target webhook is inactive (active: false), verify() passes
+  targetHooks = [
+    {
+      id: 901,
+      active: false,
+      events: ['push', 'release'],
+      config: {
+        url: 'https://sandbox.example.test/webhook',
+        content_type: 'json',
+        insecure_ssl: '0',
+      },
+    },
+  ];
+  const goodVerify = await module.verify(ctx, plan);
+  assert.equal(goodVerify.verified, true);
+  assert.equal(goodVerify.discrepancies.length, 0);
+});

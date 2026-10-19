@@ -325,3 +325,81 @@ test('ActionsPoliciesMigrationModule - verify detects discrepancy when destinati
     /allowed_actions mismatch/,
   );
 });
+
+test('ActionsPoliciesMigrationModule - sandboxRehearsal forces enabled_repositories: none and verifies disabled state', async () => {
+  const module = new ActionsPoliciesMigrationModule();
+  const sourcePerms: RawActionsPermissionsResponse = {
+    enabled_repositories: 'all',
+    allowed_actions: 'selected',
+  };
+  const sourceSelected: RawSelectedActionsResponse = {
+    github_owned_allowed: true,
+    patterns_allowed: ['actions/*'],
+  };
+  const targetPerms: RawActionsPermissionsResponse = {
+    enabled_repositories: 'all',
+    allowed_actions: 'all',
+  };
+
+  const { ctx, writeClient } = createContext(
+    sourcePerms,
+    sourceSelected,
+    targetPerms,
+  );
+  const sandboxCtx: MigrationContext = {
+    ...ctx,
+    sandboxRehearsal: true,
+    scope: {
+      ...ctx.scope,
+      sandboxRehearsal: true,
+    },
+  };
+
+  const discovered = await module.discover(sandboxCtx);
+  const plan = await module.plan(sandboxCtx, discovered);
+
+  assert.equal(plan.operations.length, 1);
+  assert.equal(plan.operations[0]?.operation, 'update');
+  assert.deepEqual(plan.operations[0]?.payload, {
+    enabled_repositories: 'none',
+  });
+  assert.ok(
+    plan.warnings.some((w) =>
+      w.toLowerCase().includes('sandbox rehearsal mode'),
+    ),
+  );
+
+  const applyResult = await module.apply(sandboxCtx, plan);
+  assert.equal(applyResult.status, 'complete');
+  assert.equal(applyResult.results[0]?.resourceType, 'actions-policy');
+  assert.equal(
+    applyResult.results[0]?.resourceName,
+    'target-emu-org:enabled-repositories',
+  );
+  assert.equal(applyResult.results[0]?.operationType, 'update');
+  assert.match(applyResult.results[0]?.reason ?? '', /sandbox rehearsal mode/i);
+  // Only 1 PUT call to /orgs/{org}/actions/permissions with { enabled_repositories: 'none' }, no /selected-actions call
+  assert.equal(writeClient.mutations.length, 1);
+  assert.equal(
+    writeClient.mutations[0]?.path,
+    '/orgs/{org}/actions/permissions',
+  );
+  assert.deepEqual(writeClient.mutations[0]?.body, {
+    enabled_repositories: 'none',
+  });
+
+  // Verify against still-enabled target fails
+  const badVerify = await module.verify(sandboxCtx, plan);
+  assert.equal(badVerify.verified, false);
+  assert.equal(badVerify.discrepancies.length, 1);
+  assert.equal(badVerify.discrepancies[0]?.expected, 'none');
+
+  // Verify against disabled target passes
+  const disabledTargetCtx: MigrationContext = {
+    ...sandboxCtx,
+    targetClient: new MockReadAdapter({ enabled_repositories: 'none' }),
+  };
+  const goodVerify = await module.verify(disabledTargetCtx, plan);
+  assert.equal(goodVerify.verified, true);
+  assert.equal(goodVerify.discrepancies.length, 0);
+});

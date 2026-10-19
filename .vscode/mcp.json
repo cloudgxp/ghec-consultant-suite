@@ -1,0 +1,17 @@
+{
+  "servers": {
+    "ghec-consultant-cli": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "./apps/cli/bin/ghec-consultant-cli.mjs",
+        "console",
+        "--port",
+        "0"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

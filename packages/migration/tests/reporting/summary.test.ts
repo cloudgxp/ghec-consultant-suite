@@ -491,7 +491,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'gei-repo',
-            targetIdentifier: 'demogxp-mig2/demo',
+            targetIdentifier: 'target-org-2/demo',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 100,
@@ -500,7 +500,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'lfs',
-            targetIdentifier: 'demogxp-mig2/dummy-repo-private-lfs',
+            targetIdentifier: 'target-org-2/dummy-repo-private-lfs',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 250,
@@ -524,13 +524,13 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'org-rulesets',
-            targetIdentifier: 'demogxp-mig2',
+            targetIdentifier: 'target-org-2',
             scopeLevel: 'organization',
             status: 'complete',
             durationMs: 80,
             results: [
               {
-                operationId: 'ruleset:create-org:demogxp-mig2:org-rule-1',
+                operationId: 'ruleset:create-org:target-org-2:org-rule-1',
                 status: 'succeeded',
                 completedAt: '2026-10-15T18:32:00.000Z',
               },
@@ -539,7 +539,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'org-webhooks',
-            targetIdentifier: 'demogxp-mig2',
+            targetIdentifier: 'target-org-2',
             scopeLevel: 'organization',
             status: 'complete',
             durationMs: 60,
@@ -554,7 +554,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'post-migration-codeowners',
-            targetIdentifier: 'demogxp-mig2/demo',
+            targetIdentifier: 'target-org-2/demo',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 40,
@@ -580,7 +580,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'releases',
-            targetIdentifier: 'demogxp-mig2/release-heavy-benchmark',
+            targetIdentifier: 'target-org-2/release-heavy-benchmark',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 1200,
@@ -622,8 +622,8 @@ describe('Reporting & Step Summary Subsystem', () => {
       };
 
       const summary = buildSummaryFromExecutionReport(report, {
-        sourceOrg: 'demogxp',
-        targetOrg: 'demogxp-mig2',
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org-2',
       });
 
       assert.equal(summary.completedAt, '2026-10-15T18:32:05.000Z');
@@ -720,7 +720,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'gei-repo',
-            targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+            targetIdentifier: 'target-org-4/release-heavy-benchmark',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 120000,
@@ -742,7 +742,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'releases',
-            targetIdentifier: 'demogxp-mig4/release-heavy-benchmark',
+            targetIdentifier: 'target-org-4/release-heavy-benchmark',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 480000,
@@ -760,13 +760,13 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'org-rulesets',
-            targetIdentifier: 'demogxp-mig4',
+            targetIdentifier: 'target-org-4',
             scopeLevel: 'organization',
             status: 'complete',
             durationMs: 5000,
             results: [
               {
-                operationId: 'ruleset:create-org:demogxp-mig4:demo-ruleset',
+                operationId: 'ruleset:create-org:target-org-4:demo-ruleset',
                 status: 'succeeded',
                 resourceType: 'ruleset',
                 resourceName: 'demo-ruleset',
@@ -779,8 +779,8 @@ describe('Reporting & Step Summary Subsystem', () => {
       };
 
       const summary = buildSummaryFromExecutionReport(report, {
-        sourceOrg: 'demogxp',
-        targetOrg: 'demogxp-mig4',
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org-4',
       });
 
       assert.ok(
@@ -816,7 +816,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'teams',
-            targetIdentifier: 'demogxp-mig5',
+            targetIdentifier: 'target-org-5',
             scopeLevel: 'organization',
             status: 'complete',
             durationMs: 3000,
@@ -834,7 +834,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'teams',
-            targetIdentifier: 'demogxp-mig5',
+            targetIdentifier: 'target-org-5',
             scopeLevel: 'organization',
             status: 'complete',
             durationMs: 1000,
@@ -852,7 +852,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'gei-repo',
-            targetIdentifier: 'demogxp-mig5/chromium',
+            targetIdentifier: 'target-org-5/chromium',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 500,
@@ -862,7 +862,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'gei-repo',
-            targetIdentifier: 'demogxp-mig5/release-heavy-benchmark',
+            targetIdentifier: 'target-org-5/release-heavy-benchmark',
             scopeLevel: 'repository',
             status: 'complete',
             durationMs: 500,
@@ -872,7 +872,7 @@ describe('Reporting & Step Summary Subsystem', () => {
           {
             schemaVersion: '1.0.0',
             moduleId: 'deploy-keys',
-            targetIdentifier: 'demogxp-mig5/demo',
+            targetIdentifier: 'target-org-5/demo',
             scopeLevel: 'repository',
             status: 'skipped',
             durationMs: 200,
@@ -893,8 +893,8 @@ describe('Reporting & Step Summary Subsystem', () => {
       };
 
       const summary = buildSummaryFromExecutionReport(report, {
-        sourceOrg: 'demogxp',
-        targetOrg: 'demogxp-mig5',
+        sourceOrg: 'source-org',
+        targetOrg: 'target-org-5',
       });
 
       assert.deepEqual(summary.rehydration?.teams, {
@@ -918,6 +918,58 @@ describe('Reporting & Step Summary Subsystem', () => {
       assert.ok(
         stepMd.includes('| **Deploy Keys** | 1 | 0 | 0 | ⏭️ Skipped |'),
         `Expected ⏭️ Skipped badge for Deploy Keys in:\n${stepMd}`,
+      );
+    });
+
+    it('propagates sandboxRehearsal and renders 🛡️ Sandbox Rehearsal mode in Step Summary', () => {
+      const report = {
+        schemaVersion: '1.0.0' as const,
+        planId: 'plan-sandbox-rehearsal',
+        executedAt: '2026-10-19T18:00:00.000Z',
+        status: 'complete' as const,
+        exitCode: 0 as const,
+        dryRun: false,
+        sandboxRehearsal: true,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'webhooks',
+            targetIdentifier: 'target-org-9/repo-1',
+            scopeLevel: 'repository' as const,
+            status: 'complete' as const,
+            durationMs: 100,
+            results: [
+              {
+                operationId: 'webhook:create:https://example.com/hook',
+                status: 'succeeded' as const,
+                resourceType: 'webhook',
+                resourceName: 'https://example.com/hook',
+                operationType: 'create' as const,
+                reason:
+                  'Create webhook for https://example.com/hook (inactive in sandbox rehearsal mode)',
+                completedAt: '2026-10-19T18:00:00.000Z',
+              },
+            ],
+          },
+        ],
+      };
+
+      const summary = buildSummaryFromExecutionReport(report, {
+        sourceOrg: 'demogxp',
+        targetOrg: 'demogxp-mig9',
+      });
+      assert.equal(summary.sandboxRehearsal, true);
+
+      const stepMd = formatStepSummaryMarkdown(summary);
+      assert.ok(
+        stepMd.includes('| **Mode** | 🛡️ Sandbox Rehearsal |'),
+        `Expected 🛡️ Sandbox Rehearsal in Step Summary:\n${stepMd}`,
+      );
+      assert.ok(
+        stepMd.includes(
+          '- **Webhooks Reconciled (Disabled in Sandbox Rehearsal):** 1',
+        ),
+        `Expected sandbox rehearsal webhook line in Step Summary:\n${stepMd}`,
       );
     });
   });

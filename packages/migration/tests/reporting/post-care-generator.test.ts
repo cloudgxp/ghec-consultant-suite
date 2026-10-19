@@ -527,12 +527,12 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
         scopeLevel: 'repository',
         operations: [
           {
-            id: 'deploy-key:skip:demo:Demogxp-test-deploy',
+            id: 'deploy-key:skip:demo:Sandbox-test-deploy',
             resourceType: 'deploy-key',
-            resourceName: 'Demogxp-test-deploy',
+            resourceName: 'Sandbox-test-deploy',
             operation: 'skip',
             reason:
-              'SSH deploy key "Demogxp-test-deploy" is locked to source repository by global SSH key uniqueness',
+              'SSH deploy key "Sandbox-test-deploy" is locked to source repository by global SSH key uniqueness',
             dependencies: [],
           },
         ],
@@ -739,25 +739,25 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
 
 test('generatePostCareDeliverables exports skipped archived repositories CSV when scope excludes archived repos', () => {
   const deliverables = generatePostCareDeliverables({
-    sourceOrg: 'demogxp',
-    targetOrg: 'demogxp-mig8',
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org',
     mode: 'live',
     generatedAt: '2026-10-18T12:00:00Z',
     scope: {
       version: '1.0.0',
-      name: 'demogxp-to-demogxp-mig8',
+      name: 'source-org-to-target-org',
       repositories: [
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'active-repo',
-          targetOrg: 'demogxp-mig8',
+          targetOrg: 'target-org',
           targetRepo: 'active-repo',
           useGei: true,
         },
       ],
       skippedArchivedRepositories: [
         {
-          sourceOrg: 'demogxp',
+          sourceOrg: 'source-org',
           sourceRepo: 'legacy-archived',
           visibility: 'private',
           isFork: false,
@@ -773,10 +773,12 @@ test('generatePostCareDeliverables exports skipped archived repositories CSV whe
   assert.equal(lines.length, 2);
   assert.ok(
     lines[1]?.includes(
-      'demogxp,legacy-archived,private,false,archived,skipped-archived',
+      'source-org,legacy-archived,private,false,archived,skipped-archived',
     ),
   );
-  assert.ok(lines[1]?.includes('https://github.com/demogxp/legacy-archived'));
+  assert.ok(
+    lines[1]?.includes('https://github.com/source-org/legacy-archived'),
+  );
   assert.ok(
     lines[1]?.includes('Excluded because include_archived was set to false'),
   );

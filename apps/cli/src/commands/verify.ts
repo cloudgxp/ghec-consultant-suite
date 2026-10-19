@@ -34,6 +34,7 @@ export interface VerifyCommandOptions {
   readonly excludeModules?: readonly string[] | undefined;
   readonly outputPath: string;
   readonly jsonSummaryPath?: string | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
   readonly privateKeyPath?: string | undefined;
@@ -54,6 +55,7 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
       'exclude-modules': { type: 'string' },
       output: { type: 'string', default: './scans/verification-report.json' },
       'json-summary': { type: 'string' },
+      'sandbox-rehearsal': { type: 'boolean', default: false },
       verbose: { type: 'boolean', default: false },
       'app-id': { type: 'string' },
       'private-key-path': { type: 'string' },
@@ -87,6 +89,7 @@ export function parseVerifyOptions(args: string[]): VerifyCommandOptions {
         : undefined,
     outputPath: values.output || './scans/verification-report.json',
     jsonSummaryPath: values['json-summary'],
+    sandboxRehearsal: values['sandbox-rehearsal'] ?? false,
     verbose: values.verbose,
     appId: values['app-id'],
     privateKeyPath: values['private-key-path'],
@@ -149,7 +152,23 @@ export async function executeVerifyCommand(
           `Invalid scope schema: ${scopeValidation.error.issues.map((i) => i.message).join('; ')}`,
         );
       }
-      scope = scopeValidation.data;
+      scope = options.sandboxRehearsal
+        ? {
+            ...scopeValidation.data,
+            sandboxRehearsal: true,
+            organizations: scopeValidation.data.organizations.map((o) => ({
+              ...o,
+              sandboxRehearsal: true,
+            })),
+            repositories: scopeValidation.data.repositories.map((r) => ({
+              ...r,
+              sandboxRehearsal: true,
+              ...(r.options
+                ? { options: { ...r.options, sandboxRehearsal: true } }
+                : {}),
+            })),
+          }
+        : scopeValidation.data;
     } catch (err) {
       throw new Error(
         `Failed to read scope file "${options.scopePath}": ${err instanceof Error ? err.message : String(err)}`,
@@ -221,6 +240,7 @@ export async function executeVerifyCommand(
       targetClient,
       modules: options.modules,
       excludeModules: options.excludeModules,
+      sandboxRehearsal: options.sandboxRehearsal,
       verificationMode: true,
       logger,
       signal,
@@ -234,6 +254,7 @@ export async function executeVerifyCommand(
     sourceClient,
     plan,
     scope,
+    sandboxRehearsal: options.sandboxRehearsal,
     logger,
     signal,
   });
@@ -259,6 +280,11 @@ export async function executeVerifyCommand(
   const summary = buildSummaryFromVerification(result.report, {
     sourceOrg,
     targetOrg,
+    sandboxRehearsal: Boolean(
+      options.sandboxRehearsal ||
+      scope?.sandboxRehearsal ||
+      plan.sandboxRehearsal,
+    ),
   });
 
   if (options.jsonSummaryPath) {

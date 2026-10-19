@@ -338,6 +338,11 @@ export async function executePublishResultsCommand(
         const mergedResults = deduplicateExecutionReportResults(
           loaded.reports.flatMap((r) => r.results),
         );
+        const isSandboxRehearsal = Boolean(
+          loaded.reports.some((r) => r.sandboxRehearsal) ||
+          scope?.sandboxRehearsal ||
+          plan?.sandboxRehearsal,
+        );
         executionReport = {
           schemaVersion: MIGRATION_SCHEMA_VERSION,
           planId: loaded.reports[0]?.planId ?? 'merged-execution-plan',
@@ -351,6 +356,7 @@ export async function executePublishResultsCommand(
               : 'partial',
           exitCode: loaded.reports.every((r) => r.exitCode === 0) ? 0 : 1,
           dryRun: options.dryRun,
+          ...(isSandboxRehearsal ? { sandboxRehearsal: true } : {}),
           results: mergedResults,
         };
       }

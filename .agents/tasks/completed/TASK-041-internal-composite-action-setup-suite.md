@@ -2,7 +2,7 @@
 id: TASK-041
 title: 'Create Internal Setup Suite Composite Action and Consolidate Workflow Boilerplate'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-09
 dependencies: [TASK-040]
 packages_affected: []

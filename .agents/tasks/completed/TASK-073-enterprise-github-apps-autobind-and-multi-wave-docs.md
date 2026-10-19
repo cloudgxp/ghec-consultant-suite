@@ -2,7 +2,7 @@
 id: TASK-073
 title: 'Enterprise GitHub Apps Slug Matching, Post-Repo Auto-Binding Reconciliation & Multi-Wave Enterprise Documentation'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-18
 dependencies: [TASK-072]
 packages_affected: ['@ghec/migration']

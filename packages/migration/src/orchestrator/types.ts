@@ -25,6 +25,7 @@ export interface RepositoryPipelineOptions {
   readonly cachedDiscoveryBundle?: DiscoveryBundle | unknown | undefined;
   readonly dryRun?: boolean | undefined;
   readonly continueOnError?: boolean | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly runId?: string | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly signal?: AbortSignal | undefined;
@@ -64,6 +65,7 @@ export interface MigrationOrchestratorOptions {
   readonly targetToken?: string | undefined;
   readonly dryRun?: boolean | undefined;
   readonly continueOnError?: boolean | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly runId?: string | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly signal?: AbortSignal | undefined;
@@ -80,6 +82,7 @@ export interface MigrationExecutionReport {
   readonly status: 'complete' | 'partial' | 'failed';
   readonly exitCode: 0 | 1 | 4;
   readonly dryRun: boolean;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly results: readonly ModuleExecutionResult[];
   readonly recommendations?: readonly string[] | undefined;
 }
@@ -90,6 +93,7 @@ export interface VerificationOrchestratorOptions {
   readonly sourceClient?: GitHubReadAdapter | undefined;
   readonly plan: MigrationPlan;
   readonly scope?: MigrationScope | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly runId?: string | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly signal?: AbortSignal | undefined;

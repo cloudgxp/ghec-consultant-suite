@@ -77,7 +77,7 @@ export function formatStepSummaryMarkdown(
   lines.push(`| **Run ID** | \`${sanitize(summary.runId)}\` |`);
   lines.push(`| **Overall Status** | ${getStatusBadge(summary.status)} |`);
   lines.push(
-    `| **Mode** | ${summary.dryRun ? '🧪 Dry-Run (Simulation)' : '⚡ Live Mutation'} |`,
+    `| **Mode** | ${summary.dryRun ? '🧪 Dry-Run (Simulation)' : summary.sandboxRehearsal ? '🛡️ Sandbox Rehearsal' : '⚡ Live Mutation'} |`,
   );
   lines.push(
     `| **Source Organization** | \`${sanitize(summary.sourceOrg)}\` |`,
@@ -199,7 +199,11 @@ export function formatStepSummaryMarkdown(
       lines.push('');
     }
     if (pm.webhooks) {
-      lines.push(`- **Webhooks Re-enabled:** ${pm.webhooks.reEnabled}`);
+      lines.push(
+        summary.sandboxRehearsal
+          ? `- **Webhooks Reconciled (Disabled in Sandbox Rehearsal):** ${pm.webhooks.reEnabled}`
+          : `- **Webhooks Re-enabled:** ${pm.webhooks.reEnabled}`,
+      );
       lines.push('');
     }
   }

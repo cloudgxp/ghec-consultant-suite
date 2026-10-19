@@ -16,7 +16,7 @@ packages_affected:
 
 ## 1. Objective & Context
 
-Resolve all 12 reporting, audit repository generation, step summary, and cohort-slicing issues identified during the deep audit of `demogxp` ➔ `demogxp-mig4` (Workflow Run `#38843298458` and `demogxp-mig4/migration-audit-results`).
+Resolve all 12 reporting, audit repository generation, step summary, and cohort-slicing issues identified during the deep audit of `sandbox-org` ➔ `sandbox-mig4` (Workflow Run `#38843298458` and `sandbox-mig4/migration-audit-results`).
 
 ## 2. Dependencies & Prerequisites
 
@@ -64,7 +64,7 @@ Expected files or directories to create or modify:
     - Remove duplicate `cp ./scans/post-cohort-reconcile-report.json ./downloaded-cohorts/scans/cohort-report-zz-post-reconcile.json`.
     - Clear intermediate `$GITHUB_STEP_SUMMARY` before `publish-results` and enrich the `Remediation History` section with the actual remediated modules/resources.
 - [x] **Step 5: Unit Tests, Quality Gate & Live Audit Re-Publish**
-  - Add/update unit tests in `packages/migration/tests/` and `apps/cli/tests/`, run `npm run check`, and re-publish the updated `demogxp-mig4/migration-audit-results` repository from the run `#38843298458` execution/verification artifacts to verify the live fix on GitHub.
+  - Add/update unit tests in `packages/migration/tests/` and `apps/cli/tests/`, run `npm run check`, and re-publish the updated `sandbox-mig4/migration-audit-results` repository from the run `#38843298458` execution/verification artifacts to verify the live fix on GitHub.
 
 ## 5. Verification Gate
 
@@ -76,4 +76,4 @@ npm run check
 
 - **Completed At:** `2026-10-16`
 - **Quality Gate (`npm run check`):** Passed cleanly (`745` unit tests across `130` suites, 0 errors, 0 warnings).
-- **Live Audit Repository Re-Publish:** Published `497` files to `https://github.com/demogxp-mig4/migration-audit-results` at commit `207b4650f716adce8ada812e3203868e518b646d`.
+- **Live Audit Repository Re-Publish:** Published `497` files to `https://github.com/sandbox-mig4/migration-audit-results` at commit `207b4650f716adce8ada812e3203868e518b646d`.

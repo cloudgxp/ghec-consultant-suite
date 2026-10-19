@@ -35,12 +35,12 @@ export const DiscoveryScanTrigger: React.FC<DiscoveryScanTriggerProps> = ({
   onLoadBundle,
   apiBaseUrl = '',
   fetchFn = fetch,
-  defaultOwner = 'cloudgxp',
+  defaultOwner = '',
   defaultRepo = 'ghec-consultant-suite',
 }) => {
   const owner = defaultOwner;
   const repo = defaultRepo;
-  const [enterpriseSlug, setEnterpriseSlug] = useState('cloudgxp');
+  const [enterpriseSlug, setEnterpriseSlug] = useState('');
   const [organizations, setOrganizations] = useState('');
   const [modules, setModules] = useState('all');
   const [dryRun, setDryRun] = useState(false);
@@ -66,7 +66,7 @@ export const DiscoveryScanTrigger: React.FC<DiscoveryScanTriggerProps> = ({
     setStatus('dispatching');
     setProgressMsg('Dispatching discovery workflow to GitHub Actions...');
 
-    const workflowId = 'enterprise-multi-org-scan.yml';
+    const workflowId = 'discovery-scan.yml';
     const dispatchTime = nowMs();
 
     try {
@@ -336,7 +336,7 @@ export const DiscoveryScanTrigger: React.FC<DiscoveryScanTriggerProps> = ({
           <TextInput
             value={enterpriseSlug}
             onChange={(e) => setEnterpriseSlug(e.target.value)}
-            placeholder="e.g. cloudgxp"
+            placeholder="e.g. acme-corp"
             disabled={isBusy}
             block
           />
