@@ -317,6 +317,7 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
             payload: {
               app_slug: app.app_slug,
               recreated_app_slug: recreatedSlug,
+              classification: app.classification ?? 'third_party',
               diffs: allDiffs,
               expectedPermissions: app.permissions,
               actualPermissions: existing.permissions,

@@ -371,6 +371,12 @@ export function resolveTargetSettingsLinks(params: {
       plannedOp?.payload && typeof plannedOp.payload === 'object'
         ? (plannedOp.payload as Record<string, unknown>)
         : undefined;
+    const sourceState =
+      plannedOp?.sourceState && typeof plannedOp.sourceState === 'object'
+        ? (plannedOp.sourceState as Record<string, unknown>)
+        : undefined;
+    const rawClassification =
+      payload?.classification ?? sourceState?.classification;
     const combinedNotes = `${notes ?? ''} ${plannedOp?.reason ?? ''}`;
     const lowerNotes = combinedNotes.toLowerCase();
     const extractedInstallUrl = extractUrlFromText(
@@ -382,14 +388,14 @@ export function resolveTargetSettingsLinks(params: {
       'Recreate URL:',
     );
     const isCustomPrivate =
-      payload?.classification === 'custom_private' ||
+      rawClassification === 'custom_private' ||
       lowerNotes.includes('private custom app');
     const isCustomPublic =
       !isCustomPrivate &&
-      (payload?.classification === 'custom_public' ||
+      (rawClassification === 'custom_public' ||
         lowerNotes.includes('public organization-owned app') ||
         lowerNotes.includes('public custom app') ||
-        (payload?.classification === undefined &&
+        (rawClassification === undefined &&
           Boolean(extractedInstallUrl && extractedRecreateUrl)));
     const installUrl =
       typeof payload?.destination_install_url === 'string'
@@ -1199,13 +1205,16 @@ function shouldIncludeGranularItemInPostCare(params: {
     return true;
   }
 
-  // Always include GitHub Apps inventory items (need installation / recreation), except succeeded repo bindings
+  // Always include GitHub Apps inventory items that need installation, recreation, or config changes (exclude succeeded repo bindings and noop items)
   if (
     modLower === 'apps-inventory' ||
     typeLower.includes('github_app') ||
     typeLower.includes('github-app')
   ) {
-    if (typeLower === 'github_app_repository_binding') {
+    if (
+      typeLower === 'github_app_repository_binding' ||
+      item.operationType === 'noop'
+    ) {
       return false;
     }
     return true;
@@ -1263,6 +1272,7 @@ export function generatePostCareDeliverables(
 
   const postCareMap = new Map<string, PostCareItem>();
   const operationRows: FullMigrationOperationRow[] = [];
+  const evaluatedAppSlugs = new Set<string>();
 
   const planOpsById = new Map<string, PlannedOperation>();
   if (plan?.modules) {
@@ -1306,6 +1316,9 @@ export function generatePostCareDeliverables(
           notes: item.notes,
           plannedOp,
         });
+        if (moduleId === 'apps-inventory') {
+          evaluatedAppSlugs.add(links.cleanResourceName.toLowerCase());
+        }
         const requiresPostCare = shouldIncludeGranularItemInPostCare({
           moduleId,
           item,
@@ -1570,6 +1583,9 @@ export function generatePostCareDeliverables(
           notes: op.reason,
           plannedOp: op,
         });
+        if (modPlan.moduleId === 'apps-inventory') {
+          evaluatedAppSlugs.add(links.cleanResourceName.toLowerCase());
+        }
         const requiresPostCare = shouldIncludeGranularItemInPostCare({
           moduleId: modPlan.moduleId,
           item: syntheticItem,
@@ -1865,6 +1881,9 @@ export function generatePostCareDeliverables(
         const targetRepo = resolveRepoFromEntityId(entity.repositoryId);
         const isOrg = !targetRepo;
         if (entity.integrationKind === 'github_app') {
+          if (evaluatedAppSlugs.has(entity.label.toLowerCase())) {
+            continue;
+          }
           const links = resolveTargetSettingsLinks({
             moduleId: 'apps-inventory',
             resourceType: 'github_app_installation',
