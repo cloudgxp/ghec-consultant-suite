@@ -15,6 +15,7 @@ interface Props {
   onSelectOrgs: (orgIds: string[]) => void;
   onNavigate: (view: DashboardView) => void;
   onCloseFile: () => void;
+  isHostedMode?: boolean | undefined;
   searchControl?: ReactNode;
   settingsControl?: ReactNode;
   children: ReactNode;
@@ -81,6 +82,7 @@ export function AppShell(props: Props) {
           onSelectOrgs={props.onSelectOrgs}
           onCloseFile={props.onCloseFile}
           onOpenNavigation={() => setMobileOpen(true)}
+          isHostedMode={props.isHostedMode}
           searchControl={props.searchControl}
           settingsControl={props.settingsControl}
         />
