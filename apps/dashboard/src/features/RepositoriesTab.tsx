@@ -418,7 +418,7 @@ export const RepositoriesTab: React.FC<Props> = ({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Repository Inventory & Tier 3 Module Drill-Down"
+        title="Repository Inventory"
         description={
           <>
             Displaying {filtered.length} of {repositories.length} repositories.
