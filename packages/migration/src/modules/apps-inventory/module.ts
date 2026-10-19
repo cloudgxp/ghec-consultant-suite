@@ -258,11 +258,32 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
         .find((inst): inst is AppInstallationState => inst !== undefined);
 
       if (existing) {
-        const { matches, diffs } = comparePermissions(
+        const { diffs: permDiffs } = comparePermissions(
           app.permissions,
           existing.permissions,
         );
-        if (matches) {
+        const installSettingsUrl =
+          existing.html_url ??
+          `https://github.com/organizations/${encodeURIComponent(targetOrg)}/settings/installations/${existing.id}`;
+        const allDiffs = [...permDiffs];
+
+        if (app.repository_selection !== existing.repository_selection) {
+          if (app.repository_selection === 'selected') {
+            const reposList =
+              app.selected_repositories && app.selected_repositories.length > 0
+                ? ` (${app.selected_repositories.join(', ')})`
+                : '';
+            allDiffs.push(
+              `repository_selection: expected "selected"${reposList}, got "all" — switch Repository access to "Only select repositories" (pick any 1 repo) at ${installSettingsUrl} and re-run apps-inventory to auto-sync the selected repositories`,
+            );
+          } else {
+            allDiffs.push(
+              `repository_selection: expected "all", got "selected" — switch Repository access to "All repositories" at ${installSettingsUrl}`,
+            );
+          }
+        }
+
+        if (allDiffs.length === 0) {
           operations.push({
             id: `op-noop-app-${slugKey}`,
             resourceType: 'github_app_installation',
@@ -276,7 +297,12 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
             reason: `GitHub App "${app.app_slug}" already installed with matching permissions on target`,
           });
         } else {
-          const warnMsg = `GitHub App "${app.app_slug}" is installed on target but has permission differences: ${diffs.join('; ')}`;
+          const label =
+            permDiffs.length > 0 &&
+            app.repository_selection === existing.repository_selection
+              ? 'permission differences'
+              : 'configuration differences';
+          const warnMsg = `GitHub App "${app.app_slug}" is installed on target but has ${label}: ${allDiffs.join('; ')}`;
           warnings.push(warnMsg);
           operations.push({
             id: `op-advisory-app-perms-${slugKey}`,
@@ -291,9 +317,13 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
             payload: {
               app_slug: app.app_slug,
               recreated_app_slug: recreatedSlug,
-              diffs,
+              diffs: allDiffs,
               expectedPermissions: app.permissions,
               actualPermissions: existing.permissions,
+              expectedRepositorySelection: app.repository_selection,
+              actualRepositorySelection: existing.repository_selection,
+              install_settings_url: installSettingsUrl,
+              advisory: warnMsg,
             },
             reason: warnMsg,
           });
@@ -319,8 +349,30 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
               app_slug: app.app_slug,
               target_installation_id: existing.id,
               selected_repositories: app.selected_repositories,
+              prune_unselected: true,
             },
             reason: `Bind selected repositories (${app.selected_repositories.join(', ')}) to GitHub App "${app.app_slug}" installation on ${targetOrg}`,
+          });
+        } else if (
+          app.repository_selection === 'all' &&
+          existing.repository_selection === 'selected'
+        ) {
+          operations.push({
+            id: `op-bind-app-repos-${slugKey}`,
+            resourceType: 'github_app_repository_binding',
+            resourceName: app.app_slug,
+            operation: 'update',
+            sourceState: app as unknown as Record<string, unknown>,
+            destinationCurrentState: existing as unknown as Record<
+              string,
+              unknown
+            >,
+            payload: {
+              app_slug: app.app_slug,
+              target_installation_id: existing.id,
+              bind_all_org_repos: true,
+            },
+            reason: `Bind all existing repositories in ${targetOrg} to GitHub App "${app.app_slug}" installation (currently in "selected" mode; switch to "All repositories" at ${installSettingsUrl} for future repos)`,
           });
         }
       } else {
@@ -412,14 +464,17 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
           | {
               target_installation_id?: number;
               selected_repositories?: readonly string[];
+              prune_unselected?: boolean;
+              bind_all_org_repos?: boolean;
             }
           | undefined;
         const installationId = payload?.target_installation_id;
         const selectedRepos = payload?.selected_repositories ?? [];
+        const bindAllOrgRepos = payload?.bind_all_org_repos === true;
 
         if (
           !installationId ||
-          selectedRepos.length === 0 ||
+          (!bindAllOrgRepos && selectedRepos.length === 0) ||
           !ctx.targetWriteClient
         ) {
           results.push({
@@ -432,37 +487,138 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
 
         let boundCount = 0;
         let failedReason: string | undefined;
-        for (const repoName of selectedRepos) {
+
+        if (bindAllOrgRepos) {
           try {
-            const repoRes = await ctx.targetClient.readSingle<{ id?: number }>(
+            const orgReposRes = await ctx.targetClient.readSingle<
+              readonly { id?: number; name?: string }[]
+            >(
               {
-                id: 'rest.repos.get',
+                id: 'rest.repos.listForOrg',
                 transport: 'rest',
                 verifiedReadOnly: true,
-                path: '/repos/{owner}/{repo}',
-                pathParams: { owner: targetOrg, repo: repoName },
+                path: '/orgs/{org}/repos',
+                pathParams: { org: targetOrg },
+                queryParams: { per_page: 100 },
               },
               ctx.signal,
             );
-            const repoId = repoRes.data?.id;
-            if (typeof repoId !== 'number') {
-              continue;
+            const orgRepos = Array.isArray(orgReposRes.data)
+              ? orgReposRes.data
+              : [];
+            for (const repo of orgRepos) {
+              if (typeof repo?.id !== 'number') {
+                continue;
+              }
+              try {
+                await ctx.targetWriteClient.mutate(
+                  {
+                    id: 'rest.apps.addRepoToInstallationForAuthenticatedUser',
+                    method: 'PUT',
+                    path: '/user/installations/{installation_id}/repositories/{repository_id}',
+                    pathParams: {
+                      installation_id: String(installationId),
+                      repository_id: String(repo.id),
+                    },
+                  },
+                  ctx.signal,
+                );
+                boundCount += 1;
+              } catch (err: unknown) {
+                failedReason = err instanceof Error ? err.message : String(err);
+              }
             }
-            await ctx.targetWriteClient.mutate(
-              {
-                id: 'rest.apps.addRepoToInstallationForAuthenticatedUser',
-                method: 'PUT',
-                path: '/user/installations/{installation_id}/repositories/{repository_id}',
-                pathParams: {
-                  installation_id: String(installationId),
-                  repository_id: String(repoId),
-                },
-              },
-              ctx.signal,
-            );
-            boundCount += 1;
           } catch (err: unknown) {
             failedReason = err instanceof Error ? err.message : String(err);
+          }
+        } else {
+          for (const repoName of selectedRepos) {
+            try {
+              const repoRes = await ctx.targetClient.readSingle<{
+                id?: number;
+              }>(
+                {
+                  id: 'rest.repos.get',
+                  transport: 'rest',
+                  verifiedReadOnly: true,
+                  path: '/repos/{owner}/{repo}',
+                  pathParams: { owner: targetOrg, repo: repoName },
+                },
+                ctx.signal,
+              );
+              const repoId = repoRes.data?.id;
+              if (typeof repoId !== 'number') {
+                continue;
+              }
+              await ctx.targetWriteClient.mutate(
+                {
+                  id: 'rest.apps.addRepoToInstallationForAuthenticatedUser',
+                  method: 'PUT',
+                  path: '/user/installations/{installation_id}/repositories/{repository_id}',
+                  pathParams: {
+                    installation_id: String(installationId),
+                    repository_id: String(repoId),
+                  },
+                },
+                ctx.signal,
+              );
+              boundCount += 1;
+            } catch (err: unknown) {
+              failedReason = err instanceof Error ? err.message : String(err);
+            }
+          }
+
+          if (boundCount > 0 && payload?.prune_unselected !== false) {
+            const desiredLowerSet = new Set(
+              selectedRepos.map((r) => r.trim().toLowerCase()),
+            );
+            try {
+              const currentReposRes =
+                await ctx.targetClient.readSingle<RawInstallationRepositoriesResponse>(
+                  {
+                    id: 'rest.apps.listInstallationReposForAuthenticatedUser',
+                    transport: 'rest',
+                    verifiedReadOnly: true,
+                    path: '/user/installations/{installation_id}/repositories',
+                    pathParams: { installation_id: String(installationId) },
+                  },
+                  ctx.signal,
+                );
+              const currentRepos = Array.isArray(
+                currentReposRes.data?.repositories,
+              )
+                ? currentReposRes.data.repositories
+                : [];
+              for (const item of currentRepos) {
+                const itemName =
+                  typeof item?.name === 'string' ? item.name.trim() : '';
+                const itemId = item?.id;
+                if (
+                  itemName.length > 0 &&
+                  !desiredLowerSet.has(itemName.toLowerCase()) &&
+                  typeof itemId === 'number'
+                ) {
+                  try {
+                    await ctx.targetWriteClient.mutate(
+                      {
+                        id: 'rest.apps.removeRepoFromInstallationForAuthenticatedUser',
+                        method: 'DELETE',
+                        path: '/user/installations/{installation_id}/repositories/{repository_id}',
+                        pathParams: {
+                          installation_id: String(installationId),
+                          repository_id: String(itemId),
+                        },
+                      },
+                      ctx.signal,
+                    );
+                  } catch {
+                    // Ignore removal errors (e.g. if last repo or insufficient permissions)
+                  }
+                }
+              }
+            } catch {
+              // Ignore read errors when listing current installation repositories
+            }
           }
         }
 
@@ -612,6 +768,50 @@ export class AppsInventoryMigrationModule implements MigrationModule<AppsInvento
               expected: expectedPermissions,
               actual: act.permissions,
               message: `GitHub App "${appSlug}" permissions mismatch: ${diffs.join('; ')}`,
+            });
+          }
+        }
+
+        const expectedRepoSelection =
+          (
+            op.payload as
+              | {
+                  repository_selection?: 'all' | 'selected';
+                  expectedRepositorySelection?: 'all' | 'selected';
+                }
+              | undefined
+          )?.expectedRepositorySelection ??
+          (
+            op.payload as
+              | {
+                  repository_selection?: 'all' | 'selected';
+                  expectedRepositorySelection?: 'all' | 'selected';
+                }
+              | undefined
+          )?.repository_selection ??
+          (
+            op.sourceState as
+              { repository_selection?: 'all' | 'selected' } | undefined
+          )?.repository_selection;
+
+        if (
+          expectedRepoSelection &&
+          act.repository_selection !== expectedRepoSelection
+        ) {
+          const isManualConfigAdvisory =
+            op.operation === 'warn' &&
+            typeof (op.payload as { advisory?: unknown } | undefined)
+              ?.advisory === 'string';
+          if (isManualConfigAdvisory && ctx.continueOnError) {
+            ctx.logger.warn(
+              `[Advisory] GitHub App "${appSlug}" repository_selection is "${act.repository_selection}" on ${targetOrg} (expected "${expectedRepoSelection}").`,
+            );
+          } else {
+            discrepancies.push({
+              resourceName: `${targetOrg} (installations.${appSlug}.repository_selection)`,
+              expected: expectedRepoSelection,
+              actual: act.repository_selection,
+              message: `GitHub App "${appSlug}" repository_selection mismatch: expected "${expectedRepoSelection}", got "${act.repository_selection}"`,
             });
           }
         }
