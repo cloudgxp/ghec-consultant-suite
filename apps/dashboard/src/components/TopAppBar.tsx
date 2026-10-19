@@ -20,6 +20,7 @@ interface Props {
   onSelectOrgs: (orgIds: string[]) => void;
   onCloseFile: () => void;
   onOpenNavigation: () => void;
+  isHostedMode?: boolean | undefined;
   searchControl?: ReactNode;
   settingsControl?: ReactNode;
 }
@@ -30,16 +31,24 @@ export function TopAppBar({
   onSelectOrgs,
   onCloseFile,
   onOpenNavigation,
+  isHostedMode = false,
   searchControl,
   settingsControl,
 }: Props) {
   const [theme, setTheme] = useState<ThemeChoice>('system');
   const [confirmingClose, setConfirmingClose] = useState(false);
   useEffect(() => {
+    document.documentElement.setAttribute('data-light-theme', 'light');
+    document.documentElement.setAttribute('data-dark-theme', 'dark');
     if (theme === 'system') {
       document.documentElement.removeAttribute('data-theme');
+      document.documentElement.setAttribute('data-color-mode', 'auto');
+    } else if (theme === 'ghec-light') {
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.setAttribute('data-color-mode', 'light');
     } else {
       document.documentElement.dataset.theme = theme;
+      document.documentElement.setAttribute('data-color-mode', 'dark');
     }
     window.dispatchEvent(
       new CustomEvent('ghec:theme-change', { detail: { theme } }),
@@ -66,9 +75,15 @@ export function TopAppBar({
             </p>
           </div>
           <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
-            <Label variant="accent">Offline</Label>
-            {bundle?.synthetic && (
-              <Label variant="secondary">Synthetic Fixture</Label>
+            {isHostedMode ? (
+              <Label variant="success">Hosted Audit Report</Label>
+            ) : (
+              <>
+                <Label variant="accent">Offline</Label>
+                {bundle?.synthetic && (
+                  <Label variant="secondary">Synthetic Fixture</Label>
+                )}
+              </>
             )}
             {bundle && (
               <span className="truncate text-xs text-[var(--fgColor-muted)]">
@@ -153,16 +168,18 @@ export function TopAppBar({
                   <Select.Option value="ghec-dark">Dark</Select.Option>
                 </Select>
               </div>
-              <Button
-                variant="danger"
-                size="small"
-                onClick={() => setConfirmingClose(true)}
-                aria-label="Close file"
-                leadingVisual={XIcon}
-                className="min-h-11 min-w-11"
-              >
-                <span className="hidden xl:inline">Close File</span>
-              </Button>
+              {!isHostedMode && (
+                <Button
+                  variant="danger"
+                  size="small"
+                  onClick={() => setConfirmingClose(true)}
+                  aria-label="Close file"
+                  leadingVisual={XIcon}
+                  className="min-h-11 min-w-11"
+                >
+                  <span className="hidden xl:inline">Close File</span>
+                </Button>
+              )}
             </div>
           )}
           {!bundle && (
@@ -189,9 +206,15 @@ export function TopAppBar({
         </div>
         {bundle && (
           <div className="flex items-center gap-2 border-t border-[var(--borderColor-default)] px-3 py-2 lg:hidden">
-            <Label variant="accent">Offline</Label>
-            {bundle?.synthetic && (
-              <Label variant="secondary">Synthetic Fixture</Label>
+            {isHostedMode ? (
+              <Label variant="success">Hosted Audit Report</Label>
+            ) : (
+              <>
+                <Label variant="accent">Offline</Label>
+                {bundle?.synthetic && (
+                  <Label variant="secondary">Synthetic Fixture</Label>
+                )}
+              </>
             )}
             <span className="ml-auto truncate text-xs text-[var(--fgColor-muted)]">
               Scan {formatTimestamp(bundle.scan.completedAt)}

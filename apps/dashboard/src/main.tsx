@@ -126,6 +126,8 @@ export function App() {
   const [baseline, setBaseline] = useState<DiscoveryBundle | null>(null);
   const [verificationReport, setVerificationReport] =
     useState<VerificationReport | null>(null);
+  const [isProbingHosted, setIsProbingHosted] = useState<boolean>(true);
+  const [isHostedMode, setIsHostedMode] = useState<boolean>(false);
   const [analysisOptions, setAnalysisOptions] = useState<AnalysisOptions>({
     ...DEFAULT_ANALYSIS_OPTIONS,
   });
@@ -135,16 +137,25 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void probeHostedEvidence().then((probed) => {
-      if (cancelled || !probed.found) return;
-      if (probed.verificationReport) {
-        setVerificationReport(probed.verificationReport);
-      }
-      if (probed.bundleResult?.success) {
-        const loadedBundle = probed.bundleResult.bundle;
-        setBundle((current) => current ?? loadedBundle);
-      }
-    });
+    void probeHostedEvidence()
+      .then((probed) => {
+        if (cancelled) return;
+        if (probed.found) {
+          setIsHostedMode(true);
+          if (probed.verificationReport) {
+            setVerificationReport(probed.verificationReport);
+          }
+          if (probed.bundleResult?.success) {
+            const loadedBundle = probed.bundleResult.bundle;
+            setBundle((current) => current ?? loadedBundle);
+          }
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsProbingHosted(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -236,6 +247,7 @@ export function App() {
       activeView={activeTab}
       onNavigate={setActiveTab}
       comparisonActive={remediationDiff !== null}
+      isHostedMode={isHostedMode}
       settingsControl={
         bundle ? (
           <SettingsDrawer
@@ -254,7 +266,14 @@ export function App() {
         ) : undefined
       }
     >
-      {!bundle || !insights ? (
+      {isProbingHosted ? (
+        <div className="p-8">
+          <LoadingState
+            title="Loading Hosted Migration Results"
+            message="Hydrating repository inventory, readiness analytics, and verification evidence..."
+          />
+        </div>
+      ) : !bundle || !insights ? (
         <div className="mx-auto max-w-5xl">
           <FileUpload
             onLoadBundle={handleLoadBundle}

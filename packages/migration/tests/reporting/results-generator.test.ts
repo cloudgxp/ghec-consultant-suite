@@ -1757,6 +1757,19 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
     'Expected evidence/README.md to document verification-report.json',
   );
   assert.ok(
+    evidenceReadmeMd.includes('`discovery-bundle.json`'),
+    'Expected evidence/README.md to document synthesized discovery-bundle.json',
+  );
+  const synthesizedBundleJson =
+    postCareSkipResults.files['evidence/discovery-bundle.json'];
+  assert.ok(
+    synthesizedBundleJson,
+    'Expected evidence/discovery-bundle.json to be synthesized when options.discoveryBundle is omitted',
+  );
+  const parsedSynthesizedBundle = JSON.parse(synthesizedBundleJson);
+  assert.equal(parsedSynthesizedBundle.schemaVersion, '1.0.0');
+  assert.equal(parsedSynthesizedBundle.summary.repositoryCount, 3);
+  assert.ok(
     strategyReadme.includes('(evidence/README.md)'),
     'Expected root README.md to link to evidence/README.md',
   );
