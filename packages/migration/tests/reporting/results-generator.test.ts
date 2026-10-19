@@ -1769,6 +1769,31 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
   const parsedSynthesizedBundle = JSON.parse(synthesizedBundleJson);
   assert.equal(parsedSynthesizedBundle.schemaVersion, '1.0.0');
   assert.equal(parsedSynthesizedBundle.summary.repositoryCount, 3);
+  const demoPortfolioEntity = parsedSynthesizedBundle.entities.find(
+    (e: { kind: string; repositoryId?: string }) =>
+      e.kind === 'repository-portfolio' && e.repositoryId === 'repo:demo',
+  );
+  assert.equal(demoPortfolioEntity.primaryLanguage, null);
+
+  const resultsHydrationJson =
+    postCareSkipResults.files['evidence/results-hydration.json'];
+  assert.ok(
+    resultsHydrationJson,
+    'Expected evidence/results-hydration.json to be generated for GitHub Pages dashboard hydration',
+  );
+  const parsedHydration = JSON.parse(resultsHydrationJson);
+  assert.equal(parsedHydration.schemaVersion, '1.0.0');
+  assert.equal(parsedHydration.operationalMode, 'live');
+  assert.equal(parsedHydration.manifest.sourceOrg, 'demogxp');
+  assert.equal(parsedHydration.manifest.targetOrg, 'demogxp-mig5');
+  assert.ok(Array.isArray(parsedHydration.postCare.items));
+  assert.ok(parsedHydration.postCare.items.length > 0);
+  assert.ok(Array.isArray(parsedHydration.postCare.operationRows));
+  assert.ok(parsedHydration.postCare.operationRows.length > 0);
+  assert.ok(
+    evidenceReadmeMd.includes('`results-hydration.json`'),
+    'Expected evidence/README.md to document results-hydration.json',
+  );
   assert.ok(
     strategyReadme.includes('(evidence/README.md)'),
     'Expected root README.md to link to evidence/README.md',

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { CheckCircleIcon } from '@primer/octicons-react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import type { DashboardView } from '../navigation.js';
+import type { DashboardOperationalMode } from '../lib/importer.js';
 import { navigationItem } from '../navigation.js';
 import { MobileNavigationDrawer } from './MobileNavigationDrawer.js';
 import { SidebarNavigation } from './SidebarNavigation.js';
@@ -16,6 +17,9 @@ interface Props {
   onNavigate: (view: DashboardView) => void;
   onCloseFile: () => void;
   isHostedMode?: boolean | undefined;
+  operationalMode?: DashboardOperationalMode | undefined;
+  sourceOrg?: string | undefined;
+  targetOrg?: string | undefined;
   searchControl?: ReactNode;
   settingsControl?: ReactNode;
   children: ReactNode;
@@ -83,6 +87,9 @@ export function AppShell(props: Props) {
           onCloseFile={props.onCloseFile}
           onOpenNavigation={() => setMobileOpen(true)}
           isHostedMode={props.isHostedMode}
+          operationalMode={props.operationalMode}
+          sourceOrg={props.sourceOrg}
+          targetOrg={props.targetOrg}
           searchControl={props.searchControl}
           settingsControl={props.settingsControl}
         />

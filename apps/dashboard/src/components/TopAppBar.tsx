@@ -12,6 +12,8 @@ import { ThreeBarsIcon, XIcon, TriangleDownIcon } from '@primer/octicons-react';
 import type { DiscoveryBundle } from '@ghec/contracts';
 import { formatTimestamp, resolveOrgName } from '../lib/formatters.js';
 
+import type { DashboardOperationalMode } from '../lib/importer.js';
+
 type ThemeChoice = 'system' | 'ghec-light' | 'ghec-dark';
 
 interface Props {
@@ -21,6 +23,9 @@ interface Props {
   onCloseFile: () => void;
   onOpenNavigation: () => void;
   isHostedMode?: boolean | undefined;
+  operationalMode?: DashboardOperationalMode | undefined;
+  sourceOrg?: string | undefined;
+  targetOrg?: string | undefined;
   searchControl?: ReactNode;
   settingsControl?: ReactNode;
 }
@@ -32,6 +37,9 @@ export function TopAppBar({
   onCloseFile,
   onOpenNavigation,
   isHostedMode = false,
+  operationalMode,
+  sourceOrg,
+  targetOrg,
   searchControl,
   settingsControl,
 }: Props) {
@@ -55,6 +63,15 @@ export function TopAppBar({
     );
   }, [theme]);
 
+  const modeBadge =
+    operationalMode === 'live'
+      ? { label: 'Live Migration Report', variant: 'success' as const }
+      : operationalMode === 'dry-run'
+        ? { label: 'Dry-Run Plan Report', variant: 'attention' as const }
+        : operationalMode === 'discovery'
+          ? { label: 'Discovery Assessment', variant: 'accent' as const }
+          : null;
+
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-[var(--borderColor-default)] bg-[var(--bgColor-default)] text-[var(--fgColor-default)] shadow-xs">
@@ -71,12 +88,14 @@ export function TopAppBar({
               GHEC Consultant Suite
             </p>
             <p className="truncate text-xs text-[var(--fgColor-muted)]">
-              Discovery & migration assessment
+              {sourceOrg && targetOrg && sourceOrg !== targetOrg
+                ? `${sourceOrg} ➔ ${targetOrg}`
+                : 'Discovery & migration reporting'}
             </p>
           </div>
           <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
             {isHostedMode ? (
-              <Label variant="success">Hosted Audit Report</Label>
+              <Label variant="success">GitHub Pages Report</Label>
             ) : (
               <>
                 <Label variant="accent">Offline</Label>
@@ -85,9 +104,17 @@ export function TopAppBar({
                 )}
               </>
             )}
+            {modeBadge && (
+              <Label variant={modeBadge.variant}>{modeBadge.label}</Label>
+            )}
+            {sourceOrg && targetOrg && sourceOrg !== targetOrg && (
+              <span className="truncate text-xs font-mono font-semibold text-[var(--fgColor-default)]">
+                {sourceOrg} ➔ {targetOrg}
+              </span>
+            )}
             {bundle && (
               <span className="truncate text-xs text-[var(--fgColor-muted)]">
-                Scan {formatTimestamp(bundle.scan.completedAt)}
+                {formatTimestamp(bundle.scan.completedAt)}
               </span>
             )}
           </div>
@@ -207,7 +234,13 @@ export function TopAppBar({
         {bundle && (
           <div className="flex items-center gap-2 border-t border-[var(--borderColor-default)] px-3 py-2 lg:hidden">
             {isHostedMode ? (
-              <Label variant="success">Hosted Audit Report</Label>
+              operationalMode === 'live' ? (
+                <Label variant="success">Live Migration Report</Label>
+              ) : operationalMode === 'dry-run' ? (
+                <Label variant="attention">Dry-Run Plan Report</Label>
+              ) : (
+                <Label variant="accent">Discovery Assessment</Label>
+              )
             ) : (
               <>
                 <Label variant="accent">Offline</Label>
@@ -215,6 +248,11 @@ export function TopAppBar({
                   <Label variant="secondary">Synthetic Fixture</Label>
                 )}
               </>
+            )}
+            {sourceOrg && targetOrg && (
+              <Label variant="secondary">
+                {sourceOrg} ➔ {targetOrg}
+              </Label>
             )}
             <span className="ml-auto truncate text-xs text-[var(--fgColor-muted)]">
               Scan {formatTimestamp(bundle.scan.completedAt)}

@@ -2,12 +2,15 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { probeHostedEvidence } from '../src/lib/importer.js';
+import {
+  deriveDiscoveryHydrationFromBundle,
+  probeHostedEvidence,
+} from '../src/lib/importer.js';
 import { SAMPLE_ORGANIZATION_BUNDLE } from '../src/lib/samples.js';
 import { sampleDiscrepantVerificationReport } from '../src/lib/verification-diff.js';
 
-describe('TASK-075 & TASK-076: Hosted Private GitHub Pages Evidence Auto-Hydration & CSS Parity', () => {
-  it('hydrates discovery bundle and verification report when ./evidence/*.json endpoints return 200 JSON', async () => {
+describe('TASK-075, TASK-076 & TASK-077: Hosted Private GitHub Pages Evidence Auto-Hydration & CSS Parity', () => {
+  it('hydrates discovery bundle, verification report, and results-hydration.json when ./evidence/*.json endpoints return 200 JSON', async () => {
     const mockFetch: typeof fetch = async (input) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url.endsWith('discovery-bundle.json')) {
@@ -19,6 +22,72 @@ describe('TASK-075 & TASK-076: Hosted Private GitHub Pages Evidence Auto-Hydrati
       if (url.endsWith('verification-report.json')) {
         return new Response(
           JSON.stringify(sampleDiscrepantVerificationReport),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+      if (url.endsWith('results-hydration.json')) {
+        return new Response(
+          JSON.stringify({
+            schemaVersion: '1.0.0',
+            operationalMode: 'live',
+            manifest: {
+              schemaVersion: '1.0.0',
+              runId: 'run-live-01',
+              generatedAt: '2026-10-19T12:00:00Z',
+              sourceOrg: 'src-org',
+              targetOrg: 'tgt-org',
+              summary: {
+                totalRepositories: 1,
+                succeededCount: 1,
+                failedCount: 0,
+                successRatePercent: 100,
+                durationMs: 12000,
+                orgModulesSummary: [],
+              },
+              repositories: [],
+            },
+            transferStrategies: {
+              geiRepos: ['demo'],
+            },
+            repoStrategyBadges: { demo: 'GEI Cloud Transfer' },
+            postCare: {
+              summary: {
+                totalItems: 1,
+                secretCount: 1,
+                appCount: 0,
+                webhookCount: 0,
+                runnerCount: 0,
+                otherCount: 0,
+                identityAndAccessCount: 0,
+                governanceAndRemediationCount: 0,
+                skippedArchivedCount: 0,
+              },
+              items: [
+                {
+                  id: 'PC-001',
+                  priority: 'high',
+                  category: 'secret',
+                  scopeLevel: 'organization',
+                  targetOrg: 'tgt-org',
+                  repository: null,
+                  moduleId: 'org-secrets',
+                  resourceName: 'PROD_DEPLOY_TOKEN',
+                  actionRequired:
+                    'Populate secret value ([SEALED] placeholder)',
+                  settingsUrl:
+                    'https://github.com/organizations/tgt-org/settings/secrets/actions',
+                  settingsLinkLabel: 'Organization Actions Secrets',
+                  cliCommand: 'gh secret set PROD_DEPLOY_TOKEN --org tgt-org',
+                  notes: 'Secret value is never transferred.',
+                },
+              ],
+              operationRows: [],
+              skippedArchivedRows: [],
+            },
+          }),
           {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -42,6 +111,22 @@ describe('TASK-075 & TASK-076: Hosted Private GitHub Pages Evidence Auto-Hydrati
       result.verificationReport?.reportId,
       sampleDiscrepantVerificationReport.reportId,
     );
+    assert.ok(result.resultsHydration);
+    assert.equal(result.resultsHydration?.operationalMode, 'live');
+    assert.equal(result.resultsHydration?.postCare.items.length, 1);
+    assert.equal(
+      result.resultsHydration?.postCare.items[0]?.category,
+      'secret',
+    );
+  });
+
+  it('derives discovery-mode post-care hydration items from a DiscoveryBundle when results-hydration.json is absent', () => {
+    const derived = deriveDiscoveryHydrationFromBundle(
+      SAMPLE_ORGANIZATION_BUNDLE,
+    );
+    assert.equal(derived.operationalMode, 'discovery');
+    assert.ok(Array.isArray(derived.postCare.items));
+    assert.ok(derived.postCare.summary);
   });
 
   it('synthesizes a schema-valid DiscoveryBundle when discovery-bundle.json is 404 but manifest.json and migration-scope.json exist', async () => {

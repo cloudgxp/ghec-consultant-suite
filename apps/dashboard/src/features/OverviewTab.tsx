@@ -1,9 +1,16 @@
-import React from 'react';
-import type { DiscoveryBundle } from '@ghec/contracts';
+import React, { useMemo, useState } from 'react';
+import type { DiscoveryBundle, OrgModuleResultSummary } from '@ghec/contracts';
 import type { DashboardView } from '../navigation.js';
 import type { EvaluatedInsights } from '@ghec/analysis';
-import { Button, Label } from '@primer/react';
-import { ArrowRightIcon, DownloadIcon } from '@primer/octicons-react';
+import { Button, Dialog, Flash, Label, TextInput } from '@primer/react';
+import {
+  ArrowRightIcon,
+  ChecklistIcon,
+  DownloadIcon,
+  LinkExternalIcon,
+  LockIcon,
+  SearchIcon,
+} from '@primer/octicons-react';
 import {
   formatBytes,
   formatTimestamp,
@@ -13,11 +20,16 @@ import { generateExecutiveSummaryCsv, downloadCsv } from '../lib/export-csv.js';
 import { downloadPdfReport } from '../lib/export-pdf.js';
 import { EnterpriseMatrix } from './EnterpriseMatrix.js';
 import {
+  DataTableFrame,
   MetricCard,
   PageHeader,
   StatusBadge,
   SurfaceCard,
 } from '../components/ui/index.js';
+import type {
+  HydratedOperationRow,
+  ResultsHydrationData,
+} from '../lib/importer.js';
 
 interface OverviewTabProps {
   bundle: DiscoveryBundle;
@@ -25,6 +37,11 @@ interface OverviewTabProps {
   selectedOrgIds: readonly string[];
   onSelectOrganization: (organizationId: string) => void;
   onNavigateTab: (tabId: DashboardView) => void;
+  resultsHydration?: ResultsHydrationData | undefined;
+}
+
+interface OrgModuleRow extends OrgModuleResultSummary {
+  readonly moduleId: string;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -33,13 +50,33 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   selectedOrgIds,
   onSelectOrganization,
   onNavigateTab,
+  resultsHydration,
 }) => {
+  const [selectedOrgModule, setSelectedOrgModule] =
+    useState<OrgModuleRow | null>(null);
+  const [drawerQuery, setDrawerQuery] = useState('');
+
   const selectedOrgId =
     selectedOrgIds.length === 1 ? selectedOrgIds[0] : undefined;
   const inScope = (organizationId: string) =>
     selectedOrgIds.length === 0 || selectedOrgIds.includes(organizationId);
   const organizationCount =
     selectedOrgIds.length || bundle.organizations.length;
+
+  const orgModuleRows = useMemo<readonly OrgModuleRow[]>(() => {
+    const map = resultsHydration?.manifest.summary.orgModulesSummary ?? {};
+    return Object.entries(map).map(([moduleId, sum]) => ({
+      moduleId,
+      ...sum,
+    }));
+  }, [resultsHydration]);
+
+  const isMigrationReport =
+    resultsHydration !== undefined &&
+    (resultsHydration.operationalMode === 'live' ||
+      resultsHydration.operationalMode === 'dry-run' ||
+      orgModuleRows.length > 0);
+
   // Calculate total observed repo storage
   const repos = bundle.entities.filter(
     (e) => e.kind === 'repository' && inScope(e.organizationId),
@@ -73,18 +110,24 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const reviewDimensions = insights.dimensions.filter(
     (dimension) => dimension.status === 'review_required',
   ).length;
+  const postCareCount = resultsHydration?.postCare.items.length ?? 0;
   const recommendedView: DashboardView =
-    highFindings.length > 0
-      ? 'readiness'
-      : collectionPercent < 100
-        ? 'health'
-        : 'export';
+    isMigrationReport && postCareCount > 0
+      ? 'post-care'
+      : highFindings.length > 0
+        ? 'readiness'
+        : collectionPercent < 100
+          ? 'health'
+          : 'export';
   const recommendedAction =
-    highFindings.length > 0
-      ? 'Review critical migration blockers'
-      : collectionPercent < 100
-        ? 'Resolve collection coverage gaps'
-        : 'Generate the customer deliverable';
+    isMigrationReport && postCareCount > 0
+      ? `Complete ${postCareCount} post-care cutover items`
+      : highFindings.length > 0
+        ? 'Review critical migration blockers'
+        : collectionPercent < 100
+          ? 'Resolve collection coverage gaps'
+          : 'Generate the customer deliverable';
+
   const dimensionView = (ruleId: string): DashboardView => {
     if (/LFS|SIZE/.test(ruleId)) return 'repositories';
     if (/ACTIONS|CONFIG/.test(ruleId)) return 'actions';
@@ -98,27 +141,71 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     downloadCsv(`executive-assessment-${bundle.scan.id}.csv`, csv);
   };
 
+  const orgModuleOperations = useMemo<readonly HydratedOperationRow[]>(() => {
+    if (!selectedOrgModule || !resultsHydration) return [];
+    const needle = drawerQuery.trim().toLowerCase();
+    return resultsHydration.postCare.operationRows.filter((op) => {
+      if (op.moduleId !== selectedOrgModule.moduleId) return false;
+      if (op.scopeLevel !== 'organization') return false;
+      if (needle) {
+        const hay =
+          `${op.resourceName} ${op.operationType} ${op.status} ${op.notes} ${op.subDomain}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [selectedOrgModule, resultsHydration, drawerQuery]);
+
+  const migrationSummary = resultsHydration?.manifest.summary;
+  const opTotals = resultsHydration?.operationTotals;
+  const verSum = resultsHydration?.verificationSummary;
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Executive Assessment Overview"
+        title={
+          resultsHydration?.operationalMode === 'live'
+            ? 'Live Migration Executive Summary'
+            : resultsHydration?.operationalMode === 'dry-run'
+              ? 'Dry-Run Migration Plan Summary'
+              : 'Executive Assessment Overview'
+        }
         status={
           <StatusBadge
             tone={bundle.scan.status === 'complete' ? 'success' : 'warning'}
           >
-            Scan: {bundle.scan.status}
+            {resultsHydration?.operationalMode === 'live'
+              ? 'Live Execution'
+              : resultsHydration?.operationalMode === 'dry-run'
+                ? 'Dry-Run Simulation'
+                : `Scan: ${bundle.scan.status}`}
           </StatusBadge>
         }
         description={
           <>
-            Target Scope:{' '}
-            <strong className="text-[var(--fgColor-default)]">
-              {bundle.scope.kind === 'enterprise'
-                ? `Enterprise '${bundle.scope.slug}'`
-                : `Organization '${bundle.scope.organizationId}'`}
-            </strong>{' '}
-            · Scan ID: <code>{bundle.scan.id}</code> · Executed in{' '}
-            {formatDuration(bundle.scan.startedAt, bundle.scan.completedAt)}
+            {resultsHydration ? (
+              <>
+                Migration Scope:{' '}
+                <strong className="text-[var(--fgColor-default)]">
+                  {resultsHydration.manifest.sourceOrg} ➔{' '}
+                  {resultsHydration.manifest.targetOrg}
+                </strong>{' '}
+                · Run ID: <code>{resultsHydration.manifest.runId}</code> ·
+                Executed in{' '}
+                {formatDuration(bundle.scan.startedAt, bundle.scan.completedAt)}
+              </>
+            ) : (
+              <>
+                Target Scope:{' '}
+                <strong className="text-[var(--fgColor-default)]">
+                  {bundle.scope.kind === 'enterprise'
+                    ? `Enterprise '${bundle.scope.slug}'`
+                    : `Organization '${bundle.scope.organizationId}'`}
+                </strong>{' '}
+                · Scan ID: <code>{bundle.scan.id}</code> · Executed in{' '}
+                {formatDuration(bundle.scan.startedAt, bundle.scan.completedAt)}
+              </>
+            )}
           </>
         }
         primaryAction={
@@ -140,6 +227,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         }
         secondaryActions={
           <>
+            {isMigrationReport && (
+              <Button
+                variant="default"
+                size="small"
+                leadingVisual={ChecklistIcon}
+                onClick={() => onNavigateTab('post-care')}
+              >
+                Open Post-Care Checklist ({postCareCount})
+              </Button>
+            )}
             <Button
               variant="default"
               size="small"
@@ -165,6 +262,227 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </>
         }
       />
+
+      {/* Tier 1: Executive Migration & Post-Care Summary (when hydrated from Dry-Run or Live Migration) */}
+      {isMigrationReport && resultsHydration && migrationSummary && (
+        <section
+          aria-labelledby="migration-execution-summary-title"
+          className="space-y-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3
+              id="migration-execution-summary-title"
+              className="text-sm font-bold uppercase tracking-wide text-[var(--fgColor-muted)] m-0"
+            >
+              Tier 1 · Executive Migration & Verification Telemetry
+            </h3>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {resultsHydration.transferStrategies.largeReleases && (
+                <Label size="small" variant="secondary">
+                  Large Releases:{' '}
+                  {
+                    resultsHydration.transferStrategies.largeReleases
+                      .assetsStreamed
+                  }{' '}
+                  assets (
+                  {formatBytes(
+                    resultsHydration.transferStrategies.largeReleases
+                      .bytesStreamed,
+                  )}
+                  )
+                </Label>
+              )}
+              {resultsHydration.transferStrategies.lfs && (
+                <Label size="small" variant="secondary">
+                  Git LFS:{' '}
+                  {resultsHydration.transferStrategies.lfs.objectsTransferred}{' '}
+                  objects (
+                  {formatBytes(
+                    resultsHydration.transferStrategies.lfs.bytesTransferred,
+                  )}
+                  )
+                </Label>
+              )}
+              {resultsHydration.transferStrategies.mirrorPushRepos &&
+                resultsHydration.transferStrategies.mirrorPushRepos.length >
+                  0 && (
+                  <Label size="small" variant="secondary">
+                    Mirror Push:{' '}
+                    {resultsHydration.transferStrategies.mirrorPushRepos.length}{' '}
+                    repos
+                  </Label>
+                )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard
+              label="Repositories Migrated"
+              value={`${migrationSummary.succeededCount} / ${migrationSummary.totalRepositories}`}
+              detail={`${migrationSummary.failedCount} failed · ${resultsHydration.postCare.skippedArchivedRows.length} archived skipped`}
+              tone={migrationSummary.failedCount > 0 ? 'error' : 'success'}
+            />
+            <MetricCard
+              label="Module Operations"
+              value={`${opTotals?.mutated ?? opTotals?.succeeded ?? 0} mutated`}
+              detail={`${opTotals?.noop ?? 0} no-op · ${opTotals?.skipped ?? 0} skipped · ${opTotals?.failed ?? 0} failed`}
+              tone={(opTotals?.failed ?? 0) > 0 ? 'warning' : 'primary'}
+            />
+            <MetricCard
+              label="Parity Verification"
+              value={`${verSum?.verifiedModuleCount ?? 0} verified`}
+              detail={`${verSum?.discrepancyCount ?? 0} discrepancies detected`}
+              tone={(verSum?.discrepancyCount ?? 0) > 0 ? 'warning' : 'success'}
+            />
+            <MetricCard
+              label="Post-Care Action Items"
+              value={postCareCount}
+              detail={`${resultsHydration.postCare.summary.secretCount} [SEALED] secrets · ${resultsHydration.postCare.summary.webhookCount} webhooks`}
+              tone={postCareCount > 0 ? 'warning' : 'success'}
+            />
+          </div>
+
+          {/* Tier 2: Organization-Level Modules Table */}
+          {orgModuleRows.length > 0 && (
+            <div className="rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-default)] p-5 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-bold text-[var(--fgColor-default)] m-0">
+                    Tier 2 · Organization-Level Modules ({orgModuleRows.length})
+                  </h3>
+                  <p className="text-xs text-[var(--fgColor-muted)] m-0 mt-0.5">
+                    Click any organization module to inspect granular
+                    operations, sealed secret placeholders, and direct GitHub
+                    Settings links.
+                  </p>
+                </div>
+                <Button
+                  size="small"
+                  leadingVisual={ChecklistIcon}
+                  onClick={() => onNavigateTab('post-care')}
+                >
+                  View Post-Care Checklist
+                </Button>
+              </div>
+
+              <DataTableFrame caption="Organization-level migration modules">
+                <table
+                  className="w-full text-left border-collapse text-sm"
+                  aria-label="Organization-level migration modules"
+                >
+                  <thead className="bg-[var(--bgColor-muted)] text-xs text-[var(--fgColor-muted)] font-bold border-b border-[var(--borderColor-default)]">
+                    <tr>
+                      <th scope="col" className="px-3 py-2.5">
+                        Organization Module
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Status
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Succeeded / Total
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Skipped
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Failed
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Discrepancies
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Duration
+                      </th>
+                      <th scope="col" className="px-3 py-2.5">
+                        Drill-Down
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgModuleRows.map((mod) => (
+                      <tr
+                        key={mod.moduleId}
+                        className="border-b border-[var(--borderColor-muted)] hover:bg-[var(--bgColor-muted)]/50 odd:bg-[var(--bgColor-default)] even:bg-[var(--bgColor-muted)]/20"
+                      >
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrawerQuery('');
+                              setSelectedOrgModule(mod);
+                            }}
+                            className="text-left font-mono font-bold text-xs text-[var(--fgColor-accent)] hover:underline cursor-pointer"
+                          >
+                            {mod.moduleId}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Label
+                            size="small"
+                            variant={
+                              mod.status === 'complete'
+                                ? 'success'
+                                : mod.status === 'failed'
+                                  ? 'danger'
+                                  : 'attention'
+                            }
+                            className="capitalize"
+                          >
+                            {mod.status}
+                          </Label>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-[var(--fgColor-default)]">
+                          {mod.succeededOperations} / {mod.totalOperations}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-[var(--fgColor-muted)]">
+                          {mod.skippedOperations}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-[var(--fgColor-default)]">
+                          {mod.failedOperations > 0 ? (
+                            <span className="font-bold text-[var(--fgColor-danger)]">
+                              {mod.failedOperations}
+                            </span>
+                          ) : (
+                            0
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Label
+                            size="small"
+                            variant={
+                              (mod.discrepancyCount ?? 0) === 0
+                                ? 'success'
+                                : 'attention'
+                            }
+                          >
+                            {(mod.discrepancyCount ?? 0) === 0
+                              ? 'Verified'
+                              : `${mod.discrepancyCount} Discrepancies`}
+                          </Label>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-[var(--fgColor-muted)]">
+                          {mod.durationMs ?? 0}ms
+                        </td>
+                        <td className="px-3 py-2">
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setDrawerQuery('');
+                              setSelectedOrgModule(mod);
+                            }}
+                          >
+                            Inspect
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </DataTableFrame>
+            </div>
+          )}
+        </section>
+      )}
 
       <section
         aria-labelledby="decision-summary-title"
@@ -448,6 +766,199 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
         </div>
       </details>
+
+      {/* Organization Module Drill-Down Drawer (replaces organization/<module>.md) */}
+      {selectedOrgModule && resultsHydration && (
+        <Dialog
+          title={`Organization Module: ${selectedOrgModule.moduleId}`}
+          subtitle={`${resultsHydration.manifest.sourceOrg} ➔ ${resultsHydration.manifest.targetOrg}`}
+          position="right"
+          width="large"
+          onClose={() => setSelectedOrgModule(null)}
+        >
+          <div className="space-y-4 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label
+                variant={
+                  selectedOrgModule.status === 'complete'
+                    ? 'success'
+                    : selectedOrgModule.status === 'failed'
+                      ? 'danger'
+                      : 'attention'
+                }
+                className="capitalize"
+              >
+                Status: {selectedOrgModule.status}
+              </Label>
+              <Label
+                variant={
+                  (selectedOrgModule.discrepancyCount ?? 0) === 0
+                    ? 'success'
+                    : 'attention'
+                }
+              >
+                {(selectedOrgModule.discrepancyCount ?? 0) === 0
+                  ? 'Parity Verified'
+                  : `${selectedOrgModule.discrepancyCount} Discrepancies`}
+              </Label>
+              <Label variant="secondary" className="font-mono">
+                {selectedOrgModule.succeededOperations} succeeded ·{' '}
+                {selectedOrgModule.skippedOperations} skipped ·{' '}
+                {selectedOrgModule.failedOperations} failed
+              </Label>
+            </div>
+
+            {selectedOrgModule.moduleId.includes('secret') && (
+              <Flash variant="warning">
+                <span className="text-xs">
+                  <strong>Zero-Exposure Secret Boundary (DEC-004):</strong>{' '}
+                  Organization secrets were initialized as empty{' '}
+                  <code>[SEALED]</code> placeholders (<code>&quot;&quot;</code>
+                  ). Populate real values using the GitHub Settings links below.
+                </span>
+              </Flash>
+            )}
+
+            <TextInput
+              leadingVisual={SearchIcon}
+              type="search"
+              aria-label="Filter organization module operations"
+              placeholder="Filter operations by resource, status, or notes…"
+              size="small"
+              block
+              value={drawerQuery}
+              onChange={(e) => setDrawerQuery(e.target.value)}
+            />
+
+            <DataTableFrame caption="Granular organization module operations">
+              <table
+                className="w-full text-left border-collapse text-xs"
+                aria-label="Granular organization module operations"
+              >
+                <thead className="bg-[var(--bgColor-muted)] text-[var(--fgColor-muted)] font-bold border-b border-[var(--borderColor-default)]">
+                  <tr>
+                    <th scope="col" className="px-2.5 py-2">
+                      Resource Name
+                    </th>
+                    <th scope="col" className="px-2.5 py-2">
+                      Operation & Status
+                    </th>
+                    <th scope="col" className="px-2.5 py-2">
+                      Verification
+                    </th>
+                    <th scope="col" className="px-2.5 py-2">
+                      Notes & Settings Link
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orgModuleOperations.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="text-center py-6 text-[var(--fgColor-muted)]"
+                      >
+                        No granular operations recorded for this module.
+                      </td>
+                    </tr>
+                  ) : (
+                    orgModuleOperations.map((op, idx) => (
+                      <tr
+                        key={`${op.resourceName}-${idx}`}
+                        className="border-b border-[var(--borderColor-muted)] odd:bg-[var(--bgColor-default)] even:bg-[var(--bgColor-muted)]/20"
+                      >
+                        <td className="px-2.5 py-2 font-mono font-bold text-[var(--fgColor-default)]">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span>{op.resourceName}</span>
+                            {op.isSecret && (
+                              <Label size="small" variant="attention">
+                                <LockIcon size={10} className="mr-1" />
+                                [SEALED]
+                              </Label>
+                            )}
+                          </div>
+                          {op.subDomain && (
+                            <div className="text-[10px] text-[var(--fgColor-muted)]">
+                              {op.subDomain}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Label
+                              size="small"
+                              variant={
+                                op.status === 'succeeded' ||
+                                op.status === 'mutated'
+                                  ? 'success'
+                                  : op.status === 'failed'
+                                    ? 'danger'
+                                    : 'secondary'
+                              }
+                            >
+                              {op.status}
+                            </Label>
+                            <span className="font-mono text-[10px] text-[var(--fgColor-muted)]">
+                              ({op.operationType})
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <Label
+                            size="small"
+                            variant={
+                              op.verificationStatus === 'verified'
+                                ? 'success'
+                                : op.verificationStatus === 'discrepancy'
+                                  ? 'attention'
+                                  : 'secondary'
+                            }
+                          >
+                            {op.verificationStatus}
+                          </Label>
+                        </td>
+                        <td className="px-2.5 py-2 space-y-1">
+                          <div className="text-[var(--fgColor-default)]">
+                            {op.notes}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {op.settingsUrl && (
+                              <a
+                                href={op.settingsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-semibold text-[var(--fgColor-accent)] hover:underline"
+                              >
+                                <span>
+                                  {op.settingsLinkLabel ?? 'Open Settings'}
+                                </span>
+                                <LinkExternalIcon size={11} />
+                              </a>
+                            )}
+                            {op.secondaryUrl && (
+                              <a
+                                href={op.secondaryUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[var(--fgColor-muted)] hover:underline"
+                              >
+                                <span>
+                                  {op.secondaryLinkLabel ?? 'Secondary Link'}
+                                </span>
+                                <LinkExternalIcon size={11} />
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </DataTableFrame>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 };

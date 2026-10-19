@@ -27,7 +27,10 @@ import type {
   RepositoryPipelineResult,
 } from '../orchestrator/types.js';
 import {
+  type FullMigrationOperationRow,
   type PostCareDeliverables,
+  type PostCareItem,
+  type SkippedArchivedRepositoryRow,
   generatePostCareDeliverables,
   resolveTargetSettingsLinks,
 } from './post-care-generator.js';
@@ -82,10 +85,70 @@ export interface GenerateResultsOptions {
   readonly pagesUrl?: string | undefined;
 }
 
+export interface ResultsHydrationPayload {
+  readonly schemaVersion: string;
+  readonly operationalMode: 'discovery' | 'dry-run' | 'live';
+  readonly manifest: MigrationResultsManifest;
+  readonly verificationSummary?:
+    | {
+        readonly verifiedModuleCount: number;
+        readonly unverifiedModuleCount: number;
+        readonly discrepancyCount: number;
+      }
+    | undefined;
+  readonly operationTotals?:
+    | {
+        readonly total: number;
+        readonly succeeded: number;
+        readonly mutated: number;
+        readonly noop: number;
+        readonly skipped: number;
+        readonly failed: number;
+      }
+    | undefined;
+  readonly transferStrategies: {
+    readonly largeReleases?:
+      | {
+          readonly repos: readonly string[];
+          readonly releasesCount: number;
+          readonly assetsStreamed: number;
+          readonly bytesStreamed: number;
+        }
+      | undefined;
+    readonly lfs?:
+      | {
+          readonly repos: readonly string[];
+          readonly objectsTransferred: number;
+          readonly bytesTransferred: number;
+        }
+      | undefined;
+    readonly mirrorPushRepos?: readonly string[] | undefined;
+    readonly archivedRepos?: readonly string[] | undefined;
+  };
+  readonly repoStrategyBadges: Readonly<Record<string, string>>;
+  readonly postCare: {
+    readonly summary: {
+      readonly totalItems: number;
+      readonly secretCount: number;
+      readonly appCount: number;
+      readonly webhookCount: number;
+      readonly runnerCount: number;
+      readonly otherCount: number;
+      readonly identityAndAccessCount: number;
+      readonly governanceAndRemediationCount: number;
+      readonly skippedArchivedCount: number;
+    };
+    readonly items: readonly PostCareItem[];
+    readonly operationRows: readonly FullMigrationOperationRow[];
+    readonly skippedArchivedRows: readonly SkippedArchivedRepositoryRow[];
+  };
+}
+
 export interface GeneratedResults {
   readonly manifest: MigrationResultsManifest;
   readonly files: Record<string, string>;
   readonly postCare?: PostCareDeliverables | undefined;
+  readonly resultsHydration?: ResultsHydrationPayload | undefined;
 }
 
 const KNOWN_ORG_MODULE_IDS = new Set<string>([
@@ -2307,7 +2370,71 @@ export function generateMigrationResults(
     files[relPath] = formatRepoModuleDetailMarkdown(repoModModel);
   }
 
+  const resultsHydration: ResultsHydrationPayload = {
+    schemaVersion: MIGRATION_SCHEMA_VERSION,
+    operationalMode: effectiveMode,
+    manifest,
+    ...(options.verificationReport?.summary
+      ? {
+          verificationSummary: {
+            verifiedModuleCount:
+              options.verificationReport.summary.verifiedModuleCount,
+            unverifiedModuleCount:
+              options.verificationReport.summary.unverifiedModuleCount,
+            discrepancyCount:
+              options.verificationReport.summary.discrepancyCount,
+          },
+        }
+      : {}),
+    ...(operationTotals ? { operationTotals } : {}),
+    transferStrategies: {
+      ...(largeReleaseRepos.length > 0
+        ? {
+            largeReleases: {
+              repos: largeReleaseRepos,
+              releasesCount: totalReleasesCount,
+              assetsStreamed: totalReleaseAssetsStreamed,
+              bytesStreamed: totalReleaseBytesStreamed,
+            },
+          }
+        : {}),
+      ...(lfsRepos.length > 0
+        ? {
+            lfs: {
+              repos: lfsRepos,
+              objectsTransferred: totalLfsObjectsTransferred,
+              bytesTransferred: totalLfsBytesTransferred,
+            },
+          }
+        : {}),
+      ...(mirrorPushRepos.length > 0 ? { mirrorPushRepos } : {}),
+      ...(archivedRepos.length > 0 ? { archivedRepos } : {}),
+    },
+    repoStrategyBadges,
+    postCare: {
+      summary: {
+        totalItems: postCare.items.length,
+        secretCount,
+        appCount,
+        webhookCount,
+        runnerCount,
+        otherCount,
+        identityAndAccessCount,
+        governanceAndRemediationCount,
+        skippedArchivedCount: postCare.skippedArchivedRows.length,
+      },
+      items: postCare.items,
+      operationRows: postCare.operationRows,
+      skippedArchivedRows: postCare.skippedArchivedRows,
+    },
+  };
+
   // Evidence Bundle Parity (evidence/*.json & custom evidenceFiles)
+  files['evidence/results-hydration.json'] = JSON.stringify(
+    resultsHydration,
+    null,
+    2,
+  );
   const resolvedDiscoveryBundle =
     options.discoveryBundle ??
     synthesizeDiscoveryBundleFromMigration({
@@ -2393,10 +2520,12 @@ export function generateMigrationResults(
     files,
   });
 
-  return { manifest, files, postCare };
+  return { manifest, files, postCare, resultsHydration };
 }
 
 const EVIDENCE_FILE_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  'results-hydration.json':
+    'Unified dashboard hydration bundle containing the run manifest, post-care checklist items, full operations ledger, and transfer strategy metrics.',
   'discovery-bundle.json':
     'Snapshot of your source organization repositories, teams, secrets, webhooks, runners, and apps before migration.',
   'migration-scope.json':
@@ -2667,6 +2796,35 @@ function synthesizeDiscoveryBundleFromMigration(params: {
         value: i.notes ? i.notes.slice(0, 2048) : 'migrated',
       }));
 
+    const lfsModel = repoModuleDetailModels.get(
+      `repositories/${repoName}/lfs.md`,
+    );
+    const lfsSucceededItems = (lfsModel?.items ?? []).filter(
+      (i) =>
+        i.status === 'succeeded' &&
+        i.resourceName &&
+        i.resourceName !== '(none)',
+    );
+    let observedLfsBytes = 0;
+    for (const lfsItem of lfsSucceededItems) {
+      const m = lfsItem.notes ? /\((\d+)\s+bytes\b/i.exec(lfsItem.notes) : null;
+      if (m?.[1]) observedLfsBytes += Number.parseInt(m[1], 10);
+    }
+
+    const relModel = repoModuleDetailModels.get(
+      `repositories/${repoName}/releases.md`,
+    );
+    const releaseAssets = (relModel?.items ?? []).filter(
+      (i) => i.resourceType === 'release-asset' && i.status === 'succeeded',
+    );
+    let observedReleaseBytes = 0;
+    for (const assetItem of releaseAssets) {
+      const m = assetItem.notes
+        ? /\((\d+)\s+bytes\b/i.exec(assetItem.notes)
+        : null;
+      if (m?.[1]) observedReleaseBytes += Number.parseInt(m[1], 10);
+    }
+
     entities.push({
       id: repoId,
       organizationId: orgId,
@@ -2678,7 +2836,7 @@ function synthesizeDiscoveryBundleFromMigration(params: {
       archived: isArchived,
       defaultBranch: 'main',
       size: {
-        value: hasLfs ? 10 * 1024 * 1024 : 512 * 1024,
+        value: observedLfsBytes + observedReleaseBytes,
         unit: 'bytes',
         availability: 'observed',
         reason: null,
@@ -2693,7 +2851,7 @@ function synthesizeDiscoveryBundleFromMigration(params: {
       provenance,
       kind: 'repository-portfolio',
       repositoryId: repoId,
-      primaryLanguage: 'TypeScript',
+      primaryLanguage: null,
       topics: isArchived ? ['archived', 'migrated'] : ['migrated'],
       template: false,
       pushedAt: completedAt,
@@ -2757,13 +2915,17 @@ function synthesizeDiscoveryBundleFromMigration(params: {
       kind: 'lfs',
       repositoryId: repoId,
       storage: {
-        value: hasLfs ? 10 * 1024 * 1024 : 0,
+        value: hasLfs ? observedLfsBytes : 0,
         unit: 'bytes',
         availability: 'observed',
         reason: null,
       },
       objectCount: {
-        value: hasLfs ? 3 : 0,
+        value: hasLfs
+          ? lfsSucceededItems.length > 0
+            ? lfsSucceededItems.length
+            : 1
+          : 0,
         unit: 'count',
         availability: 'observed',
         reason: null,
@@ -2798,7 +2960,7 @@ function synthesizeDiscoveryBundleFromMigration(params: {
       repositoryId: repoId,
       enabled: !isArchived,
       workflowCount: {
-        value: 1,
+        value: 0,
         unit: 'count',
         availability: 'observed',
         reason: null,
@@ -2815,7 +2977,7 @@ function synthesizeDiscoveryBundleFromMigration(params: {
         availability: 'observed',
         reason: null,
       },
-      workflowNames: ['ci.yml'],
+      workflowNames: [],
       runnerTypes: ['hosted'],
     });
 
@@ -2923,11 +3085,13 @@ function synthesizeDiscoveryBundleFromMigration(params: {
     }
 
     // Repository releases
-    const relModel = repoModuleDetailModels.get(
-      `repositories/${repoName}/releases.md`,
+    const releaseItems = (relModel?.items ?? []).filter(
+      (i) =>
+        i.resourceName &&
+        i.resourceName !== '(none)' &&
+        i.resourceType !== 'release-asset',
     );
-    for (const item of relModel?.items ?? []) {
-      if (!item.resourceName || item.resourceName === '(none)') continue;
+    for (const [relIdx, item] of releaseItems.entries()) {
       entities.push({
         id: safeId(`release:${repoName}:${item.resourceName}`),
         organizationId: orgId,
@@ -2942,13 +3106,13 @@ function synthesizeDiscoveryBundleFromMigration(params: {
         createdAt: completedAt,
         publishedAt: completedAt,
         assetCount: {
-          value: 0,
+          value: relIdx === 0 ? releaseAssets.length : 0,
           unit: 'count',
           availability: 'observed',
           reason: null,
         },
         size: {
-          value: 0,
+          value: relIdx === 0 ? observedReleaseBytes : 0,
           unit: 'bytes',
           availability: 'observed',
           reason: null,

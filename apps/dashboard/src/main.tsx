@@ -87,19 +87,14 @@ const CollectorHealthTab = lazy(() =>
     default: m.CollectorHealthTab,
   })),
 );
+const PostCareChecklistTab = lazy(() =>
+  import('./features/PostCareChecklistTab.js').then((m) => ({
+    default: m.PostCareChecklistTab,
+  })),
+);
 const ExportCenterTab = lazy(() =>
   import('./features/ExportCenterTab.js').then((m) => ({
     default: m.ExportCenterTab,
-  })),
-);
-const MigrationControlPlaneTab = lazy(() =>
-  import('./features/MigrationControlPlaneTab.js').then((m) => ({
-    default: m.MigrationControlPlaneTab,
-  })),
-);
-const LiveConsoleTab = lazy(() =>
-  import('./features/LiveConsoleTab.js').then((m) => ({
-    default: m.LiveConsoleTab,
   })),
 );
 const VerificationTab = lazy(() =>
@@ -117,7 +112,12 @@ const DesignSystemPreview = lazy(() =>
     default: m.DesignSystemPreview,
   })),
 );
-import { probeHostedEvidence, type ImportResult } from './lib/importer.js';
+import {
+  deriveDiscoveryHydrationFromBundle,
+  probeHostedEvidence,
+  type ImportResult,
+  type ResultsHydrationData,
+} from './lib/importer.js';
 import { diffScans, scopesMatch } from './lib/diff-engine.js';
 import { isDashboardView, type DashboardView } from './navigation.js';
 
@@ -126,6 +126,8 @@ export function App() {
   const [baseline, setBaseline] = useState<DiscoveryBundle | null>(null);
   const [verificationReport, setVerificationReport] =
     useState<VerificationReport | null>(null);
+  const [resultsHydration, setResultsHydration] =
+    useState<ResultsHydrationData | null>(null);
   const [isProbingHosted, setIsProbingHosted] = useState<boolean>(true);
   const [isHostedMode, setIsHostedMode] = useState<boolean>(false);
   const [analysisOptions, setAnalysisOptions] = useState<AnalysisOptions>({
@@ -145,9 +147,17 @@ export function App() {
           if (probed.verificationReport) {
             setVerificationReport(probed.verificationReport);
           }
+          if (probed.resultsHydration) {
+            setResultsHydration(probed.resultsHydration);
+          }
           if (probed.bundleResult?.success) {
             const loadedBundle = probed.bundleResult.bundle;
             setBundle((current) => current ?? loadedBundle);
+            if (!probed.resultsHydration) {
+              setResultsHydration(
+                deriveDiscoveryHydrationFromBundle(loadedBundle),
+              );
+            }
           }
         }
       })
@@ -160,6 +170,12 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  const effectiveHydration = useMemo<ResultsHydrationData | null>(() => {
+    if (resultsHydration) return resultsHydration;
+    if (bundle) return deriveDiscoveryHydrationFromBundle(bundle);
+    return null;
+  }, [resultsHydration, bundle]);
 
   const insights = useMemo(
     () => (bundle ? evaluateBundle(bundle, analysisOptions) : null),
@@ -180,6 +196,7 @@ export function App() {
   const handleLoadBundle = (result: ImportResult) => {
     if (result.success) {
       setBundle(result.bundle);
+      setResultsHydration(deriveDiscoveryHydrationFromBundle(result.bundle));
       setBaseline(null);
       setErrorMessage(null);
       setActiveTab('overview');
@@ -209,6 +226,9 @@ export function App() {
     }
     setBaseline(baselineResult.bundle);
     setBundle(currentResult.bundle);
+    setResultsHydration(
+      deriveDiscoveryHydrationFromBundle(currentResult.bundle),
+    );
     setErrorMessage(null);
     setSelectedOrgIds([]);
     setActiveTab('remediation');
@@ -217,6 +237,7 @@ export function App() {
   const handleReset = () => {
     setBundle(null);
     setBaseline(null);
+    setResultsHydration(null);
     setErrorMessage(null);
     setActiveTab('overview');
     setSelectedOrgIds([]);
@@ -248,6 +269,9 @@ export function App() {
       onNavigate={setActiveTab}
       comparisonActive={remediationDiff !== null}
       isHostedMode={isHostedMode}
+      operationalMode={effectiveHydration?.operationalMode}
+      sourceOrg={effectiveHydration?.manifest.sourceOrg}
+      targetOrg={effectiveHydration?.manifest.targetOrg}
       settingsControl={
         bundle ? (
           <SettingsDrawer
@@ -301,6 +325,7 @@ export function App() {
                 setSelectedOrgIds([organizationId])
               }
               onNavigateTab={setActiveTab}
+              resultsHydration={effectiveHydration ?? undefined}
             />
           )}
           {activeTab === 'readiness' && (
@@ -314,7 +339,11 @@ export function App() {
             <DependencyMapTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
           )}
           {activeTab === 'repositories' && (
-            <RepositoriesTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
+            <RepositoriesTab
+              bundle={bundle}
+              selectedOrgIds={selectedOrgIds}
+              resultsHydration={effectiveHydration ?? undefined}
+            />
           )}
           {activeTab === 'packages' && (
             <PackagesTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
@@ -359,7 +388,12 @@ export function App() {
             <CollectorHealthTab
               bundle={bundle}
               selectedOrgIds={selectedOrgIds}
-              onLoadBundle={handleLoadBundle}
+            />
+          )}
+          {activeTab === 'post-care' && effectiveHydration && (
+            <PostCareChecklistTab
+              bundle={bundle}
+              resultsHydration={effectiveHydration}
             />
           )}
           {activeTab === 'export' && (
@@ -367,16 +401,8 @@ export function App() {
               bundle={bundle}
               insights={insights}
               selectedOrgIds={selectedOrgIds}
+              resultsHydration={effectiveHydration ?? undefined}
             />
-          )}
-          {activeTab === 'control-plane' && (
-            <MigrationControlPlaneTab
-              bundle={bundle}
-              selectedOrgIds={selectedOrgIds}
-            />
-          )}
-          {activeTab === 'console' && (
-            <LiveConsoleTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
           )}
           {activeTab === 'verification' && (
             <VerificationTab

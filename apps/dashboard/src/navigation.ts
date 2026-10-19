@@ -14,10 +14,9 @@ export type DashboardView =
   | 'security'
   | 'teams'
   | 'health'
-  | 'export'
-  | 'control-plane'
-  | 'console'
-  | 'verification';
+  | 'post-care'
+  | 'verification'
+  | 'export';
 
 export type NavigationIcon =
   | 'overview'
@@ -50,7 +49,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
       {
         id: 'overview',
         label: 'Overview',
-        description: 'Assessment summary and key indicators',
+        description: 'Executive summary, module breakdown, and key indicators',
         icon: 'overview',
       },
       {
@@ -80,7 +79,8 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
       {
         id: 'repositories',
         label: 'Repositories',
-        description: 'Repository inventory and sizing',
+        description:
+          'Repository inventory, migration status, and 19-module drill-down',
         icon: 'repository',
       },
       {
@@ -154,29 +154,24 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     label: 'Deliver',
     items: [
       {
-        id: 'control-plane',
-        label: 'Migration Control Plane',
+        id: 'post-care',
+        label: 'Post-Care Checklist',
         description:
-          'Orchestrate wave dispatches, runner capacity, and real-time cohorts',
-        icon: 'automation',
-      },
-      {
-        id: 'console',
-        label: 'Execution Console',
-        description: 'Live migration wave runner and resumption cockpit',
-        icon: 'automation',
+          'Prioritized customer post-migration checklist with direct GitHub Settings links and CLI commands',
+        icon: 'readiness',
       },
       {
         id: 'verification',
         label: 'Verification & Diff',
         description:
-          'Post-migration compliance audit and discrepancy inspector',
+          'Post-migration compliance audit and 34-module discrepancy inspector',
         icon: 'compare',
       },
       {
         id: 'export',
         label: 'Export Center',
-        description: 'PDF and CSV deliverables',
+        description:
+          'PDF, Post-Care CSVs, and Full Operations ledger deliverables',
         icon: 'export',
       },
     ],
