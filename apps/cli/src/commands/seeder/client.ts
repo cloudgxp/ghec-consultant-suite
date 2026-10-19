@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { randomInt } from 'node:crypto';
 import sodium from 'libsodium-wrappers';
 import {
   AdaptiveRateLimiter,
@@ -139,7 +140,7 @@ export class SeederGitHubClient {
         if (isRateLimit && attempt < this.maxRetries) {
           attempt++;
           const retryAfterSec = response.headers.get('retry-after');
-          let delayMs = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+          let delayMs = 1000 * Math.pow(2, attempt) + randomInt(0, 500);
           if (retryAfterSec) {
             delayMs = Math.max(
               delayMs,
@@ -184,7 +185,7 @@ export class SeederGitHubClient {
           );
         }
         attempt++;
-        const backoffMs = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+        const backoffMs = 1000 * Math.pow(2, attempt) + randomInt(0, 500);
         await sleep(backoffMs);
       } finally {
         release();

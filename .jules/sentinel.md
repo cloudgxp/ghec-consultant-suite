@@ -27,3 +27,15 @@
 **Vulnerability:** Found CSV formula injection where `\n` characters were not included in `FORMULA_TRIGGERS` array and regex for testing.
 **Learning:** `\n` character is an additional spreadsheet formula execution trigger when files are opened in some processors like Excel.
 **Prevention:** Include `\n` as one of the strings alongside `=`, `+`, `-`, `@`, `\t`, `\r` to be sanitized to prevent code injection via spreadsheet cells.
+
+## 2026-10-19 - [Use CSPRNG for retry backoff jitter]
+
+**Vulnerability:** Weak PRNG used in network retry jitter generation in .
+**Learning:** While jitter delays are not strictly cryptographic, using weak PRNGs like triggers Static Application Security Testing (SAST) tool alerts and violates secure coding best practices.
+**Prevention:** Use or from instead of , even for non-cryptographic purposes like backoff jitter, to satisfy SAST tools and enforce secure defaults.
+
+## 2024-05-18 - [Use CSPRNG for retry backoff jitter]
+
+**Vulnerability:** Weak PRNG `Math.random()` used in network retry jitter generation in `apps/cli/src/commands/seeder/client.ts`.
+**Learning:** While jitter delays are not strictly cryptographic, using weak PRNGs like `Math.random()` triggers Static Application Security Testing (SAST) tool alerts and violates secure coding best practices.
+**Prevention:** Use `randomInt()` or `randomBytes()` from `node:crypto` instead of `Math.random()`, even for non-cryptographic purposes like backoff jitter, to satisfy SAST tools and enforce secure defaults.
