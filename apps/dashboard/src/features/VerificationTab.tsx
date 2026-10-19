@@ -16,7 +16,7 @@ export const VerificationTab: React.FC<VerificationTabProps> = ({
     <div className="space-y-6">
       <PageHeader
         title="Verification & Discrepancy Inspector"
-        description="Audit post-migration target tenant state against planned migration operations across all 17 modules, inspect side-by-side diffs, and generate copyable CLI remediation commands."
+        description="Audit post-migration target tenant state against planned migration operations across all 34 modules, inspect side-by-side diffs, and generate copyable CLI remediation commands."
       />
       <VerificationDiffInspector
         key={initialReport?.reportId ?? 'default'}

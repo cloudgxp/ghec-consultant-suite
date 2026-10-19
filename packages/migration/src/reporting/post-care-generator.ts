@@ -80,6 +80,10 @@ export interface FullMigrationOperationRow {
   readonly verificationStatus: string;
   readonly requiresPostCare: boolean;
   readonly settingsUrl: string;
+  readonly settingsLinkLabel?: string | undefined;
+  readonly secondaryUrl?: string | undefined;
+  readonly secondaryLinkLabel?: string | undefined;
+  readonly isSecret?: boolean | undefined;
   readonly cliCommand: string;
   readonly notes: string;
 }
@@ -367,6 +371,12 @@ export function resolveTargetSettingsLinks(params: {
       plannedOp?.payload && typeof plannedOp.payload === 'object'
         ? (plannedOp.payload as Record<string, unknown>)
         : undefined;
+    const sourceState =
+      plannedOp?.sourceState && typeof plannedOp.sourceState === 'object'
+        ? (plannedOp.sourceState as Record<string, unknown>)
+        : undefined;
+    const rawClassification =
+      payload?.classification ?? sourceState?.classification;
     const combinedNotes = `${notes ?? ''} ${plannedOp?.reason ?? ''}`;
     const lowerNotes = combinedNotes.toLowerCase();
     const extractedInstallUrl = extractUrlFromText(
@@ -378,14 +388,14 @@ export function resolveTargetSettingsLinks(params: {
       'Recreate URL:',
     );
     const isCustomPrivate =
-      payload?.classification === 'custom_private' ||
+      rawClassification === 'custom_private' ||
       lowerNotes.includes('private custom app');
     const isCustomPublic =
       !isCustomPrivate &&
-      (payload?.classification === 'custom_public' ||
+      (rawClassification === 'custom_public' ||
         lowerNotes.includes('public organization-owned app') ||
         lowerNotes.includes('public custom app') ||
-        (payload?.classification === undefined &&
+        (rawClassification === undefined &&
           Boolean(extractedInstallUrl && extractedRecreateUrl)));
     const installUrl =
       typeof payload?.destination_install_url === 'string'
@@ -409,6 +419,24 @@ export function resolveTargetSettingsLinks(params: {
       typeof payload?.recreated_app_slug === 'string'
         ? payload.recreated_app_slug
         : buildRecreatedAppSlug(appSlug, targetOrg);
+    const installSettingsUrl =
+      typeof payload?.install_settings_url === 'string'
+        ? payload.install_settings_url
+        : undefined;
+
+    if (installSettingsUrl) {
+      return {
+        settingsUrl: installSettingsUrl,
+        settingsLinkLabel: 'Configure Installed App ↗',
+        cliCommand: `gh api /orgs/${targetOrg}/installations`,
+        subDomain: isCustomPrivate
+          ? 'custom_private'
+          : isCustomPublic
+            ? 'custom_public'
+            : 'third_party',
+        cleanResourceName: appSlug,
+      };
+    }
 
     if (isCustomPrivate) {
       return {
@@ -1075,6 +1103,9 @@ function buildActionInstruction(params: {
         ? `Enter webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}/${targetRepo}.`
         : `Enter organization webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}.`;
     case 'github-app': {
+      if (notes && notes.toLowerCase().includes('is installed on target')) {
+        return stripEmbeddedAppUrls(notes);
+      }
       let selectedRepos = '';
       if (notes) {
         const selPrefix = '(selected repositories:';
@@ -1088,13 +1119,15 @@ function buildActionInstruction(params: {
         }
       }
       const selectedSuffix = selectedRepos
-        ? ` Scope installation to selected repositories: ${selectedRepos}.`
-        : '';
+        ? ` Scope installation to selected repositories: ${selectedRepos} (choose "Only select repositories" when installing, pick any 1 repo, then run apps-inventory to auto-sync all listed repos, or select them directly).`
+        : ' Choose "All repositories" when installing.';
+      const recreatedSlug = buildRecreatedAppSlug(cleanResourceName, targetOrg);
+      const installCreatedUrl = `https://github.com/organizations/${encodeURIComponent(targetOrg)}/settings/apps/${encodeURIComponent(recreatedSlug)}/installations`;
       if (subDomain === 'custom_private') {
-        return `Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the Custom Recreate Link or App Manifest, then install on target repositories.${selectedSuffix}`;
+        return `Step 1: Recreate internal custom GitHub App "${cleanResourceName}" on ${targetOrg} using the Custom Recreate Link. Step 2: [Install ${recreatedSlug} on ${targetOrg} ↗](${installCreatedUrl}).${selectedSuffix}`;
       }
       if (subDomain === 'custom_public') {
-        return `Install public organization-owned GitHub App "${cleanResourceName}" on ${targetOrg} using the Marketplace Link, or recreate it under ${targetOrg} using the Custom Recreate Link.${selectedSuffix}`;
+        return `Install public organization-owned GitHub App "${cleanResourceName}" on ${targetOrg} using the Marketplace Link, or recreate it under ${targetOrg} using the Custom Recreate Link and [Install ${recreatedSlug} ↗](${installCreatedUrl}).${selectedSuffix}`;
       }
       return `Install and authorize third-party / Marketplace GitHub App "${cleanResourceName}" on ${targetOrg} using the Marketplace Link.${selectedSuffix}`;
     }
@@ -1172,13 +1205,16 @@ function shouldIncludeGranularItemInPostCare(params: {
     return true;
   }
 
-  // Always include GitHub Apps inventory items (need installation / recreation), except succeeded repo bindings
+  // Always include GitHub Apps inventory items that need installation, recreation, or config changes (exclude succeeded repo bindings and noop items)
   if (
     modLower === 'apps-inventory' ||
     typeLower.includes('github_app') ||
     typeLower.includes('github-app')
   ) {
-    if (typeLower === 'github_app_repository_binding') {
+    if (
+      typeLower === 'github_app_repository_binding' ||
+      item.operationType === 'noop'
+    ) {
       return false;
     }
     return true;
@@ -1236,6 +1272,7 @@ export function generatePostCareDeliverables(
 
   const postCareMap = new Map<string, PostCareItem>();
   const operationRows: FullMigrationOperationRow[] = [];
+  const evaluatedAppSlugs = new Set<string>();
 
   const planOpsById = new Map<string, PlannedOperation>();
   if (plan?.modules) {
@@ -1279,6 +1316,9 @@ export function generatePostCareDeliverables(
           notes: item.notes,
           plannedOp,
         });
+        if (moduleId === 'apps-inventory') {
+          evaluatedAppSlugs.add(links.cleanResourceName.toLowerCase());
+        }
         const requiresPostCare = shouldIncludeGranularItemInPostCare({
           moduleId,
           item,
@@ -1300,6 +1340,12 @@ export function generatePostCareDeliverables(
           verificationStatus: item.verificationStatus,
           requiresPostCare,
           settingsUrl: links.settingsUrl,
+          settingsLinkLabel: links.settingsLinkLabel,
+          ...(links.secondaryUrl ? { secondaryUrl: links.secondaryUrl } : {}),
+          ...(links.secondaryLinkLabel
+            ? { secondaryLinkLabel: links.secondaryLinkLabel }
+            : {}),
+          ...(item.isSecret ? { isSecret: true } : {}),
           cliCommand: links.cliCommand ?? '',
           notes: sanitizeDiagnostics(cleanedItemNotes),
         });
@@ -1417,6 +1463,12 @@ export function generatePostCareDeliverables(
           verificationStatus: item.verificationStatus,
           requiresPostCare,
           settingsUrl: links.settingsUrl,
+          settingsLinkLabel: links.settingsLinkLabel,
+          ...(links.secondaryUrl ? { secondaryUrl: links.secondaryUrl } : {}),
+          ...(links.secondaryLinkLabel
+            ? { secondaryLinkLabel: links.secondaryLinkLabel }
+            : {}),
+          ...(item.isSecret ? { isSecret: true } : {}),
           cliCommand: links.cliCommand ?? '',
           notes: sanitizeDiagnostics(cleanedItemNotes),
         });
@@ -1531,6 +1583,9 @@ export function generatePostCareDeliverables(
           notes: op.reason,
           plannedOp: op,
         });
+        if (modPlan.moduleId === 'apps-inventory') {
+          evaluatedAppSlugs.add(links.cleanResourceName.toLowerCase());
+        }
         const requiresPostCare = shouldIncludeGranularItemInPostCare({
           moduleId: modPlan.moduleId,
           item: syntheticItem,
@@ -1574,6 +1629,11 @@ export function generatePostCareDeliverables(
             verificationStatus: 'not-verified',
             requiresPostCare,
             settingsUrl: links.settingsUrl,
+            settingsLinkLabel: links.settingsLinkLabel,
+            ...(links.secondaryUrl ? { secondaryUrl: links.secondaryUrl } : {}),
+            ...(links.secondaryLinkLabel
+              ? { secondaryLinkLabel: links.secondaryLinkLabel }
+              : {}),
             cliCommand: links.cliCommand ?? '',
             notes: sanitizeDiagnostics(cleanedOpReason),
           });
@@ -1821,6 +1881,9 @@ export function generatePostCareDeliverables(
         const targetRepo = resolveRepoFromEntityId(entity.repositoryId);
         const isOrg = !targetRepo;
         if (entity.integrationKind === 'github_app') {
+          if (evaluatedAppSlugs.has(entity.label.toLowerCase())) {
+            continue;
+          }
           const links = resolveTargetSettingsLinks({
             moduleId: 'apps-inventory',
             resourceType: 'github_app_installation',
@@ -2279,12 +2342,17 @@ export function formatPostCareChecklistMarkdown(params: {
       const slug = escapeMarkdownTableCell(app.resourceName);
       const cls = escapeMarkdownTableCell(app.subDomain);
       const action = escapeMarkdownTableCell(app.actionRequired);
-      const marketplaceLink =
-        app.subDomain === 'custom_private'
+      const isAlreadyInstalledConfigUrl = app.settingsUrl.includes(
+        '/settings/installations/',
+      );
+      const marketplaceLink = isAlreadyInstalledConfigUrl
+        ? `[Configure Installed App on ${targetOrg} ↗](${app.settingsUrl})`
+        : app.subDomain === 'custom_private'
           ? '—'
           : `[Install App on ${targetOrg} ↗](${app.settingsUrl})`;
-      const customRecreateLink =
-        app.subDomain === 'custom_private'
+      const customRecreateLink = isAlreadyInstalledConfigUrl
+        ? '—'
+        : app.subDomain === 'custom_private'
           ? `[Recreate Custom App (Pre-Filled) ↗](${app.settingsUrl})`
           : app.secondaryUrl
             ? `[Recreate Custom App (Pre-Filled) ↗](${app.secondaryUrl})`

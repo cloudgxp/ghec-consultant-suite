@@ -323,21 +323,46 @@ export const VerificationDiffInspector: React.FC<
 
       {/* Discrepancies or Clean Banner */}
       {stats.discrepancyCount === 0 ? (
-        <div className="p-8 rounded-lg border border-[var(--borderColor-success-emphasis)] bg-[var(--canvas-subtle)] text-center space-y-3">
-          <div className="w-12 h-12 rounded-full bg-[var(--canvas-default)] border border-[var(--borderColor-success-emphasis)] text-[var(--fgColor-success)] flex items-center justify-center mx-auto">
-            <ShieldCheckIcon size={28} />
+        <div className="space-y-4">
+          <div className="p-8 rounded-lg border border-[var(--borderColor-success-emphasis)] bg-[var(--canvas-subtle)] text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-[var(--canvas-default)] border border-[var(--borderColor-success-emphasis)] text-[var(--fgColor-success)] flex items-center justify-center mx-auto">
+              <ShieldCheckIcon size={28} />
+            </div>
+            <h3 className="text-lg font-bold text-[var(--fgColor-default)]">
+              Full Target Compliance Verified
+            </h3>
+            <p className="text-sm text-[var(--fgColor-muted)] max-w-xl mx-auto">
+              All {stats.totalModules} modules evaluated against target
+              organization{' '}
+              <span className="font-mono text-[var(--fgColor-default)]">
+                {report.targetOrg}
+              </span>{' '}
+              match the planned migration state with zero discrepancies.
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-[var(--fgColor-default)]">
-            Full Target Compliance Verified
-          </h3>
-          <p className="text-sm text-[var(--fgColor-muted)] max-w-xl mx-auto">
-            All {stats.totalModules} modules evaluated against target
-            organization{' '}
-            <span className="font-mono text-[var(--fgColor-default)]">
-              {report.targetOrg}
-            </span>{' '}
-            match the planned migration state with zero discrepancies.
-          </p>
+          {report.modules.length > 0 && (
+            <div className="rounded-lg border border-[var(--borderColor-default)] bg-[var(--bgColor-default)] p-4">
+              <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--fgColor-muted)]">
+                Verified Modules ({report.modules.length})
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {report.modules.map((mod) => (
+                  <div
+                    key={mod.moduleId}
+                    className="flex items-center justify-between rounded border border-[var(--borderColor-muted)] bg-[var(--canvas-subtle)] px-3 py-2 text-xs"
+                  >
+                    <span className="font-mono font-bold text-[var(--fgColor-default)]">
+                      {mod.moduleId}
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-[var(--fgColor-success)]">
+                      <CheckCircleIcon size={12} />
+                      <span>Verified</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : filteredDiscrepancies.length === 0 ? (
         <div className="p-8 rounded-lg border border-[var(--borderColor-default)] bg-[var(--canvas-subtle)] text-center space-y-2">

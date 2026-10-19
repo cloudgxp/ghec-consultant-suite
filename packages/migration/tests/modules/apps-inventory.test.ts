@@ -1072,4 +1072,239 @@ describe('AppsInventoryMigrationModule', () => {
     assert.equal(enterpriseDirect.recommendedStrategy, 'recreate_app');
     assert.equal(enterpriseDirect.ownerLogin, 'cloudgxp');
   });
+
+  it('prunes extra placeholder repositories on target installation after binding selected_repositories', async () => {
+    const mod = new AppsInventoryMigrationModule();
+    const sourceData: AppsInventoryData = {
+      organization: 'demogxp',
+      installations: [
+        {
+          id: 172736491,
+          app_id: 5369870,
+          app_slug: 'demogxp-test-custom',
+          repository_selection: 'selected',
+          selected_repositories: ['react', 'demo'],
+          permissions: { actions: 'write', metadata: 'read' },
+          events: [],
+          classification: 'custom_private',
+          recommended_strategy: 'recreate_app',
+        },
+      ],
+    };
+
+    const rawTarget: RawAppInstallationsListResponse = {
+      total_count: 1,
+      installations: [
+        {
+          id: 173020003,
+          app_id: 5379776,
+          app_slug: 'demogxp-test-custom-demogxp-mig8',
+          repository_selection: 'selected',
+          permissions: { actions: 'write', metadata: 'read' },
+          events: [],
+        },
+      ],
+    };
+
+    const mutations: Array<{
+      method: string;
+      path: string;
+      pathParams?: Record<string, string>;
+    }> = [];
+
+    const ctx: MigrationContext = {
+      ...createContext(null, rawTarget, false),
+      scope: {
+        level: 'organization',
+        sourceOrg: 'demogxp',
+        targetOrg: 'demogxp-mig8',
+      },
+      targetClient: new MockReadAdapter(rawTarget, (op) => {
+        if (op.path === '/repos/{owner}/{repo}') {
+          const repo = op.pathParams?.repo;
+          return {
+            status: 200,
+            data: {
+              id: repo === 'react' ? 1001 : 1002,
+              name: repo,
+            },
+          };
+        }
+        if (op.path === '/user/installations/{installation_id}/repositories') {
+          return {
+            status: 200,
+            data: {
+              total_count: 3,
+              repositories: [
+                { id: 1001, name: 'react' },
+                { id: 1002, name: 'demo' },
+                { id: 9999, name: 'placeholder-repo' },
+              ],
+            },
+          };
+        }
+        return null;
+      }),
+      targetWriteClient: {
+        async mutate(op) {
+          mutations.push({
+            method: op.method,
+            path: op.path,
+            pathParams: op.pathParams,
+          });
+          return { status: 204 };
+        },
+      },
+    };
+
+    const plan = await mod.plan(ctx, sourceData);
+    const applyResult = await mod.apply(ctx, plan);
+    assert.equal(applyResult.status, 'complete');
+    assert.equal(mutations.length, 3);
+    assert.deepEqual(mutations[0], {
+      method: 'PUT',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: { installation_id: '173020003', repository_id: '1001' },
+    });
+    assert.deepEqual(mutations[1], {
+      method: 'PUT',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: { installation_id: '173020003', repository_id: '1002' },
+    });
+    assert.deepEqual(mutations[2], {
+      method: 'DELETE',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: { installation_id: '173020003', repository_id: '9999' },
+    });
+  });
+
+  it('warns on repository_selection mismatch and binds all existing org repos when source is all and target is selected', async () => {
+    const mod = new AppsInventoryMigrationModule();
+    const sourceData: AppsInventoryData = {
+      organization: 'demogxp',
+      installations: [
+        {
+          id: 1,
+          app_id: 5369870,
+          app_slug: 'demogxp-test-custom',
+          repository_selection: 'selected',
+          selected_repositories: ['react', 'demo'],
+          permissions: { metadata: 'read' },
+          events: [],
+        },
+        {
+          id: 2,
+          app_id: 37423,
+          app_slug: 'hackmd-hub',
+          repository_selection: 'all',
+          permissions: { metadata: 'read' },
+          events: [],
+        },
+      ],
+    };
+
+    const rawTarget: RawAppInstallationsListResponse = {
+      total_count: 2,
+      installations: [
+        {
+          id: 173020003,
+          app_id: 5379776,
+          app_slug: 'demogxp-test-custom-demogxp-mig8',
+          repository_selection: 'all',
+          permissions: { metadata: 'read' },
+          events: [],
+          html_url:
+            'https://github.com/organizations/demogxp-mig8/settings/installations/173020003',
+        },
+        {
+          id: 173020440,
+          app_id: 37423,
+          app_slug: 'hackmd-hub',
+          repository_selection: 'selected',
+          permissions: { metadata: 'read' },
+          events: [],
+          html_url:
+            'https://github.com/organizations/demogxp-mig8/settings/installations/173020440',
+        },
+      ],
+    };
+
+    const mutations: Array<{
+      method: string;
+      path: string;
+      pathParams?: Record<string, string>;
+    }> = [];
+
+    const ctx: MigrationContext = {
+      ...createContext(null, rawTarget, false),
+      scope: {
+        level: 'organization',
+        sourceOrg: 'demogxp',
+        targetOrg: 'demogxp-mig8',
+      },
+      targetClient: new MockReadAdapter(rawTarget, (op) => {
+        if (op.path === '/orgs/{org}/repos') {
+          return {
+            status: 200,
+            data: [
+              { id: 201, name: 'react' },
+              { id: 202, name: 'demo' },
+            ],
+          };
+        }
+        return null;
+      }),
+      targetWriteClient: {
+        async mutate(op) {
+          mutations.push({
+            method: op.method,
+            path: op.path,
+            pathParams: op.pathParams,
+          });
+          return { status: 204 };
+        },
+      },
+    };
+
+    const plan = await mod.plan(ctx, sourceData);
+    assert.equal(plan.warnings.length, 2);
+    assert.ok(
+      plan.warnings[0]?.includes(
+        'repository_selection: expected "selected" (react, demo), got "all"',
+      ),
+    );
+    assert.ok(
+      plan.warnings[1]?.includes(
+        'repository_selection: expected "all", got "selected"',
+      ),
+    );
+
+    const applyResult = await mod.apply(ctx, plan);
+    assert.equal(applyResult.status, 'complete');
+    // hackmd-hub (source=all, target=selected) binds all org repos (201, 202)
+    assert.equal(mutations.length, 2);
+    assert.deepEqual(mutations[0], {
+      method: 'PUT',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: { installation_id: '173020440', repository_id: '201' },
+    });
+    assert.deepEqual(mutations[1], {
+      method: 'PUT',
+      path: '/user/installations/{installation_id}/repositories/{repository_id}',
+      pathParams: { installation_id: '173020440', repository_id: '202' },
+    });
+
+    // Strict verify (continueOnError=false) flags both repository_selection discrepancies
+    const strictVerify = await mod.verify(ctx, plan);
+    assert.equal(strictVerify.verified, false);
+    assert.equal(strictVerify.discrepancies.length, 2);
+
+    // Advisory verify (continueOnError=true) logs warnings without failing gate
+    const lenientVerify = await mod.verify(
+      { ...ctx, continueOnError: true },
+      plan,
+    );
+    assert.equal(lenientVerify.verified, true);
+    assert.equal(lenientVerify.discrepancies.length, 0);
+  });
 });
