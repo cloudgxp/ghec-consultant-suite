@@ -64,36 +64,31 @@ export const SecurityAndPoliciesTab: React.FC<Props> = ({
     window.addEventListener('ghec:focus-entity', focus);
     return () => window.removeEventListener('ghec:focus-entity', focus);
   }, []);
-  const security = useMemo(
-    () =>
-      bundle.entities.filter(
-        (entity): entity is Security =>
-          entity.kind === 'security' &&
-          (selectedOrgIds.length === 0 ||
-            selectedOrgIds.includes(entity.organizationId)),
-      ),
-    [bundle, selectedOrgIds],
-  );
-  const policies = useMemo(
-    () =>
-      bundle.entities.filter(
-        (entity): entity is Policy =>
-          entity.kind === 'policy' &&
-          (selectedOrgIds.length === 0 ||
-            selectedOrgIds.includes(entity.organizationId)),
-      ),
-    [bundle, selectedOrgIds],
-  );
-  const integrations = useMemo(
-    () =>
-      bundle.entities.filter(
-        (entity): entity is Integration =>
-          entity.kind === 'integration' &&
-          (selectedOrgIds.length === 0 ||
-            selectedOrgIds.includes(entity.organizationId)),
-      ),
-    [bundle, selectedOrgIds],
-  );
+  // ⚡ Bolt: Consolidate multiple O(N) array passes into a single pass to reduce main thread blocking
+  const { security, policies, integrations } = useMemo(() => {
+    const sec: Security[] = [];
+    const pol: Policy[] = [];
+    const int: Integration[] = [];
+
+    for (const entity of bundle.entities) {
+      if (
+        selectedOrgIds.length > 0 &&
+        !selectedOrgIds.includes(entity.organizationId)
+      ) {
+        continue;
+      }
+
+      if (entity.kind === 'security') {
+        sec.push(entity as Security);
+      } else if (entity.kind === 'policy') {
+        pol.push(entity as Policy);
+      } else if (entity.kind === 'integration') {
+        int.push(entity as Integration);
+      }
+    }
+
+    return { security: sec, policies: pol, integrations: int };
+  }, [bundle, selectedOrgIds]);
   const renderStatusLabel = (value: 'enabled' | 'disabled' | 'unknown') => (
     <Label
       size="small"
