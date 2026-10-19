@@ -107,6 +107,11 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
                 (repoEntity.homepage as string | undefined) ?? undefined,
               defaultBranch:
                 (repoEntity.defaultBranch as string | undefined) ?? undefined,
+              archived:
+                repoEntity.archived !== undefined &&
+                repoEntity.archived !== null
+                  ? Boolean(repoEntity.archived)
+                  : undefined,
             },
           };
         }
@@ -328,27 +333,135 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
         continue;
       }
 
-      const payload = (op.payload as Record<string, unknown>) ?? {};
+      const rawPayload = (op.payload as Record<string, unknown>) ?? {};
+      const wantsArchive = rawPayload.archived === true;
+      const shouldDeferArchive = Boolean(ctx.deferArchiving) && wantsArchive;
+
+      const payload: Record<string, unknown> = { ...rawPayload };
+      if (wantsArchive) {
+        // Always apply non-archive settings while unarchived (archived: false) so GitHub does not
+        // reject mutations with 403 Repository was archived so is read-only.
+        payload.archived = false;
+      }
+      if (shouldDeferArchive && payload.has_issues === false) {
+        // Keep issues enabled until finalization so downstream pull-requests module can create
+        // its Historical Pull Requests Archive issue before archiving.
+        payload.has_issues = true;
+      }
+
       let res:
         | { status: number; data?: RawGitHubRepositoryResponse | undefined }
         | undefined;
       let is422 = false;
       let failureError: string | undefined;
 
-      try {
-        res = await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
-          {
-            id: 'rest.repos.update',
-            method: 'PATCH',
-            path: '/repos/{owner}/{repo}',
-            pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
-            body: payload,
-          },
-          ctx.signal,
-        );
+      const patchTargetRepo = async (
+        id: string,
+        body: Record<string, unknown>,
+      ): Promise<{
+        status: number;
+        data?: RawGitHubRepositoryResponse | undefined;
+      }> => {
+        try {
+          const r =
+            await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+              {
+                id,
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body,
+              },
+              ctx.signal,
+            );
+          if (r.status === 403 && body.archived !== false) {
+            await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+              {
+                id: `${id}.unarchive`,
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body: { archived: false },
+              },
+              ctx.signal,
+            );
+            return await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+              {
+                id: `${id}.retryAfterUnarchive`,
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body,
+              },
+              ctx.signal,
+            );
+          }
+          return r;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          const status = (err as { status?: number })?.status;
+          if (
+            body.archived !== false &&
+            (status === 403 ||
+              msg.includes('HTTP 403') ||
+              msg.toLowerCase().includes('archived'))
+          ) {
+            await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+              {
+                id: `${id}.unarchiveOnCatch`,
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body: { archived: false },
+              },
+              ctx.signal,
+            );
+            return await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+              {
+                id: `${id}.retryOnCatch`,
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body,
+              },
+              ctx.signal,
+            );
+          }
+          throw err;
+        }
+      };
 
-        if (res.status === 422) {
-          is422 = true;
+      try {
+        const nonArchiveKeys = Object.keys(payload).filter(
+          (k) => k !== 'archived',
+        );
+        if (nonArchiveKeys.length > 0 || shouldDeferArchive || !wantsArchive) {
+          res = await patchTargetRepo('rest.repos.update', payload);
+          if (res.status === 422) {
+            is422 = true;
+          }
+        } else {
+          res = { status: 200 };
+        }
+
+        if (
+          wantsArchive &&
+          !shouldDeferArchive &&
+          res &&
+          res.status >= 200 &&
+          res.status < 300
+        ) {
+          res =
+            await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+              {
+                id: 'rest.repos.archiveFinal',
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+                body: { archived: true },
+              },
+              ctx.signal,
+            );
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -380,19 +493,27 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
 
           try {
             const fallbackPayload = { ...payload, visibility: 'internal' };
-            const fallbackRes =
-              await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
-                {
-                  id: 'rest.repos.updateFallback',
-                  method: 'PATCH',
-                  path: '/repos/{owner}/{repo}',
-                  pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
-                  body: fallbackPayload,
-                },
-                ctx.signal,
-              );
+            const fallbackRes = await patchTargetRepo(
+              'rest.repos.updateFallback',
+              fallbackPayload,
+            );
 
             if (fallbackRes.status >= 200 && fallbackRes.status < 300) {
+              if (wantsArchive && !shouldDeferArchive) {
+                await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+                  {
+                    id: 'rest.repos.archiveFallbackFinal',
+                    method: 'PATCH',
+                    path: '/repos/{owner}/{repo}',
+                    pathParams: {
+                      owner: ctx.scope.targetOrg,
+                      repo: targetRepo,
+                    },
+                    body: { archived: true },
+                  },
+                  ctx.signal,
+                );
+              }
               ctx.logger.warn(
                 `Successfully reconciled ${targetRepo} visibility as 'internal' due to enterprise policy constraints.`,
               );
@@ -418,21 +539,26 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
               delete sanitizedPayload.merge_commit_title;
               delete sanitizedPayload.merge_commit_message;
               delete sanitizedPayload.allow_auto_merge;
-              const retryRes =
-                await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
-                  {
-                    id: 'rest.repos.updateSanitizedFallback',
-                    method: 'PATCH',
-                    path: '/repos/{owner}/{repo}',
-                    pathParams: {
-                      owner: ctx.scope.targetOrg,
-                      repo: targetRepo,
-                    },
-                    body: sanitizedPayload,
-                  },
-                  ctx.signal,
-                );
+              const retryRes = await patchTargetRepo(
+                'rest.repos.updateSanitizedFallback',
+                sanitizedPayload,
+              );
               if (retryRes.status >= 200 && retryRes.status < 300) {
+                if (wantsArchive && !shouldDeferArchive) {
+                  await ctx.targetWriteClient!.mutate<RawGitHubRepositoryResponse>(
+                    {
+                      id: 'rest.repos.archiveSanitizedFinal',
+                      method: 'PATCH',
+                      path: '/repos/{owner}/{repo}',
+                      pathParams: {
+                        owner: ctx.scope.targetOrg,
+                        repo: targetRepo,
+                      },
+                      body: { archived: true },
+                    },
+                    ctx.signal,
+                  );
+                }
                 results.push({
                   operationId: op.id,
                   status: 'succeeded',
@@ -719,6 +845,22 @@ export class RepoSettingsMigrationModule implements MigrationModule<RepoSettings
             expected: payload.default_branch,
             actual: actualMetadata.defaultBranch ?? null,
             message: `default_branch mismatch: expected "${payload.default_branch}", got "${actualMetadata.defaultBranch ?? ''}".`,
+          });
+        }
+
+        const expectedArchived =
+          (payload.archived as boolean | undefined) ??
+          (op.sourceState as { metadata?: { archived?: boolean } } | undefined)
+            ?.metadata?.archived;
+        if (
+          expectedArchived !== undefined &&
+          Boolean(actualMetadata.archived) !== expectedArchived
+        ) {
+          discrepancies.push({
+            resourceName: `${op.resourceName} (archived)`,
+            expected: expectedArchived,
+            actual: Boolean(actualMetadata.archived),
+            message: `Repository archived status mismatch: expected ${expectedArchived}, got ${Boolean(actualMetadata.archived)}.`,
           });
         }
       }

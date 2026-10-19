@@ -1,6 +1,7 @@
 import type {
   DiscoveryBundle,
   MigrationPlan,
+  MigrationScope,
   PlannedOperation,
 } from '@ghec/contracts';
 import { sanitizeDiagnostics } from '@ghec/github-client';
@@ -83,6 +84,17 @@ export interface FullMigrationOperationRow {
   readonly notes: string;
 }
 
+export interface SkippedArchivedRepositoryRow {
+  readonly sourceOrg: string;
+  readonly sourceRepo: string;
+  readonly visibility: string;
+  readonly isFork: boolean;
+  readonly archivedStatus: 'archived';
+  readonly disposition: 'skipped-archived';
+  readonly sourceUrl: string;
+  readonly notes: string;
+}
+
 export interface ResolvedSettingsLinks {
   readonly settingsUrl: string;
   readonly settingsLinkLabel: string;
@@ -101,6 +113,7 @@ export interface GeneratePostCareOptions {
   readonly targetOrg: string;
   readonly mode: PostCareOperationalMode;
   readonly discoveryBundle?: DiscoveryBundle | undefined;
+  readonly scope?: MigrationScope | undefined;
   readonly plan?: MigrationPlan | undefined;
   readonly orgModuleModels?:
     | ReadonlyMap<string, OrgModuleDetailModel>
@@ -116,6 +129,7 @@ export interface GeneratePostCareOptions {
 export interface GeneratedPostCareDeliverables {
   readonly items: readonly PostCareItem[];
   readonly operationRows: readonly FullMigrationOperationRow[];
+  readonly skippedArchivedRows: readonly SkippedArchivedRepositoryRow[];
   readonly checklistMarkdown: string;
   readonly csvFiles: Readonly<Record<string, string>>;
 }
@@ -1953,6 +1967,98 @@ export function generatePostCareDeliverables(
     }
   }
 
+  const skippedArchivedMap = new Map<string, SkippedArchivedRepositoryRow>();
+  if (options.scope?.skippedArchivedRepositories) {
+    for (const skipped of options.scope.skippedArchivedRepositories) {
+      const key = `${skipped.sourceOrg.toLowerCase()}/${skipped.sourceRepo.toLowerCase()}`;
+      skippedArchivedMap.set(key, {
+        sourceOrg: skipped.sourceOrg,
+        sourceRepo: skipped.sourceRepo,
+        visibility: skipped.visibility ?? 'unknown',
+        isFork: Boolean(skipped.isFork),
+        archivedStatus: 'archived',
+        disposition: 'skipped-archived',
+        sourceUrl: `https://github.com/${encodeURIComponent(skipped.sourceOrg)}/${encodeURIComponent(skipped.sourceRepo)}`,
+        notes:
+          skipped.reason ??
+          'Repository is archived on source organization and was excluded from scope (include_archived=false).',
+      });
+    }
+  }
+
+  const scopedSourceRepoSet = new Set<string>(
+    (options.scope?.repositories ?? []).map((r) => r.sourceRepo.toLowerCase()),
+  );
+  if (
+    options.discoveryBundle &&
+    options.scope &&
+    (options.scope.repositories.length > 0 ||
+      Boolean(options.scope.skippedArchivedRepositories))
+  ) {
+    for (const entity of options.discoveryBundle.entities) {
+      if (entity.kind !== 'repository' || entity.archived !== true) {
+        continue;
+      }
+      if (scopedSourceRepoSet.has(entity.name.toLowerCase())) {
+        continue;
+      }
+      const key = `${sourceOrg.toLowerCase()}/${entity.name.toLowerCase()}`;
+      if (!skippedArchivedMap.has(key)) {
+        skippedArchivedMap.set(key, {
+          sourceOrg,
+          sourceRepo: entity.name,
+          visibility: entity.visibility ?? 'unknown',
+          isFork: Boolean(entity.fork),
+          archivedStatus: 'archived',
+          disposition: 'skipped-archived',
+          sourceUrl: `https://github.com/${encodeURIComponent(sourceOrg)}/${encodeURIComponent(entity.name)}`,
+          notes:
+            'Repository is archived on source organization and was excluded from scope (include_archived=false).',
+        });
+      }
+    }
+  }
+
+  const skippedArchivedRows = Array.from(skippedArchivedMap.values()).sort(
+    (a, b) => a.sourceRepo.localeCompare(b.sourceRepo),
+  );
+
+  // Annotate archived repositories in operationRows when include_archived=true
+  const archivedTargetRepos = new Set<string>();
+  for (const r of options.scope?.repositories ?? []) {
+    if (r.archived === true || r.options?.archived === true) {
+      archivedTargetRepos.add(r.targetRepo.toLowerCase());
+    }
+  }
+  if (options.discoveryBundle) {
+    for (const entity of options.discoveryBundle.entities) {
+      if (entity.kind === 'repository' && entity.archived === true) {
+        const mappedTarget =
+          options.repoSourceToTarget?.get(entity.name.toLowerCase()) ??
+          entity.name;
+        archivedTargetRepos.add(mappedTarget.toLowerCase());
+      }
+    }
+  }
+  if (archivedTargetRepos.size > 0) {
+    for (let idx = 0; idx < operationRows.length; idx++) {
+      const row = operationRows[idx]!;
+      if (
+        row.targetRepo &&
+        archivedTargetRepos.has(row.targetRepo.toLowerCase()) &&
+        (row.moduleId === 'gei-repo' || row.moduleId === 'repo-settings') &&
+        !/\barchived\b/i.test(row.notes)
+      ) {
+        operationRows[idx] = {
+          ...row,
+          notes: row.notes
+            ? `${row.notes} (archived: true)`
+            : 'archived: true (restored to read-only after migration)',
+        };
+      }
+    }
+  }
+
   const priorityRank: Record<PostCarePriority, number> = {
     high: 0,
     medium: 1,
@@ -1981,11 +2087,16 @@ export function generatePostCareDeliverables(
     mode,
     items,
   });
-  const csvFiles = buildPostCareCsvFiles(items, operationRows);
+  const csvFiles = buildPostCareCsvFiles(
+    items,
+    operationRows,
+    skippedArchivedRows,
+  );
 
   return {
     items,
     operationRows,
+    skippedArchivedRows,
     checklistMarkdown,
     csvFiles,
   };
@@ -2413,6 +2524,17 @@ const FULL_OPERATIONS_CSV_HEADERS = [
   'notes',
 ] as const;
 
+export const ARCHIVED_REPOSITORIES_SKIPPED_CSV_HEADERS = [
+  'source_org',
+  'source_repo',
+  'visibility',
+  'is_fork',
+  'archived_status',
+  'disposition',
+  'source_url',
+  'notes',
+] as const;
+
 export function sanitizePostCareCsvCell(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
@@ -2477,9 +2599,30 @@ export function serializeFullOperationsToCsv(
   return rows.join('\n') + '\n';
 }
 
+export function serializeSkippedArchivedRepositoriesToCsv(
+  skippedRepos: readonly SkippedArchivedRepositoryRow[],
+): string {
+  const rows: string[] = [ARCHIVED_REPOSITORIES_SKIPPED_CSV_HEADERS.join(',')];
+  for (const repo of skippedRepos) {
+    const cells = [
+      sanitizePostCareCsvCell(repo.sourceOrg),
+      sanitizePostCareCsvCell(repo.sourceRepo),
+      sanitizePostCareCsvCell(repo.visibility),
+      sanitizePostCareCsvCell(repo.isFork ? 'true' : 'false'),
+      sanitizePostCareCsvCell(repo.archivedStatus),
+      sanitizePostCareCsvCell(repo.disposition),
+      sanitizePostCareCsvCell(repo.sourceUrl),
+      sanitizePostCareCsvCell(repo.notes),
+    ];
+    rows.push(cells.join(','));
+  }
+  return rows.join('\n') + '\n';
+}
+
 function buildPostCareCsvFiles(
   items: readonly PostCareItem[],
   operationRows: readonly FullMigrationOperationRow[],
+  skippedArchivedRows: readonly SkippedArchivedRepositoryRow[] = [],
 ): Record<string, string> {
   const identityAndAccessItems = items.filter(
     (i) =>
@@ -2548,5 +2691,7 @@ function buildPostCareCsvFiles(
       ),
     'exports/migration-operations-full.csv':
       serializeFullOperationsToCsv(operationRows),
+    'exports/archived-repositories-skipped.csv':
+      serializeSkippedArchivedRepositoriesToCsv(skippedArchivedRows),
   };
 }

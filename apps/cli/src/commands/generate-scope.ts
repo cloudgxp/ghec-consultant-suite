@@ -8,6 +8,7 @@ import {
   validateMigrationScope,
   type MigrationScope,
   type OrgItemsMode,
+  type SkippedArchivedRepository,
 } from '@ghec/contracts';
 import { sanitizeDiagnostics } from '@ghec/github-client';
 import {
@@ -134,6 +135,76 @@ export function parseSourceVisibilityFilter(
   return allowed;
 }
 
+export interface PartitionedRepositoriesResult {
+  readonly matched: string[];
+  readonly archivedNames: ReadonlySet<string>;
+  readonly skippedArchived: SkippedArchivedRepository[];
+}
+
+/**
+ * Partitions raw repository metadata into matched repository names, archived repository names,
+ * and skipped archived repository records when `includeArchived` is false.
+ */
+export function partitionDiscoveredRepositories(
+  repos: readonly SourceRepoMetadata[],
+  options: {
+    readonly sourceOrg?: string | undefined;
+    readonly includeArchived?: boolean | undefined;
+    readonly excludeForks?: boolean | undefined;
+    readonly sourceVisibility?: string | undefined;
+  } = {},
+): PartitionedRepositoriesResult {
+  const includeArchived = options.includeArchived ?? false;
+  const excludeForks = options.excludeForks ?? false;
+  const visibilitySet = parseSourceVisibilityFilter(options.sourceVisibility);
+  const sourceOrg = options.sourceOrg ?? 'unknown';
+
+  const matched: string[] = [];
+  const archivedNames = new Set<string>();
+  const skippedArchived: SkippedArchivedRepository[] = [];
+
+  for (const repo of repos) {
+    const isArchived = Boolean(repo.isArchived ?? repo.archived);
+    const isFork = Boolean(repo.isFork ?? repo.fork);
+    if (excludeForks && isFork) {
+      continue;
+    }
+    const rawVis = (
+      repo.visibility ?? (repo.isPrivate || repo.private ? 'private' : 'public')
+    )
+      .trim()
+      .toLowerCase();
+    const normalizedVis: 'public' | 'private' | 'internal' | 'unknown' =
+      rawVis === 'public' || rawVis === 'private' || rawVis === 'internal'
+        ? rawVis
+        : 'unknown';
+
+    if (visibilitySet) {
+      if (normalizedVis === 'unknown' || !visibilitySet.has(normalizedVis)) {
+        continue;
+      }
+    }
+
+    if (!includeArchived && isArchived) {
+      skippedArchived.push({
+        sourceOrg,
+        sourceRepo: repo.name,
+        visibility: normalizedVis,
+        isFork,
+        reason:
+          'Repository is archived on source organization and was excluded from scope (include_archived=false).',
+      });
+      continue;
+    }
+    if (isArchived) {
+      archivedNames.add(repo.name);
+    }
+    matched.push(repo.name);
+  }
+
+  return { matched, archivedNames, skippedArchived };
+}
+
 /**
  * Filters raw repository metadata from GitHub CLI or REST API by archived status, fork status, and source visibility.
  */
@@ -145,34 +216,7 @@ export function filterDiscoveredRepositories(
     readonly sourceVisibility?: string | undefined;
   } = {},
 ): string[] {
-  const includeArchived = options.includeArchived ?? false;
-  const excludeForks = options.excludeForks ?? false;
-  const visibilitySet = parseSourceVisibilityFilter(options.sourceVisibility);
-
-  const matched: string[] = [];
-  for (const repo of repos) {
-    const isArchived = Boolean(repo.isArchived ?? repo.archived);
-    if (!includeArchived && isArchived) {
-      continue;
-    }
-    const isFork = Boolean(repo.isFork ?? repo.fork);
-    if (excludeForks && isFork) {
-      continue;
-    }
-    if (visibilitySet) {
-      const rawVis = (
-        repo.visibility ??
-        (repo.isPrivate || repo.private ? 'private' : 'public')
-      )
-        .trim()
-        .toLowerCase() as SourceRepoVisibility;
-      if (!visibilitySet.has(rawVis)) {
-        continue;
-      }
-    }
-    matched.push(repo.name);
-  }
-  return matched;
+  return partitionDiscoveredRepositories(repos, options).matched;
 }
 
 /**
@@ -266,10 +310,11 @@ async function fetchSourceRepositories(
     readonly repoFetcher?:
       ((org: string) => Promise<readonly SourceRepoMetadata[]>) | undefined;
   } = {},
-): Promise<string[]> {
+): Promise<PartitionedRepositoriesResult> {
+  const partitionOpts = { ...options, sourceOrg };
   if (options.repoFetcher) {
     const raw = await options.repoFetcher(sourceOrg);
-    return filterDiscoveredRepositories(raw, options);
+    return partitionDiscoveredRepositories(raw, partitionOpts);
   }
 
   let reposFromGh: SourceRepoMetadata[] | null = null;
@@ -289,7 +334,7 @@ async function fetchSourceRepositories(
   }
 
   if (reposFromGh) {
-    return filterDiscoveredRepositories(reposFromGh, options);
+    return partitionDiscoveredRepositories(reposFromGh, partitionOpts);
   }
 
   const token =
@@ -338,7 +383,7 @@ async function fetchSourceRepositories(
     page++;
   }
 
-  return filterDiscoveredRepositories(rawRepos, options);
+  return partitionDiscoveredRepositories(rawRepos, partitionOpts);
 }
 
 export function parseGenerateScopeOptions(
@@ -574,6 +619,8 @@ export async function executeGenerateScopeCommand(
 
   const shouldFetchAll = all || Boolean(sourceVisibility);
   const reposByOrg = new Map<string, string[]>();
+  const archivedNamesByOrg = new Map<string, ReadonlySet<string>>();
+  const skippedArchivedRepositories: SkippedArchivedRepository[] = [];
   for (const srcOrg of sourceOrgs) {
     reposByOrg.set(srcOrg, []);
   }
@@ -622,7 +669,7 @@ export async function executeGenerateScopeCommand(
           `Discovering repositories for source organization '${srcOrg}'${visLabel}...`,
         );
       }
-      const discovered = await fetchSourceRepositories(srcOrg, {
+      const partitioned = await fetchSourceRepositories(srcOrg, {
         includeArchived,
         excludeForks,
         sourceVisibility,
@@ -630,10 +677,12 @@ export async function executeGenerateScopeCommand(
       });
       if (!silent) {
         console.log(
-          `Discovered ${discovered.length} repository/repositories in '${srcOrg}'.`,
+          `Discovered ${partitioned.matched.length} repository/repositories in '${srcOrg}'.`,
         );
       }
-      reposByOrg.set(srcOrg, [...new Set(discovered)]);
+      reposByOrg.set(srcOrg, [...new Set(partitioned.matched)]);
+      archivedNamesByOrg.set(srcOrg, partitioned.archivedNames);
+      skippedArchivedRepositories.push(...partitioned.skippedArchived);
     }
   } else if (!orgOnly) {
     throw new Error(
@@ -709,6 +758,7 @@ export async function executeGenerateScopeCommand(
     targetOrg: string;
     targetRepo: string;
     useGei: boolean;
+    archived?: boolean;
     skipReleases: boolean;
     lfsStrategy: 'dual-remote-stream' | 'skip';
     modules: string[];
@@ -719,6 +769,7 @@ export async function executeGenerateScopeCommand(
   for (const srcOrg of sourceOrgs) {
     const prefix = targetRepoPrefix.replace(/\{source\}/g, srcOrg);
     const suffix = targetRepoSuffix.replace(/\{source\}/g, srcOrg);
+    const archivedSet = archivedNamesByOrg.get(srcOrg);
     for (const repoName of reposByOrg.get(srcOrg) ?? []) {
       let targetRepoName = `${prefix}${repoName}${suffix}`;
       if (
@@ -727,12 +778,14 @@ export async function executeGenerateScopeCommand(
       ) {
         targetRepoName = `${srcOrg}-${targetRepoName}`;
       }
+      const isRepoArchived = archivedSet?.has(repoName) ?? false;
       repositoryMappings.push({
         sourceOrg: srcOrg,
         sourceRepo: repoName,
         targetOrg: target,
         targetRepo: targetRepoName,
         useGei: Boolean(useGei),
+        ...(isRepoArchived ? { archived: true } : {}),
         skipReleases: Boolean(skipReleases),
         lfsStrategy,
         modules: resolvedRepoModules,
@@ -755,6 +808,9 @@ export async function executeGenerateScopeCommand(
       : {}),
     organizations,
     repositories: repositoryMappings,
+    ...(skippedArchivedRepositories.length > 0
+      ? { skippedArchivedRepositories }
+      : {}),
     identityMapping: {
       strategy: resolvedStrategy,
       ...(resolvedStrategy === 'emu-saml' && resolvedSuffix

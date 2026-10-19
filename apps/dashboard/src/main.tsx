@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider, BaseStyles } from '@primer/react';
-import type { DiscoveryBundle } from '@ghec/contracts';
+import type { DiscoveryBundle, VerificationReport } from '@ghec/contracts';
 import {
   DEFAULT_ANALYSIS_OPTIONS,
   evaluateBundle,
@@ -117,19 +117,39 @@ const DesignSystemPreview = lazy(() =>
     default: m.DesignSystemPreview,
   })),
 );
-import type { ImportResult } from './lib/importer.js';
+import { probeHostedEvidence, type ImportResult } from './lib/importer.js';
 import { diffScans, scopesMatch } from './lib/diff-engine.js';
 import { isDashboardView, type DashboardView } from './navigation.js';
 
 export function App() {
   const [bundle, setBundle] = useState<DiscoveryBundle | null>(null);
   const [baseline, setBaseline] = useState<DiscoveryBundle | null>(null);
+  const [verificationReport, setVerificationReport] =
+    useState<VerificationReport | null>(null);
   const [analysisOptions, setAnalysisOptions] = useState<AnalysisOptions>({
     ...DEFAULT_ANALYSIS_OPTIONS,
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardView>('overview');
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void probeHostedEvidence().then((probed) => {
+      if (cancelled || !probed.found) return;
+      if (probed.verificationReport) {
+        setVerificationReport(probed.verificationReport);
+      }
+      if (probed.bundleResult?.success) {
+        const loadedBundle = probed.bundleResult.bundle;
+        setBundle((current) => current ?? loadedBundle);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const insights = useMemo(
     () => (bundle ? evaluateBundle(bundle, analysisOptions) : null),
     [analysisOptions, bundle],
@@ -340,7 +360,11 @@ export function App() {
             <LiveConsoleTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
           )}
           {activeTab === 'verification' && (
-            <VerificationTab bundle={bundle} selectedOrgIds={selectedOrgIds} />
+            <VerificationTab
+              bundle={bundle}
+              selectedOrgIds={selectedOrgIds}
+              initialReport={verificationReport ?? undefined}
+            />
           )}
           {activeTab === 'remediation' && remediationDiff && (
             <RemediationTrackerTab diff={remediationDiff} />

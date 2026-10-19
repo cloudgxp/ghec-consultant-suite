@@ -138,17 +138,24 @@ export class RepositoryMigrationPipeline {
           );
         }
 
-        const isOver40Gib = assessment.gitSizeBytes > 40 * GIB;
+        const effectiveMirrorPushMode =
+          repoOptions?.mirrorPushMode ??
+          repoMapping.mirrorPushMode ??
+          this.options.scope?.mirrorPushMode;
+        const mirrorPushSizeThreshold =
+          effectiveMirrorPushMode === 'fast-snapshot' ? 2 * GIB : 40 * GIB;
+        const isOverThreshold =
+          assessment.gitSizeBytes > mirrorPushSizeThreshold;
         if (
           transferStrategy === 'mirror-push' ||
-          (transferStrategy === 'auto' && isOver40Gib)
+          (transferStrategy === 'auto' && isOverThreshold)
         ) {
           willUseMirrorPush = true;
         }
 
-        if (willUseMirrorPush && isOver40Gib) {
+        if (willUseMirrorPush && isOverThreshold) {
           this.logger.warn(
-            `[Stage 1] Repository ${repoKey} (${(assessment.gitSizeBytes / GIB).toFixed(2)} GiB) exceeds GEI 40 GiB boundary; automatically routing to mirror-push strategy.`,
+            `[Stage 1] Repository ${repoKey} (${(assessment.gitSizeBytes / GIB).toFixed(2)} GiB) exceeds GEI ${(mirrorPushSizeThreshold / GIB).toFixed(0)} GiB boundary; automatically routing to mirror-push strategy.`,
           );
         }
 

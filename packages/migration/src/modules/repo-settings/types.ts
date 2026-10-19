@@ -29,6 +29,7 @@ export interface RepositoryCoreMetadata {
   description?: string | undefined;
   homepage?: string | undefined;
   defaultBranch?: string | undefined;
+  archived?: boolean | undefined;
 }
 
 export interface RepoSettingsData {
@@ -58,6 +59,7 @@ export interface RepoSettingsModuleOptions {
 export interface RawGitHubRepositoryResponse {
   visibility?: string | undefined;
   private?: boolean | undefined;
+  archived?: boolean | undefined;
   allow_squash_merge?: boolean | undefined;
   allow_merge_commit?: boolean | undefined;
   allow_rebase_merge?: boolean | undefined;

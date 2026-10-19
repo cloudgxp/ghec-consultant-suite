@@ -160,6 +160,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         const targetRepoData = (checkRes.data ?? {}) as {
           locked?: boolean;
           isLocked?: boolean;
+          archived?: boolean;
           size?: number;
         };
         let isRepoLocked =
@@ -264,6 +265,30 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           }
         } else {
           targetAlreadyPresent = true;
+        }
+        if (
+          targetAlreadyPresent &&
+          targetRepoData.archived === true &&
+          ctx.targetWriteClient &&
+          !ctx.dryRun
+        ) {
+          try {
+            ctx.logger.info(
+              `[gei-repo] Target repository ${targetOrg}/${targetRepo} is currently archived; temporarily unarchiving so downstream modules can apply mutations...`,
+            );
+            await ctx.targetWriteClient.mutate(
+              {
+                id: 'rest.repos.unarchivePreExistingTarget',
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: targetOrg, repo: targetRepo },
+                body: { archived: false },
+              },
+              ctx.signal,
+            );
+          } catch {
+            // Non-fatal pre-existing unarchive attempt
+          }
         }
       }
     } catch {
@@ -381,12 +406,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       skipReleases = true;
     }
 
-    if (
-      gitTransferStrategy === 'auto' &&
-      repoSizeBytes > 40 * 1024 * 1024 * 1024
-    ) {
+    const mirrorPushThreshold =
+      repoOptions?.mirrorPushMode === 'fast-snapshot'
+        ? 2 * 1024 * 1024 * 1024
+        : 40 * 1024 * 1024 * 1024;
+    if (gitTransferStrategy === 'auto' && repoSizeBytes > mirrorPushThreshold) {
       ctx.logger.warn(
-        `[gei-repo] Repository ${sourceOrg}/${sourceRepo} is ${(repoSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GiB, exceeding GitHub's 40 GiB GEI platform limit; automatically switching to mirror-push strategy.`,
+        `[gei-repo] Repository ${sourceOrg}/${sourceRepo} is ${(repoSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GiB, exceeding ${(mirrorPushThreshold / (1024 * 1024 * 1024)).toFixed(0)} GiB threshold; automatically switching to mirror-push strategy.`,
       );
       gitTransferStrategy = 'mirror-push';
     }
@@ -611,6 +637,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           try {
             const repoCheck = await ctx.targetClient.readSingle<{
               locked?: boolean;
+              archived?: boolean;
             }>(
               {
                 id: 'rest.repos.getLockState',
@@ -627,6 +654,26 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
               );
               await new Promise<void>((resolve) => setTimeout(resolve, 3000));
               continue;
+            }
+            if (
+              repoCheck.data &&
+              repoCheck.data.archived === true &&
+              ctx.targetWriteClient &&
+              !ctx.dryRun
+            ) {
+              ctx.logger.info(
+                `[gei-repo] Target repository ${targetOrg}/${targetRepo} was imported by GEI in an archived state; temporarily unarchiving so downstream modules can apply mutations...`,
+              );
+              await ctx.targetWriteClient.mutate(
+                {
+                  id: 'rest.repos.unarchivePostGei',
+                  method: 'PATCH',
+                  path: '/repos/{owner}/{repo}',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                  body: { archived: false },
+                },
+                ctx.signal,
+              );
             }
             break;
           } catch {

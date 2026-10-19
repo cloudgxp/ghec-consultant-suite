@@ -77,6 +77,8 @@ export interface GenerateResultsOptions {
   readonly durationMs?: number | undefined;
   readonly generatedAt?: string | undefined;
   readonly nextSteps?: readonly string[] | undefined;
+  readonly dashboardFiles?: Readonly<Record<string, string>> | undefined;
+  readonly pagesUrl?: string | undefined;
 }
 
 export interface GeneratedResults {
@@ -2006,6 +2008,7 @@ export function generateMigrationResults(
     mode: effectiveMode,
     orgModuleModels: orgModuleDetailModels,
     repoModuleModels: repoModuleDetailModels,
+    scope: options.scope,
     plan: options.plan,
     discoveryBundle: options.discoveryBundle,
     repoSourceToTarget,
@@ -2070,6 +2073,7 @@ export function generateMigrationResults(
   let totalLfsObjectsTransferred = 0;
   let totalLfsBytesTransferred = 0;
   const mirrorPushRepos: string[] = [];
+  const archivedRepos: string[] = [];
   const repoStrategyBadges: Record<string, string> = {};
 
   for (const repo of manifest.repositories) {
@@ -2105,7 +2109,41 @@ export function generateMigrationResults(
       ) ||
         Boolean(scopeRepo?.skipReleases || scopeRepo?.options?.skipReleases));
 
+    const discoveredRepoEntity = options.discoveryBundle?.entities.find(
+      (e) =>
+        e.kind === 'repository' &&
+        (e.name.toLowerCase() === targetRepo.toLowerCase() ||
+          e.name.toLowerCase() === repo.sourceRepo.toLowerCase()),
+    );
+    const repoSettingsModel = repoModuleDetailModels.get(
+      `repositories/${targetRepo}/repo-settings.md`,
+    );
+    const isRepoArchived =
+      scopeRepo?.archived === true ||
+      scopeRepo?.options?.archived === true ||
+      (discoveredRepoEntity?.kind === 'repository' &&
+        discoveredRepoEntity.archived === true) ||
+      Boolean(
+        repoSettingsModel?.items.some((i) =>
+          /\barchived:\s*(?:false\s*->\s*true|true)\b/i.test(i.notes ?? ''),
+        ),
+      );
+
+    if (isRepoArchived) {
+      archivedRepos.push(targetRepo);
+      const existingSuccess = repoSuccessDetails.get(targetRepo);
+      if (existingSuccess) {
+        repoSuccessDetails.set(targetRepo, {
+          ...existingSuccess,
+          archived: true,
+        });
+      }
+    }
+
     const badgeParts: string[] = [];
+    if (isRepoArchived) {
+      badgeParts.push('🔒 `archived`');
+    }
     if (isMirrorPush) {
       mirrorPushRepos.push(targetRepo);
       badgeParts.push('🔄 `mirror-push`');
@@ -2183,6 +2221,7 @@ export function generateMigrationResults(
       otherCount,
       identityAndAccessCount,
       governanceAndRemediationCount,
+      skippedArchivedCount: postCare.skippedArchivedRows.length,
     },
     ...(options.verificationReport?.summary
       ? {
@@ -2218,9 +2257,14 @@ export function generateMigrationResults(
           }
         : {}),
       ...(mirrorPushRepos.length > 0 ? { mirrorPushRepos } : {}),
+      ...(archivedRepos.length > 0 ? { archivedRepos } : {}),
     },
     ...(Object.keys(repoStrategyBadges).length > 0
       ? { repoStrategyBadges }
+      : {}),
+    ...(options.pagesUrl ? { pagesUrl: options.pagesUrl } : {}),
+    ...(options.dashboardFiles && Object.keys(options.dashboardFiles).length > 0
+      ? { hasEmbeddedDashboard: true }
       : {}),
   });
   files['manifest.json'] = JSON.stringify(manifest, null, 2);
@@ -2310,6 +2354,18 @@ export function generateMigrationResults(
       const normalizedKey = relPath.startsWith('evidence/')
         ? relPath
         : `evidence/${relPath.replace(/^\/+/, '')}`;
+      files[normalizedKey] = content;
+    }
+  }
+
+  // Static Dashboard Bundle for Private GitHub Pages (index.html, assets/*, .nojekyll)
+  if (
+    options.dashboardFiles &&
+    Object.keys(options.dashboardFiles).length > 0
+  ) {
+    files['.nojekyll'] = '';
+    for (const [relPath, content] of Object.entries(options.dashboardFiles)) {
+      const normalizedKey = relPath.replace(/^\/+/, '');
       files[normalizedKey] = content;
     }
   }

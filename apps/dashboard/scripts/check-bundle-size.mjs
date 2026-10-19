@@ -16,7 +16,7 @@ const budgets = {
 const initialAssets = new Set(
   [...indexHtml.matchAll(/(?:src|href)="([^"]+)"/g)]
     .map((match) => match[1])
-    .filter((path) => path?.includes('/assets/'))
+    .filter((path) => path?.includes('assets/'))
     .map((path) => basename(path)),
 );
 

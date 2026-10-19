@@ -74,6 +74,7 @@ export interface MigrationContext {
   readonly signal: AbortSignal;
   readonly dryRun: boolean;
   readonly continueOnError: boolean;
+  readonly deferArchiving?: boolean | undefined;
   readonly logger: StructuredLogger;
 }
 

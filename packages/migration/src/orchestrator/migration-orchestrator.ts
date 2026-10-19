@@ -227,6 +227,10 @@ export class MigrationOrchestrator {
     const queuedPlans: ModulePlan[] = [...initialPlans];
     const failedRepoTargets = new Set<string>();
     const freshlyMigratedTargets = new Set<string>();
+    const deferredArchiveTargets = new Map<
+      string,
+      { targetOrg: string; targetRepo: string; hasIssuesFalse: boolean }
+    >();
 
     const executionResults: ModuleExecutionResult[] = [];
     const recommendations: string[] = [];
@@ -260,6 +264,13 @@ export class MigrationOrchestrator {
 
       const mod = this.registry.getOrThrow(modulePlan.moduleId);
       const scopeTarget = this.resolveScopeTarget(modulePlan);
+      const hasDownstreamRepoModules =
+        modulePlan.scopeLevel === 'repository' &&
+        queuedPlans
+          .slice(idx + 1)
+          .some((p) => p.targetIdentifier === modulePlan.targetIdentifier);
+      const shouldDeferArchiving =
+        modulePlan.moduleId === 'repo-settings' && hasDownstreamRepoModules;
 
       const ctx: MigrationContext = {
         runId: this.runId,
@@ -271,6 +282,7 @@ export class MigrationOrchestrator {
         dryRun: this.dryRun,
         continueOnError: this.continueOnError,
         logger: this.logger,
+        ...(shouldDeferArchiving ? { deferArchiving: true } : {}),
       };
 
       try {
@@ -294,6 +306,32 @@ export class MigrationOrchestrator {
             targetIdentifier:
               freshPlan.targetIdentifier || modulePlan.targetIdentifier,
           };
+        }
+
+        if (shouldDeferArchiving && scopeTarget.level === 'repository') {
+          const op = effectiveModulePlan.operations[0];
+          const sourceState = op?.sourceState as
+            | {
+                metadata?: { archived?: boolean };
+                features?: { hasIssues?: boolean };
+              }
+            | undefined;
+          const payload = op?.payload as Record<string, unknown> | undefined;
+          const isArchivedSource =
+            payload?.archived === true ||
+            sourceState?.metadata?.archived === true ||
+            scopeTarget.options?.archived === true;
+          const targetRepo = scopeTarget.targetRepo ?? scopeTarget.sourceRepo;
+          if (isArchivedSource && targetRepo) {
+            const hasIssuesFalse =
+              payload?.has_issues === false ||
+              sourceState?.features?.hasIssues === false;
+            deferredArchiveTargets.set(modulePlan.targetIdentifier, {
+              targetOrg: scopeTarget.targetOrg,
+              targetRepo,
+              hasIssuesFalse,
+            });
+          }
         }
 
         for (const w of effectiveModulePlan.warnings ?? []) {
@@ -497,6 +535,57 @@ export class MigrationOrchestrator {
           );
           this.logger.warn(
             `Post-repository reconciliation for "apps-inventory" on "${modulePlan.targetIdentifier}" encountered an error: ${msg}`,
+          );
+        }
+      }
+    }
+
+    if (
+      !this.dryRun &&
+      this.targetWriteClient &&
+      deferredArchiveTargets.size > 0
+    ) {
+      for (const [targetId, archiveInfo] of deferredArchiveTargets.entries()) {
+        if (this.signal.aborted) break;
+        if (failedRepoTargets.has(targetId)) continue;
+        try {
+          this.logger.info(
+            `Finalizing deferred archived state (archived: true) for "${targetId}" after all repository modules completed...`,
+          );
+          if (archiveInfo.hasIssuesFalse) {
+            await this.targetWriteClient.mutate(
+              {
+                id: `defer-archive:has-issues:${archiveInfo.targetRepo}`,
+                method: 'PATCH',
+                path: '/repos/{owner}/{repo}',
+                pathParams: {
+                  owner: archiveInfo.targetOrg,
+                  repo: archiveInfo.targetRepo,
+                },
+                body: { has_issues: false },
+              },
+              this.signal,
+            );
+          }
+          await this.targetWriteClient.mutate(
+            {
+              id: `defer-archive:archive:${archiveInfo.targetRepo}`,
+              method: 'PATCH',
+              path: '/repos/{owner}/{repo}',
+              pathParams: {
+                owner: archiveInfo.targetOrg,
+                repo: archiveInfo.targetRepo,
+              },
+              body: { archived: true },
+            },
+            this.signal,
+          );
+        } catch (err) {
+          const msg = sanitizeDiagnostics(
+            err instanceof Error ? err.message : String(err),
+          );
+          this.logger.warn(
+            `Deferred archive finalization for "${targetId}" encountered an error: ${msg}`,
           );
         }
       }

@@ -379,6 +379,7 @@ export class ScopeMatrixSlicer {
   }
 }
 
+export const TWO_GIB = 2 * 1024 * 1024 * 1024;
 export const TEN_GIB = 10 * 1024 * 1024 * 1024;
 export const FORTY_GIB = 40 * 1024 * 1024 * 1024;
 
@@ -400,6 +401,8 @@ export interface SlicerOptions {
   readonly largeRepoRunnerLabels?: readonly string[];
   readonly batchSize?: number;
   readonly massiveBatchSize?: number;
+  readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
+  readonly mirrorPushThresholdBytes?: number | undefined;
 }
 
 export function classifyRepository(
@@ -413,8 +416,12 @@ export function classifyRepository(
     ? options.largeRepoRunnerLabels
     : ['self-hosted', 'high-disk'];
 
-  // 1. Massive Repository (>40 GiB or total metadata >40 GiB)
-  if (profile.gitDiskUsageBytes > FORTY_GIB) {
+  const massiveThreshold =
+    options.mirrorPushThresholdBytes ??
+    (options.mirrorPushMode === 'fast-snapshot' ? TWO_GIB : FORTY_GIB);
+
+  // 1. Massive Repository (>40 GiB by default, or >2 GiB under fast-snapshot)
+  if (profile.gitDiskUsageBytes > massiveThreshold) {
     return {
       repositoryName: profile.repositoryName,
       tier: 'massive-mirror',

@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   type DiscoveryBundle,
   MIGRATION_SCHEMA_VERSION,
@@ -38,6 +39,8 @@ export interface PublishResultsCommandOptions {
   readonly remediationPlanPath?: string | undefined;
   readonly discoveryReportPath?: string | undefined;
   readonly evidenceDir?: string | undefined;
+  readonly dashboardDir?: string | undefined;
+  readonly noPages?: boolean | undefined;
   readonly scopePath?: string | undefined;
   readonly planPath?: string | undefined;
   readonly targetOrg?: string | undefined;
@@ -80,6 +83,8 @@ export function parsePublishResultsOptions(
       'discovery-report': { type: 'string' },
       'discovery-bundle': { type: 'string' },
       'evidence-dir': { type: 'string' },
+      'dashboard-dir': { type: 'string' },
+      'no-pages': { type: 'boolean', default: false },
       scope: { type: 'string' },
       plan: { type: 'string' },
       'target-org': { type: 'string' },
@@ -108,6 +113,8 @@ export function parsePublishResultsOptions(
     discoveryReportPath:
       values['discovery-report'] ?? values['discovery-bundle'],
     evidenceDir: values['evidence-dir'],
+    dashboardDir: values['dashboard-dir'],
+    noPages: values['no-pages'] ?? false,
     scopePath: values.scope,
     planPath: values.plan,
     targetOrg: values['target-org'],
@@ -133,43 +140,110 @@ function collectEvidenceDirectoryFiles(
   outputDir: string,
 ): Record<string, string> {
   const collected: Record<string, string> = {};
-  if (!existsSync(evidenceDir)) {
-    return collected;
-  }
-  const absEvidenceDir = resolve(evidenceDir);
+  const dirs = evidenceDir
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
   const absOutputDir = resolve(outputDir);
   const allowedExts = new Set(['.json', '.md', '.sh', '.log', '.csv', '.txt']);
 
+  for (const dir of dirs) {
+    if (!existsSync(dir)) {
+      continue;
+    }
+    const absEvidenceDir = resolve(dir);
+    const walk = (currentDir: string, depth: number): void => {
+      if (depth > 2) return;
+      const entries = readdirSync(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(currentDir, entry.name);
+        if (
+          fullPath === absOutputDir ||
+          fullPath.startsWith(`${absOutputDir}/`) ||
+          entry.name === 'results-repo' ||
+          entry.name === 'audit-results-repo'
+        ) {
+          continue;
+        }
+        if (entry.isDirectory()) {
+          walk(fullPath, depth + 1);
+        } else if (entry.isFile()) {
+          const dotIdx = entry.name.lastIndexOf('.');
+          const ext =
+            dotIdx !== -1 ? entry.name.slice(dotIdx).toLowerCase() : '';
+          if (allowedExts.has(ext)) {
+            const relPath = relative(absEvidenceDir, fullPath).replace(
+              /\\/g,
+              '/',
+            );
+            collected[relPath] = readFileSync(fullPath, 'utf-8');
+          }
+        }
+      }
+    };
+    walk(absEvidenceDir, 0);
+  }
+
+  return collected;
+}
+
+function resolveDefaultDashboardDistDir(): string | undefined {
+  const currentModuleDir = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    resolve(currentModuleDir, '../../../dashboard/dist'),
+    resolve(currentModuleDir, '../../dashboard/dist'),
+    resolve(currentModuleDir, '../apps/dashboard/dist'),
+    resolve(process.cwd(), 'apps/dashboard/dist'),
+    resolve(process.cwd(), 'dashboard/dist'),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'index.html'))) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+export function collectDashboardDirectoryFiles(
+  explicitDashboardDir?: string | undefined,
+): Record<string, string> | undefined {
+  const dir = explicitDashboardDir
+    ? resolve(explicitDashboardDir)
+    : resolveDefaultDashboardDistDir();
+  if (!dir || !existsSync(join(dir, 'index.html'))) {
+    return undefined;
+  }
+
+  const collected: Record<string, string> = {};
+  const allowedExts = new Set([
+    '.html',
+    '.js',
+    '.css',
+    '.svg',
+    '.json',
+    '.txt',
+  ]);
+
   const walk = (currentDir: string, depth: number): void => {
-    if (depth > 2) return;
+    if (depth > 3) return;
     const entries = readdirSync(currentDir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = join(currentDir, entry.name);
-      if (
-        fullPath === absOutputDir ||
-        fullPath.startsWith(`${absOutputDir}/`) ||
-        entry.name === 'results-repo'
-      ) {
-        continue;
-      }
       if (entry.isDirectory()) {
         walk(fullPath, depth + 1);
       } else if (entry.isFile()) {
         const dotIdx = entry.name.lastIndexOf('.');
         const ext = dotIdx !== -1 ? entry.name.slice(dotIdx).toLowerCase() : '';
         if (allowedExts.has(ext)) {
-          const relPath = relative(absEvidenceDir, fullPath).replace(
-            /\\/g,
-            '/',
-          );
+          const relPath = relative(dir, fullPath).replace(/\\/g, '/');
           collected[relPath] = readFileSync(fullPath, 'utf-8');
         }
       }
     }
   };
 
-  walk(absEvidenceDir, 0);
-  return collected;
+  walk(dir, 0);
+  return Object.keys(collected).length > 0 ? collected : undefined;
 }
 
 export async function executePublishResultsCommand(
@@ -319,6 +393,11 @@ export async function executePublishResultsCommand(
     ? collectEvidenceDirectoryFiles(options.evidenceDir, options.outputDir)
     : undefined;
 
+  // 5c. Collect pre-built static dashboard assets for Private GitHub Pages unless --no-pages
+  const dashboardFiles = options.noPages
+    ? undefined
+    : collectDashboardDirectoryFiles(options.dashboardDir);
+
   // 6. Generate results manifest & files
   const results = generateMigrationResults({
     sourceOrg,
@@ -327,6 +406,7 @@ export async function executePublishResultsCommand(
     executionMode: options.dryRun ? 'dry-run' : 'live',
     discoveryBundle,
     evidenceFiles,
+    dashboardFiles,
     executionReport,
     verificationReport,
     remediationPlan,
@@ -368,6 +448,7 @@ export async function executePublishResultsCommand(
       targetWriteClient,
       dryRun: options.forcePush ? false : options.dryRun,
       branch: options.branch,
+      enablePages: options.noPages ? false : undefined,
       signal,
     });
 
@@ -377,7 +458,7 @@ export async function executePublishResultsCommand(
   // 9. Append step summary if requested
   if (options.appendStepSummary) {
     const blobBaseUrl = `${repoUrl}/blob/${options.branch}`;
-    const stepSummaryReadme = (results.files['README.md'] ?? '')
+    let stepSummaryReadme = (results.files['README.md'] ?? '')
       .replaceAll(
         '](POST-CARE-CHECKLIST.md)',
         `](${blobBaseUrl}/POST-CARE-CHECKLIST.md)`,
@@ -388,6 +469,12 @@ export async function executePublishResultsCommand(
       .replaceAll('](success/', `](${blobBaseUrl}/success/`)
       .replaceAll('](failure/', `](${blobBaseUrl}/failure/`)
       .replaceAll('](repositories/', `](${blobBaseUrl}/repositories/`);
+    if (publishResult?.pagesUrl) {
+      stepSummaryReadme = stepSummaryReadme.replace(
+        /> \*\*Visual Dashboard \(Private GitHub Pages\):\*\* Pre-built in this repository \([^\n]+\)/,
+        `> **Visual Dashboard (Private GitHub Pages):** [Open Interactive Dashboard](${publishResult.pagesUrl})`,
+      );
+    }
     appendStepSummary(stepSummaryReadme);
   }
 
@@ -413,6 +500,9 @@ export async function executePublishResultsCommand(
     console.log(`\n🚀 Results Repository:`);
     console.log(`   - Repository URL:   ${publishResult.repoUrl}`);
     console.log(`   - Commit SHA:       ${publishResult.commitSha}`);
+    if (publishResult.pagesUrl) {
+      console.log(`   - Dashboard Pages:  ${publishResult.pagesUrl}`);
+    }
     console.log(
       `   - Execution Mode:   ${publishResult.dryRun ? 'Dry-Run' : 'Live'}`,
     );
