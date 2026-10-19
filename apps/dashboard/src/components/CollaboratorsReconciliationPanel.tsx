@@ -33,7 +33,7 @@ export interface CollaboratorsReconciliationPanelProps {
 
 export const CollaboratorsReconciliationPanel: React.FC<
   CollaboratorsReconciliationPanelProps
-> = ({ collaborators, emuSuffix = '_gxp', onTriggerReconciliation }) => {
+> = ({ collaborators, emuSuffix = '_emu', onTriggerReconciliation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'ready' | 'needs_invitation' | 'blocked'

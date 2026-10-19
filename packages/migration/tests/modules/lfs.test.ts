@@ -474,9 +474,9 @@ test('LfsMigrationModule live discovery walks recursive Git tree to parse LFS po
     runId: 'run-live-tree',
     scope: {
       level: 'repository',
-      sourceOrg: 'demogxp',
+      sourceOrg: 'source-org',
       sourceRepo: 'demo',
-      targetOrg: 'demogxp-mig2',
+      targetOrg: 'target-org',
       targetRepo: 'demo',
     },
     sourceClient: sourceTreeAdapter,

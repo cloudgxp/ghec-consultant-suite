@@ -21,6 +21,9 @@ import {
   executeValidateScopeCommand,
   type SourceRepoMetadata,
 } from '../src/commands/generate-scope.js';
+import { parsePlanOptions } from '../src/commands/plan.js';
+import { parseMigrateOptions } from '../src/commands/migrate.js';
+import { parseVerifyOptions } from '../src/commands/verify.js';
 
 const SAMPLE_ORG_REPOS: readonly SourceRepoMetadata[] = [
   {
@@ -440,5 +443,63 @@ describe('CLI Scope Generation & Validation Subcommands', () => {
       () => executeValidateScopeCommand(missingOptions),
       /does not exist/,
     );
+  });
+
+  it('embeds sandboxRehearsal when --sandbox-rehearsal is passed to generate-scope and parses --sandbox-rehearsal across CLI commands', async () => {
+    const scopePath = join(tempDir, 'sandbox-rehearsal-scope.json');
+    const options = parseGenerateScopeOptions([
+      '--source',
+      'acme-src',
+      '--target',
+      'acme-sandbox',
+      '--target-type',
+      'emu',
+      '--repos',
+      'repo-1',
+      '--sandbox-rehearsal',
+      '--out',
+      scopePath,
+    ]);
+    assert.equal(options.sandboxRehearsal, true);
+
+    const result = await executeGenerateScopeCommand({
+      ...options,
+      silent: true,
+    });
+
+    assert.equal(result.scope.sandboxRehearsal, true);
+    assert.equal(result.scope.organizations[0]?.sandboxRehearsal, true);
+    assert.equal(result.scope.repositories[0]?.sandboxRehearsal, true);
+
+    const validated = executeValidateScopeCommand({
+      ...parseValidateScopeOptions([
+        '--scope',
+        scopePath,
+        '--sandbox-rehearsal',
+      ]),
+      silent: true,
+    });
+    assert.equal(validated.scope.sandboxRehearsal, true);
+
+    const planOpts = parsePlanOptions([
+      '--scope',
+      scopePath,
+      '--sandbox-rehearsal',
+    ]);
+    assert.equal(planOpts.sandboxRehearsal, true);
+
+    const migrateOpts = parseMigrateOptions([
+      '--scope',
+      scopePath,
+      '--sandbox-rehearsal',
+    ]);
+    assert.equal(migrateOpts.sandboxRehearsal, true);
+
+    const verifyOpts = parseVerifyOptions([
+      '--scope',
+      scopePath,
+      '--sandbox-rehearsal',
+    ]);
+    assert.equal(verifyOpts.sandboxRehearsal, true);
   });
 });

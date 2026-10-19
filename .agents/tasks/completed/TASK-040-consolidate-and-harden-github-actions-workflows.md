@@ -2,7 +2,7 @@
 id: TASK-040
 title: 'Consolidate and Harden GitHub Actions Workflows'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-09
 dependencies: []
 packages_affected: []
@@ -20,7 +20,7 @@ Key goals:
 3. Discovery consolidation: Merge `enterprise-multi-org-scan.yml` and `discovery-scan.yml` into a single, unified `discovery-scan.yml` supporting single-org, multi-org, enterprise, and dual-mode auth (GitHub App or PAT).
 4. Execution consolidation: Merge `test-migration-dispatch.yml` into `migration-execute-wave.yml` with preflight evaluation, matrix or single-runner support, explicit module names in UI help, and remove redundant `test-migration-dispatch.yml`.
 5. Scope generator enhancements: Expose missing CLI options in `generate-scope.yml` (`target_visibility`, `include_archived`, `target_repo_prefix`, `target_repo_suffix`, `skip_releases`).
-6. Cleanup: Remove orphaned `reusable-ghec-token.yml` and retire Jules agent workflows (`jules-agent.yml`, `jules-ci-healer.yml`) while retaining `combine-jules-prs.yml`.
+6. Cleanup: Remove orphaned `reusable-ghec-token.yml` and retire automation-agent agent workflows (`automation-agent-agent.yml`, `automation-agent-ci-healer.yml`) while retaining `combine-dependabot-prs.yml`.
 
 ## 2. Dependencies & Prerequisites
 
@@ -36,8 +36,8 @@ Key goals:
 - `.github/workflows/test-migration-dispatch.yml` (removed/merged)
 - `.github/workflows/reusable-ghec-token.yml` (removed)
 - `.github/workflows/generate-scope.yml`
-- `.github/workflows/jules-agent.yml` (removed)
-- `.github/workflows/jules-ci-healer.yml` (removed)
+- `.github/workflows/automation-agent-agent.yml` (removed)
+- `.github/workflows/automation-agent-ci-healer.yml` (removed)
 
 ## 4. Implementation Checklist
 
@@ -59,7 +59,7 @@ Key goals:
   - Expose `target_visibility`, `include_archived`, `target_repo_prefix`, `target_repo_suffix`, `skip_releases`
 - [x] **Step 6: Retire orphaned and unwanted workflows**
   - Remove `reusable-ghec-token.yml`
-  - Remove `jules-agent.yml` and `jules-ci-healer.yml`
+  - Remove `automation-agent-agent.yml` and `automation-agent-ci-healer.yml`
 - [x] **Step 7: Verification gate**
   - Validate all workflow YAML syntax
   - Run `npm run check` and ensure test suite passes
@@ -79,6 +79,6 @@ npm run check
   3. Consolidated discovery into `.github/workflows/discovery-scan.yml`: unified single-organization, multi-organization, and enterprise-level discovery with dual-mode authentication (GitHub App installation token or PAT fallback). Removed redundant `enterprise-multi-org-scan.yml`.
   4. Merged test migration execution into `migration-execute-wave.yml` and deleted redundant `.github/workflows/test-migration-dispatch.yml`.
   5. Enhanced `.github/workflows/generate-scope.yml`: added full CLI option parity (`target_visibility`, `include_archived`, `target_repo_prefix`, `target_repo_suffix`, `skip_releases`).
-  6. Cleaned up workflows: removed orphaned `.github/workflows/reusable-ghec-token.yml` and retired Jules bot workflows (`jules-agent.yml`, `jules-ci-healer.yml`) while retaining `combine-jules-prs.yml`.
+  6. Cleaned up workflows: removed orphaned `.github/workflows/reusable-ghec-token.yml` and retired automation-agent bot workflows (`automation-agent-agent.yml`, `automation-agent-ci-healer.yml`) while retaining `combine-dependabot-prs.yml`.
   7. Validated YAML syntax for all 11 retained workflows with 100% compliance.
   8. Verified full monorepo quality gate via `npm run check` (547 unit/integration tests passing across 97 test suites with 0 failures).

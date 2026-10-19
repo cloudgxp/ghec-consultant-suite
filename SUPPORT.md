@@ -8,14 +8,14 @@ This guide shows you where to find help with the **GHEC Consultant Suite** and h
 
 Before opening an issue, check the task guide for what you are trying to do:
 
-| What You Want to Do                                           | Guide to Read                                                                             |
-| :------------------------------------------------------------ | :---------------------------------------------------------------------------------------- |
-| Collect data from an organization and view it offline         | [Offline Discovery & Assessment Guide](docs/guides/offline-discovery-and-assessment.md)   |
-| Set up a test migration between GHEC and GHEC-EMU             | [GHEC to EMU Test Migration Setup Guide](docs/guides/ghec-to-emu-test-migration-setup.md) |
-| Run a parallel migration wave in GitHub Actions               | [GitHub Actions Migration Guide](docs/guides/github-actions-migration.md)                 |
-| Check migration results and fix differences automatically     | [Verification & Remediation Guide](docs/guides/verification-and-remediation.md)           |
-| Fill a test organization with 32 realistic demo items         | [Seeding Demo Content Guide](docs/guides/seed-demo-content.md)                            |
-| Configure Jules to fix broken builds and issues automatically | [Jules Automation Setup Guide](docs/guides/jules-automation-setup.md)                     |
+| What You Want to Do                                         | Guide to Read                                                                             |
+| :---------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| Deploy the Release Kit and run migrations in GitHub Actions | [Consultant Operator's Manual](docs/guides/consultant-operators-manual.md)                |
+| Collect data from an organization and view it offline       | [Offline Discovery & Assessment Guide](docs/guides/offline-discovery-and-assessment.md)   |
+| Set up a test migration between GHEC and GHEC-EMU           | [GHEC to EMU Test Migration Setup Guide](docs/guides/ghec-to-emu-test-migration-setup.md) |
+| Run a parallel migration wave in GitHub Actions             | [GitHub Actions Migration Guide](docs/guides/github-actions-migration.md)                 |
+| Check migration results and fix differences automatically   | [Verification & Remediation Guide](docs/guides/verification-and-remediation.md)           |
+| Fill a test organization with 34 realistic demo items       | [Seeding Demo Content Guide](docs/guides/seed-demo-content.md)                            |
 
 ---
 

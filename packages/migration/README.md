@@ -22,24 +22,22 @@ discover ───► plan ───► apply ───► verify
 - `apply(ctx, plan)`: Creates or updates items in the target organization (safe to run more than once) and reports progress for each step.
 - `verify(ctx, plan)`: Checks the target organization after migration and returns a `ModuleVerificationResult`.
 
-To register modules in `ModuleRegistry` and calculate the run order:
+To register all 34 built-in modules in `ModuleRegistry` and calculate the run order:
 
 ```typescript
-import {
-  ModuleRegistry,
-  type MigrationModule,
-  type MigrationContext,
-} from '@ghec/migration';
+import { createStandardModuleRegistry } from '@ghec/migration';
 
-const registry = new ModuleRegistry();
-registry.register(myRepoVariablesModule);
-registry.register(myRulesetsModule);
-
+const registry = createStandardModuleRegistry();
 const executionPlan = registry.resolveExecutionPlan([
   'rulesets',
   'repo-variables',
 ]);
 ```
+
+| Scope                    | Count | Registered Module IDs                                                                                                                                                                                                                                                                                   |
+| :----------------------- | :---: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Organization** (`org`) |  15   | `org-settings`, `teams`, `custom-roles`, `org-custom-properties`, `org-rulesets`, `ip-allow-lists`, `actions-policies`, `actions-runners`, `org-variables`, `org-secrets`, `org-webhooks`, `apps-inventory`, `projects-v2`, `packages`, `post-migration-mannequins`                                     |
+| **Repository** (`repo`)  |  19   | `gei-repo`, `repo-settings`, `repo-custom-properties`, `collaborators`, `environments`, `repo-variables`, `repo-secrets`, `branch-protection`, `rulesets`, `security`, `autolinks`, `post-migration-codeowners`, `issues`, `pull-requests`, `discussions`, `releases`, `lfs`, `webhooks`, `deploy-keys` |
 
 ---
 

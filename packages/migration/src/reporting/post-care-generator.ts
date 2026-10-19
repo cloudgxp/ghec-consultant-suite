@@ -916,8 +916,17 @@ function stripEmbeddedAppUrls(notes: string): string {
 function isWebhookAlreadyActiveWithoutSecret(params: {
   readonly notes?: string | undefined;
   readonly plannedOp?: PlannedOperation | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
 }): boolean {
-  const { notes, plannedOp } = params;
+  const { notes, plannedOp, sandboxRehearsal } = params;
+  const combined = `${notes ?? ''} ${plannedOp?.reason ?? ''}`.toLowerCase();
+  if (
+    sandboxRehearsal ||
+    combined.includes('sandbox rehearsal mode') ||
+    combined.includes('inactive in sandbox rehearsal mode')
+  ) {
+    return false;
+  }
   const sourceState =
     plannedOp?.sourceState && typeof plannedOp.sourceState === 'object'
       ? (plannedOp.sourceState as {
@@ -931,7 +940,6 @@ function isWebhookAlreadyActiveWithoutSecret(params: {
   ) {
     return true;
   }
-  const combined = `${notes ?? ''} ${plannedOp?.reason ?? ''}`.toLowerCase();
   if (
     combined.includes('no signing secret configured on source') ||
     combined.includes('no signing secret was configured on source') ||
@@ -1093,15 +1101,21 @@ function buildActionInstruction(params: {
       }
       return `Populate plaintext value for ${subDomain} organization secret "${cleanResourceName}" on ${targetOrg}.`;
     }
-    case 'webhook':
+    case 'webhook': {
       if (migrationStatus === 'active-no-secret') {
         return targetRepo
           ? `Already active on ${targetOrg}/${targetRepo} (no signing secret was configured on source). Optional: verify endpoint reachability for ${cleanResourceName} or add an HMAC signing secret if desired.`
           : `Already active on ${targetOrg} (no signing secret was configured on source). Optional: verify organization webhook endpoint reachability for ${cleanResourceName} or add an HMAC signing secret if desired.`;
       }
+      if (notes?.toLowerCase().includes('sandbox rehearsal mode')) {
+        return targetRepo
+          ? `Created with active: false on ${targetOrg}/${targetRepo} for sandbox rehearsal mode. For production cutover, populate the webhook HMAC signing secret (if required) and check the "Active" checkbox for ${cleanResourceName}.`
+          : `Created with active: false on ${targetOrg} for sandbox rehearsal mode. For production cutover, populate the organization webhook HMAC signing secret (if required) and check the "Active" checkbox for ${cleanResourceName}.`;
+      }
       return targetRepo
         ? `Enter webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}/${targetRepo}.`
         : `Enter organization webhook HMAC signing secret and check the "Active" checkbox (entering a secret does not auto-activate an inactive webhook) for ${cleanResourceName} on ${targetOrg}.`;
+    }
     case 'github-app': {
       if (notes && notes.toLowerCase().includes('is installed on target')) {
         return stripEmbeddedAppUrls(notes);
@@ -2144,11 +2158,15 @@ export function generatePostCareDeliverables(
     }
     return 0;
   });
+  const sandboxRehearsal = Boolean(
+    options.scope?.sandboxRehearsal || plan?.sandboxRehearsal,
+  );
   const checklistMarkdown = formatPostCareChecklistMarkdown({
     sourceOrg,
     targetOrg,
     mode,
     items,
+    sandboxRehearsal,
   });
   const csvFiles = buildPostCareCsvFiles(
     items,
@@ -2173,15 +2191,18 @@ export function formatPostCareChecklistMarkdown(params: {
   readonly targetOrg: string;
   readonly mode: PostCareOperationalMode;
   readonly items: readonly PostCareItem[];
+  readonly sandboxRehearsal?: boolean | undefined;
 }): string {
-  const { sourceOrg, targetOrg, mode, items } = params;
+  const { sourceOrg, targetOrg, mode, items, sandboxRehearsal } = params;
 
   const modeLabel =
     mode === 'discovery'
       ? 'Discovery Preview (Projected Post-Care)'
       : mode === 'dry-run'
         ? 'Dry-Run Preview (Planned Post-Care)'
-        : 'Live Migration (Actionable Post-Care)';
+        : sandboxRehearsal
+          ? '🛡️ Sandbox Rehearsal (Live Data — Target Webhooks & Actions Disabled)'
+          : 'Live Migration (Actionable Post-Care)';
 
   const secretItems = items.filter((i) => i.category === 'secret');
   const appItems = items.filter((i) => i.category === 'github-app');

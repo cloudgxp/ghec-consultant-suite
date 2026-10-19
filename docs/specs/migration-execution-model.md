@@ -2,7 +2,7 @@
 
 **Specification Status:** Authoritative Architectural Standard  
 **Target:** Execution Workflows in `apps/cli` and `packages/migration`  
-**Applicability:** All implementation agents (Antigravity)
+**Applicability:** All engineers and AI coding agents
 
 ---
 

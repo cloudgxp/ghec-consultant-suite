@@ -22,7 +22,7 @@ on:
         description: 'Path to migration scope JSON file for re-verification (or filename inside scope artifact)'
         required: false
         type: string
-        default: 'scopes/demogxp-to-demogxp-mig.json'
+        default: 'scopes/test-org-wave.json'
       scope_run_id:
         description: 'GitHub Actions run ID from Generate Migration Scope (or "latest") to download the scope artifact without committing to git'
         required: false

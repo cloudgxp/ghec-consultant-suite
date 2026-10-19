@@ -58,7 +58,7 @@ Resolve all 8 reporting inconsistencies identified across the 3-tier audit repos
 - [x] **Step 1: Fix `autolinks`, `post-migration-codeowners`, `webhooks`, `repo-custom-properties`, and 0-item `skipped` module statuses**
 - [x] **Step 2: Fix `results-generator.ts` and `results-markdown-formatter.ts` (categories count, default `noop` notes, `gei-repo` parity note/timestamp, and verification warnings rendering)**
 - [x] **Step 3: Fix `summary-reporter.ts` and `.github/workflows/migration-e2e-autonomous.yml`**
-- [x] **Step 4: Run `npm run check`, update tests, republish and run workflow (`38802687722`) to verify live `demogxp-mig2/migration-audit-results` and workflow step summary**
+- [x] **Step 4: Run `npm run check`, update tests, republish and run workflow (`38802687722`) to verify live `sandbox-mig2/migration-audit-results` and workflow step summary**
 
 ## 5. Verification Gate
 
@@ -71,4 +71,4 @@ npm run check
 - **Completed Date:** 2026-10-15
 - **Unit & Quality Gate (`npm run check`):** Passed (`739` tests across `130` suites, `0` failures).
 - **Live Autonomous E2E Workflow Run:** `38802687722` completed with `conclusion: "success"` across all 8 jobs (`verifiedModuleCount: 34`, `unverifiedModuleCount: 0`, `discrepancyCount: 0`, `failedCohortCount: 0`).
-- **Live Audit Repository (`demogxp-mig2/migration-audit-results`):** Commit `27e30993d0ad9c8054fbedc41677cdd43ff4079b` verified across all `410` Markdown files (`completeWithZeroItems: 0`, `blankNotes: 0`, `brokenLinks: 0`, `Module Warnings` rendered on 6 pages).
+- **Live Audit Repository (`sandbox-mig2/migration-audit-results`):** Commit `27e30993d0ad9c8054fbedc41677cdd43ff4079b` verified across all `410` Markdown files (`completeWithZeroItems: 0`, `blankNotes: 0`, `brokenLinks: 0`, `Module Warnings` rendered on 6 pages).

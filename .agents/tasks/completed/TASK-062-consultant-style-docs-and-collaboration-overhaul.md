@@ -50,7 +50,7 @@ Analyze all existing user-facing and operational documentation across the reposi
    - `docs/guides/seed-demo-content.md`
    - `docs/guides/github-actions-migration.md`
    - `docs/guides/ghec-to-emu-test-migration-setup.md`
-   - `docs/guides/jules-automation-setup.md`
+   - `docs/guides/consultant-operators-manual.md`
    - `docs/guides/offline-discovery-and-assessment.md` (new)
    - `docs/guides/verification-and-remediation.md` (new)
    - `specs/001-migration-gap-analysis/quickstart.md`
@@ -68,7 +68,7 @@ Analyze all existing user-facing and operational documentation across the reposi
 - [x] **Step 1: Create Collaboration & Community Best-Practice Docs**
   - Create `COLLABORATORS.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `.github/PULL_REQUEST_TEMPLATE.md`, and `.github/ISSUE_TEMPLATE/*.md` adhering to `consultant-style-docs`.
 - [x] **Step 2: Rewrite Operational Guides (`docs/guides/`) and Create Missing Guides**
-  - Rewrite `seed-demo-content.md`, `github-actions-migration.md`, `ghec-to-emu-test-migration-setup.md`, and `jules-automation-setup.md` at an 8th-grade reading level with `"To <do X>:"` + code examples.
+  - Rewrite `seed-demo-content.md`, `github-actions-migration.md`, `ghec-to-emu-test-migration-setup.md`, and `consultant-operators-manual.md` at an 8th-grade reading level with `"To <do X>:"` + code examples.
   - Create `docs/README.md`, `docs/guides/README.md`, `docs/guides/offline-discovery-and-assessment.md`, and `docs/guides/verification-and-remediation.md`.
 - [x] **Step 3: Rewrite Root, App, Package, and SpecKit Quickstart Docs**
   - Rewrite `README.md`, `apps/*/README.md` (and subdirectories), `packages/*/README.md` (and subdirectories), `docs/{architecture,data-contracts,security}/README.md`, `fixtures/synthetic/README.md`, `.agents/tasks/README.md`, and `.agents/skills/{migration-wave-orchestration,migration-module-scaffolding,verification-and-remediation}/SKILL.md`.

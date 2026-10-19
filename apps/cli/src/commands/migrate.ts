@@ -53,6 +53,7 @@ export interface MigrateCommandOptions {
   readonly publishResults?: boolean | undefined;
   readonly checkpointDir?: string | undefined;
   readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
 }
 
 export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
@@ -80,6 +81,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
       'checkpoint-dir': { type: 'string' },
       'continue-on-error': { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
+      'sandbox-rehearsal': { type: 'boolean', default: false },
       output: { type: 'string', default: './scans/migration-execution.json' },
       'json-summary': { type: 'string' },
       verbose: { type: 'boolean', default: false },
@@ -134,6 +136,7 @@ export function parseMigrateOptions(args: string[]): MigrateCommandOptions {
     checkpointDir: values['checkpoint-dir'],
     continueOnError: values['continue-on-error'] ?? false,
     dryRun: values['dry-run'] ?? false,
+    sandboxRehearsal: values['sandbox-rehearsal'] ?? false,
     outputPath: values.output || './scans/migration-execution.json',
     jsonSummaryPath: values['json-summary'],
     verbose: values.verbose,
@@ -226,6 +229,23 @@ export async function executeMigrateCommand(
             mirrorPushMode: options.mirrorPushMode,
             options: r.options
               ? { ...r.options, mirrorPushMode: options.mirrorPushMode }
+              : undefined,
+          })),
+        };
+      }
+      if (options.sandboxRehearsal) {
+        scope = {
+          ...scope,
+          sandboxRehearsal: true,
+          organizations: scope.organizations.map((o) => ({
+            ...o,
+            sandboxRehearsal: true,
+          })),
+          repositories: scope.repositories.map((r) => ({
+            ...r,
+            sandboxRehearsal: true,
+            options: r.options
+              ? { ...r.options, sandboxRehearsal: true }
               : undefined,
           })),
         };
@@ -346,6 +366,7 @@ export async function executeMigrateCommand(
     modules: options.modules,
     excludeModules: options.excludeModules,
     dryRun: options.dryRun,
+    sandboxRehearsal: options.sandboxRehearsal,
     continueOnError: options.continueOnError,
     logger,
     signal,
@@ -369,6 +390,12 @@ export async function executeMigrateCommand(
     plan,
     sourceOrg,
     targetOrg,
+    sandboxRehearsal: Boolean(
+      options.sandboxRehearsal ||
+      scope?.sandboxRehearsal ||
+      plan?.sandboxRehearsal ||
+      report.sandboxRehearsal,
+    ),
   });
 
   if (options.jsonSummaryPath) {

@@ -1,9 +1,9 @@
 # Architecture Assessment: Expanding Discovery to GHEC Migration
 
 **Document Status:** Complete Architectural Evaluation  
-**Author:** Antigravity (Google DeepMind)  
+**Author:** Platform Architecture Team  
 **Date:** October 2026  
-**Target Repository:** `cloudgxp/ghec-consultant-suite`  
+**Target Repository:** `ghec-consultant-suite`  
 **Scope:** GitHub Enterprise Cloud (GHEC) → GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU)
 
 ---

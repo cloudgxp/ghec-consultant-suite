@@ -13,7 +13,16 @@ permissions:
 
 jobs:
   combine-dependabot-prs:
+    runs-on: ubuntu-latest
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.pull_request.user.login == 'dependabot[bot]'
-    uses: cloudgxp/reusable-workflows/.github/workflows/combine-dependabot-prs.yml@dfd8341503b978f86fa0e5d7f39e27c4efba692e # main
+    steps:
+      - name: Combine Dependabot PRs
+        uses: github/combine-prs@df6bdba3ef1713cb5ecac32419eb3dfaa487d04e # v5.2.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch_prefix: dependabot/
+          ignore_label: nocombine
+          combine_branch_name: combined-dependabot-prs
+          open_pr: true

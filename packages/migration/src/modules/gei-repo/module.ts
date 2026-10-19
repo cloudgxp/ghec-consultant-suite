@@ -3,12 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MIGRATION_SCHEMA_VERSION, type ModulePlan } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
-import type {
-  MigrationContext,
-  MigrationScopeLevel,
-  ModuleExecutionResult,
-  ModuleVerificationResult,
-  OperationExecutionResult,
+import {
+  isSandboxRehearsal,
+  type MigrationContext,
+  type MigrationScopeLevel,
+  type ModuleExecutionResult,
+  type ModuleVerificationResult,
+  type OperationExecutionResult,
 } from '../../core/types.js';
 import { GeiProcessExecutor } from '../../gei/executor.js';
 import {
@@ -44,6 +45,53 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
   constructor(geiRunner?: GeiCommandRunner, gitRunner?: GitCommandRunner) {
     this.geiRunner = geiRunner;
     this.gitRunner = gitRunner;
+  }
+
+  private async disableTargetRepoActionsIfSandboxRehearsal(
+    ctx: MigrationContext,
+    targetOrg: string,
+    targetRepo: string,
+    results: OperationExecutionResult[],
+  ): Promise<void> {
+    if (!isSandboxRehearsal(ctx) || ctx.dryRun || !ctx.targetWriteClient) {
+      return;
+    }
+    try {
+      ctx.logger.info(
+        `[gei-repo] Sandbox rehearsal mode enabled: disabling GitHub Actions on ${targetOrg}/${targetRepo}...`,
+      );
+      await ctx.targetWriteClient.mutate(
+        {
+          id: 'rest.actions.disableTargetRepoActionsSandboxRehearsal',
+          method: 'PUT',
+          path: '/repos/{owner}/{repo}/actions/permissions',
+          pathParams: { owner: targetOrg, repo: targetRepo },
+          body: { enabled: false },
+        },
+        ctx.signal,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      ctx.logger.warn(
+        `[gei-repo] Could not disable GitHub Actions on ${targetOrg}/${targetRepo} in sandbox rehearsal mode: ${msg}`,
+      );
+    }
+    const sandboxSuffix =
+      ' GitHub Actions disabled on target repository (enabled: false) for sandbox rehearsal mode.';
+    for (let i = 0; i < results.length; i++) {
+      const op = results[i]!;
+      if (
+        op.resourceType === 'repository' &&
+        op.status === 'succeeded' &&
+        op.reason &&
+        !op.reason.includes('sandbox rehearsal mode')
+      ) {
+        results[i] = {
+          ...op,
+          reason: `${op.reason.replace(/\.?\s*$/, '.')}${sandboxSuffix}`,
+        };
+      }
+    }
   }
 
   async discover(
@@ -89,15 +137,20 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
     ctx: MigrationContext,
     discovered: GeiRepoDiscoveredData,
   ): Promise<ModulePlan> {
-    void ctx;
     const targetIdentifier = `${discovered.targetOrg}/${discovered.targetRepo}`;
+    const warnings: string[] = [];
+    if (isSandboxRehearsal(ctx)) {
+      warnings.push(
+        `Sandbox rehearsal mode is enabled: GitHub Actions will be disabled on target repository '${targetIdentifier}' after import.`,
+      );
+    }
 
     return {
       moduleId: this.id,
       scopeLevel: 'repository',
       targetIdentifier,
       operations: [],
-      warnings: [],
+      warnings,
     };
   }
 
@@ -299,6 +352,12 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       ctx.logger.info(
         `[gei-repo] Target repository ${targetOrg}/${targetRepo} already exists on destination; skipping live GEI import.`,
       );
+      await this.disableTargetRepoActionsIfSandboxRehearsal(
+        ctx,
+        targetOrg,
+        targetRepo,
+        results,
+      );
       const isMirrorPushRepo =
         ctx.scope.options?.gitTransferStrategy === 'mirror-push';
       const isSkipReleasesRepo = Boolean(ctx.scope.options?.skipReleases);
@@ -307,7 +366,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         moduleId: this.id,
         status: 'complete',
         durationMs: Date.now() - startTime,
-        results: [],
+        results,
         ...(isMirrorPushRepo
           ? {
               metadataState: 'partial' as const,
@@ -440,6 +499,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           estimatedSizeBytes: repoSizeBytes > 0 ? repoSizeBytes : undefined,
           mirrorPushMode: repoOptions?.mirrorPushMode,
           skipDiskCheck: repoOptions?.skipDiskCheck,
+          sandboxRehearsal: isSandboxRehearsal(ctx),
           targetClient: ctx.targetClient,
           targetWriteClient: ctx.targetWriteClient,
           signal: ctx.signal,
@@ -462,6 +522,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
           reason: `Transferred repository "${targetRepo}" via direct Git mirror-push (${mirrorResult.durationMs}ms); metadata queued for sidecar rehydration.`,
           completedAt: new Date().toISOString(),
         });
+
+        await this.disableTargetRepoActionsIfSandboxRehearsal(
+          ctx,
+          targetOrg,
+          targetRepo,
+          results,
+        );
 
         return {
           schemaVersion: MIGRATION_SCHEMA_VERSION,
@@ -682,6 +749,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
         }
       }
 
+      await this.disableTargetRepoActionsIfSandboxRehearsal(
+        ctx,
+        targetOrg,
+        targetRepo,
+        results,
+      );
+
       ctx.logger.info(
         `[gei-repo] Successfully migrated ${sourceOrg}/${sourceRepo} -> ${targetOrg}/${targetRepo} via GEI.`,
       );
@@ -721,6 +795,7 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
             estimatedSizeBytes: repoSizeBytes > 0 ? repoSizeBytes : undefined,
             mirrorPushMode: repoOptions?.mirrorPushMode,
             skipDiskCheck: repoOptions?.skipDiskCheck,
+            sandboxRehearsal: isSandboxRehearsal(ctx),
             targetClient: ctx.targetClient,
             targetWriteClient: ctx.targetWriteClient,
             signal: ctx.signal,
@@ -743,6 +818,13 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
             reason: `Transferred repository "${targetRepo}" via fallback Git mirror-push (${mirrorResult.durationMs}ms) after GEI archive generation failure; metadata queued for sidecar rehydration.`,
             completedAt: new Date().toISOString(),
           });
+
+          await this.disableTargetRepoActionsIfSandboxRehearsal(
+            ctx,
+            targetOrg,
+            targetRepo,
+            results,
+          );
 
           return {
             schemaVersion: MIGRATION_SCHEMA_VERSION,
@@ -826,15 +908,41 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       };
     }
 
-    const discrepancies = RepositoryParityInspector.synthesizeDiscrepancies(
-      report,
-      targetRepo,
-    );
+    const discrepancies = [
+      ...RepositoryParityInspector.synthesizeDiscrepancies(report, targetRepo),
+    ];
+
+    if (isSandboxRehearsal(ctx)) {
+      try {
+        const actionsRes = await ctx.targetClient.readSingle<{
+          enabled?: boolean;
+        }>(
+          {
+            id: 'rest.actions.getRepoPermissionsSandboxRehearsal',
+            transport: 'rest',
+            verifiedReadOnly: true,
+            path: '/repos/{owner}/{repo}/actions/permissions',
+            pathParams: { owner: targetOrg, repo: targetRepo },
+          },
+          ctx.signal,
+        );
+        if (actionsRes.status === 200 && actionsRes.data?.enabled === true) {
+          discrepancies.push({
+            resourceName: `${targetRepo}:actions-permissions`,
+            expected: 'false (disabled in sandbox rehearsal mode)',
+            actual: 'true',
+            message: `Repository GitHub Actions is enabled on ${targetOrg}/${targetRepo} despite sandbox rehearsal mode.`,
+          });
+        }
+      } catch {
+        // Non-fatal if endpoint is not mocked or inaccessible
+      }
+    }
 
     return {
       moduleId: this.id,
       verified: discrepancies.length === 0,
-      discrepancies: [...discrepancies],
+      discrepancies,
     };
   }
 }

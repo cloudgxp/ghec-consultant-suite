@@ -30,7 +30,7 @@ Enable a 100% GitHub Actions-driven migration consulting experience where a cons
      1. **Artifact Mode:** `scope_run_id` (`latest` or specific workflow run ID) to automatically download the `migration-scopes` artifact from `generate-scope.yml`, and `discovery_run_id` (`latest` or specific run ID) to download cached discovery bundles from `discovery-scan.yml`.
      2. **Inline Mode:** Optional `source_org`, `target_org`, and `repositories` (`all`, `org_only`, or comma-separated list) inputs directly on the migration workflow to generate the scope on-the-fly without a prior step.
      3. **Repo File Mode:** Traditional `scope` path in repository (`scopes/*.json`).
-   - Remove hardcoded `demogxp` repository deletions and parameterize `runs-on` (defaulting to `ubuntu-latest`) in `migration-e2e-autonomous.yml` and `migration-apply-remediation.yml`.
+   - Remove hardcoded `sandbox-org` repository deletions and parameterize `runs-on` (defaulting to `ubuntu-latest`) in `migration-e2e-autonomous.yml` and `migration-apply-remediation.yml`.
 3. **Consultant Operator's Manual & Complete Arguments Reference (`docs/guides/consultant-operators-manual.md`):**
    - Plain-English (`consultant-style-docs`) end-to-end manual for running full organization migrations, selective repository waves, and organization-only governance migrations via the GitHub Actions `Run workflow` button or `gh workflow run`, plus complete reference tables of all workflow inputs, CLI flags, and 32 module IDs.
 4. **Non-Technical Customer Migration Handbook (`docs/guides/customer-migration-handbook.md`):**
@@ -73,7 +73,7 @@ Expected files or directories to create or modify:
   - Update `.github/actions/setup-suite/action.yml` to support zero-source standalone release execution.
 - [x] **Step 2: Artifact-First & Inline Scope Workflow Enhancements**
   - Update `generate-scope.yml` (`commit_to_branch: false` default, `$GITHUB_STEP_SUMMARY` preview, CLI subcommand invocation).
-  - Update `migration-execute-wave.yml` and `migration-e2e-autonomous.yml` with `scope_run_id`, `discovery_run_id`, and inline `source_org`/`target_org`/`repositories` support; remove hardcoded `demogxp` deletions and parameterize `runs-on`.
+  - Update `migration-execute-wave.yml` and `migration-e2e-autonomous.yml` with `scope_run_id`, `discovery_run_id`, and inline `source_org`/`target_org`/`repositories` support; remove hardcoded `sandbox-org` deletions and parameterize `runs-on`.
   - Parameterize `runner_labels` in `migration-apply-remediation.yml` and switch `seed-demo-content.yml` to compiled CLI `seed-demo`.
 - [x] **Step 3: Consultant Operator's Manual (`docs/guides/consultant-operators-manual.md`)**
   - Write comprehensive task-oriented operator manual and full workflow/CLI arguments reference adhering to `consultant-style-docs`.

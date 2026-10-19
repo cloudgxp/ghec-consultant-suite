@@ -65,7 +65,7 @@ export const ScopeBuilderModal: React.FC<ScopeBuilderModalProps> = ({
   const [targetVisibility, setTargetVisibility] = useState<
     'inherit' | 'private' | 'internal' | 'public'
   >('inherit');
-  const [identitySuffix, setIdentitySuffix] = useState('_gxp');
+  const [identitySuffix, setIdentitySuffix] = useState('_emu');
   const [lfsStrategy, setLfsStrategy] = useState<'dual-remote-stream' | 'skip'>(
     'dual-remote-stream',
   );

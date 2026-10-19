@@ -211,7 +211,7 @@ describe('Task 036: Local Console Server & Ambient Auth Proxy', () => {
         const u = url.toString();
         if (
           u.includes(
-            '/actions/workflows/enterprise-multi-org-scan.yml/runs?event=workflow_dispatch',
+            '/actions/workflows/discovery-scan.yml/runs?event=workflow_dispatch',
           )
         ) {
           return new Response(
@@ -235,7 +235,7 @@ describe('Task 036: Local Console Server & Ambient Auth Proxy', () => {
       try {
         const res = await app.inject({
           method: 'GET',
-          url: '/api/actions/workflows/enterprise-multi-org-scan.yml/runs?owner=cloudgxp&repo=ghec-consultant-suite&event=workflow_dispatch',
+          url: '/api/actions/workflows/discovery-scan.yml/runs?owner=acme-corp&repo=ghec-consultant-suite&event=workflow_dispatch',
         });
         assert.equal(res.statusCode, 200);
         const data = JSON.parse(res.body);

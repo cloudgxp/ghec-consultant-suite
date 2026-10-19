@@ -1,16 +1,16 @@
 # Creating sample data for a demo
 
-You can use the `seed-demo` command to fill a test GitHub organization with 32 realistic sample items—including teams, repositories, branch rules, pull requests, and Actions secrets. This gives you a ready-to-use environment for live demos or practice migrations without setting everything up by hand.
+You can use the `seed-demo` command to fill a test GitHub organization with 34 realistic sample items—including teams, repositories, branch rules, pull requests, and Actions secrets. This gives you a ready-to-use environment for live demos or practice migrations without setting everything up by hand.
 
 ---
 
 ## Creating demo content from the command line
 
-By default, `seed-demo` reads your GitHub token from the `GHEC_TOKEN` environment variable and creates all 32 sample items. If the target repository does not exist yet, the tool creates and initializes it for you.
+By default, `seed-demo` reads your GitHub token from the `GHEC_TOKEN` environment variable and creates all 34 sample items. If the target repository does not exist yet, the tool creates and initializes it for you.
 
 Before you start, make sure you have Node.js `22.13.0` or newer, you have built the project (`npm run build:packages`), and your GitHub token has `admin:org`, `repo`, `delete_repo`, and `workflow` permissions.
 
-To create all 32 sample items in your organization and repository:
+To create all 34 sample items in your organization and repository:
 
 ```bash
 export GHEC_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
@@ -39,7 +39,7 @@ npm run dev:cli -- seed-demo \
 
 You can pick from any of these `--preset` categories:
 
-- `all`: Creates all 32 sample items. This is the default.
+- `all`: Creates all 34 sample items. This is the default.
 - `core-governance`: Organization settings, teams (`engineering`, `platform-infra`, `frontend-guild`), custom roles, IP allow lists, custom properties, and outside collaborators.
 - `actions-and-security`: Actions rules, runner groups, variables, secrets, environments (`production`, `staging`), branch rules, and security settings.
 - `collaboration`: Project boards, issues, milestones, labels, pull requests with comments, Discussions, Jira links, and a `CODEOWNERS` file.

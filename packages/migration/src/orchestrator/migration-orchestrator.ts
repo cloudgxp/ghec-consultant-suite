@@ -66,6 +66,7 @@ export class MigrationOrchestrator {
   private readonly excludeModulesFilter?: readonly string[] | undefined;
   private readonly dryRun: boolean;
   private readonly continueOnError: boolean;
+  private readonly sandboxRehearsal: boolean;
   private readonly runId: string;
   private readonly logger: StructuredLogger;
   private readonly signal: AbortSignal;
@@ -118,6 +119,12 @@ export class MigrationOrchestrator {
       }
       this.scope = scopeValidation.data;
     }
+
+    this.sandboxRehearsal = Boolean(
+      options.sandboxRehearsal ||
+      this.scope?.sandboxRehearsal ||
+      this.plan?.sandboxRehearsal,
+    );
   }
 
   async executeRepositoryPipelines(): Promise<
@@ -140,6 +147,7 @@ export class MigrationOrchestrator {
       cachedDiscoveryBundle: this.cachedDiscoveryBundle,
       dryRun: this.dryRun,
       continueOnError: this.continueOnError,
+      ...(this.sandboxRehearsal ? { sandboxRehearsal: true } : {}),
       runId: this.runId,
       logger: this.logger,
       signal: this.signal,
@@ -147,6 +155,7 @@ export class MigrationOrchestrator {
       lfsRunner: this.lfsRunner,
       gitRunner: this.gitRunner,
       releaseTransport: this.releaseTransport,
+      scope: this.scope,
     });
 
     const queue = [...repos];
@@ -207,6 +216,7 @@ export class MigrationOrchestrator {
         signal: this.signal,
         modules: this.modulesFilter,
         excludeModules: this.excludeModulesFilter,
+        ...(this.sandboxRehearsal ? { sandboxRehearsal: true } : {}),
       });
       activePlan = await planner.generatePlan();
     }
@@ -283,6 +293,9 @@ export class MigrationOrchestrator {
         continueOnError: this.continueOnError,
         logger: this.logger,
         ...(shouldDeferArchiving ? { deferArchiving: true } : {}),
+        ...(this.sandboxRehearsal || scopeTarget.sandboxRehearsal
+          ? { sandboxRehearsal: true }
+          : {}),
       };
 
       try {
@@ -513,6 +526,9 @@ export class MigrationOrchestrator {
           signal: this.signal,
           dryRun: this.dryRun,
           continueOnError: this.continueOnError,
+          ...(this.sandboxRehearsal || scopeTarget.sandboxRehearsal
+            ? { sandboxRehearsal: true }
+            : {}),
           logger: this.logger,
         };
 
@@ -620,6 +636,7 @@ export class MigrationOrchestrator {
       status,
       exitCode,
       dryRun: this.dryRun,
+      ...(this.sandboxRehearsal ? { sandboxRehearsal: true } : {}),
       results: executionResults,
       recommendations: recommendations.length > 0 ? recommendations : undefined,
     };
@@ -643,13 +660,15 @@ export class MigrationOrchestrator {
         repoMapping?.lfsStrategy !== undefined ||
         repoMapping?.targetRepoVisibility !== undefined ||
         repoMapping?.gitTransferStrategy !== undefined ||
-        repoMapping?.mirrorPushMode !== undefined
+        repoMapping?.mirrorPushMode !== undefined ||
+        repoMapping?.sandboxRehearsal !== undefined
           ? {
               skipReleases: repoMapping.skipReleases,
               lfsStrategy: repoMapping.lfsStrategy,
               targetRepoVisibility: repoMapping.targetRepoVisibility,
               gitTransferStrategy: repoMapping.gitTransferStrategy,
               mirrorPushMode: repoMapping.mirrorPushMode,
+              sandboxRehearsal: repoMapping.sandboxRehearsal,
             }
           : undefined);
       const effectiveMirrorPushMode =
@@ -671,6 +690,13 @@ export class MigrationOrchestrator {
         (this.scope?.identityMapping?.strategy === 'pass-through'
           ? 'ghec'
           : 'emu');
+      const effectiveSandboxRehearsal = Boolean(
+        this.sandboxRehearsal ||
+        repoMapping?.sandboxRehearsal ||
+        repoOptions?.sandboxRehearsal ||
+        matchingOrg?.sandboxRehearsal ||
+        this.scope?.sandboxRehearsal,
+      );
 
       return {
         level: 'repository',
@@ -680,6 +706,7 @@ export class MigrationOrchestrator {
         targetRepo: targetRepo!,
         targetType: effectiveTargetType,
         identityMapping: this.scope?.identityMapping,
+        ...(effectiveSandboxRehearsal ? { sandboxRehearsal: true } : {}),
         options: repoOptions,
       };
     }
@@ -698,6 +725,8 @@ export class MigrationOrchestrator {
       target: targetId,
       targetType: orgMapping?.targetType,
       orgItemsMode: orgMapping?.orgItemsMode,
+      sandboxRehearsal:
+        this.sandboxRehearsal || orgMapping?.sandboxRehearsal || undefined,
     });
   }
 }

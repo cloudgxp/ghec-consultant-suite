@@ -44,25 +44,19 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
       const mockFetch: typeof fetch = async (input, init) => {
         const url = input.toString();
 
-        if (
-          url.includes(
-            '/actions/workflows/enterprise-multi-org-scan.yml/dispatch',
-          )
-        ) {
+        if (url.includes('/actions/workflows/discovery-scan.yml/dispatch')) {
           assert.equal(init?.method, 'POST');
           const body = JSON.parse(init?.body as string);
-          assert.equal(body.owner, 'cloudgxp');
+          assert.equal(body.owner, 'acme-corp');
           assert.equal(body.repo, 'ghec-consultant-suite');
-          assert.equal(body.inputs.enterprise_slug, 'cloudgxp');
+          assert.equal(body.inputs.enterprise_slug, 'acme-corp');
           mockState.dispatched = true;
           return new Response(JSON.stringify({ status: 'dispatched' }), {
             status: 200,
           });
         }
 
-        if (
-          url.includes('/actions/workflows/enterprise-multi-org-scan.yml/runs')
-        ) {
+        if (url.includes('/actions/workflows/discovery-scan.yml/runs')) {
           return new Response(
             JSON.stringify({
               workflow_runs: [
@@ -97,7 +91,7 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
               artifacts: [
                 {
                   id: mockState.artifactId,
-                  name: 'discovery-enterprise-cloudgxp',
+                  name: 'discovery-enterprise-acme-corp',
                 },
               ],
             }),
@@ -112,7 +106,7 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
             JSON.stringify({
               artifactId: mockState.artifactId,
               files: {
-                'ghec-discovery-cloudgxp-sample.json':
+                'ghec-discovery-acme-corp-sample.json':
                   SAMPLE_ORGANIZATION_BUNDLE,
               },
             }),
@@ -125,16 +119,16 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
 
       // 1. Dispatch
       const dispatchRes = await mockFetch(
-        'http://localhost:3000/api/actions/workflows/enterprise-multi-org-scan.yml/dispatch',
+        'http://localhost:3000/api/actions/workflows/discovery-scan.yml/dispatch',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            owner: 'cloudgxp',
+            owner: 'acme-corp',
             repo: 'ghec-consultant-suite',
             ref: 'main',
             inputs: {
-              enterprise_slug: 'cloudgxp',
+              enterprise_slug: 'acme-corp',
               organizations: '',
               modules: 'all',
               dry_run: false,
@@ -148,7 +142,7 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
 
       // 2. Poll workflow runs
       const runsRes = await mockFetch(
-        'http://localhost:3000/api/actions/workflows/enterprise-multi-org-scan.yml/runs?owner=cloudgxp&repo=ghec-consultant-suite&event=workflow_dispatch',
+        'http://localhost:3000/api/actions/workflows/discovery-scan.yml/runs?owner=acme-corp&repo=ghec-consultant-suite&event=workflow_dispatch',
       );
       assert.equal(runsRes.ok, true);
       const runsData = (await runsRes.json()) as {
@@ -162,7 +156,7 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
       let conclusion: string | null = null;
       while (runStatus !== 'completed') {
         const runRes = await mockFetch(
-          `http://localhost:3000/api/actions/runs/${runId}?owner=cloudgxp&repo=ghec-consultant-suite`,
+          `http://localhost:3000/api/actions/runs/${runId}?owner=acme-corp&repo=ghec-consultant-suite`,
         );
         const data = (await runRes.json()) as {
           status: string;
@@ -176,7 +170,7 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
 
       // 4. Retrieve artifacts
       const artRes = await mockFetch(
-        `http://localhost:3000/api/actions/runs/${runId}/artifacts?owner=cloudgxp&repo=ghec-consultant-suite`,
+        `http://localhost:3000/api/actions/runs/${runId}/artifacts?owner=acme-corp&repo=ghec-consultant-suite`,
       );
       assert.equal(artRes.ok, true);
       const artData = (await artRes.json()) as {
@@ -190,13 +184,13 @@ describe('Task 031: Discovery Automation & Ingestion via Dashboard', () => {
 
       // 5. Unpack
       const unpackRes = await mockFetch(
-        `http://localhost:3000/api/actions/artifacts/${artifact.id}/unpacked?owner=cloudgxp&repo=ghec-consultant-suite`,
+        `http://localhost:3000/api/actions/artifacts/${artifact.id}/unpacked?owner=acme-corp&repo=ghec-consultant-suite`,
       );
       assert.equal(unpackRes.ok, true);
       const unpacked = (await unpackRes.json()) as {
         files: Record<string, unknown>;
       };
-      const rawBundle = unpacked.files['ghec-discovery-cloudgxp-sample.json'];
+      const rawBundle = unpacked.files['ghec-discovery-acme-corp-sample.json'];
       assert.ok(rawBundle);
 
       // 6. Ingest into application state

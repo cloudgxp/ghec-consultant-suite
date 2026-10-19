@@ -6,7 +6,7 @@ on:
       scope_path:
         description: 'Path to migration scope JSON file (or leave empty to plan all non-test scopes in scopes/)'
         required: false
-        default: 'scopes/demogxp-wave.json'
+        default: 'scopes/test-org-wave.json'
         type: string
       pr_number:
         description: 'Optional pull request number to post the planning summary comment to'

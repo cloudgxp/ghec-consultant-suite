@@ -4,7 +4,7 @@
 **Target Component:** `apps/dashboard` & `apps/cli` (`ghec-consultant-suite`)  
 **Status:** Approved for Implementation Planning  
 **Classification:** Technical Architecture & Feasibility Study  
-**Author:** Antigravity (Google DeepMind)  
+**Author:** Platform Architecture Team  
 **Date:** October 2026
 
 ---
@@ -52,7 +52,7 @@ Enterprise migration suites operate in environments with the highest security se
 > **Strict Security Isolation Invariant:**
 > The Migration Operations Console operator **never** directly accesses, handles, or stores `GHEC_SOURCE_TOKEN` or `GHEC_TARGET_TOKEN`.
 >
-> These high-privilege migration tokens reside **exclusively** within GitHub Actions Repository/Organization Secrets in the management repository (`cloudgxp/ghec-consultant-suite`). They are injected into isolated GitHub Actions runners at runtime via standard workflow secret references (`${{ secrets.GHEC_SOURCE_TOKEN }}`, `${{ secrets.GHEC_TARGET_TOKEN }}`).
+> These high-privilege migration tokens reside **exclusively** within GitHub Actions Repository/Organization Secrets in the management repository (`acme-corp/ghec-consultant-suite`). They are injected into isolated GitHub Actions runners at runtime via standard workflow secret references (`${{ secrets.GHEC_SOURCE_TOKEN }}`, `${{ secrets.GHEC_TARGET_TOKEN }}`).
 
 Even in the event of complete browser session interception, local workstation malware, or XSS vulnerabilities in the dashboard frontend, an attacker **cannot** extract the underlying source or target enterprise migration tokens because they are cryptographically inaccessible via GitHub's API surface.
 
@@ -66,7 +66,7 @@ graph TD
         Dashboard -->|Authenticated via| ScopedToken
     end
 
-    subgraph GitHubControlPlane["GitHub Management Repository (cloudgxp/ghec-consultant-suite)"]
+    subgraph GitHubControlPlane["GitHub Management Repository (acme-corp/ghec-consultant-suite)"]
         RepoAPI["GitHub REST API (api.github.com)"]
         RepoSecrets["Repo Secrets Vault<br/>(GHEC_SOURCE_TOKEN, GHEC_TARGET_TOKEN)"]
         Workflow["Actions Workflow: migration-execute-wave.yml"]
@@ -82,8 +82,8 @@ graph TD
     end
 
     subgraph ExternalTenants["External Enterprise Tenants"]
-        SourceOrg["Source GHEC Org<br/>(cloudgxp-source)"]
-        TargetOrg["Target GHEC-EMU Org<br/>(cloudgxp-emu-target)"]
+        SourceOrg["Source GHEC Org<br/>(acme-source)"]
+        TargetOrg["Target GHEC-EMU Org<br/>(acme-emu)"]
         CLI -->|Read Operations| SourceOrg
         CLI -->|Write / GEI Mutations| TargetOrg
     end
@@ -99,11 +99,11 @@ graph TD
 
 The Migration Operations Console requires credentials to communicate with the management repository hosting the workflows. The table below evaluates the three credential mechanisms:
 
-| Credential Mechanism          | Storage Location                       | Required Scopes                                                                                                                               | Blast Radius if Compromised                                                                                                                    |             Setup Complexity              | Recommended Use Case                          |
-| :---------------------------- | :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------: | :-------------------------------------------- |
-| **Ambient `gh` CLI Auth**     | OS Keychain / `~/.config/gh/`          | Standard user session (`repo`, `workflow`)                                                                                                    | Confined to operator's user account; no credentials stored in browser DOM or web storage.                                                      | **Zero Config** (Uses existing CLI login) | **Primary (Local Hybrid Console)**            |
-| **Fine-Grained PAT (FG-PAT)** | Browser `sessionStorage` (memory only) | **Repository: `cloudgxp/ghec-consultant-suite`**<br/>• `Actions: Read and write`<br/>• `Contents: Read and write`<br/>• `Metadata: Read-only` | Restricted strictly to the management repository. Cannot read secrets, modify org settings, or access external source/target enterprise repos. |      **Low** (1-time token creation)      | **Secondary (Standalone Dev Server / Cloud)** |
-| **GitHub App User-to-Server** | Ephemeral JWT / Refresh Token          | **Repository Permissions**<br/>• `actions: write`<br/>• `contents: write`<br/>• `metadata: read`                                              | Minimal (tokens expire after 1 hour; strict repository installation boundary).                                                                 |  **Moderate** (Requires registering App)  | **Enterprise Team Deployments**               |
+| Credential Mechanism          | Storage Location                       | Required Scopes                                                                                                                                | Blast Radius if Compromised                                                                                                                    |             Setup Complexity              | Recommended Use Case                          |
+| :---------------------------- | :------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------: | :-------------------------------------------- |
+| **Ambient `gh` CLI Auth**     | OS Keychain / `~/.config/gh/`          | Standard user session (`repo`, `workflow`)                                                                                                     | Confined to operator's user account; no credentials stored in browser DOM or web storage.                                                      | **Zero Config** (Uses existing CLI login) | **Primary (Local Hybrid Console)**            |
+| **Fine-Grained PAT (FG-PAT)** | Browser `sessionStorage` (memory only) | **Repository: `acme-corp/ghec-consultant-suite`**<br/>• `Actions: Read and write`<br/>• `Contents: Read and write`<br/>• `Metadata: Read-only` | Restricted strictly to the management repository. Cannot read secrets, modify org settings, or access external source/target enterprise repos. |      **Low** (1-time token creation)      | **Secondary (Standalone Dev Server / Cloud)** |
+| **GitHub App User-to-Server** | Ephemeral JWT / Refresh Token          | **Repository Permissions**<br/>• `actions: write`<br/>• `contents: write`<br/>• `metadata: read`                                               | Minimal (tokens expire after 1 hour; strict repository installation boundary).                                                                 |  **Moderate** (Requires registering App)  | **Enterprise Team Deployments**               |
 
 ### 2.3 Minimal Fine-Grained PAT Specification
 
@@ -264,7 +264,7 @@ Currently, `RepositoriesTab` presents a read-only virtualized list of source rep
    - **Configuration Inputs:**
      - Target Organization Slug (defaulting to configured target EMU org).
      - Target Visibility: `Inherit`, `Private`, or `Internal`.
-     - Identity Strategy: `emu-saml` (with configurable suffix, e.g., `_gxp`).
+     - Identity Strategy: `emu-saml` (with configurable suffix, e.g., `_emu`).
      - LFS Strategy: `dual-remote-stream` (with worker pool concurrency) or `skip`.
      - Releases Strategy: Asset streaming transfer (`LargeReleasesMigrationStrategy`) or `skip`.
      - Outside Collaborators: Reconcile collaborator access with EMU translation.
@@ -301,11 +301,11 @@ Following the addition of the `collaborators` module (Task 033) and discovery co
 2. **Outside Collaborators Reconciliation Panel:**
    - Dedicated filter and visualization for outside collaborators.
    - Displays source repository access levels (`pull`, `triage`, `push`, `maintain`, `admin`).
-   - Shows EMU account translation preview (`username` ➔ `username_gxp`).
+   - Shows EMU account translation preview (`username` ➔ `username_emu`).
 3. **EMU SAML Identity Mapping Visualizer:**
    - Side-by-side reconciliation cards:
      - **Left (Source Identity):** `source_user` (membership: member/owner, outside collaborator indicator).
-     - **Center (Mapping Engine):** EMU SAML mapping transformation rule (`user` ➔ `user_gxp`).
+     - **Center (Mapping Engine):** EMU SAML mapping transformation rule (`user` ➔ `user_emu`).
      - **Right (Target EMU State):** SCIM provisioning status (`linked`, `unlinked`, `mannequin-pending`, `reclaimed`).
 4. **Interactive Module Triggers:**
    - "Sync Teams & Hierarchy" button (`modules: "teams"`).
@@ -466,7 +466,7 @@ gantt
   - **Objective:** Upgrade `RepositoriesTab.tsx` with multi-repository selection and build `ScopeBuilderModal` with preflight gating.
   - **Key Capabilities:**
     - Multi-select checkbox column with smart presets ("Unmigrated Repos", "LFS Repos", "Outside Collaborator Repos").
-    - Modal inputs supporting all 17 modules, LFS strategy selection (`dual-remote-stream` with worker pool vs. `skip`), releases fallback, and EMU identity suffix (`_gxp`).
+    - Modal inputs supporting all 17 modules, LFS strategy selection (`dual-remote-stream` with worker pool vs. `skip`), releases fallback, and EMU identity suffix (`_emu`).
     - **Execution Topology Selector:** Toggle between Single-Runner (Linear) and Dynamic Parallel Matrix (`--split-matrix <batch-size>`).
     - **1-Click Preflight Check:** In-modal preflight gate calling `SourceCredentialInspector` to validate tokens, SAML SSO authorization, and ruleset bypass rights before dispatch.
     - Zod schema validation using `MigrationScopeSchema` (`@ghec/contracts`).
@@ -508,7 +508,7 @@ gantt
   - **Objective:** Interactive visual hierarchy and EMU SAML reconciliation tree.
   - **Key Capabilities:**
     - Visual parent-child team tree canvas with expandable nodes, membership counts, and repository access grants.
-    - Dedicated Outside Collaborators reconciliation panel showing direct repo permissions and EMU username mappings (`user` ➔ `user_gxp`).
+    - Dedicated Outside Collaborators reconciliation panel showing direct repo permissions and EMU username mappings (`user` ➔ `user_emu`).
     - EMU SAML reconciliation cards showing SCIM link status and mannequin reclamation state (`--skip-invitation`).
   - **Files:** `apps/dashboard/src/features/VirtualizedTeamsAndIdentitiesTab.tsx`, `apps/dashboard/src/components/TeamTreeCanvas.tsx`.
 

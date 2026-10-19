@@ -1,8 +1,8 @@
 # Personal and Test Organization References Audit & Decision Report
 
 **Report Generated:** 2026-10-05  
-**Auditor:** Antigravity  
-**Repository:** `cloudgxp/ghec-consultant-suite`  
+**Auditor:** Copilot  
+**Repository:** `acme-corp/ghec-consultant-suite`  
 **Status:** Under Review (Phase 3 Completed; Pending User Decision)
 
 ---
@@ -13,9 +13,9 @@
 
 This audit provides an exhaustive examination of hardcoded references to personal, synthetic, and test organization slugs across the repository. Specifically, this audit tracks:
 
-- **`demogxp`**: Personal/source organization slug used during test migration dry-runs and live verification.
-- **`antigravity-migration-test`**: Personal/target Enterprise Managed User (EMU) organization slug used as destination in test migrations.
-- **`cloudgxp`**: Repository namespace and test target. All usages are explicitly isolated between **standard repository remote URLs** (e.g. `github.com/cloudgxp/ghec-consultant-suite`) and **synthetic/test tenant targets** (e.g., `cloudgxp-source`, `cloudgxp-emu-target`, or live read-only verification against `cloudgxp`).
+- **`sandbox-org`**: Personal/source organization slug used during test migration dry-runs and live verification.
+- **`emu-target-test`**: Personal/target Enterprise Managed User (EMU) organization slug used as destination in test migrations.
+- **`acme-corp`**: Repository namespace and test target. All usages are explicitly isolated between **standard repository remote URLs** (e.g. `github.com/acme-corp/ghec-consultant-suite`) and **synthetic/test tenant targets** (e.g., `acme-source`, `acme-emu`, or live read-only verification against `acme-corp`).
 
 The objective is to establish an actionable baseline for sanitizing the repository into an open-source, vendor-neutral consultant suite while preserving automated CI/CD checks (`npm run check`), test reproducibility, and historical auditability.
 
@@ -23,13 +23,13 @@ The objective is to establish an actionable baseline for sanitizing the reposito
 
 ### 1.2 Global Occurrence Summary
 
-| Pattern / Identifier               | Category Scope                                                                                              | Total Matches |     Tracked Files      | Gitignored / Untracked Files |
-| :--------------------------------- | :---------------------------------------------------------------------------------------------------------- | :-----------: | :--------------------: | :--------------------------: |
-| `demogxp`                          | Personal test source organization                                                                           |    **134**    | 15 files (134 matches) |     0 files (0 matches)      |
-| `antigravity-migration-test`       | Personal test target EMU organization                                                                       |    **891**    | 14 files (103 matches) |    25 files (788 matches)    |
-| `cloudgxp` (Synthetic / Test Org)  | Synthetic test target (`cloudgxp-source`, `cloudgxp-emu-target`, `jdoe_cloudgxp`) or live validation tenant |    **22**     |  3 files (16 matches)  |     2 files (6 matches)      |
-| `cloudgxp` (Repository Remote URL) | Upstream repository remote URL, PRs, and CodeQL alert anchors                                               |    **135**    | 30 files (135 matches) |     0 files (0 matches)      |
-| **Total Global Occurrences**       |                                                                                                             |   **1,182**   |  **44 tracked files**  |    **27 untracked files**    |
+| Pattern / Identifier                | Category Scope                                                                                | Total Matches |     Tracked Files      | Gitignored / Untracked Files |
+| :---------------------------------- | :-------------------------------------------------------------------------------------------- | :-----------: | :--------------------: | :--------------------------: |
+| `sandbox-org`                       | Personal test source organization                                                             |    **134**    | 15 files (134 matches) |     0 files (0 matches)      |
+| `emu-target-test`                   | Personal test target EMU organization                                                         |    **891**    | 14 files (103 matches) |    25 files (788 matches)    |
+| `acme-corp` (Synthetic / Test Org)  | Synthetic test target (`acme-source`, `acme-emu`, `jdoe_acme-corp`) or live validation tenant |    **22**     |  3 files (16 matches)  |     2 files (6 matches)      |
+| `acme-corp` (Repository Remote URL) | Upstream repository remote URL, PRs, and CodeQL alert anchors                                 |    **135**    | 30 files (135 matches) |     0 files (0 matches)      |
+| **Total Global Occurrences**        |                                                                                               |   **1,182**   |  **44 tracked files**  |    **27 untracked files**    |
 
 ---
 
@@ -61,9 +61,9 @@ The objective is to establish an actionable baseline for sanitizing the reposito
 
 All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
 
-#### File 1: `scopes/demogxp-to-antigravity-all.json`
+#### File 1: `scopes/sandbox-to-emu-target-all.json`
 
-- **Location:** Lines 3, 6, 7, 20, 22, 40, 42, 60, 62, 80, 82, 100, 102, 120, 122, 140, 142, 160, 162, 180, 182, 200, 202, 220, 222, 240, 242, 260, 262, 280, 282, 300, 302, 320, 322, 340, 342, 360, 362, 380, 382, 400, 402, 420, 422, 440, 442, 460, 462, 480, 482, 500, 502, 520, 522, 540, 542, 560, 562 (59 matches: 30 `demogxp`, 29 `antigravity-migration-test`)
+- **Location:** Lines 3, 6, 7, 20, 22, 40, 42, 60, 62, 80, 82, 100, 102, 120, 122, 140, 142, 160, 162, 180, 182, 200, 202, 220, 222, 240, 242, 260, 262, 280, 282, 300, 302, 320, 322, 340, 342, 360, 362, 380, 382, 400, 402, 420, 422, 440, 442, 460, 462, 480, 482, 500, 502, 520, 522, 540, 542, 560, 562 (59 matches: 30 `sandbox-org`, 29 `emu-target-test`)
 - **Current Role:** Ad-hoc migration scope encompassing 28 repositories generated during live multi-repo testing.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Ephemeral run output from `scripts/generate-scope.mjs`. It is an exact duplicate of `scopes/test-all-wave.json` (differing only in `name`). No tests, CI workflows, or scripts depend on this file.
@@ -71,9 +71,9 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
   - **Option C (Recommend Gitignoring):** Pattern `scopes/*-to-*.json` can be added to `.gitignore` to prevent generated execution scopes from polluting git history.
 - **Risk Level:** **Low** (Safe to delete immediately).
 
-#### File 2: `scopes/demogxp-to-antigravity-org.json`
+#### File 2: `scopes/sandbox-to-emu-target-org.json`
 
-- **Location:** Lines 3, 6, 7 (3 matches: 2 `demogxp`, 1 `antigravity-migration-test`)
+- **Location:** Lines 3, 6, 7 (3 matches: 2 `sandbox-org`, 1 `emu-target-test`)
 - **Current Role:** Ad-hoc org-only scope (5 org modules, 0 repositories) generated during early Stage 1/2 tests.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Redundant test artifact superseded by `scopes/test-org-wave.json`. Not referenced anywhere in codebase or automation.
@@ -81,9 +81,9 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
   - **Option C (Recommend Gitignoring):** Covered by `scopes/*-to-*.json` gitignore rule.
 - **Risk Level:** **Low** (Safe to delete immediately).
 
-#### File 3: `scopes/demogxp-to-antigravity-repo.json`
+#### File 3: `scopes/sandbox-to-emu-target-repo.json`
 
-- **Location:** Lines 3, 6, 7, 12, 14, 30, 32 (7 matches: 4 `demogxp`, 3 `antigravity-migration-test`)
+- **Location:** Lines 3, 6, 7, 12, 14, 30, 32 (7 matches: 4 `sandbox-org`, 3 `emu-target-test`)
 - **Current Role:** Ad-hoc 2-repo scope (`dummy-repo-public`, `dummy-repo-private-lfs`) generated for Stage 3 testing.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Identical content to `scopes/test-repo-wave.json` (except `name`). No internal dependencies.
@@ -93,17 +93,17 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
 
 #### File 4: `scopes/test-all-wave.json`
 
-- **Location:** Lines 6, 7, 20, 22, 40, 42, 60, 62, 80, 82, 100, 102, 120, 122, 140, 142, 160, 162, 180, 182, 200, 202, 220, 222, 240, 242, 260, 262, 280, 282, 300, 302, 320, 322, 340, 342, 360, 362, 380, 382, 400, 402, 420, 422, 440, 442, 460, 462, 480, 482, 500, 502, 520, 522, 540, 542, 560, 562 (58 matches: 29 `demogxp`, 29 `antigravity-migration-test`)
+- **Location:** Lines 6, 7, 20, 22, 40, 42, 60, 62, 80, 82, 100, 102, 120, 122, 140, 142, 160, 162, 180, 182, 200, 202, 220, 222, 240, 242, 260, 262, 280, 282, 300, 302, 320, 322, 340, 342, 360, 362, 380, 382, 400, 402, 420, 422, 440, 442, 460, 462, 480, 482, 500, 502, 520, 522, 540, 542, 560, 562 (58 matches: 29 `sandbox-org`, 29 `emu-target-test`)
 - **Current Role:** Primary multi-repository reference test wave (28 repositories) for comprehensive migration verification.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Deleting would remove the pre-packaged large test wave referenced in Stage 4 task documentation.
-  - **Option B (Recommend Sanitization):** Sanitize `source` -> `example-source-org` (or `cloudgxp-source`) and `target` -> `example-target-emu` (or `cloudgxp-emu-target`). Validates cleanly under `@ghec/contracts` `validateMigrationScope()`.
+  - **Option B (Recommend Sanitization):** Sanitize `source` -> `example-source-org` (or `acme-source`) and `target` -> `example-target-emu` (or `acme-emu`). Validates cleanly under `@ghec/contracts` `validateMigrationScope()`.
   - **Option C (Recommend Gitignoring):** Keep tracked as a canonical reference fixture.
 - **Risk Level:** **Low** (Sanitization is safe and preserves fixture utility).
 
 #### File 5: `scopes/test-org-wave.json`
 
-- **Location:** Lines 6, 7 (2 matches: 1 `demogxp`, 1 `antigravity-migration-test`)
+- **Location:** Lines 6, 7 (2 matches: 1 `sandbox-org`, 1 `emu-target-test`)
 - **Current Role:** Default scope input for `.github/workflows/test-migration-dispatch.yml` (Line 10: `default: 'scopes/test-org-wave.json'`).
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** **Breaks default workflow dispatch!** Workflow dispatch will fail on execution if default path does not exist.
@@ -113,7 +113,7 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
 
 #### File 6: `scopes/test-repo-wave.json`
 
-- **Location:** Lines 6, 7, 12, 14, 30, 32 (6 matches: 3 `demogxp`, 3 `antigravity-migration-test`)
+- **Location:** Lines 6, 7, 12, 14, 30, 32 (6 matches: 3 `sandbox-org`, 3 `emu-target-test`)
 - **Current Role:** Standard 2-repo wave (`dummy-repo-public`, `dummy-repo-private-lfs`) used in Stage 3 module testing.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Would break setup examples in `docs/guides/ghec-to-emu-test-migration-setup.md`.
@@ -128,11 +128,11 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
 #### File 7: `.github/workflows/generate-scope.yml`
 
 - **Location:**
-  - Line 7: `description: 'Source organization slug (e.g. demogxp)'`
-  - Line 10: `default: 'demogxp'`
-  - Line 12: `description: 'Target organization slug (e.g. antigravity-migration-test)'`
-  - Line 15: `default: 'antigravity-migration-test'`
-  - (4 matches: 2 `demogxp`, 2 `antigravity-migration-test`)
+  - Line 7: `description: 'Source organization slug (e.g. sandbox-org)'`
+  - Line 10: `default: 'sandbox-org'`
+  - Line 12: `description: 'Target organization slug (e.g. emu-target-test)'`
+  - Line 15: `default: 'emu-target-test'`
+  - (4 matches: 2 `sandbox-org`, 2 `emu-target-test`)
 - **Current Role:** Manual workflow dispatch for generating migration scope JSON files and committing them to branch.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Workflow is core automation; deletion degrades suite capability.
@@ -143,11 +143,11 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
 #### File 8: `.github/workflows/seed-dummy-resources.yml`
 
 - **Location:**
-  - Line 7: `description: 'Provisioning mode: "source" (demogxp) or "target" (antigravity-migration-test)'`
-  - Line 15: `description: 'Organization to provision (leave empty to use default: demogxp for source, antigravity-migration-test for target)'`
-  - Line 45: `TARGET_ORG="${INPUT_ORG:-antigravity-migration-test}"`
-  - Line 53: `SOURCE_ORG="${INPUT_ORG:-demogxp}"`
-  - (4 matches: 2 `demogxp`, 2 `antigravity-migration-test`)
+  - Line 7: `description: 'Provisioning mode: "source" (sandbox-org) or "target" (emu-target-test)'`
+  - Line 15: `description: 'Organization to provision (leave empty to use default: sandbox-org for source, emu-target-test for target)'`
+  - Line 45: `TARGET_ORG="${INPUT_ORG:-emu-target-test}"`
+  - Line 53: `SOURCE_ORG="${INPUT_ORG:-sandbox-org}"`
+  - (4 matches: 2 `sandbox-org`, 2 `emu-target-test`)
 - **Current Role:** Seeds dummy test resources (repos, teams, variables, secrets, custom properties) for migration testing.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Deletion removes test seeding automation.
@@ -162,25 +162,25 @@ All scope files conform to the `@ghec/contracts` `MigrationScopeSchema`.
 #### File 9: `scripts/generate-scope.mjs`
 
 - **Location:**
-  - Line 75: `node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --file wave1-urls.txt`
-  - Line 77: `# Generate a scope for all repositories in demogxp:`
-  - Line 78: `node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --all`
-  - Line 81: `node scripts/generate-scope.mjs --source demogxp --target antigravity-migration-test --repos https://github.com/demogxp/repo-1,https://github.com/demogxp/repo-2`
-  - (4 matches: 4 `demogxp`, 3 `antigravity-migration-test`)
+  - Line 75: `node scripts/generate-scope.mjs --source sandbox-org --target emu-target-test --file wave1-urls.txt`
+  - Line 77: `# Generate a scope for all repositories in sandbox-org:`
+  - Line 78: `node scripts/generate-scope.mjs --source sandbox-org --target emu-target-test --all`
+  - Line 81: `node scripts/generate-scope.mjs --source sandbox-org --target emu-target-test --repos https://github.com/sandbox-org/repo-1,https://github.com/sandbox-org/repo-2`
+  - (4 matches: 4 `sandbox-org`, 3 `emu-target-test`)
 - **Current Role:** CLI script to generate migration scopes from GitHub API or text URL files.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Core CLI script invoked by `npm run generate:scope` and workflow. Cannot be deleted.
-  - **Option B (Recommend Sanitization):** All occurrences are inside `printUsage()` docstrings! Change `demogxp` -> `acme-corp` / `example-source-org` and `antigravity-migration-test` -> `acme-emu` / `example-target-emu`.
+  - **Option B (Recommend Sanitization):** All occurrences are inside `printUsage()` docstrings! Change `sandbox-org` -> `acme-corp` / `example-source-org` and `emu-target-test` -> `acme-emu` / `example-target-emu`.
   - **Option C (Recommend Gitignoring):** Not applicable.
 - **Risk Level:** **Low** (Docstring edits carry zero runtime risk).
 
 #### File 10: `scripts/seed-dummy-resources.mjs`
 
-- **Location:** Line 23: `'demogxp';` (inside `const org = ... || 'demogxp';`)
+- **Location:** Line 23: `'sandbox-org';` (inside `const org = ... || 'sandbox-org';`)
 - **Current Role:** Standalone script to provision synthetic test resources via GitHub REST API.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Core utility script.
-  - **Option B (Recommend Sanitization):** Change fallback from `'demogxp'` to require an explicit argument (`if (!org) { console.error('Error: Organization argument required'); process.exit(1); }`).
+  - **Option B (Recommend Sanitization):** Change fallback from `'sandbox-org'` to require an explicit argument (`if (!org) { console.error('Error: Organization argument required'); process.exit(1); }`).
   - **Option C (Recommend Gitignoring):** Not applicable.
 - **Risk Level:** **Low** (Fails fast if operator forgets to pass organization argument, preventing accidental seeding).
 
@@ -192,67 +192,67 @@ All 3 unit test files pass cleanly during `npm run check` (369/369 tests green).
 
 #### File 11: `packages/migration/tests/modules/gei-repo.test.ts`
 
-- **Location:** Lines 83, 85, 105, 107, 118, 120, 127, 142, 149, 151, 164 (11 matches: 5 `demogxp`, 6 `antigravity-migration-test`)
+- **Location:** Lines 83, 85, 105, 107, 118, 120, 127, 142, 149, 151, 164 (11 matches: 5 `sandbox-org`, 6 `emu-target-test`)
 - **Code Context:**
   ```typescript
   scope: {
     level: 'repository',
-    sourceOrg: 'demogxp',
+    sourceOrg: 'sandbox-org',
     sourceRepo: 'repo-1',
-    targetOrg: 'antigravity-migration-test',
+    targetOrg: 'emu-target-test',
     targetRepo: 'repo-1',
   }
   // SSO mock URL:
-  ssoUrl: 'https://github.com/orgs/demogxp/sso'
+  ssoUrl: 'https://github.com/orgs/sandbox-org/sso'
   // Assertion:
-  assert.equal(plan.targetIdentifier, 'antigravity-migration-test/repo-1');
+  assert.equal(plan.targetIdentifier, 'emu-target-test/repo-1');
   ```
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** **Breaks test suite.** Deleting this file drops unit test coverage for `GeiRepoMigrationModule`.
-  - **Option B (Recommend Sanitization):** Replace `demogxp` with `example-source-org` and `antigravity-migration-test` with `example-target-org`. Synchronize assertion lines (lines 127, 142, 164). Test suite executes against in-memory mock adapters; zero network calls are made.
+  - **Option B (Recommend Sanitization):** Replace `sandbox-org` with `example-source-org` and `emu-target-test` with `example-target-org`. Synchronize assertion lines (lines 127, 142, 164). Test suite executes against in-memory mock adapters; zero network calls are made.
   - **Option C (Recommend Gitignoring):** Not applicable for tracked test suite.
 - **Risk Level:** **Low** (Simple string replacement; verified by running `npm test`).
 
 #### File 12: `packages/migration/tests/preflight/credential-inspector.test.ts`
 
-- **Location:** Lines 93, 114, 135, 156, 171, 177, 188, 207, 215, 235, 238, 240, 245, 247 (14 matches: 12 `demogxp`, 2 `antigravity-migration-test`)
+- **Location:** Lines 93, 114, 135, 156, 171, 177, 188, 207, 215, 235, 238, 240, 245, 247 (14 matches: 12 `sandbox-org`, 2 `emu-target-test`)
 - **Code Context:**
   ```typescript
   const inspector = new SourceCredentialInspector({
     adapter,
-    sourceOrg: 'demogxp',
+    sourceOrg: 'sandbox-org',
   });
-  ssoUrl: 'https://github.com/orgs/demogxp/sso';
+  ssoUrl: 'https://github.com/orgs/sandbox-org/sso';
   assert.ok(
-    assessment.blockers[0]!.includes('https://github.com/orgs/demogxp/sso'),
+    assessment.blockers[0]!.includes('https://github.com/orgs/sandbox-org/sso'),
   );
   assert.match(
     assessment.warnings[0]!,
-    /gh gei grant-migrator-role --github-org demogxp --actor regular-member/,
+    /gh gei grant-migrator-role --github-org sandbox-org --actor regular-member/,
   );
-  name: 'demogxp-to-target';
-  source: 'demogxp';
-  target: 'antigravity-migration-test';
+  name: 'sandbox-org-to-target';
+  source: 'sandbox-org';
+  target: 'emu-target-test';
   ```
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** **Breaks test suite.** Tests Stage 1 token inspection, SAML SSO discovery, and permission evaluation.
-  - **Option B (Recommend Sanitization):** Replace `demogxp` with `mock-source-org` and `antigravity-migration-test` with `mock-target-org`. Must update regex assertion in line 215 (`--github-org mock-source-org`) and SSO assertion in line 188.
+  - **Option B (Recommend Sanitization):** Replace `sandbox-org` with `mock-source-org` and `emu-target-test` with `mock-target-org`. Must update regex assertion in line 215 (`--github-org mock-source-org`) and SSO assertion in line 188.
   - **Option C (Recommend Gitignoring):** Not applicable.
 - **Risk Level:** **Low** (Tests mock adapters in-memory; zero network dependency).
 
 #### File 13: `packages/migration/tests/scope/generate-scope.test.ts`
 
-- **Location:** Lines 14, 15, 18, 19, 22, 23, 26, 27, 31, 32, 35, 36, 38, 39, 49, 50, 57, 58, 76, 77, 78, 81, 89, 94, 95, 113, 120, 144, 145, 153, 181, 182 (32 matches: 25 `demogxp`, 7 `antigravity-migration-test`)
+- **Location:** Lines 14, 15, 18, 19, 22, 23, 26, 27, 31, 32, 35, 36, 38, 39, 49, 50, 57, 58, 76, 77, 78, 81, 89, 94, 95, 113, 120, 144, 145, 153, 181, 182 (32 matches: 25 `sandbox-org`, 7 `emu-target-test`)
 - **Code Context:**
   ```typescript
-  assert.deepEqual(parseRepoEntry('https://github.com/demogxp/my-repo'), { org: 'demogxp', name: 'my-repo' });
-  const { scope } = await generateScope({ source: 'demogxp', target: 'antigravity-migration-test', ... });
+  assert.deepEqual(parseRepoEntry('https://github.com/sandbox-org/my-repo'), { org: 'sandbox-org', name: 'my-repo' });
+  const { scope } = await generateScope({ source: 'sandbox-org', target: 'emu-target-test', ... });
   // Mismatch error assertion:
-  /belongs to organization "other-org", but source organization is "demogxp"/
+  /belongs to organization "other-org", but source organization is "sandbox-org"/
   ```
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** **Breaks test suite.** Tests URL parsing (HTTPS, SSH, git@, GHE), wave generation, multi-hundred repo scaling, and schema validation.
-  - **Option B (Recommend Sanitization):** Replace `demogxp` with `example-source-org` and `antigravity-migration-test` with `example-target-org`. Notice that lines 163-164 (`source-org`, `target-org`) already use generic names!
+  - **Option B (Recommend Sanitization):** Replace `sandbox-org` with `example-source-org` and `emu-target-test` with `example-target-org`. Notice that lines 163-164 (`source-org`, `target-org`) already use generic names!
   - **Option C (Recommend Gitignoring):** Not applicable.
 - **Risk Level:** **Low** (Tests use local strings and temporary files; verified by `npm test`).
 
@@ -262,14 +262,14 @@ All 3 unit test files pass cleanly during `npm run check` (369/369 tests green).
 
 #### File 14: `docs/guides/ghec-to-emu-test-migration-setup.md`
 
-- **Location:** Lines 50, 51, 60, 62, 71, 117, 128, 221, 225, 226 (10 matches for `cloudgxp-source`, `cloudgxp-emu-target`, `jdoe_cloudgxp`)
+- **Location:** Lines 50, 51, 60, 62, 71, 117, 128, 221, 225, 226 (10 matches for `acme-source`, `acme-emu`, `jdoe_acme-corp`)
 - **Current Role:** End-to-end setup guide for test migrations between GHEC and EMU.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Core setup guide; cannot be deleted.
-  - **Option B (Recommend Sanitization):** The guide already intentionally uses synthetic documentation placeholders (`cloudgxp-source`, `cloudgxp-emu-target`, and EMU user format `jdoe_cloudgxp`). Note that lines 225-226 explicitly instruct the user to run `sed` to replace these with their own organization names:
+  - **Option B (Recommend Sanitization):** The guide already intentionally uses synthetic documentation placeholders (`acme-source`, `acme-emu`, and EMU user format `jdoe_acme-corp`). Note that lines 225-226 explicitly instruct the user to run `sed` to replace these with their own organization names:
     ```bash
-    sed -i 's/cloudgxp-source/my-source-org/g' scopes/test-org-wave.json
-    sed -i 's/cloudgxp-emu-target/my-target-emu-org/g' scopes/test-org-wave.json
+    sed -i 's/acme-source/my-source-org/g' scopes/test-org-wave.json
+    sed -i 's/acme-emu/my-target-emu-org/g' scopes/test-org-wave.json
     ```
     If desired, these can be generalized to `example-source-org` and `example-emu-target`.
   - **Option C (Recommend Gitignoring):** Not applicable.
@@ -277,7 +277,7 @@ All 3 unit test files pass cleanly during `npm run check` (369/369 tests green).
 
 #### File 15: `docs/architecture/discovery-migration-assessment.md`
 
-- **Location:** Line 6: `**Target Repository:** cloudgxp/ghec-consultant-suite`
+- **Location:** Line 6: `**Target Repository:** acme-corp/ghec-consultant-suite`
 - **Current Role:** Architecture specification noting the repository name.
 - **Classification:** **Standard Repository Remote URL** (Not a personal/test tenant).
 - **Evaluation & Options:** Retain as valid project identifier.
@@ -289,7 +289,7 @@ All 3 unit test files pass cleanly during `npm run check` (369/369 tests green).
 
 #### File 16: `agents/agent-tasks/CHANGELOG.md`
 
-- **Location:** Lines 36, 45, 54, 63, 72, 81, 90, 99, 111, 122, 131, 140, 149 (12 `demogxp`, 13 `antigravity-migration-test`), Lines 283, 295, 298 (3 live smoke test against `cloudgxp`), plus ~19 commit/PR URLs.
+- **Location:** Lines 36, 45, 54, 63, 72, 81, 90, 99, 111, 122, 131, 140, 149 (12 `sandbox-org`, 13 `emu-target-test`), Lines 283, 295, 298 (3 live smoke test against `acme-corp`), plus ~19 commit/PR URLs.
 - **Current Role:** Immutable project changelog recording historical verification events for Completed Tasks (Stages 1–4).
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Would destroy audit trail and compliance evidence.
@@ -299,7 +299,7 @@ All 3 unit test files pass cleanly during `npm run check` (369/369 tests green).
 
 #### File 17: `agents/agent-tasks/CURRENT-TASKS.md`
 
-- **Location:** Lines 20, 104, 180 (3 matches for release validation against enterprise target `cloudgxp`), plus 12 commit/PR URLs.
+- **Location:** Lines 20, 104, 180 (3 matches for release validation against enterprise target `acme-corp`), plus 12 commit/PR URLs.
 - **Current Role:** Central tracking backlog for all agent tasks.
 - **Evaluation & Options:**
   - **Option A (Recommend Deletion):** Core tracking artifact.
@@ -309,15 +309,15 @@ All 3 unit test files pass cleanly during `npm run check` (369/369 tests green).
 
 #### File 18: `agents/agent-tasks/features/completed/test-stage1-discovery-verification.md`
 
-- **Location:** Line 43: `Target the committed test organization scope defining source (demogxp) and target EMU (antigravity-migration-test) tenants:`
+- **Location:** Line 43: `Target the committed test organization scope defining source (sandbox-org) and target EMU (emu-target-test) tenants:`
 - **Current Role:** Completed task specification for Stage 1 discovery.
-- **Evaluation & Options:** Can be sanitized to reference `cloudgxp-source` / `cloudgxp-emu-target` or `example-source-org`.
+- **Evaluation & Options:** Can be sanitized to reference `acme-source` / `acme-emu` or `example-source-org`.
 - **Risk Level:** **Low**.
 
 #### Files 19–33: Completed CodeQL Specifications, PR Fix Records, and Workflows
 
 - **Location:** `agents/agent-tasks/security/completed/codeql-*.md`, `bug-fixes/completed/pr-fix-*.md`, `.github/workflows/combine-dependabot-prs.yml`, `agents/agent-communications/changelog.md`
-- **Classification:** **Standard Repository Remote URLs & Anchors** (100% of these occurrences are `cloudgxp/ghec-consultant-suite` or `cloudgxp/reusable-workflows`).
+- **Classification:** **Standard Repository Remote URLs & Anchors** (100% of these occurrences are `acme-corp/ghec-consultant-suite` or `acme-corp/reusable-workflows`).
 - **Evaluation & Options:** **Do not modify.** These are legitimate GitHub repository URLs pointing to issues, code scanning alerts, and reusable workflow SHAs in the suite repository.
 - **Risk Level:** **None**.
 
@@ -343,9 +343,9 @@ All 27 files in `scans/` are **untracked and gitignored** via `.gitignore:35` (`
 
 These files are ephemeral test outputs generated during development with zero callers in tests, scripts, or workflows:
 
-- [ ] **`scopes/demogxp-to-antigravity-all.json`** (59 matches) — Delete file; exact duplicate of `test-all-wave.json`.
-- [ ] **`scopes/demogxp-to-antigravity-org.json`** (3 matches) — Delete file; superseded by `test-org-wave.json`.
-- [ ] **`scopes/demogxp-to-antigravity-repo.json`** (7 matches) — Delete file; exact duplicate of `test-repo-wave.json`.
+- [ ] **`scopes/sandbox-to-emu-target-all.json`** (59 matches) — Delete file; exact duplicate of `test-all-wave.json`.
+- [ ] **`scopes/sandbox-to-emu-target-org.json`** (3 matches) — Delete file; superseded by `test-org-wave.json`.
+- [ ] **`scopes/sandbox-to-emu-target-repo.json`** (7 matches) — Delete file; exact duplicate of `test-repo-wave.json`.
 
 ---
 
@@ -356,50 +356,50 @@ These files are required for core functionality, automation, and test coverage (
 #### 1. Committed Migration Scopes (`scopes/`)
 
 - [ ] **`scopes/test-all-wave.json`**
-  - Replace all `demogxp` occurrences with `example-source-org` (or `cloudgxp-source`).
-  - Replace all `antigravity-migration-test` occurrences with `example-target-emu` (or `cloudgxp-emu-target`).
+  - Replace all `sandbox-org` occurrences with `example-source-org` (or `acme-source`).
+  - Replace all `emu-target-test` occurrences with `example-target-emu` (or `acme-emu`).
 - [ ] **`scopes/test-org-wave.json`**
-  - Replace `demogxp` with `example-source-org`.
-  - Replace `antigravity-migration-test` with `example-target-emu`.
+  - Replace `sandbox-org` with `example-source-org`.
+  - Replace `emu-target-test` with `example-target-emu`.
 - [ ] **`scopes/test-repo-wave.json`**
-  - Replace `demogxp` with `example-source-org`.
-  - Replace `antigravity-migration-test` with `example-target-emu`.
+  - Replace `sandbox-org` with `example-source-org`.
+  - Replace `emu-target-test` with `example-target-emu`.
 
 #### 2. Unit Tests (`packages/migration/tests/`)
 
 - [ ] **`packages/migration/tests/modules/gei-repo.test.ts`**
-  - Sanitize `demogxp` -> `example-source-org`.
-  - Sanitize `antigravity-migration-test` -> `example-target-emu`.
+  - Sanitize `sandbox-org` -> `example-source-org`.
+  - Sanitize `emu-target-test` -> `example-target-emu`.
   - Update SSO mock URL assertion to `https://github.com/orgs/example-source-org/sso`.
   - Update plan target assertion to `example-target-emu/repo-1`.
 - [ ] **`packages/migration/tests/preflight/credential-inspector.test.ts`**
-  - Sanitize `demogxp` -> `mock-source-org`.
-  - Sanitize `antigravity-migration-test` -> `mock-target-emu`.
+  - Sanitize `sandbox-org` -> `mock-source-org`.
+  - Sanitize `emu-target-test` -> `mock-target-emu`.
   - Update SAML SSO assertion URL to `https://github.com/orgs/mock-source-org/sso`.
   - Update migrator role regex to `/gh gei grant-migrator-role --github-org mock-source-org --actor regular-member/`.
 - [ ] **`packages/migration/tests/scope/generate-scope.test.ts`**
-  - Sanitize all test URLs from `demogxp` to `example-source-org`.
-  - Sanitize `antigravity-migration-test` to `example-target-emu`.
+  - Sanitize all test URLs from `sandbox-org` to `example-source-org`.
+  - Sanitize `emu-target-test` to `example-target-emu`.
   - Update mismatch regex assertion to match `example-source-org`.
 
 #### 3. Utility Scripts (`scripts/`)
 
 - [ ] **`scripts/generate-scope.mjs`**
-  - Sanitize lines 75, 77, 78, 81: replace `demogxp` and `antigravity-migration-test` in help text examples with `example-source-org` and `example-target-emu`.
+  - Sanitize lines 75, 77, 78, 81: replace `sandbox-org` and `emu-target-test` in help text examples with `example-source-org` and `example-target-emu`.
 - [ ] **`scripts/seed-dummy-resources.mjs`**
-  - Sanitize line 23: remove hardcoded `'demogxp'` fallback; require explicit org via CLI arg or `GHEC_SOURCE_ORG`.
+  - Sanitize line 23: remove hardcoded `'sandbox-org'` fallback; require explicit org via CLI arg or `GHEC_SOURCE_ORG`.
 
 ---
 
 ### 3.3 Phase C: Workflows to Parameterize (Zero-Default Hardening)
 
 - [ ] **`.github/workflows/generate-scope.yml`**
-  - Change `source_org` input default from `'demogxp'` to `''` (or `'example-source-org'`).
-  - Change `target_org` input default from `'antigravity-migration-test'` to `''` (or `'example-target-emu'`).
+  - Change `source_org` input default from `'sandbox-org'` to `''` (or `'example-source-org'`).
+  - Change `target_org` input default from `'emu-target-test'` to `''` (or `'example-target-emu'`).
   - Update input descriptions to use generic examples `(e.g. acme-source-org)`.
 - [ ] **`.github/workflows/seed-dummy-resources.yml`**
   - Remove personal org names from input descriptions.
-  - Require explicit `organization` input or default to `''` without falling back to `demogxp` / `antigravity-migration-test`.
+  - Require explicit `organization` input or default to `''` without falling back to `sandbox-org` / `emu-target-test`.
 
 ---
 
@@ -418,11 +418,11 @@ These files are required for core functionality, automation, and test coverage (
 
 ### 3.5 Phase E: Historical Records Decision Matrix
 
-| Artifact                                                                      | Current Text                                                           | Recommended Action                                                      | Justification                                                                                                         |
-| :---------------------------------------------------------------------------- | :--------------------------------------------------------------------- | :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
-| `agents/agent-tasks/CHANGELOG.md`                                             | Verification summaries cite `demogxp` and `antigravity-migration-test` | **Retain as historical evidence** OR annotate with generic placeholders | Represents immutable log of historical CI run IDs (37250556440, etc.). Modifying past changelogs obscures provenance. |
-| `agents/agent-tasks/CURRENT-TASKS.md`                                         | Notes release validation against enterprise target `cloudgxp`          | **Generalize** to `approved synthetic enterprise resources`             | Active living document; generalizing keeps focus on current release posture.                                          |
-| `agents/agent-tasks/features/completed/test-stage1-discovery-verification.md` | Mentions `demogxp` and `antigravity-migration-test`                    | **Sanitize** to match sanitized `test-org-wave.json`                    | Completed task spec; aligns with updated scope file names.                                                            |
+| Artifact                                                                      | Current Text                                                    | Recommended Action                                                      | Justification                                                                                                         |
+| :---------------------------------------------------------------------------- | :-------------------------------------------------------------- | :---------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| `agents/agent-tasks/CHANGELOG.md`                                             | Verification summaries cite `sandbox-org` and `emu-target-test` | **Retain as historical evidence** OR annotate with generic placeholders | Represents immutable log of historical CI run IDs (37250556440, etc.). Modifying past changelogs obscures provenance. |
+| `agents/agent-tasks/CURRENT-TASKS.md`                                         | Notes release validation against enterprise target `acme-corp`  | **Generalize** to `approved synthetic enterprise resources`             | Active living document; generalizing keeps focus on current release posture.                                          |
+| `agents/agent-tasks/features/completed/test-stage1-discovery-verification.md` | Mentions `sandbox-org` and `emu-target-test`                    | **Sanitize** to match sanitized `test-org-wave.json`                    | Completed task spec; aligns with updated scope file names.                                                            |
 
 ---
 
@@ -432,7 +432,7 @@ When approved by user, execution must adhere to this verification sequence:
 
 ```bash
 # 1. Execute deletions and sanitizations
-git rm scopes/demogxp-to-antigravity-*.json
+git rm scopes/sandbox-to-emu-target-*.json
 
 # 2. Run full monorepo quality gate
 npm run check

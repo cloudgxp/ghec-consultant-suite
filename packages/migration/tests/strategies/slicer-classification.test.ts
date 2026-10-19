@@ -265,7 +265,7 @@ describe('Scale-Adaptive Repository Sizing & Strategy Classification', () => {
 
     const profile = await assessRepositorySizing(
       mockClient as unknown as Parameters<typeof assessRepositorySizing>[0],
-      'demogxp',
+      'source-org',
       'release-heavy-benchmark',
     );
 

@@ -135,6 +135,11 @@ on:
         required: false
         type: string
         default: ''
+      sandbox_rehearsal:
+        description: 'Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled'
+        required: false
+        type: boolean
+        default: false
       commit_to_branch:
         description: 'Optional: also commit and push the generated scope file to this git branch (artifacts are always uploaded)'
         required: false
@@ -243,6 +248,10 @@ jobs:
 
           if [ -n "${{ inputs.repo_modules }}" ]; then
             ARGS+=("--repo-modules" "${{ inputs.repo_modules }}")
+          fi
+
+          if [ "${{ inputs.sandbox_rehearsal }}" = "true" ]; then
+            ARGS+=("--sandbox-rehearsal")
           fi
 
           if [ "${{ inputs.scope_type }}" = "all_repositories" ] || [ "${{ inputs.scope_type }}" = "public_repositories_only" ] || [ "${{ inputs.scope_type }}" = "private_repositories_only" ] || [ "${{ inputs.scope_type }}" = "internal_repositories_only" ]; then

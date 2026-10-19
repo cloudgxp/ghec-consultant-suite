@@ -1,14 +1,15 @@
 import { MIGRATION_SCHEMA_VERSION } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
-import type {
-  MigrationContext,
-  MigrationScopeLevel,
-  ModuleExecutionResult,
-  ModulePlan,
-  ModuleVerificationResult,
-  OperationExecutionResult,
-  PlannedOperation,
-  VerificationDiscrepancy,
+import {
+  isSandboxRehearsal,
+  type MigrationContext,
+  type MigrationScopeLevel,
+  type ModuleExecutionResult,
+  type ModulePlan,
+  type ModuleVerificationResult,
+  type OperationExecutionResult,
+  type PlannedOperation,
+  type VerificationDiscrepancy,
 } from '../../core/types.js';
 import {
   hooksMatch,
@@ -127,11 +128,13 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
         ? ctx.scope.targetOrg
         : `${ctx.scope.targetOrg}/${ctx.scope.targetRepo ?? ctx.scope.sourceRepo ?? ''}`;
     const hasSecretProvider = this.secretProvider !== undefined;
+    const sandboxRehearsal = isSandboxRehearsal(ctx);
     const operations: PlannedOperation[] = source.hooks.map((hook) => {
       const existing = target.find((candidate) => hooksMatch(hook, candidate));
       const expectedActive = resolveTargetWebhookActive(
         hook,
         hasSecretProvider,
+        sandboxRehearsal,
       );
       let operation: 'create' | 'update' | 'noop';
       if (!existing) {
@@ -145,18 +148,26 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
           existing.insecureSsl !== hook.insecureSsl;
         operation = configChanged || needsSecretRehydration ? 'update' : 'noop';
       }
-      if (hook.secretConfigured && !hasSecretProvider)
+      if (sandboxRehearsal && hook.active) {
+        warnings.push(
+          `Webhook \`${hook.url}\` is forced inactive (active: false) because sandbox rehearsal mode is enabled.`,
+        );
+      } else if (hook.secretConfigured && !hasSecretProvider) {
         warnings.push(
           `Webhook \`${hook.url}\` has a source secret but no replacement secret provider; it will remain inactive (active: false) until the secret is configured.`,
         );
+      }
+      const inactiveNote = sandboxRehearsal
+        ? ' (inactive in sandbox rehearsal mode)'
+        : hook.secretConfigured && !hasSecretProvider
+          ? ' (inactive until HMAC secret is configured)'
+          : ' (active; no signing secret configured on source)';
       const reason =
         operation === 'create'
-          ? `Creating webhook for \`${hook.url}\`${hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ' (active; no signing secret configured on source)'}`
+          ? `Creating webhook for \`${hook.url}\`${inactiveNote}`
           : operation === 'update'
-            ? `Reconciling webhook configuration for \`${hook.url}\`${hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ''}`
-            : hook.secretConfigured && !hasSecretProvider
-              ? `Webhook \`${hook.url}\` already matches target configuration (inactive until HMAC secret is configured)`
-              : `Webhook \`${hook.url}\` already matches target configuration (active; no signing secret configured on source)`;
+            ? `Reconciling webhook configuration for \`${hook.url}\`${sandboxRehearsal ? ' (inactive in sandbox rehearsal mode)' : hook.secretConfigured && !hasSecretProvider ? ' (inactive until HMAC secret is configured)' : ''}`
+            : `Webhook \`${hook.url}\` already matches target configuration${inactiveNote}`;
       return {
         id: `${this.id}:${targetKey}:${hook.url}`,
         resourceType: 'webhook',
@@ -188,6 +199,7 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
   ): Promise<ModuleExecutionResult> {
     const results: OperationExecutionResult[] = [];
     const startedAt = Date.now();
+    const sandboxRehearsal = isSandboxRehearsal(ctx);
     if (!ctx.targetWriteClient && !ctx.dryRun)
       throw new Error(
         'TargetWriteClient must be provided in MigrationContext to apply mutations.',
@@ -241,7 +253,12 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
             ...paramsFor(ctx),
             ...(hookId === undefined ? {} : { hook_id: String(hookId) }),
           },
-          body: webhookPayload(hook, secret, op.operation === 'create'),
+          body: webhookPayload(
+            hook,
+            secret,
+            op.operation === 'create',
+            sandboxRehearsal,
+          ),
         },
         ctx.signal,
       );
@@ -288,16 +305,21 @@ export class WebhooksMigrationModule implements MigrationModule<WebhooksData> {
     });
     const discrepancies: VerificationDiscrepancy[] = [];
     const hasSecretProvider = this.secretProvider !== undefined;
+    const sandboxRehearsal = isSandboxRehearsal(ctx);
     for (const op of plan.operations) {
       const expected = op.sourceState as WebhookDefinition;
       const expectedActive = resolveTargetWebhookActive(
         expected,
         hasSecretProvider,
+        sandboxRehearsal,
       );
       const actual = current.hooks.find((hook) => hooksMatch(expected, hook));
       const activeMatches =
         actual !== undefined &&
-        (actual.active === expectedActive || actual.active === expected.active);
+        (sandboxRehearsal
+          ? actual.active === false
+          : actual.active === expectedActive ||
+            actual.active === expected.active);
       if (!actual || !activeMatches)
         discrepancies.push({
           resourceName: expected.url,

@@ -29,7 +29,7 @@ npm ci
 npm run build
 ```
 
-To verify that your setup works and all 740+ offline tests pass:
+To verify that your setup works and all 800+ offline tests pass:
 
 ```bash
 npm run check
@@ -79,7 +79,7 @@ By default, every migration module in `packages/migration/src/modules/` follows 
 To generate the starter files and test file for a new migration module:
 
 ```bash
-node .agents/skills/migration-module-scaffolding/scripts/scaffold-module.mjs \
+node .github/skills/migration-module-scaffolding/scripts/scaffold-module.mjs \
   my-new-module "My New Module"
 ```
 
@@ -96,7 +96,7 @@ node --import tsx --test packages/migration/tests/modules/my-new-module.test.ts
 
 ## Writing and updating documentation
 
-By default, all user guides (`docs/guides/**`), README files, and SpecKit `quickstart.md` files follow our **Consultant Documentation Style** ([`.agents/rules/documentation-style.md`](.agents/rules/documentation-style.md)):
+By default, all user guides (`docs/guides/**`), README files, and SpecKit `quickstart.md` files follow our **Consultant Documentation Style** ([`.github/instructions/documentation-style.instructions.md`](.github/instructions/documentation-style.instructions.md)):
 
 - **Write at an 8th-grade reading level:** Use short sentences (15–20 words), active voice (`"You can..."`), and plain English instead of stiff jargon like _"idempotent"_ or _"invariants"_.
 - **Explain defaults first:** Start each section with 1–2 sentences explaining what happens by default.

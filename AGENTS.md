@@ -10,14 +10,14 @@ Managed via `npm` workspaces with ES modules (`"type": "module"`) and Node `>=22
 
 ```text
 apps/
-  cli/                 CLI binary (ghec-consultant-cli): discover, plan, migrate, verify, agent-review, console-server
+  cli/                 CLI binary (ghec-consultant-cli): discover, generate-scope, validate-scope, preflight, plan, migrate, verify, cutover, console, agent-review, publish-results, audit-gap-ledger, seed-demo, teardown-sandbox
   dashboard/           Vite + React 19 + GitHub Primer offline migration assessment & live execution control plane
 packages/
   contracts/           Authoritative JSON schema contracts (v1.0.0, Zod schemas, MIGRATION_SCHEMA_VERSION)
   analysis/            Deterministic migration readiness heuristics and risk scoring
   github-client/       Headless dual-tenant GitHub client with isolated AdaptiveRateLimiters
   discovery/           Discovery engine, GraphQL/REST collectors, and evidence aggregator
-  migration/           Modular 4-stage migration framework, ModuleRegistry, GEI runner, and specialized strategies
+  migration/           Modular 4-stage migration framework (34 modules), ModuleRegistry, GEI runner, and specialized strategies
 ```
 
 ---
@@ -29,7 +29,7 @@ Run from workspace root:
 | Command                     | Purpose                                                                       |
 | :-------------------------- | :---------------------------------------------------------------------------- |
 | `npm run check`             | **Primary quality gate**: lint, typecheck, build apps, and execute test suite |
-| `npm test`                  | Build packages and execute 480+ unit tests with 8-way concurrency             |
+| `npm test`                  | Build packages and execute 800+ unit tests with 8-way concurrency             |
 | `npm run lint`              | ESLint caching check + Prettier formatting verification                       |
 | `npm run format`            | Auto-format all code via Prettier                                             |
 | `npm run typecheck`         | Build packages and validate TypeScript without emit across apps               |
@@ -47,7 +47,7 @@ Run from workspace root:
    - Credentials exist strictly in GitHub Actions repository secrets or ephemeral memory; NEVER written to disk or logs.
 2. **4-Stage Module Lifecycle:**
    - Every migration module implements: `discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`.
-   - All modules register with `ModuleRegistry` and declare dependencies resolved via topological DAG.
+   - All 34 modules (15 org-level, 19 repo-level) register with `ModuleRegistry` and declare dependencies resolved via topological DAG.
 3. **Data Contracts & Immutability:**
    - All cross-package data payloads (scopes, plans, reports, checkpoints) conform strictly to `@ghec/contracts` Zod schemas.
    - Bundle outputs are immutable JSON evidence.
@@ -58,7 +58,7 @@ Run from workspace root:
    - Strict typing across all packages; prohibition of `any`.
    - Node built-in modules must use the `node:` protocol prefix (e.g. `node:path`, `node:fs`).
 6. **Plain-English Task-Oriented Documentation (`consultant-style-docs`):**
-   - All user-facing guides (`docs/guides/**`), READMEs, and SpecKit `quickstart.md` files must follow [`.agents/rules/documentation-style.md`](.agents/rules/documentation-style.md) and [`.agents/skills/consultant-style-docs/SKILL.md`](.agents/skills/consultant-style-docs/SKILL.md).
+   - All user-facing guides (`docs/guides/**`), READMEs, and SpecKit `quickstart.md` files must follow [`.github/instructions/documentation-style.instructions.md`](.github/instructions/documentation-style.instructions.md) and [`.github/skills/consultant-style-docs/SKILL.md`](.github/skills/consultant-style-docs/SKILL.md).
    - Write at an **8th-grade reading level** (plain English, no stiff jargon like _"invariants"_ or _"idempotent"_), state default behavior upfront, and pair short `"To <do X>:"` sentences with individual copy-pasteable code blocks.
 
 ---
@@ -71,5 +71,4 @@ Run from workspace root:
   - Execution Model: [`docs/specs/migration-execution-model.md`](docs/specs/migration-execution-model.md)
   - Client Boundaries: [`docs/specs/github-client-boundaries.md`](docs/specs/github-client-boundaries.md)
   - Remediation Agent: [`docs/specs/verification-remediation-agent.md`](docs/specs/verification-remediation-agent.md)
-- **Task Board & Planning:** [`.agents/tasks/`](.agents/tasks/) (governed by [`.agents/rules/task-planning.md`](.agents/rules/task-planning.md))
-- **Rules & Skills:** See [`.agents/rules/`](.agents/rules/) and [`.agents/skills/`](.agents/skills/).
+- **GitHub Copilot Customizations:** See [`.github/copilot-instructions.md`](.github/copilot-instructions.md), [`.github/instructions/`](.github/instructions/), [`.github/skills/`](.github/skills/), and [`.github/agents/`](.github/agents/).

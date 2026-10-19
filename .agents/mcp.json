@@ -5,7 +5,7 @@
       "command": "node",
       "args": [
         "./apps/cli/bin/ghec-consultant-cli.mjs",
-        "console-server",
+        "console",
         "--port",
         "0"
       ],

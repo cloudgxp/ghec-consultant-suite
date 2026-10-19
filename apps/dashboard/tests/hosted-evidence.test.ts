@@ -135,9 +135,9 @@ describe('TASK-075, TASK-076 & TASK-077: Hosted Private GitHub Pages Evidence Au
       if (url.endsWith('manifest.json')) {
         return new Response(
           JSON.stringify({
-            runId: 'run-demogxp-mig8',
-            sourceOrg: 'demogxp',
-            targetOrg: 'demogxp-mig8',
+            runId: 'run-target-org',
+            sourceOrg: 'source-org',
+            targetOrg: 'target-org',
             generatedAt: '2026-10-19T05:00:00.000Z',
             repositories: [
               { sourceRepo: 'demo', targetRepo: 'demo' },
@@ -157,20 +157,20 @@ describe('TASK-075, TASK-076 & TASK-077: Hosted Private GitHub Pages Evidence Au
         return new Response(
           JSON.stringify({
             version: '1.0.0',
-            name: 'demogxp-to-demogxp-mig8',
-            organizations: [{ source: 'demogxp', target: 'demogxp-mig8' }],
+            name: 'source-org-to-target-org',
+            organizations: [{ source: 'source-org', target: 'target-org' }],
             repositories: [
               {
-                sourceOrg: 'demogxp',
+                sourceOrg: 'source-org',
                 sourceRepo: 'demo',
-                targetOrg: 'demogxp-mig8',
+                targetOrg: 'target-org',
                 targetRepo: 'demo',
                 useGei: true,
               },
               {
-                sourceOrg: 'demogxp',
+                sourceOrg: 'source-org',
                 sourceRepo: 'WebKit',
-                targetOrg: 'demogxp-mig8',
+                targetOrg: 'target-org',
                 targetRepo: 'WebKit',
                 useGei: false,
                 archived: true,
@@ -193,7 +193,10 @@ describe('TASK-075, TASK-076 & TASK-077: Hosted Private GitHub Pages Evidence Au
     assert.equal(result.found, true);
     assert.equal(result.bundleResult?.success, true);
     if (result.bundleResult?.success) {
-      assert.equal(result.bundleResult.bundle.organizations[0]?.id, 'demogxp');
+      assert.equal(
+        result.bundleResult.bundle.organizations[0]?.id,
+        'source-org',
+      );
       assert.equal(result.bundleResult.bundle.summary.repositoryCount, 2);
       const webkitRepo = result.bundleResult.bundle.entities.find(
         (e) => e.kind === 'repository' && e.name === 'WebKit',

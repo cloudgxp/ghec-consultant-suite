@@ -29,7 +29,7 @@ export interface EmuIdentityMappingCardProps {
 export const EmuIdentityMappingCard: React.FC<EmuIdentityMappingCardProps> = ({
   identity,
   strategy = 'emu-saml',
-  suffix = '_gxp',
+  suffix = '_emu',
 }) => {
   const predictedTarget =
     identity.targetLogin ||

@@ -245,8 +245,8 @@ describe('Verification Diff & Remediation Engine (Task 043 / DASH-28)', () => {
         selectedModules: string[];
       };
 
-      assert.strictEqual(scope.sourceOrganization, 'cloudgxp-source');
-      assert.strictEqual(scope.targetOrganization, 'cloudgxp-target');
+      assert.strictEqual(scope.sourceOrganization, 'acme-source');
+      assert.strictEqual(scope.targetOrganization, 'acme-target');
       assert.strictEqual(scope.discrepanciesCount, 6);
       assert.strictEqual(scope.selectedModules.length, 6);
       assert.ok(scope.selectedModules.includes('deploy-keys'));

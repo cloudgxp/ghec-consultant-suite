@@ -45,13 +45,13 @@ describe('Task 039 (DASH-24): Interactive Module Triggers Across Domain Views', 
         repositories: [],
         selectedModules: ['post-migration-mannequins'],
         identityStrategy: 'emu-saml',
-        identitySuffix: '_gxp',
+        identitySuffix: '_emu',
       });
 
       const validation = validateMigrationScope(scope);
       assert.equal(validation.success, true);
       assert.equal(scope.identityMapping?.strategy, 'emu-saml');
-      assert.equal(scope.identityMapping?.suffix, '_gxp');
+      assert.equal(scope.identityMapping?.suffix, '_emu');
       assert.deepEqual(scope.organizations[0]?.modules, [
         'post-migration-mannequins',
       ]);

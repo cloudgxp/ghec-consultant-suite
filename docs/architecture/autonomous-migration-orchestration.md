@@ -8,7 +8,7 @@
 
 ## 1. Overview & Objective
 
-The Autonomous Scale-Adaptive Migration Orchestration system enables unattended, zero-touch migration of GitHub Enterprise Cloud (GHEC) organizations to GHEC with Enterprise Managed Users (GHEC-EMU) across 32 distinct migration modules.
+The Autonomous Scale-Adaptive Migration Orchestration system enables unattended, zero-touch migration of GitHub Enterprise Cloud (GHEC) organizations to GHEC with Enterprise Managed Users (GHEC-EMU) across 34 distinct migration modules.
 
 When running in autonomous execution environments (such as an agentic continuous goal or scheduled execution), the system diagnoses repository characteristics, dynamically provisions proper runner pools and transfer mechanisms, monitors runner scratch space headroom, records atomic stage checkpoints, and executes an automated closed-loop self-healing remediation cycle until zero actionable discrepancies remain.
 
@@ -44,7 +44,7 @@ flowchart TD
 
 - **Phase 1 (Slicer)**: Evaluates repository disk sizes, release asset byte volumes, and Git LFS objects to partition scopes into parallel cohorts mapped to appropriate runner pools.
 - **Phase 2 (Matrix Execution)**: Dispatches cohorts across `matrix.runnerLabels`, performs runner scratch disk headroom checks (`checkScratchDiskSpace`), executes migration strategies, restores original repository visibility (`internal`/`public`), and saves atomic checkpoints (`.checkpoint-*`).
-- **Phase 3 (Verification)**: Audits target tenant across all 32 modules via `ghec-consultant-cli verify`, producing `verification-report.json`.
+- **Phase 3 (Verification)**: Audits target tenant across all 34 modules via `ghec-consultant-cli verify`, producing `verification-report.json`.
 - **Phase 4 (Autonomous Closed-Loop Remediation)**: If discrepancies exist and `auto_remediate: true`, invokes `agent-review`, runs `remediation.sh` using target credentials (`GHEC_TARGET_TOKEN`), and loops until 0 discrepancies or `max_remediation_rounds` (default: 3) is reached.
 - **Phase 5 (Audit Publication)**: Compiles metrics and publishes summary to `$GITHUB_STEP_SUMMARY`.
 

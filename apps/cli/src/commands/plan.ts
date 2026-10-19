@@ -31,6 +31,7 @@ export interface PlanCommandOptions {
   readonly splitMatrix?: number | undefined;
   readonly runnerCapacity?: number | undefined;
   readonly outputMatrixPath?: string | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly verbose?: boolean | undefined;
   readonly appId?: string | undefined;
   readonly privateKeyPath?: string | undefined;
@@ -56,6 +57,7 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
         type: 'string',
         default: './scans/migration-matrix.json',
       },
+      'sandbox-rehearsal': { type: 'boolean', default: false },
       verbose: { type: 'boolean', default: false },
       'app-id': { type: 'string' },
       'private-key-path': { type: 'string' },
@@ -103,6 +105,7 @@ export function parsePlanOptions(args: string[]): PlanCommandOptions {
     runnerCapacity,
     outputMatrixPath:
       values['output-matrix'] || './scans/migration-matrix.json',
+    sandboxRehearsal: values['sandbox-rehearsal'],
     verbose: values.verbose,
     appId: values['app-id'],
     privateKeyPath: values['private-key-path'],
@@ -147,7 +150,23 @@ export async function executePlanCommand(
       `Invalid scope schema in "${options.scopePath}": ${scopeValidation.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
     );
   }
-  const scope: MigrationScope = scopeValidation.data;
+  const scope: MigrationScope = options.sandboxRehearsal
+    ? {
+        ...scopeValidation.data,
+        sandboxRehearsal: true,
+        organizations: scopeValidation.data.organizations.map((o) => ({
+          ...o,
+          sandboxRehearsal: true,
+        })),
+        repositories: scopeValidation.data.repositories.map((r) => ({
+          ...r,
+          sandboxRehearsal: true,
+          ...(r.options
+            ? { options: { ...r.options, sandboxRehearsal: true } }
+            : {}),
+        })),
+      }
+    : scopeValidation.data;
 
   let cachedBundle: unknown | undefined;
   if (options.inputPath) {
@@ -200,6 +219,7 @@ export async function executePlanCommand(
     cachedDiscoveryBundle: cachedBundle,
     modules: options.modules,
     excludeModules: options.excludeModules,
+    sandboxRehearsal: options.sandboxRehearsal,
     signal,
   });
 

@@ -45,6 +45,7 @@ export interface MigrationScopeTarget {
         readonly mappings?: Readonly<Record<string, string>> | undefined;
       }
     | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly options?: RepositoryOptions | undefined;
 }
 
@@ -75,7 +76,16 @@ export interface MigrationContext {
   readonly dryRun: boolean;
   readonly continueOnError: boolean;
   readonly deferArchiving?: boolean | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly logger: StructuredLogger;
+}
+
+export function isSandboxRehearsal(ctx: MigrationContext): boolean {
+  return Boolean(
+    ctx.sandboxRehearsal ||
+    ctx.scope.sandboxRehearsal ||
+    ctx.scope.options?.sandboxRehearsal,
+  );
 }
 
 export type OperationType = 'create' | 'update' | 'noop' | 'skip' | 'warn';

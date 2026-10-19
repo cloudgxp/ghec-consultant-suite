@@ -2,7 +2,7 @@
 id: TASK-002
 title: 'add-packages-module-to-dashboard'
 status: completed
-owner: antigravity
+owner: copilot
 created_at: 2026-10-06
 dependencies: []
 packages_affected: ['apps/dashboard']

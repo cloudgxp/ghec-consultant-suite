@@ -18,6 +18,12 @@ docs/
 
 By default, if you want to run a scan, test a migration, or use GitHub Actions, start in the [`guides/`](guides/README.md) folder.
 
+To deploy the Customer Migration Release Kit and run migrations 100% via GitHub Actions, read:
+
+- [Consultant Operator's Manual](guides/consultant-operators-manual.md)
+- [Customer Migration Handbook](guides/customer-migration-handbook.md)
+- [Generating and Validating Migration Scopes](guides/generating-migration-scopes.md)
+
 To collect organization data and explore it offline in the web dashboard, read:
 
 - [Offline Discovery & Assessment Guide](guides/offline-discovery-and-assessment.md)
@@ -34,19 +40,15 @@ To check your target organization after a migration and automatically generate a
 
 - [Verification & Remediation Guide](guides/verification-and-remediation.md)
 
-To fill a test organization with 32 realistic sample items for a live demo, read:
+To fill a test organization with 34 realistic sample items for a live demo, read:
 
 - [Creating Sample Data for a Demo](guides/seed-demo-content.md)
-
-To set up Jules to fix broken builds and minor issues automatically, read:
-
-- [Jules Automation Setup Guide](guides/jules-automation-setup.md)
 
 ---
 
 ## Checking documentation links and formatting
 
-By default, all user guides in `docs/guides/` follow our **Consultant Documentation Style** ([`../.agents/rules/documentation-style.md`](../.agents/rules/documentation-style.md)), which pairs short, 8th-grade reading level explanations with copy-pasteable examples.
+By default, all user guides in `docs/guides/` follow our **Consultant Documentation Style** ([`../.github/instructions/documentation-style.instructions.md`](../.github/instructions/documentation-style.instructions.md)), which pairs short, 8th-grade reading level explanations with copy-pasteable examples.
 
 To format all Markdown files in `docs/` with Prettier:
 

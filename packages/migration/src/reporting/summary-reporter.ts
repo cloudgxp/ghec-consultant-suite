@@ -25,6 +25,7 @@ export interface BuildSummaryOptions {
   readonly plan?: MigrationPlan | undefined;
   readonly durationMs?: number | undefined;
   readonly warnings?: readonly string[] | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
 }
 
 const KNOWN_ORG_MODULE_IDS = new Set<string>([
@@ -610,6 +611,12 @@ export function buildSummaryFromExecutionReport(
     }
   }
 
+  const sandboxRehearsal = Boolean(
+    options.sandboxRehearsal ||
+    report.sandboxRehearsal ||
+    options.plan?.sandboxRehearsal,
+  );
+
   return {
     schemaVersion: '1.0.0',
     runId: options.runId ?? report.planId ?? 'unknown-run',
@@ -620,6 +627,7 @@ export function buildSummaryFromExecutionReport(
     targetOrg,
     status: report.status,
     dryRun: report.dryRun,
+    ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
     coreTransfer:
       Object.keys(coreTransfer).length > 0 ? coreTransfer : undefined,
     rehydration: Object.keys(rehydration).length > 0 ? rehydration : undefined,
@@ -643,6 +651,7 @@ export function buildSummaryFromVerification(
     sourceOrg?: string | undefined;
     targetOrg?: string | undefined;
     runId?: string | undefined;
+    sandboxRehearsal?: boolean | undefined;
   } = {},
 ): MigrationRunSummary {
   const discrepancySummaries: string[] = [];
@@ -671,6 +680,7 @@ export function buildSummaryFromVerification(
     targetOrg: options.targetOrg ?? report.targetOrg ?? 'target-org',
     status: isVerified ? 'complete' : 'failed',
     dryRun: false,
+    ...(options.sandboxRehearsal ? { sandboxRehearsal: true } : {}),
     verification: {
       verified: isVerified,
       totalDiscrepancies: report.summary.discrepancyCount,

@@ -46,13 +46,22 @@ npm test
 
 ## Checking available commands and help menus
 
-By default, `ghec-consultant-cli` includes five main commands that cover each step of a migration:
+By default, `ghec-consultant-cli` includes 14 commands that cover discovery, scoping, migration, verification, cutover, and sandbox testing:
 
 - `discover`: Collect metadata from your source organization or enterprise and save a `DiscoveryBundle` JSON file.
+- `generate-scope`: Generate a schema-validated `MigrationScope` JSON file from live organization discovery or repository lists.
+- `validate-scope`: Validate a `MigrationScope` JSON file against the `@ghec/contracts` schema and apply optional overrides.
+- `preflight`: Verify token scopes, ruleset bypass actors (`DEC-012`), and repository size limits before migrating.
 - `plan`: Compare your source and target organizations and save a `MigrationPlan` JSON file.
-- `migrate`: Run an approved migration plan (or scope file) with preview and resume support.
+- `migrate`: Run an approved migration plan (or scope file) with preview (`--dry-run`) and checkpoint resume (`--resume`) support.
 - `verify`: Check the target organization after migration to confirm everything matches the plan.
-- `publish-results`: Build markdown reports and push the `gei-migration-results` repository to the target organization.
+- `agent-review`: Analyze a `VerificationReport` and synthesize an idempotent `remediation-plan.json` and `remediation.sh`.
+- `publish-results`: Build markdown reports, `POST-CARE-CHECKLIST.md`, and push the audit results repository to the target organization.
+- `cutover`: Detach unique SSH deploy keys and Pages custom domains from source repositories, freeze source repos, and bind to target.
+- `console`: Launch the local loopback API proxy (`127.0.0.1:4174`) for live Dashboard control-plane operations.
+- `audit-gap-ledger`: Export the platform capability gap analysis ledger in JSON, table, or Markdown format.
+- `seed-demo`: Populate a test organization and repository with 34 realistic sample items for demos or rehearsals.
+- `teardown-sandbox`: Safely purge prefixed test resources (`demo-*`, `dummy-*`) from a target sandbox organization.
 
 To view the global help menu or check the version:
 
@@ -297,14 +306,15 @@ Once the dashboard opens in your browser, click **Import bundle**, select your J
 
 ---
 
-## Running enterprise scans with GitHub Actions
+## Running scans and migrations with GitHub Actions
 
-By default, you can scan multiple organizations in an enterprise using GitHub Actions and an Enterprise GitHub App instead of managing personal access tokens:
+By default, you can run organization discovery scans and parallel migration waves directly in GitHub Actions:
 
-- **Multi-Org Scan Workflow** (`.github/workflows/enterprise-multi-org-scan.yml`): Triggered manually with `workflow_dispatch`, lists organizations across the enterprise via GraphQL, runs up to 4 organization scans in parallel, and uploads `scans/*.json` as workflow artifacts.
-- **Reusable Token Minting Workflow** (`.github/workflows/reusable-ghec-token.yml`): Creates short-lived installation tokens from your GitHub App credentials (`GHEC_APP_ID` and `GHEC_APP_PRIVATE_KEY`).
+- **Discovery Scan Workflow** ([`../../.github/workflows/discovery-scan.yml`](../../.github/workflows/discovery-scan.yml)): Triggered manually with `workflow_dispatch`, runs `ghec-consultant-cli discover` against your source organization, and uploads `scans/*.json` as workflow artifacts.
+- **Parallel Matrix Migration Wave** ([`../../.github/workflows/migration-execute-wave.yml`](../../.github/workflows/migration-execute-wave.yml)) & **Autonomous Migration** ([`../../.github/workflows/migration-e2e-autonomous.yml`](../../.github/workflows/migration-e2e-autonomous.yml)): Slice repository cohorts across parallel runners, execute migration waves, verify target parity, and publish audit results.
+- **Composite Setup Action** ([`../../.github/actions/setup-suite/action.yml`](../../.github/actions/setup-suite/action.yml)): Prepares Node.js 22, GitHub CLI (`gh`), and the `gh-gei` extension on every runner.
 
-See the [Enterprise GitHub App Deployment Guide](../../docs/architecture/github-app-enterprise-deployment.md) for step-by-step setup instructions.
+See the [Consultant Operator's Manual](../../docs/guides/consultant-operators-manual.md) and [Enterprise GitHub App Deployment Guide](../../docs/architecture/github-app-enterprise-deployment.md) for step-by-step setup instructions.
 
 ---
 

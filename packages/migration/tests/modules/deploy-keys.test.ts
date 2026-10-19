@@ -342,7 +342,7 @@ test('DeployKeysMigrationModule apply treats HTTP 422 key-already-in-use as skip
   const sourceKeys: RawApiDeployKey[] = [
     {
       id: 1,
-      title: 'Demogxp-test-deploy',
+      title: 'Example-test-deploy',
       key: SAMPLE_KEY_1,
       read_only: true,
     },
@@ -352,9 +352,9 @@ test('DeployKeysMigrationModule apply treats HTTP 422 key-already-in-use as skip
     runId: 'run-422',
     scope: {
       level: 'repository',
-      sourceOrg: 'demogxp',
+      sourceOrg: 'source-org',
       sourceRepo: 'demo',
-      targetOrg: 'demogxp-mig5',
+      targetOrg: 'target-org',
       targetRepo: 'demo',
     },
     sourceClient: new MockDeployKeyReadAdapter(sourceKeys),
@@ -369,15 +369,15 @@ test('DeployKeysMigrationModule apply treats HTTP 422 key-already-in-use as skip
   const plan = {
     moduleId: 'deploy-keys',
     scopeLevel: 'repository' as const,
-    targetIdentifier: 'demogxp-mig5/demo',
+    targetIdentifier: 'target-org/demo',
     operations: [
       {
-        id: 'deploy-key:demo:Demogxp-test-deploy',
+        id: 'deploy-key:demo:Example-test-deploy',
         resourceType: 'deploy-key',
-        resourceName: 'Demogxp-test-deploy',
+        resourceName: 'Example-test-deploy',
         operation: 'create' as const,
         payload: {
-          title: 'Demogxp-test-deploy',
+          title: 'Example-test-deploy',
           key: SAMPLE_KEY_1,
           read_only: true,
         },

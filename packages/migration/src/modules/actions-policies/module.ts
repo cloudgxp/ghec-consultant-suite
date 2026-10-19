@@ -8,10 +8,11 @@ import {
   type VerificationDiscrepancy,
 } from '@ghec/contracts';
 import type { MigrationModule } from '../../core/module.js';
-import type {
-  MigrationContext,
-  MigrationScopeLevel,
-  TargetWriteOperation,
+import {
+  isSandboxRehearsal,
+  type MigrationContext,
+  type MigrationScopeLevel,
+  type TargetWriteOperation,
 } from '../../core/types.js';
 import type {
   ActionsPermissionsState,
@@ -187,6 +188,59 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
     }
 
     const src = source.permissions;
+    const sandboxRehearsal = isSandboxRehearsal(ctx);
+
+    if (sandboxRehearsal) {
+      if (src.enabled_repositories !== 'none') {
+        warnings.push(
+          `Organization Actions enabled_repositories for '${targetOrg}' is forced to 'none' because sandbox rehearsal mode is enabled (source was '${src.enabled_repositories}').`,
+        );
+      }
+
+      if (targetPermissions.enabled_repositories !== 'none') {
+        operations.push({
+          id: `op-actions-enabled-repos-${targetOrg}`,
+          resourceType: 'actions-policy',
+          resourceName: `${targetOrg}:enabled-repositories`,
+          operation: 'update',
+          sourceState: {
+            enabled_repositories: src.enabled_repositories,
+          },
+          destinationCurrentState: {
+            enabled_repositories: targetPermissions.enabled_repositories,
+          },
+          payload: {
+            enabled_repositories: 'none',
+          },
+          reason: `Disabling organization Actions (enabled_repositories: 'none') for sandbox rehearsal mode`,
+        });
+      } else {
+        operations.push({
+          id: `op-actions-policies-noop-${targetOrg}`,
+          resourceType: 'actions-policy',
+          resourceName: `${targetOrg}:enabled-repositories`,
+          operation: 'noop',
+          sourceState: src as unknown as Record<string, unknown>,
+          destinationCurrentState: targetPermissions as unknown as Record<
+            string,
+            unknown
+          >,
+          payload: {
+            enabled_repositories: 'none',
+          },
+          reason: `Organization Actions for '${targetOrg}' are already disabled (enabled_repositories: 'none') for sandbox rehearsal mode`,
+        });
+      }
+
+      return {
+        moduleId: this.id,
+        scopeLevel: this.scopeLevel,
+        targetIdentifier: targetOrg,
+        operations,
+        warnings,
+      };
+    }
+
     const isEnabledRepoDiff =
       src.enabled_repositories !== targetPermissions.enabled_repositories;
     const isAllowedActionsDiff =
@@ -292,6 +346,10 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
         results.push({
           operationId: op.id,
           status: 'succeeded',
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           completedAt,
         });
         continue;
@@ -301,6 +359,10 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
         results.push({
           operationId: op.id,
           status: 'skipped',
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           completedAt,
         });
         continue;
@@ -311,6 +373,10 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
           operationId: op.id,
           status: 'succeeded',
           httpStatus: 200,
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           completedAt,
         });
         continue;
@@ -324,14 +390,19 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
 
       try {
         const payload = (op.payload as Record<string, unknown>) ?? {};
+        const sandboxRehearsal = isSandboxRehearsal(ctx);
 
         // 1. Update general actions permissions
         const generalBody: Record<string, unknown> = {};
-        if (payload.enabled_repositories !== undefined) {
-          generalBody.enabled_repositories = payload.enabled_repositories;
-        }
-        if (payload.allowed_actions !== undefined) {
-          generalBody.allowed_actions = payload.allowed_actions;
+        if (sandboxRehearsal) {
+          generalBody.enabled_repositories = 'none';
+        } else {
+          if (payload.enabled_repositories !== undefined) {
+            generalBody.enabled_repositories = payload.enabled_repositories;
+          }
+          if (payload.allowed_actions !== undefined) {
+            generalBody.allowed_actions = payload.allowed_actions;
+          }
         }
 
         if (Object.keys(generalBody).length > 0) {
@@ -346,7 +417,7 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
         }
 
         // 2. If selected actions specified, update selected actions
-        if (payload.selected_actions) {
+        if (!sandboxRehearsal && payload.selected_actions) {
           const selConfig = payload.selected_actions as SelectedActionsConfig;
           const selBody: Record<string, unknown> = {
             github_owned_allowed: selConfig.github_owned_allowed,
@@ -372,12 +443,20 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
           operationId: op.id,
           status: 'succeeded',
           httpStatus: 200,
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           completedAt: new Date().toISOString(),
         });
       } catch (err: unknown) {
         results.push({
           operationId: op.id,
           status: 'failed',
+          resourceType: op.resourceType,
+          resourceName: op.resourceName,
+          operationType: op.operation,
+          ...(op.reason ? { reason: op.reason } : {}),
           completedAt: new Date().toISOString(),
           error: err instanceof Error ? err.message : String(err),
         });
@@ -417,6 +496,7 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
   ): Promise<ModuleVerificationResult> {
     const targetOrg = ctx.scope.targetOrg;
     const discrepancies: VerificationDiscrepancy[] = [];
+    const sandboxRehearsal = isSandboxRehearsal(ctx);
 
     let targetPermissions: ActionsPermissionsState;
 
@@ -483,14 +563,17 @@ export class ActionsPoliciesMigrationModule implements MigrationModule<ActionsPo
     for (const op of plan.operations) {
       if (op.operation === 'noop' || op.operation === 'update') {
         const payload = (op.payload as Record<string, unknown>) ?? {};
-        const expectedEnabled =
-          (payload.enabled_repositories as EnabledRepositories | undefined) ??
-          (op.sourceState as { enabled_repositories?: EnabledRepositories })
-            ?.enabled_repositories;
-        const expectedAllowed =
-          (payload.allowed_actions as AllowedActions | undefined) ??
-          (op.sourceState as { allowed_actions?: AllowedActions })
-            ?.allowed_actions;
+        const expectedEnabled = sandboxRehearsal
+          ? 'none'
+          : ((payload.enabled_repositories as
+              EnabledRepositories | undefined) ??
+            (op.sourceState as { enabled_repositories?: EnabledRepositories })
+              ?.enabled_repositories);
+        const expectedAllowed = sandboxRehearsal
+          ? undefined
+          : ((payload.allowed_actions as AllowedActions | undefined) ??
+            (op.sourceState as { allowed_actions?: AllowedActions })
+              ?.allowed_actions);
 
         if (
           expectedEnabled !== undefined &&

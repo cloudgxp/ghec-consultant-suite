@@ -50,6 +50,7 @@ export const MigrationPlanSchema = z
     planId: NonEmptyStringSchema,
     createdAt: TimestampSchema,
     scopeName: NonEmptyStringSchema,
+    sandboxRehearsal: z.boolean().optional(),
     summary: PlanSummarySchema,
     modules: z.array(ModulePlanSchema),
   })

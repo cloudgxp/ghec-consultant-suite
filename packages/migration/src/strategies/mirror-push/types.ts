@@ -39,6 +39,7 @@ export interface MirrorPushRequest {
   readonly estimatedSizeBytes?: number | undefined;
   readonly mirrorPushMode?: 'fast-snapshot' | 'full-history' | undefined;
   readonly skipDiskCheck?: boolean | undefined;
+  readonly sandboxRehearsal?: boolean | undefined;
   readonly scratchDir?: string | undefined;
   readonly timeoutMs?: number | undefined;
   readonly signal?: AbortSignal | undefined;

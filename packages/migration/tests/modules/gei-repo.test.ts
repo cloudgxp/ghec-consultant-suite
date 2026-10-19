@@ -661,9 +661,9 @@ describe('GeiRepoMigrationModule', () => {
       runId: 'test-mirror-push-large',
       scope: {
         level: 'repository',
-        sourceOrg: 'demogxp',
+        sourceOrg: 'source-org',
         sourceRepo: 'chromium',
-        targetOrg: 'mig-framework-test',
+        targetOrg: 'target-org',
         targetRepo: 'chromium',
         options: { gitTransferStrategy: 'auto', skipDiskCheck: true },
       },
@@ -678,7 +678,7 @@ describe('GeiRepoMigrationModule', () => {
     const result = await module.apply(ctx, {
       moduleId: 'gei-repo',
       scopeLevel: 'repository',
-      targetIdentifier: 'mig-framework-test/chromium',
+      targetIdentifier: 'target-org/chromium',
       operations: [],
       warnings: [],
     });
@@ -722,9 +722,9 @@ describe('GeiRepoMigrationModule', () => {
       runId: 'test-gei-fallback',
       scope: {
         level: 'repository',
-        sourceOrg: 'demogxp',
+        sourceOrg: 'source-org',
         sourceRepo: 'large-repo',
-        targetOrg: 'mig-framework-test',
+        targetOrg: 'target-org',
         targetRepo: 'large-repo',
         options: { gitTransferStrategy: 'auto' },
       },
@@ -739,7 +739,7 @@ describe('GeiRepoMigrationModule', () => {
     const result = await module.apply(ctx, {
       moduleId: 'gei-repo',
       scopeLevel: 'repository',
-      targetIdentifier: 'mig-framework-test/large-repo',
+      targetIdentifier: 'target-org/large-repo',
       operations: [],
       warnings: [],
     });
@@ -924,5 +924,143 @@ describe('GeiRepoMigrationModule', () => {
 
     assert.equal(verifyResult.verified, true);
     assert.deepEqual(verifyResult.discrepancies, []);
+  });
+
+  it('sandboxRehearsal disables GitHub Actions on target repository after import and verifies enabled: false', async () => {
+    const mockRunner = async (cmd: string, args: readonly string[]) => ({
+      command: cmd,
+      args,
+      exitCode: 0,
+      stdout: 'Migration complete RM_777',
+      stderr: '',
+    });
+
+    const module = new GeiRepoMigrationModule(mockRunner);
+    const writes: Array<{
+      method: string;
+      path: string;
+      body?: unknown;
+    }> = [];
+
+    let actionsEnabledOnTarget = true;
+    const mockRepoData = {
+      id: 1,
+      default_branch: 'main',
+      has_issues: true,
+      has_wiki: false,
+      has_projects: false,
+      allow_squash_merge: true,
+      allow_merge_commit: true,
+      allow_rebase_merge: true,
+    };
+
+    const targetAdapter: GitHubReadAdapter = {
+      ...createMockAdapter({ targetExists: false }),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/actions/permissions')) {
+          return {
+            data: { enabled: actionsEnabledOnTarget },
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        if (op.path?.includes('/repos/')) {
+          return {
+            data: mockRepoData,
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+    };
+
+    const sourceAdapter: GitHubReadAdapter = {
+      ...createMockAdapter({}),
+      async readSingle(op: ReadOperation) {
+        if (op.path?.includes('/repos/')) {
+          return {
+            data: mockRepoData,
+            status: 200,
+            observedAt: new Date().toISOString(),
+          };
+        }
+        return { data: {}, status: 200, observedAt: new Date().toISOString() };
+      },
+    };
+
+    const ctx: MigrationContext = {
+      runId: 'test-sandbox-rehearsal-gei',
+      scope: {
+        level: 'repository',
+        sourceOrg: 'source-org',
+        sourceRepo: 'sandbox-repo',
+        targetOrg: 'target-org',
+        targetRepo: 'sandbox-repo',
+        sandboxRehearsal: true,
+      },
+      sourceClient: sourceAdapter,
+      targetClient: {
+        ...createMockAdapter({ targetExists: false }),
+      },
+      targetWriteClient: {
+        async mutate(op) {
+          writes.push(op);
+          return { status: 204 };
+        },
+      },
+      logger: { info: () => {}, warn: () => {}, error: () => {} },
+      signal: new AbortController().signal,
+      dryRun: false,
+      sandboxRehearsal: true,
+      continueOnError: false,
+    };
+
+    const plan = await module.plan(ctx, {
+      sourceOrg: 'source-org',
+      sourceRepo: 'sandbox-repo',
+      targetOrg: 'target-org',
+      targetRepo: 'sandbox-repo',
+      targetRepoVisibility: 'private',
+      targetExists: false,
+    });
+    assert.ok(plan.warnings.some((w) => w.includes('Sandbox rehearsal mode')));
+
+    const applyResult = await module.apply(ctx, plan);
+    assert.equal(applyResult.status, 'complete');
+    assert.equal(applyResult.results.length, 1);
+    assert.match(
+      applyResult.results[0]?.reason ?? '',
+      /GitHub Actions disabled on target repository \(enabled: false\) for sandbox rehearsal mode/,
+    );
+    const disableActionsCall = writes.find(
+      (w) =>
+        w.method === 'PUT' &&
+        w.path === '/repos/{owner}/{repo}/actions/permissions',
+    );
+    assert.ok(
+      disableActionsCall,
+      'Expected PUT /repos/{owner}/{repo}/actions/permissions during sandbox rehearsal',
+    );
+    assert.deepEqual(disableActionsCall.body, { enabled: false });
+
+    // Verify when Actions are still enabled on target -> discrepancy
+    const verifyCtx: MigrationContext = {
+      ...ctx,
+      targetClient: targetAdapter,
+    };
+    const badVerify = await module.verify(verifyCtx, plan);
+    assert.equal(badVerify.verified, false);
+    assert.ok(
+      badVerify.discrepancies.some(
+        (d) => d.resourceName === 'sandbox-repo:actions-permissions',
+      ),
+    );
+
+    // Verify when Actions are disabled on target -> verified
+    actionsEnabledOnTarget = false;
+    const goodVerify = await module.verify(verifyCtx, plan);
+    assert.equal(goodVerify.verified, true);
+    assert.deepEqual(goodVerify.discrepancies, []);
   });
 });

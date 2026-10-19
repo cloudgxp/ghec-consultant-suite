@@ -2,7 +2,7 @@
 id: TASK-027
 title: 'Expand Repo Settings Module for Feature Flags & Metadata Reconciliation'
 status: completed
-owner: Antigravity
+owner: copilot
 created_at: 2026-10-08
 dependencies: []
 packages_affected: ['@ghec/migration']

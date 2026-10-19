@@ -19,6 +19,7 @@ const OrganizationMappingSchema = z
     target: NonEmptyStringSchema,
     targetType: TargetTenantTypeSchema.optional(),
     orgItemsMode: OrgItemsModeSchema.optional(),
+    sandboxRehearsal: z.boolean().optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
   })
   .strict();
@@ -43,6 +44,7 @@ export const RepositoryOptionsSchema = z
     mirrorPushMode: MirrorPushModeSchema.optional(),
     targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
     archived: z.boolean().optional(),
+    sandboxRehearsal: z.boolean().optional(),
   })
   .strict();
 
@@ -62,6 +64,7 @@ export const RepositoryMappingSchema = z
     lfsStrategy: z.enum(['dual-remote-stream', 'skip']).optional(),
     gitTransferStrategy: GitTransferStrategySchema.optional(),
     mirrorPushMode: MirrorPushModeSchema.optional(),
+    sandboxRehearsal: z.boolean().optional(),
     modules: z.array(MigrationModuleIdSchema).optional(),
     options: RepositoryOptionsSchema.optional(),
   })
@@ -111,6 +114,7 @@ export const MigrationScopeSchema = z
     targetType: TargetTenantTypeSchema.optional(),
     orgItemsMode: OrgItemsModeSchema.optional(),
     mirrorPushMode: MirrorPushModeSchema.optional(),
+    sandboxRehearsal: z.boolean().optional(),
     enterprise: z
       .object({
         sourceSlug: NonEmptyStringSchema,

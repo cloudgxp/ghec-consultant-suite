@@ -31,13 +31,13 @@ gh secret set GHEC_TARGET_TOKEN
 
 Before running a test migration, you need sample repositories, teams, variables, and rulesets in your source test organization so every migration module has real items to copy.
 
-By default, you can create all 32 sample items automatically using the `seed-demo` workflow instead of clicking through the GitHub UI by hand.
+By default, you can create all 34 sample items automatically using the `seed-demo` workflow instead of clicking through the GitHub UI by hand.
 
 To populate your source test organization with sample teams, repositories, rulesets, LFS files, and releases via GitHub Actions:
 
 ```bash
 gh workflow run seed-demo-content.yml \
-  -f organization="cloudgxp-source" \
+  -f organization="acme-source" \
   -f repository="dummy-repo-public"
 ```
 
@@ -68,11 +68,11 @@ To check that a scope file is valid JSON and matches our schema without needing 
 node ./apps/cli/bin/ghec-consultant-cli.mjs validate-scope --scope scopes/test-org-wave.json
 ```
 
-By default, `scopes/test-*.json` map `cloudgxp-source` to `cloudgxp-emu-target`. To update a scope file to use your own source and target organization names:
+By default, `scopes/test-*.json` map `acme-source` to `acme-emu`. To update a scope file to use your own source and target organization names:
 
 ```bash
-sed -i 's/cloudgxp-source/my-source-org/g' scopes/test-org-wave.json
-sed -i 's/cloudgxp-emu-target/my-target-emu-org/g' scopes/test-org-wave.json
+sed -i 's/acme-source/my-source-org/g' scopes/test-org-wave.json
+sed -i 's/acme-emu/my-target-emu-org/g' scopes/test-org-wave.json
 ```
 
 ---
@@ -85,8 +85,8 @@ To start a fast dry-run test for organization teams, variables, and secrets with
 
 ```bash
 gh workflow run migration-execute-wave.yml \
-  -f source_org="cloudgxp-source" \
-  -f target_org="cloudgxp-emu-target" \
+  -f source_org="acme-source" \
+  -f target_org="acme-emu" \
   -f include_org_resources="true" \
   -f modules="org-variables,org-secrets,teams" \
   -f dry_run="true" \
@@ -144,9 +144,36 @@ jq '.summary' ./scans/downloads/migration-final-audit-"$RUN_ID"/verification-rep
 
 ---
 
+## Running a sandbox rehearsal into a dummy organization
+
+By default, running with `dry_run="false"` copies your repositories, issues, pull requests, teams, and settings into the target organization without locking or changing your source organization. If you are moving real data into a dummy or sandbox organization to show your client the results without anything running in the background, turn on **`sandbox_rehearsal="true"`** so all target Webhooks and GitHub Actions stay disabled.
+
+To run a sandbox rehearsal into a dummy organization in GitHub Actions:
+
+```bash
+gh workflow run migration-execute-wave.yml \
+  -f scope="scopes/test-all-wave.json" \
+  -f dry_run="false" \
+  -f sandbox_rehearsal="true" \
+  -f runner_labels="ubuntu-latest"
+```
+
+To run a sandbox rehearsal from the command line using `--sandbox-rehearsal`:
+
+```bash
+node ./apps/cli/bin/ghec-consultant-cli.mjs migrate \
+  --scope scopes/test-all-wave.json \
+  --sandbox-rehearsal
+```
+
+> [!NOTE]
+> When `sandbox_rehearsal` is turned on, the tool keeps all organization and repository webhooks inactive (`active: false`) and disables GitHub Actions on the target organization (`enabled_repositories: "none"`) and on every migrated repository (`enabled: false`).
+
+---
+
 ## Running the live test migration
 
-After your dry-run passes and you have reviewed the **GitHub Actions Step Summary** table, you are ready to run the live migration into your target EMU organization.
+After your dry-run or sandbox rehearsal passes and you have reviewed the **GitHub Actions Step Summary** table, you are ready to run the full live migration into your target EMU organization.
 
 To run the live test migration (`dry_run=false`):
 
@@ -161,6 +188,6 @@ gh workflow run migration-execute-wave.yml \
 > [!NOTE]
 > Remember four special rules for Enterprise Managed Users (EMU) target organizations:
 >
-> 1. **Usernames include your enterprise shortcode:** EMU accounts look like `jdoe_cloudgxp`. Personal GitHub accounts cannot be invited to an EMU organization.
+> 1. **Usernames include your enterprise shortcode:** EMU accounts look like `jdoe_acme`. Personal GitHub accounts cannot be invited to an EMU organization.
 > 2. **Skip invitations when reclaiming mannequins:** Always pass `--skip-invitation` to `gh gei reclaim-mannequin` because EMU users cannot accept external email invites.
 > 3. **Add your migration owner to ruleset bypass lists:** Make sure the EMU owner account is allowed to bypass branch rulesets while migrating repositories.

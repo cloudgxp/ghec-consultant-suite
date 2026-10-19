@@ -77,9 +77,9 @@ describe('cutover CLI command', () => {
 
     const opts = parseCutoverOptions([
       '--source-org',
-      'demogxp',
+      'source-org',
       '--target-org',
-      'demogxp-mig5',
+      'target-org',
       '--repos',
       'demo, api-core',
       '--deactivate-source-webhooks',
@@ -88,8 +88,8 @@ describe('cutover CLI command', () => {
       '--dry-run',
     ]);
 
-    assert.equal(opts.sourceOrg, 'demogxp');
-    assert.equal(opts.targetOrg, 'demogxp-mig5');
+    assert.equal(opts.sourceOrg, 'source-org');
+    assert.equal(opts.targetOrg, 'target-org');
     assert.deepEqual(opts.repos, ['demo', 'api-core']);
     assert.equal(opts.includeDeployKeys, true);
     assert.equal(opts.includePagesCname, true);
@@ -112,7 +112,7 @@ describe('cutover CLI command', () => {
             data: [
               {
                 id: 101,
-                title: 'Demogxp-test-deploy',
+                title: 'Example-test-deploy',
                 key: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey',
                 read_only: false,
               },
@@ -143,8 +143,8 @@ describe('cutover CLI command', () => {
 
       const { report } = await executeCutoverCommand(
         {
-          sourceOrg: 'demogxp',
-          targetOrg: 'demogxp-mig5',
+          sourceOrg: 'source-org',
+          targetOrg: 'target-org',
           repos: ['demo'],
           includeDeployKeys: true,
           includePagesCname: true,
@@ -185,7 +185,7 @@ describe('cutover CLI command', () => {
             data: [
               {
                 id: 101,
-                title: 'Demogxp-test-deploy',
+                title: 'Example-test-deploy',
                 key: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey',
                 read_only: false,
               },
@@ -228,8 +228,8 @@ describe('cutover CLI command', () => {
 
       const { report } = await executeCutoverCommand(
         {
-          sourceOrg: 'demogxp',
-          targetOrg: 'demogxp-mig5',
+          sourceOrg: 'source-org',
+          targetOrg: 'target-org',
           repos: ['demo'],
           includeDeployKeys: true,
           includePagesCname: true,
@@ -314,7 +314,7 @@ describe('cutover CLI command', () => {
             data: [
               {
                 id: 101,
-                title: 'Demogxp-test-deploy',
+                title: 'Example-test-deploy',
                 key: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestKey',
                 read_only: true,
               },
@@ -331,8 +331,8 @@ describe('cutover CLI command', () => {
 
       const { report } = await executeCutoverCommand(
         {
-          sourceOrg: 'demogxp',
-          targetOrg: 'demogxp-mig5',
+          sourceOrg: 'source-org',
+          targetOrg: 'target-org',
           repos: ['demo'],
           includeDeployKeys: true,
           includePagesCname: false,

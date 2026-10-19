@@ -79,6 +79,14 @@ export class RepositoryMigrationPipeline {
       this.options.scope?.repositoryOptions?.[repoKey] ??
       this.options.scope?.repositoryOptions?.[sourceRepo];
 
+    const sandboxRehearsal = Boolean(
+      this.options.sandboxRehearsal ||
+      this.options.scope?.sandboxRehearsal ||
+      repoMapping.sandboxRehearsal ||
+      repoOptions?.sandboxRehearsal ||
+      plan?.sandboxRehearsal,
+    );
+
     let shouldSkipReleases =
       repoOptions?.skipReleases ?? repoMapping.skipReleases ?? false;
     let usesLfs =
@@ -322,6 +330,7 @@ export class RepositoryMigrationPipeline {
                   repoMapping.mirrorPushMode ??
                   this.options.scope?.mirrorPushMode,
                 skipDiskCheck: repoOptions?.skipDiskCheck,
+                sandboxRehearsal,
                 targetClient: this.options.targetClient,
                 targetWriteClient: this.options.targetWriteClient,
                 ...(timeoutMs !== undefined ? { timeoutMs } : {}),
@@ -413,6 +422,7 @@ export class RepositoryMigrationPipeline {
                       repoMapping.mirrorPushMode ??
                       this.options.scope?.mirrorPushMode,
                     skipDiskCheck: repoOptions?.skipDiskCheck,
+                    sandboxRehearsal,
                     targetClient: this.options.targetClient,
                     targetWriteClient: this.options.targetWriteClient,
                     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
@@ -454,6 +464,32 @@ export class RepositoryMigrationPipeline {
                 });
                 throw err;
               }
+            }
+          }
+
+          if (sandboxRehearsal && this.options.targetWriteClient) {
+            try {
+              this.logger.info(
+                `[Stage 3] Sandbox rehearsal mode enabled: disabling GitHub Actions on ${targetOrg}/${targetRepo}...`,
+              );
+              await this.options.targetWriteClient.mutate(
+                {
+                  id: 'rest.actions.disableTargetRepoActionsSandboxRehearsal',
+                  method: 'PUT',
+                  path: '/repos/{owner}/{repo}/actions/permissions',
+                  pathParams: { owner: targetOrg, repo: targetRepo },
+                  body: { enabled: false },
+                },
+                signal,
+              );
+            } catch (disableErr: unknown) {
+              const msg =
+                disableErr instanceof Error
+                  ? disableErr.message
+                  : String(disableErr);
+              this.logger.warn(
+                `[Stage 3] Could not disable GitHub Actions on ${targetOrg}/${targetRepo} in sandbox rehearsal mode: ${msg}`,
+              );
             }
           }
         }
@@ -578,6 +614,7 @@ export class RepositoryMigrationPipeline {
           sourceRepo,
           targetOrg,
           targetRepo,
+          ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
           options: repoOptions,
         };
 
@@ -590,6 +627,7 @@ export class RepositoryMigrationPipeline {
           signal,
           dryRun: this.options.dryRun ?? false,
           continueOnError: this.options.continueOnError ?? false,
+          ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
           logger: this.logger,
         };
 
@@ -781,6 +819,7 @@ export class RepositoryMigrationPipeline {
                       level: 'organization',
                       sourceOrg,
                       targetOrg,
+                      ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
                     }
                   : {
                       level: 'repository',
@@ -788,6 +827,7 @@ export class RepositoryMigrationPipeline {
                       sourceRepo,
                       targetOrg,
                       targetRepo,
+                      ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
                       options: repoOptions,
                     };
               const ctx: MigrationContext = {
@@ -799,6 +839,7 @@ export class RepositoryMigrationPipeline {
                 signal,
                 dryRun: this.options.dryRun ?? false,
                 continueOnError: this.options.continueOnError ?? false,
+                ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
                 logger: this.logger,
               };
               const discovered = await mod.discover(ctx);
@@ -854,6 +895,7 @@ export class RepositoryMigrationPipeline {
           sourceRepo,
           targetOrg,
           targetRepo,
+          ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
           options: repoOptions,
         };
 
@@ -866,6 +908,7 @@ export class RepositoryMigrationPipeline {
           signal,
           dryRun: this.options.dryRun ?? false,
           continueOnError: this.options.continueOnError ?? false,
+          ...(sandboxRehearsal ? { sandboxRehearsal: true } : {}),
           logger: this.logger,
         };
 

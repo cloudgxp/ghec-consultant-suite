@@ -40,6 +40,6 @@
   ],
   "identityMapping": {
     "strategy": "emu-saml",
-    "suffix": "_gxp"
+    "suffix": "_emu"
   }
 }

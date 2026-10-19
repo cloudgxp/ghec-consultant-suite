@@ -437,6 +437,23 @@ export class GitMirrorPushExecutor {
         }
       }
 
+      if (request.sandboxRehearsal && request.targetWriteClient) {
+        try {
+          await request.targetWriteClient.mutate(
+            {
+              id: 'rest.actions.disableTargetRepoActionsSandboxRehearsal',
+              method: 'PUT',
+              path: '/repos/{owner}/{repo}/actions/permissions',
+              pathParams: { owner: targetOrg, repo: targetRepo },
+              body: { enabled: false },
+            },
+            effectiveSignal,
+          );
+        } catch {
+          // Non-fatal pre-push Actions disable attempt
+        }
+      }
+
       // 3. Mirror Push
       const pushArgs: string[] = [];
       const pushEnv: Record<string, string> = {};
