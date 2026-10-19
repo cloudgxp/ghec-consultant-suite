@@ -548,6 +548,27 @@ export class PullRequestsMigrationModule implements MigrationModule<PullRequests
         }
       } else if (action.resourceType === 'pull-requests-archive') {
         if (!archiveFound && !hasNativeClosedPulls && !issuesDisabled) {
+          try {
+            const repoRes = await ctx.targetClient.readSingle<{
+              has_issues?: boolean;
+            }>(
+              {
+                id: 'rest.repos.checkIssuesEnabledForPrArchive',
+                transport: 'rest',
+                verifiedReadOnly: true,
+                path: '/repos/{owner}/{repo}',
+                pathParams: { owner: ctx.scope.targetOrg, repo: targetRepo },
+              },
+              ctx.signal,
+            );
+            if (repoRes.status === 200 && repoRes.data?.has_issues === false) {
+              issuesDisabled = true;
+            }
+          } catch {
+            // Ignore fallback check error
+          }
+        }
+        if (!archiveFound && !hasNativeClosedPulls && !issuesDisabled) {
           discrepancies.push({
             resourceName: 'Historical Pull Requests Archive',
             expected: 'present',

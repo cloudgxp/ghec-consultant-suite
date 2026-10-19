@@ -16,6 +16,7 @@ import {
   writeFileSync,
   readFileSync,
   copyFileSync,
+  cpSync,
   chmodSync,
   existsSync,
   readdirSync,
@@ -136,6 +137,14 @@ export async function buildReleaseKit(options = {}) {
         );
       }
     }
+  }
+
+  // Copy compiled static dashboard for Private GitHub Pages publishing
+  const dashboardDistDir = join(rootDir, 'apps/dashboard/dist');
+  if (existsSync(dashboardDistDir)) {
+    cpSync(dashboardDistDir, join(outDir, 'apps/dashboard/dist'), {
+      recursive: true,
+    });
   }
 
   // Minimal package.json for ESM resolution in customer repository

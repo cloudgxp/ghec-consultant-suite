@@ -318,6 +318,7 @@ jobs:
           SCOPE_FILE: ./scans/resolved-scope.json
           DEFAULT_RUNNERS: ${{ inputs.default_runner_labels }}
           LARGE_RUNNERS: ${{ inputs.large_repo_runner_labels }}
+          INPUT_MIRROR_PUSH_MODE: ${{ inputs.mirror_push_mode }}
         run: |
           mkdir -p ./scans ./cohorts
           node --input-type=module -e '
@@ -392,11 +393,13 @@ jobs:
               });
             }
 
+            const effectiveMirrorPushMode = scope.mirrorPushMode || process.env.INPUT_MIRROR_PUSH_MODE || "fast-snapshot";
             const matrixOutput = sliceScaleAdaptiveMatrix(profiles, {
               defaultRunnerLabels: defaultLabels,
               largeRepoRunnerLabels: largeLabels,
               batchSize: 5,
               massiveBatchSize: 1,
+              mirrorPushMode: effectiveMirrorPushMode,
             });
 
             fs.writeFileSync("./scans/slicer-matrix.json", JSON.stringify(matrixOutput, null, 2), "utf8");

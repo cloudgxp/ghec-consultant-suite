@@ -1,4 +1,9 @@
-import { validateBundle, type DiscoveryBundle } from '@ghec/contracts';
+import {
+  validateBundle,
+  validateVerificationReport,
+  type DiscoveryBundle,
+  type VerificationReport,
+} from '@ghec/contracts';
 import { evaluateBundle, type EvaluatedInsights } from '@ghec/analysis';
 import type { ImportStage, ImportWorkerMessage } from './importer.worker.js';
 import {
@@ -19,6 +24,18 @@ export type ImportResult =
 export interface ImportProgress {
   status: ImportStage;
   progress: number;
+}
+
+export interface HostedEvidenceProbeOptions {
+  readonly fetchFn?: typeof fetch | undefined;
+  readonly bundleUrl?: string | undefined;
+  readonly verificationReportUrl?: string | undefined;
+}
+
+export interface HostedEvidenceProbeResult {
+  readonly found: boolean;
+  readonly bundleResult?: ImportResult | undefined;
+  readonly verificationReport?: VerificationReport | undefined;
 }
 
 const MAX_FILE_SIZE_BYTES = 250 * 1024 * 1024;
@@ -120,7 +137,16 @@ export function loadSampleBundle(
  * Validates and evaluates a pre-parsed or fetched JSON discovery bundle directly.
  */
 export function importBundleJson(data: unknown): ImportResult {
-  const validation = validateBundle(data);
+  const candidate =
+    data &&
+    typeof data === 'object' &&
+    'discoveryBundle' in data &&
+    (data as { discoveryBundle?: unknown }).discoveryBundle &&
+    typeof (data as { discoveryBundle?: unknown }).discoveryBundle === 'object'
+      ? (data as { discoveryBundle: unknown }).discoveryBundle
+      : data;
+
+  const validation = validateBundle(candidate);
   if (!validation.success) {
     return {
       success: false,
@@ -132,5 +158,77 @@ export function importBundleJson(data: unknown): ImportResult {
     success: true,
     bundle: validation.data,
     insights: evaluateBundle(validation.data),
+  };
+}
+
+/**
+ * Probes relative `./evidence/` paths when the dashboard is hosted as a Private GitHub Pages
+ * site inside a results repository (`migration-audit-results`).
+ * Falls back silently (`found: false`) when running on localhost or when no evidence JSON is present.
+ */
+export async function probeHostedEvidence(
+  options: HostedEvidenceProbeOptions = {},
+): Promise<HostedEvidenceProbeResult> {
+  const fetchImpl =
+    options.fetchFn ?? (typeof fetch === 'function' ? fetch : undefined);
+  if (!fetchImpl) {
+    return { found: false };
+  }
+
+  const bundleUrl = options.bundleUrl ?? './evidence/discovery-bundle.json';
+  const verificationUrl =
+    options.verificationReportUrl ?? './evidence/verification-report.json';
+
+  let bundleResult: ImportResult | undefined;
+  let verificationReport: VerificationReport | undefined;
+
+  await Promise.all([
+    (async () => {
+      try {
+        const res = await fetchImpl(bundleUrl, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) return;
+        const text = (await res.text()).trim();
+        if (!text || text.startsWith('<')) return;
+        const parsed: unknown = JSON.parse(text);
+        const imported = importBundleJson(parsed);
+        if (imported.success) {
+          bundleResult = imported;
+        }
+      } catch {
+        // Ignore missing or non-JSON responses in local dev mode
+      }
+    })(),
+    (async () => {
+      try {
+        const res = await fetchImpl(verificationUrl, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) return;
+        const text = (await res.text()).trim();
+        if (!text || text.startsWith('<')) return;
+        const parsed: unknown = JSON.parse(text);
+        const validated = validateVerificationReport(parsed);
+        if (validated.success) {
+          verificationReport = validated.data;
+        } else if (
+          parsed &&
+          typeof parsed === 'object' &&
+          'schemaVersion' in parsed &&
+          Array.isArray((parsed as { modules?: unknown }).modules)
+        ) {
+          verificationReport = parsed as VerificationReport;
+        }
+      } catch {
+        // Ignore missing verification report
+      }
+    })(),
+  ]);
+
+  return {
+    found: Boolean(bundleResult?.success || verificationReport),
+    bundleResult,
+    verificationReport,
   };
 }

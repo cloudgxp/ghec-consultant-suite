@@ -42,6 +42,7 @@ export const RepositoryOptionsSchema = z
     gitTransferStrategy: GitTransferStrategySchema.optional(),
     mirrorPushMode: MirrorPushModeSchema.optional(),
     targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
+    archived: z.boolean().optional(),
   })
   .strict();
 
@@ -54,6 +55,7 @@ export const RepositoryMappingSchema = z
     targetOrg: NonEmptyStringSchema,
     targetRepo: NonEmptyStringSchema,
     useGei: z.boolean(),
+    archived: z.boolean().optional(),
     targetRepoVisibility: z.enum(['private', 'internal', 'public']).optional(),
     skipReleases: z.boolean().optional(),
     skipDiskCheck: z.boolean().optional(),
@@ -64,6 +66,20 @@ export const RepositoryMappingSchema = z
     options: RepositoryOptionsSchema.optional(),
   })
   .strict();
+
+export const SkippedArchivedRepositorySchema = z
+  .object({
+    sourceOrg: NonEmptyStringSchema,
+    sourceRepo: NonEmptyStringSchema,
+    visibility: z.enum(['public', 'private', 'internal', 'unknown']).optional(),
+    isFork: z.boolean().optional(),
+    reason: z.string().max(512).optional(),
+  })
+  .strict();
+
+export type SkippedArchivedRepository = z.infer<
+  typeof SkippedArchivedRepositorySchema
+>;
 
 const IdentityMappingSchema = z
   .object({
@@ -104,6 +120,9 @@ export const MigrationScopeSchema = z
       .optional(),
     organizations: z.array(OrganizationMappingSchema),
     repositories: z.array(RepositoryMappingSchema),
+    skippedArchivedRepositories: z
+      .array(SkippedArchivedRepositorySchema)
+      .optional(),
     repositoryOptions: z
       .record(NonEmptyStringSchema, RepositoryOptionsSchema)
       .optional(),

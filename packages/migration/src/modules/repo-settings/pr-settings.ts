@@ -47,6 +47,7 @@ export function parseCoreMetadata(
     description: raw.description ?? undefined,
     homepage: raw.homepage ?? undefined,
     defaultBranch: raw.default_branch ?? undefined,
+    archived: raw.archived !== undefined ? Boolean(raw.archived) : undefined,
   };
 }
 
@@ -133,6 +134,16 @@ export function diffRepositoryFeatures(
     patchPayload.default_branch = desiredMetadata.defaultBranch;
     changeDescriptions.push(
       `default_branch: "${targetMetadata.defaultBranch}" -> "${desiredMetadata.defaultBranch}"`,
+    );
+  }
+
+  if (
+    desiredMetadata?.archived !== undefined &&
+    desiredMetadata.archived !== Boolean(targetMetadata?.archived)
+  ) {
+    patchPayload.archived = desiredMetadata.archived;
+    changeDescriptions.push(
+      `archived: ${Boolean(targetMetadata?.archived)} -> ${desiredMetadata.archived}`,
     );
   }
 

@@ -598,6 +598,11 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
     const headerLine = csvContent.split('\n')[0];
     if (csvPath.endsWith('migration-operations-full.csv')) {
       assert.ok(headerLine?.startsWith('resource_type,resource_name,'));
+    } else if (csvPath.endsWith('archived-repositories-skipped.csv')) {
+      assert.equal(
+        headerLine,
+        'source_org,source_repo,visibility,is_fork,archived_status,disposition,source_url,notes',
+      );
     } else {
       assert.equal(
         headerLine,
@@ -624,6 +629,7 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
     'exports/governance-and-remediation/security-settings.csv',
     'exports/governance-and-remediation/failed-and-skipped-items.csv',
     'exports/migration-operations-full.csv',
+    'exports/archived-repositories-skipped.csv',
   ];
   for (const expectedPath of expectedCsvPaths) {
     assert.ok(
@@ -728,5 +734,50 @@ test('post-care CSV headers start with resource_type,resource_name,action_requir
   assert.ok(
     md.indexOf('https://ci.example.com/hook') <
       md.indexOf('https://httpbin.org/post'),
+  );
+});
+
+test('generatePostCareDeliverables exports skipped archived repositories CSV when scope excludes archived repos', () => {
+  const deliverables = generatePostCareDeliverables({
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig8',
+    mode: 'live',
+    generatedAt: '2026-10-18T12:00:00Z',
+    scope: {
+      version: '1.0.0',
+      name: 'demogxp-to-demogxp-mig8',
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'active-repo',
+          targetOrg: 'demogxp-mig8',
+          targetRepo: 'active-repo',
+          useGei: true,
+        },
+      ],
+      skippedArchivedRepositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'legacy-archived',
+          visibility: 'private',
+          isFork: false,
+          reason: 'Excluded because include_archived was set to false',
+        },
+      ],
+    },
+  });
+
+  const skippedCsv =
+    deliverables.csvFiles['exports/archived-repositories-skipped.csv'] ?? '';
+  const lines = skippedCsv.trim().split('\n');
+  assert.equal(lines.length, 2);
+  assert.ok(
+    lines[1]?.includes(
+      'demogxp,legacy-archived,private,false,archived,skipped-archived',
+    ),
+  );
+  assert.ok(lines[1]?.includes('https://github.com/demogxp/legacy-archived'));
+  assert.ok(
+    lines[1]?.includes('Excluded because include_archived was set to false'),
   );
 });

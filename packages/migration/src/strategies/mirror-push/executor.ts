@@ -232,14 +232,24 @@ export class GitMirrorPushExecutor {
       tmpdir();
     let diskSpaceChecked: DiskSpaceCheckResult | undefined;
 
+    const mirrorPushMode = request.mirrorPushMode ?? 'fast-snapshot';
+    const useShallowPackGuard =
+      mirrorPushMode === 'fast-snapshot' &&
+      estimatedSizeBytes !== undefined &&
+      estimatedSizeBytes > 500 * 1024 * 1024;
+
     if (
       !request.skipDiskCheck &&
       estimatedSizeBytes !== undefined &&
       estimatedSizeBytes > 0
     ) {
+      const effectiveDiskEstimate =
+        useShallowPackGuard && estimatedSizeBytes <= 100 * 1024 * 1024 * 1024
+          ? Math.min(estimatedSizeBytes, 20 * 1024 * 1024 * 1024)
+          : estimatedSizeBytes;
       diskSpaceChecked = checkScratchDiskSpace(
         parentScratch,
-        estimatedSizeBytes,
+        effectiveDiskEstimate,
       );
       if (!diskSpaceChecked.sufficient) {
         const freeGiB = (diskSpaceChecked.freeBytes / 1024 ** 3).toFixed(2);
@@ -269,12 +279,6 @@ export class GitMirrorPushExecutor {
         cloneEnv.GHEC_SOURCE_AUTH = `Bearer ${sourceToken}`;
         cloneArgs.push('--config-env=http.extraHeader=GHEC_SOURCE_AUTH');
       }
-
-      const mirrorPushMode = request.mirrorPushMode ?? 'fast-snapshot';
-      const useShallowPackGuard =
-        mirrorPushMode === 'fast-snapshot' &&
-        estimatedSizeBytes !== undefined &&
-        estimatedSizeBytes > 2 * 1024 * 1024 * 1024;
 
       if (useShallowPackGuard) {
         cloneArgs.push(

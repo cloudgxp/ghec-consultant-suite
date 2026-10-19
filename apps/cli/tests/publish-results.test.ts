@@ -515,6 +515,27 @@ describe('TASK-035: CLI Publish Results Command and Workflow Integration', () =>
       assert.ok(existsSync(join(outDir, 'exports/secrets-to-populate.csv')));
       assert.ok(existsSync(join(outDir, 'evidence/discovery-bundle.json')));
       assert.ok(existsSync(join(outDir, 'evidence/preflight-report.json')));
+      assert.ok(existsSync(join(outDir, 'index.html')));
+      assert.ok(existsSync(join(outDir, '.nojekyll')));
+
+      // Verify --no-pages omits static dashboard assets
+      const noPagesDir = join(tmpDir, 'results-no-pages');
+      const noPagesExit = await runCli([
+        'publish-results',
+        '--discovery-report',
+        discoveryPath,
+        '--source-org',
+        'acme-src',
+        '--target-org',
+        'acme-emu',
+        '--output-dir',
+        noPagesDir,
+        '--no-pages',
+        '--skip-push',
+      ]);
+      assert.equal(noPagesExit, 0);
+      assert.equal(existsSync(join(noPagesDir, 'index.html')), false);
+      assert.equal(existsSync(join(noPagesDir, '.nojekyll')), false);
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

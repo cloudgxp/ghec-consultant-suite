@@ -30,7 +30,7 @@ export async function reconcilePostGeiVisibility(
   }
 
   try {
-    const res = await targetWriteClient.mutate<{ visibility?: string }>(
+    let res = await targetWriteClient.mutate<{ visibility?: string }>(
       {
         id: 'rest.repos.updateVisibility',
         method: 'PATCH',
@@ -41,7 +41,44 @@ export async function reconcilePostGeiVisibility(
       signal,
     );
 
+    let unarchivedTemporarily = false;
+    if (res.status === 403) {
+      await targetWriteClient.mutate<{ archived?: boolean }>(
+        {
+          id: 'rest.repos.unarchiveForVisibility',
+          method: 'PATCH',
+          path: '/repos/{owner}/{repo}',
+          pathParams: { owner: targetOrg, repo: targetRepo },
+          body: { archived: false },
+        },
+        signal,
+      );
+      unarchivedTemporarily = true;
+      res = await targetWriteClient.mutate<{ visibility?: string }>(
+        {
+          id: 'rest.repos.updateVisibilityRetry',
+          method: 'PATCH',
+          path: '/repos/{owner}/{repo}',
+          pathParams: { owner: targetOrg, repo: targetRepo },
+          body: { visibility: sourceVisibility },
+        },
+        signal,
+      );
+    }
+
     if (res.status >= 200 && res.status < 300) {
+      if (unarchivedTemporarily) {
+        await targetWriteClient.mutate<{ archived?: boolean }>(
+          {
+            id: 'rest.repos.rearchiveAfterVisibility',
+            method: 'PATCH',
+            path: '/repos/{owner}/{repo}',
+            pathParams: { owner: targetOrg, repo: targetRepo },
+            body: { archived: true },
+          },
+          signal,
+        );
+      }
       return {
         repositoryName: targetRepo,
         targetOrg,
@@ -67,6 +104,18 @@ export async function reconcilePostGeiVisibility(
       );
 
       if (fallbackRes.status >= 200 && fallbackRes.status < 300) {
+        if (unarchivedTemporarily) {
+          await targetWriteClient.mutate<{ archived?: boolean }>(
+            {
+              id: 'rest.repos.rearchiveAfterVisibilityFallback',
+              method: 'PATCH',
+              path: '/repos/{owner}/{repo}',
+              pathParams: { owner: targetOrg, repo: targetRepo },
+              body: { archived: true },
+            },
+            signal,
+          );
+        }
         return {
           repositoryName: targetRepo,
           targetOrg,

@@ -14,6 +14,7 @@ export interface ResultsRepoPublisherOptions {
   readonly dryRun?: boolean | undefined;
   readonly branch?: string | undefined;
   readonly commitMessage?: string | undefined;
+  readonly enablePages?: boolean | undefined;
   readonly logger?: StructuredLogger | undefined;
   readonly signal?: AbortSignal | undefined;
 }
@@ -24,11 +25,19 @@ export interface EnsureRepositoryResult {
   readonly dryRun: boolean;
 }
 
+export interface EnsurePagesResult {
+  readonly enabled: boolean;
+  readonly pagesUrl?: string | undefined;
+  readonly dryRun: boolean;
+}
+
 export interface PublishCommitResult {
   readonly commitSha: string;
   readonly filesCommitted: number;
   readonly dryRun: boolean;
   readonly repoUrl: string;
+  readonly pagesUrl?: string | undefined;
+  readonly pagesEnabled?: boolean | undefined;
 }
 
 export class MigrationResultsRepoPublisher {
@@ -39,6 +48,7 @@ export class MigrationResultsRepoPublisher {
   private readonly dryRun: boolean;
   private readonly branch: string;
   private readonly commitMessage: string;
+  private readonly enablePages?: boolean | undefined;
   private readonly logger?: StructuredLogger | undefined;
   private readonly signal: AbortSignal;
 
@@ -52,6 +62,7 @@ export class MigrationResultsRepoPublisher {
     this.commitMessage =
       options.commitMessage ??
       'chore: publish automated migration results and audit logs [skip ci]';
+    this.enablePages = options.enablePages;
     this.logger = options.logger;
     this.signal = options.signal ?? new AbortController().signal;
   }
@@ -384,10 +395,197 @@ export class MigrationResultsRepoPublisher {
   }
 
   /**
-   * High-level entry point: ensures target repository exists and publishes files atomically.
+   * Configures and triggers a Private GitHub Pages site (`build_type: "legacy"`, `public: false`)
+   * for the target results repository using the existing token (`repo` scope).
+   * Non-fatal: if organization policy disallows Pages creation, logs a warning and returns `enabled: false`.
+   */
+  async ensurePagesSite(): Promise<EnsurePagesResult> {
+    if (this.dryRun) {
+      this.logger?.info(
+        `[dry-run] Planned Private GitHub Pages provisioning for ${this.targetOrg}/${this.repoName}:${this.branch}`,
+      );
+      return {
+        enabled: false,
+        pagesUrl: `https://${this.targetOrg}.pages.github.io/${this.repoName}/`,
+        dryRun: true,
+      };
+    }
+
+    if (!this.targetWriteClient) {
+      return { enabled: false, dryRun: false };
+    }
+
+    const getPagesOp: ReadOperation = {
+      id: `get-results-pages-${this.repoName}`,
+      transport: 'rest',
+      verifiedReadOnly: true,
+      path: '/repos/{owner}/{repo}/pages',
+      pathParams: {
+        owner: this.targetOrg,
+        repo: this.repoName,
+      },
+    };
+
+    try {
+      let pagesExists = false;
+      let pagesUrl: string | undefined;
+
+      try {
+        const existingRes = await this.targetClient.readSingle<{
+          html_url?: string;
+          public?: boolean;
+        }>(getPagesOp, this.signal);
+        if (existingRes.status === 200) {
+          pagesExists = true;
+          pagesUrl = existingRes.data?.html_url;
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          !msg.includes('404') &&
+          !msg.includes('not_found') &&
+          !msg.includes('Not Found')
+        ) {
+          throw err;
+        }
+      }
+
+      if (!pagesExists) {
+        const createPagesOp: TargetWriteOperation = {
+          id: `create-results-pages-${this.repoName}`,
+          method: 'POST',
+          path: '/repos/{owner}/{repo}/pages',
+          pathParams: {
+            owner: this.targetOrg,
+            repo: this.repoName,
+          },
+          body: {
+            build_type: 'legacy',
+            source: {
+              branch: this.branch,
+              path: '/',
+            },
+          },
+        };
+
+        try {
+          const createRes = await this.targetWriteClient.mutate<{
+            html_url?: string;
+          }>(createPagesOp, this.signal);
+          pagesUrl = createRes.data?.html_url ?? pagesUrl;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // 409 Conflict indicates Pages was enabled concurrently
+          if (!msg.includes('409') && !msg.includes('Conflict')) {
+            throw err;
+          }
+        }
+      }
+
+      // Enforce Private GitHub Pages visibility (public: false) and HTTPS.
+      // On GHEC-EMU, visibility is locked to private by enterprise policy (which may return 400/422 on PUT).
+      const updatePagesOp: TargetWriteOperation = {
+        id: `update-results-pages-private-${this.repoName}`,
+        method: 'PUT',
+        path: '/repos/{owner}/{repo}/pages',
+        pathParams: {
+          owner: this.targetOrg,
+          repo: this.repoName,
+        },
+        body: {
+          build_type: 'legacy',
+          public: false,
+          https_enforced: true,
+          source: {
+            branch: this.branch,
+            path: '/',
+          },
+        },
+      };
+
+      try {
+        await this.targetWriteClient.mutate(updatePagesOp, this.signal);
+      } catch {
+        // Ignore 400/422 on GHEC-EMU (where visibility is locked to private) or pending TLS certificate
+      }
+
+      // Request an explicit Pages build for the latest commit on the branch
+      const triggerBuildOp: TargetWriteOperation = {
+        id: `trigger-results-pages-build-${this.repoName}`,
+        method: 'POST',
+        path: '/repos/{owner}/{repo}/pages/builds',
+        pathParams: {
+          owner: this.targetOrg,
+          repo: this.repoName,
+        },
+      };
+
+      try {
+        await this.targetWriteClient.mutate(triggerBuildOp, this.signal);
+      } catch {
+        // Non-fatal if a Pages build is already in progress
+      }
+
+      if (!pagesUrl) {
+        try {
+          const refreshed = await this.targetClient.readSingle<{
+            html_url?: string;
+          }>(getPagesOp, this.signal);
+          pagesUrl = refreshed.data?.html_url;
+        } catch {
+          // Ignore if read follow-up fails
+        }
+      }
+
+      this.logger?.info(
+        'Configured Private GitHub Pages for results repository',
+        {
+          targetOrg: this.targetOrg,
+          repoName: this.repoName,
+          branch: this.branch,
+          pagesUrl: pagesUrl ?? 'pending',
+        },
+      );
+
+      return {
+        enabled: true,
+        pagesUrl,
+        dryRun: false,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger?.warn(
+        `Unable to configure Private GitHub Pages for ${this.targetOrg}/${this.repoName}: ${sanitizeDiagnostics(msg)}`,
+      );
+      return {
+        enabled: false,
+        dryRun: false,
+      };
+    }
+  }
+
+  /**
+   * High-level entry point: ensures target repository exists, publishes files atomically,
+   * and provisions Private GitHub Pages when dashboard assets (`index.html`) or `enablePages` are present.
    */
   async publish(files: Record<string, string>): Promise<PublishCommitResult> {
     await this.ensureTargetRepository();
-    return this.publishAtomicCommit(files);
+    const commitResult = await this.publishAtomicCommit(files);
+
+    const shouldEnablePages =
+      this.enablePages !== undefined
+        ? this.enablePages
+        : Boolean(files['index.html']);
+
+    if (!shouldEnablePages || Object.keys(files).length === 0) {
+      return commitResult;
+    }
+
+    const pagesResult = await this.ensurePagesSite();
+    return {
+      ...commitResult,
+      ...(pagesResult.pagesUrl ? { pagesUrl: pagesResult.pagesUrl } : {}),
+      pagesEnabled: pagesResult.enabled,
+    };
   }
 }

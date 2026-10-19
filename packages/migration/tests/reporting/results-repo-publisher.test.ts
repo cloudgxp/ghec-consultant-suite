@@ -339,3 +339,188 @@ test('starts from clean root tree on batch 1 and chains base_tree on subsequent 
   const commitBody = commitMutations[0]?.body as Record<string, unknown>;
   assert.deepEqual(commitBody.parents, ['prior-commit-sha-111']);
 });
+
+test('provisions Private GitHub Pages site when index.html is present in published files', async () => {
+  const mutations: TargetWriteOperation[] = [];
+
+  const mockTargetClient: GitHubReadAdapter = {
+    queryGraphQL: async () => {
+      throw new Error('Not implemented');
+    },
+    readPage: async () => {
+      throw new Error('Not implemented');
+    },
+    fetchAll: async () => {
+      throw new Error('Not implemented');
+    },
+    readSingle: async <T>(op: ReadOperation) => {
+      if (op.path === '/repos/{owner}/{repo}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: { name: 'migration-audit-results' } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/git/ref/heads/{branch}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: { object: { sha: 'existing-commit-sha' } } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/pages') {
+        throw new Error('GitHub API Error: 404 Not Found');
+      }
+      throw new Error(`Unexpected read path: ${op.path}`);
+    },
+  };
+
+  const mockTargetWriteClient: TargetWriteClient = {
+    mutate: async <T>(operation: TargetWriteOperation) => {
+      mutations.push(operation);
+      if (operation.path === '/repos/{owner}/{repo}/git/blobs') {
+        return { status: 201, data: { sha: 'blob-sha' } as unknown as T };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/trees') {
+        return { status: 201, data: { sha: 'tree-sha' } as unknown as T };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/commits') {
+        return {
+          status: 201,
+          data: { sha: 'commit-sha-pages' } as unknown as T,
+        };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/refs/heads/{branch}') {
+        return { status: 200, data: {} as unknown as T };
+      }
+      if (
+        operation.path === '/repos/{owner}/{repo}/pages' &&
+        operation.method === 'POST'
+      ) {
+        return {
+          status: 201,
+          data: {
+            html_url: 'https://private-subdomain.pages.github.io/',
+          } as unknown as T,
+        };
+      }
+      if (
+        operation.path === '/repos/{owner}/{repo}/pages' &&
+        operation.method === 'PUT'
+      ) {
+        // Simulate GHEC-EMU rejecting public visibility modification with 422
+        throw new Error('422 Unprocessable Entity: visibility locked by EMU');
+      }
+      if (operation.path === '/repos/{owner}/{repo}/pages/builds') {
+        return { status: 201, data: { status: 'queued' } as unknown as T };
+      }
+      throw new Error(`Unexpected mutation: ${operation.path}`);
+    },
+  };
+
+  const publisher = new MigrationResultsRepoPublisher({
+    targetOrg: 'acme-corp-emu',
+    targetClient: mockTargetClient,
+    targetWriteClient: mockTargetWriteClient,
+  });
+
+  const result = await publisher.publish({
+    'README.md': '# Results',
+    '.nojekyll': '',
+    'index.html': '<!doctype html><html></html>',
+  });
+
+  assert.equal(result.commitSha, 'commit-sha-pages');
+  assert.equal(result.pagesEnabled, true);
+  assert.equal(result.pagesUrl, 'https://private-subdomain.pages.github.io/');
+
+  const postPages = mutations.find(
+    (m) => m.path === '/repos/{owner}/{repo}/pages' && m.method === 'POST',
+  );
+  assert.ok(postPages);
+  assert.deepEqual(postPages.body, {
+    build_type: 'legacy',
+    source: { branch: 'main', path: '/' },
+  });
+
+  const putPages = mutations.find(
+    (m) => m.path === '/repos/{owner}/{repo}/pages' && m.method === 'PUT',
+  );
+  assert.ok(putPages);
+  assert.equal((putPages.body as { public?: boolean }).public, false);
+
+  const buildPages = mutations.find(
+    (m) => m.path === '/repos/{owner}/{repo}/pages/builds',
+  );
+  assert.ok(buildPages);
+});
+
+test('degrades gracefully when GitHub Pages creation is forbidden by organization policy', async () => {
+  const mockTargetClient: GitHubReadAdapter = {
+    queryGraphQL: async () => {
+      throw new Error('Not implemented');
+    },
+    readPage: async () => {
+      throw new Error('Not implemented');
+    },
+    fetchAll: async () => {
+      throw new Error('Not implemented');
+    },
+    readSingle: async <T>(op: ReadOperation) => {
+      if (op.path === '/repos/{owner}/{repo}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: { name: 'migration-audit-results' } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/git/ref/heads/{branch}') {
+        return {
+          status: 200,
+          observedAt: new Date().toISOString(),
+          data: { object: { sha: 'existing-commit-sha' } } as unknown as T,
+        };
+      }
+      if (op.path === '/repos/{owner}/{repo}/pages') {
+        throw new Error('404 Not Found');
+      }
+      throw new Error(`Unexpected path: ${op.path}`);
+    },
+  };
+
+  const mockTargetWriteClient: TargetWriteClient = {
+    mutate: async <T>(operation: TargetWriteOperation) => {
+      if (operation.path === '/repos/{owner}/{repo}/git/blobs') {
+        return { status: 201, data: { sha: 'blob-sha' } as unknown as T };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/trees') {
+        return { status: 201, data: { sha: 'tree-sha' } as unknown as T };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/commits') {
+        return { status: 201, data: { sha: 'commit-ok' } as unknown as T };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/git/refs/heads/{branch}') {
+        return { status: 200, data: {} as unknown as T };
+      }
+      if (operation.path === '/repos/{owner}/{repo}/pages') {
+        throw new Error('403 Forbidden: Organization has disabled Pages');
+      }
+      throw new Error(`Unexpected mutation: ${operation.path}`);
+    },
+  };
+
+  const publisher = new MigrationResultsRepoPublisher({
+    targetOrg: 'acme-corp-emu',
+    targetClient: mockTargetClient,
+    targetWriteClient: mockTargetWriteClient,
+  });
+
+  const result = await publisher.publish({
+    'README.md': '# Results',
+    'index.html': '<!doctype html><html></html>',
+  });
+
+  assert.equal(result.commitSha, 'commit-ok');
+  assert.equal(result.pagesEnabled, false);
+  assert.equal(result.pagesUrl, undefined);
+});

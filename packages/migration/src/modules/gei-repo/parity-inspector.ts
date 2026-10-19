@@ -448,7 +448,9 @@ export class RepositoryParityInspector {
 
     // Pull request count parity
     const closedPrsArchivedOnTarget =
-      Boolean(report.target.hasPrArchiveIssue) &&
+      (Boolean(report.target.hasPrArchiveIssue) ||
+        report.target.settings.hasIssues === false ||
+        report.source.settings.hasIssues === false) &&
       (report.source.pullRequests.open ?? 0) === 0;
     if (
       report.source.pullRequests.total > 0 &&

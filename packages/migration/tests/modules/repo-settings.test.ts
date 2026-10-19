@@ -645,6 +645,102 @@ describe('RepoSettingsMigrationModule (Task 025)', () => {
       assert.equal(sentBody.has_discussions, true);
       assert.equal(sentBody.description, 'Reconciled description');
     });
+
+    it('defers archived: true and has_issues: false when ctx.deferArchiving is true, and applies two-step archive when not deferred', async () => {
+      const module = new RepoSettingsMigrationModule();
+      const plan = {
+        moduleId: 'repo-settings',
+        scopeLevel: 'repository' as const,
+        targetIdentifier: 'target-org/sample-repo',
+        warnings: [],
+        operations: [
+          {
+            id: 'repo-settings:sample-repo',
+            resourceType: 'repository-settings',
+            resourceName: 'target-org/sample-repo',
+            operation: 'update' as const,
+            payload: {
+              description: 'Archived repo',
+              has_issues: false,
+              archived: true,
+            },
+          },
+        ],
+      };
+
+      // 1. Deferred mode (during multi-module pipeline)
+      const deferredWriteClient = new MockWriteClient();
+      const deferredCtx = {
+        ...createMockContext({ writeClient: deferredWriteClient }),
+        deferArchiving: true,
+      };
+      const deferredResult = await module.apply(deferredCtx, plan);
+      assert.equal(deferredResult.status, 'complete');
+      assert.equal(deferredWriteClient.calls.length, 1);
+      const deferredBody = deferredWriteClient.calls[0]?.body as Record<
+        string,
+        unknown
+      >;
+      assert.equal(deferredBody.description, 'Archived repo');
+      assert.equal(deferredBody.has_issues, true);
+      assert.equal(deferredBody.archived, false);
+
+      // 2. Direct mode (non-deferred or remediation): applies settings first, then archived: true
+      const directWriteClient = new MockWriteClient();
+      const directCtx = createMockContext({ writeClient: directWriteClient });
+      const directResult = await module.apply(directCtx, plan);
+      assert.equal(directResult.status, 'complete');
+      assert.equal(directWriteClient.calls.length, 2);
+      assert.deepEqual(directWriteClient.calls[0]?.body, {
+        description: 'Archived repo',
+        has_issues: false,
+        archived: false,
+      });
+      assert.deepEqual(directWriteClient.calls[1]?.body, {
+        archived: true,
+      });
+    });
+
+    it('verifies archived state against target repository metadata', async () => {
+      const module = new RepoSettingsMigrationModule();
+      const ctxMismatch = createMockContext({
+        sourceData: {
+          visibility: 'private',
+          archived: true,
+        },
+        targetData: {
+          visibility: 'private',
+          archived: false,
+        },
+      });
+      const sourceDiscovered = await module.discover(ctxMismatch);
+      assert.equal(sourceDiscovered.metadata?.archived, true);
+      const plan = await module.plan(ctxMismatch, sourceDiscovered);
+      assert.equal(
+        (plan.operations[0]?.payload as Record<string, unknown>).archived,
+        true,
+      );
+      const verifyMismatch = await module.verify(ctxMismatch, plan);
+      assert.equal(verifyMismatch.verified, false);
+      assert.ok(
+        verifyMismatch.discrepancies.some((d) =>
+          d.resourceName.endsWith('(archived)'),
+        ),
+      );
+
+      const ctxMatch = createMockContext({
+        sourceData: {
+          visibility: 'private',
+          archived: true,
+        },
+        targetData: {
+          visibility: 'private',
+          archived: true,
+        },
+      });
+      const verifyMatch = await module.verify(ctxMatch, plan);
+      assert.equal(verifyMatch.verified, true);
+    });
   });
 
   describe('Registry Integration', () => {

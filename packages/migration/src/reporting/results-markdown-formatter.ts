@@ -9,6 +9,7 @@ import { sanitizeDiagnostics } from '@ghec/github-client';
 export interface RepositorySuccessDetails {
   readonly name?: string | undefined;
   readonly visibility?: 'public' | 'private' | 'internal' | undefined;
+  readonly archived?: boolean | undefined;
   readonly defaultBranch?: string | undefined;
   readonly diskUsageKb?: number | undefined;
   readonly sizeBytes?: number | undefined;
@@ -169,6 +170,7 @@ export interface ResultsReadmeOptions {
         readonly otherCount: number;
         readonly identityAndAccessCount?: number | undefined;
         readonly governanceAndRemediationCount?: number | undefined;
+        readonly skippedArchivedCount?: number | undefined;
       }
     | undefined;
   readonly verificationSummary?:
@@ -206,9 +208,12 @@ export interface ResultsReadmeOptions {
             }
           | undefined;
         readonly mirrorPushRepos?: readonly string[] | undefined;
+        readonly archivedRepos?: readonly string[] | undefined;
       }
     | undefined;
   readonly repoStrategyBadges?: Readonly<Record<string, string>> | undefined;
+  readonly pagesUrl?: string | undefined;
+  readonly hasEmbeddedDashboard?: boolean | undefined;
 }
 
 /**
@@ -234,6 +239,19 @@ export function formatResultsReadmeMarkdown(
     `> **Generated At:** \`${manifest.generatedAt}\`  `,
     `> **Duration:** ${durationSec}s (${manifest.summary.durationMs}ms)  `,
     `> **Audit Repository:** [\`${manifest.targetResultsRepo}\`](https://github.com/${manifest.targetOrg}/${manifest.targetResultsRepo})  `,
+  ];
+
+  if (options.pagesUrl) {
+    lines.push(
+      `> **Visual Dashboard (Private GitHub Pages):** [Open Interactive Dashboard](${options.pagesUrl})  `,
+    );
+  } else if (options.hasEmbeddedDashboard) {
+    lines.push(
+      `> **Visual Dashboard (Private GitHub Pages):** Pre-built in this repository ([Pages Settings](https://github.com/${manifest.targetOrg}/${manifest.targetResultsRepo}/settings/pages))  `,
+    );
+  }
+
+  lines.push(
     '',
     '---',
     '',
@@ -245,7 +263,7 @@ export function formatResultsReadmeMarkdown(
     `| Succeeded Repositories | ${manifest.summary.succeededCount} |`,
     `| Failed Repositories | ${manifest.summary.failedCount} |`,
     `| Success Rate | ${manifest.summary.successRatePercent}% |`,
-  ];
+  );
 
   if (options.verificationSummary) {
     const v = options.verificationSummary;
@@ -285,6 +303,15 @@ export function formatResultsReadmeMarkdown(
     const mp = options.transferStrategies.mirrorPushRepos;
     lines.push(
       `| Direct Git Mirror-Push | \`${mp.join('`, `')}\` (bypassed GEI archive size limits) |`,
+    );
+  }
+  if (
+    options.transferStrategies?.archivedRepos &&
+    options.transferStrategies.archivedRepos.length > 0
+  ) {
+    const ar = options.transferStrategies.archivedRepos;
+    lines.push(
+      `| Archived Repositories Migrated | ${ar.length} (\`${ar.join('`, `')}\` — unarchived during metadata apply, re-archived at finalization) |`,
     );
   }
   if (options.postCareSummary) {
@@ -445,6 +472,11 @@ export function formatResultsReadmeMarkdown(
     lines.push(
       `| [\`exports/migration-operations-full.csv\`](exports/migration-operations-full.csv) | All | CSV | Complete ledger of every organization and repository operation |`,
     );
+    if (options.postCareSummary.skippedArchivedCount !== undefined) {
+      lines.push(
+        `| [\`exports/archived-repositories-skipped.csv\`](exports/archived-repositories-skipped.csv) | ${options.postCareSummary.skippedArchivedCount} | CSV | Archived source repositories excluded from scope when \`include_archived=false\` |`,
+      );
+    }
     lines.push(
       `| [**Audit Evidence Bundle Guide (\`evidence/README.md\`)**](evidence/README.md) | Guide | Markdown | Plain-English guide, SHA-256 checksums, and Dashboard instructions for \`evidence/*.json\` |`,
     );
@@ -703,6 +735,11 @@ export function formatSuccessRepoMarkdown(
 
   if (details.visibility) {
     lines.push(`> **Visibility:** \`${details.visibility}\`  `);
+  }
+  if (details.archived !== undefined) {
+    lines.push(
+      `> **Archived Status:** \`${details.archived ? 'true (Archived — Read-Only Restored After Migration)' : 'false (Active)'}\`  `,
+    );
   }
   if (details.defaultBranch) {
     lines.push(`> **Default Branch:** \`${details.defaultBranch}\`  `);
