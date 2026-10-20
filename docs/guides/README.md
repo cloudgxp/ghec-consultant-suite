@@ -1,52 +1,57 @@
-# Operational User Guides
+# User Guides by Role
 
-This folder contains plain-English, task-oriented guides for every stage of a GitHub Enterprise Cloud (GHEC) to Enterprise Managed Users (GHEC-EMU) migration. Each guide shows default behaviors first and pairs short explanations with copy-pasteable commands.
+This folder organizes all **GHEC Consultant Suite** guides into three distinct folders by role so **Project Managers & Customers**, **Migration Operators**, and **Software Developers** only see the tools and instructions meant for them.
 
 ```text
 docs/guides/
-├── consultant-operators-manual.md
-├── customer-migration-handbook.md
-├── generating-migration-scopes.md
-├── offline-discovery-and-assessment.md
-├── ghec-to-emu-test-migration-setup.md
-├── github-actions-migration.md
-├── verification-and-remediation.md
-└── seed-demo-content.md
+├── customers-and-pms/                  # Non-technical guides for Leaders, PMs & Clients
+│   ├── pm-engagement-playbook.md
+│   └── customer-migration-handbook.md
+├── operators/                          # Operator guides (GitHub Web UI, Dashboard Web UI & gh CLI only)
+│   ├── consultant-operators-manual.md
+│   ├── generating-migration-scopes.md
+│   ├── discovery-and-dashboard-webui.md
+│   ├── verification-and-remediation.md
+│   └── sandbox-and-demo-setup.md
+└── developers/                         # Engineering guides (npm workspaces, local CLI & module SDK)
+    ├── local-development-and-cli.md
+    ├── building-the-release-kit.md
+    └── adding-migration-modules.md
 ```
 
 ---
 
-## Picking a guide by task
+## 1. Guides for Project Managers, Leaders & Customers
 
-| What You Want to Do                                                                       | Guide                                                                          |
-| :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
-| Deploy the Release Kit and run full or selective migrations 100% via GitHub Actions       | [Consultant Operator's Manual](consultant-operators-manual.md)                 |
-| Share a plain-English overview, preparation checklist, and post-care guide with customers | [Customer Migration Handbook](customer-migration-handbook.md)                  |
-| Generate, filter, consolidate, or validate migration scope files (`scopes/*.json`)        | [Generating and Validating Migration Scopes](generating-migration-scopes.md)   |
-| Download organization data and inspect it on an offline computer                          | [Offline Discovery & Assessment](offline-discovery-and-assessment.md)          |
-| Create sample teams, repos, rulesets, and secrets for a demo or rehearsal                 | [Creating Sample Data for a Demo](seed-demo-content.md)                        |
-| Set up tokens, SSO, and test scopes for an EMU test migration                             | [GHEC to EMU Test Migration Setup](ghec-to-emu-test-migration-setup.md)        |
-| Run parallel migration waves and weekend cutovers in GitHub Actions                       | [Running Migrations with GitHub Actions](github-actions-migration.md)          |
-| Compare source and target organizations and fix missing items                             | [Verifying Migrations & Fixing Missing Items](verification-and-remediation.md) |
+Plain-English guides with zero technical commands needed:
+
+| What You Want to Do                                                                           | Guide                                                                                     |
+| :-------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| Plan migration waves, track client prerequisites, estimate timelines, and sign off on results | [Project Manager & Engagement Lead Playbook](customers-and-pms/pm-engagement-playbook.md) |
+| Share a plain-English overview, token/SSO checklist, and Day-1 post-care guide with customers | [Customer Migration Handbook](customers-and-pms/customer-migration-handbook.md)           |
 
 ---
 
-## Running a quick end-to-end test from the command line
+## 2. Guides for Migration Operators (Delivery Consultants)
 
-By default, you can test the entire migration workflow (`discover` $\rightarrow$ `preflight` $\rightarrow$ `plan` $\rightarrow$ `migrate --dry-run`) without making any changes to your target organization.
+All operator guides use **only the GitHub Web UI, the Assessment & Operations Web UI, and the `gh` CLI**—you never need to run `npm` or compile source code:
 
-To collect data from your source organization and save it to `./scans`:
+| What You Want to Do                                                                                    | Guide                                                                                    |
+| :----------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------- |
+| Install the Release Kit and run full or selective migrations via the GitHub Actions Web UI or `gh` CLI | [Consultant Operator's Manual](operators/consultant-operators-manual.md)                 |
+| Generate, filter, consolidate, or validate migration scope files (`scopes/*.json`)                     | [Generating and Validating Migration Scopes](operators/generating-migration-scopes.md)   |
+| Run read-only discovery scans and explore readiness scores in the Assessment Web UI                    | [Discovery Scans & Assessment Web UI](operators/discovery-and-dashboard-webui.md)        |
+| Review the `migration-audit-results` repository, run self-healing fixes, and execute cutover           | [Verifying Migrations & Fixing Missing Items](operators/verification-and-remediation.md) |
+| Populate a test organization with 34 sample items and run a safe sandbox rehearsal                     | [Setting Up a Sandbox Rehearsal or Live Demo](operators/sandbox-and-demo-setup.md)       |
 
-```bash
-npm run dev:cli -- discover --organization "source-enterprise-org" --modules "all"
-```
+---
 
-To check your tokens and preview a migration wave using a scope file:
+## 3. Guides for Platform Developers & Engineers
 
-```bash
-npm run dev:cli -- preflight --scope ./scopes/test-org-wave.json
-npm run dev:cli -- migrate --scope ./scopes/test-org-wave.json --dry-run
-```
+Technical guides for engineers working in the TypeScript monorepo with `npm`:
 
-> [!WARNING]
-> Always store your source and target GitHub tokens in environment variables (`GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN`) or GitHub Actions secrets—never inside `scopes/*.json` files.
+| What You Want to Do                                                                         | Guide                                                                                      |
+| :------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------- |
+| Set up `npm` workspaces, run `npm run dev:cli` and `npm run dev`, and execute offline tests | [Local Development & Running the CLI with npm](developers/local-development-and-cli.md)    |
+| Bundle and publish the zero-source `ghec-migration-kit` archive for client engagements      | [Building and Publishing the Customer Release Kit](developers/building-the-release-kit.md) |
+| Scaffold, implement, and test a new 4-stage migration module in `@ghec/migration`           | [Adding and Testing Migration Modules](developers/adding-migration-modules.md)             |

@@ -314,7 +314,7 @@ By default, you can run organization discovery scans and parallel migration wave
 - **Parallel Matrix Migration Wave** ([`../../.github/workflows/migration-execute-wave.yml`](../../.github/workflows/migration-execute-wave.yml)) & **Autonomous Migration** ([`../../.github/workflows/migration-e2e-autonomous.yml`](../../.github/workflows/migration-e2e-autonomous.yml)): Slice repository cohorts across parallel runners, execute migration waves, verify target parity, and publish audit results.
 - **Composite Setup Action** ([`../../.github/actions/setup-suite/action.yml`](../../.github/actions/setup-suite/action.yml)): Prepares Node.js 22, GitHub CLI (`gh`), and the `gh-gei` extension on every runner.
 
-See the [Consultant Operator's Manual](../../docs/guides/consultant-operators-manual.md) and [Enterprise GitHub App Deployment Guide](../../docs/architecture/github-app-enterprise-deployment.md) for step-by-step setup instructions.
+See the [Consultant Operator's Manual](../../docs/guides/operators/consultant-operators-manual.md) and [Enterprise GitHub App Deployment Guide](../../docs/architecture/github-app-enterprise-deployment.md) for step-by-step setup instructions.
 
 ---
 

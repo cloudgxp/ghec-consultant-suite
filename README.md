@@ -1,156 +1,114 @@
 # GHEC Consultant Suite
 
-The **GHEC Consultant Suite** helps you plan, run, and verify migrations from **GitHub Enterprise Cloud (GHEC)** to **GitHub Enterprise Cloud with Enterprise Managed Users (GHEC-EMU)**. You can collect organization data for offline review, move repositories and settings in parallel waves, and check that nothing was missed.
+The **GHEC Consultant Suite** is our automated platform for delivering **GitHub Enterprise Cloud (GHEC)** and **Enterprise Managed Users (GHEC-EMU)** migration contracts. It helps our consulting teams move a client's repositories, engineering history, teams, security rules, and automation settings into a new GitHub organization safely, repeatably, and on schedule.
 
----
+Instead of relying on manual scripts or spreadsheets during a client engagement, our team uses the **GHEC Consultant CLI** (`ghec-consultant-cli`)—triggered directly from **GitHub Actions** or the **Operations Web UI**—to discover what the client has, build a migration plan, move data in parallel waves, and validate that every item arrived cleanly.
 
-## Installing and building the project
-
-By default, this repository uses `npm` workspaces to manage both apps (`apps/*`) and shared packages (`packages/*`) from one root folder. You need **Node.js `22.13.0` or newer** and **npm `10` or newer**.
-
-To download the repository, install dependencies, and build all tools:
-
-```bash
-git clone https://github.com/<your-org>/ghec-consultant-suite.git
-cd ghec-consultant-suite
-npm ci
-npm run build
-```
-
-To run the full quality check (code formatting, type checks, app builds, and 800+ offline tests):
-
-```bash
-npm run check
+```mermaid
+flowchart LR
+    Discover["1. Discover<br/>Inventory Orgs, Repos,<br/>Teams & Risk Blockers"] --> Plan["2. Plan<br/>Scope Waves & Preview<br/>Changes Safely (Dry-Run)"]
+    Plan --> Migrate["3. Migrate<br/>Copy Repos, History,<br/>Teams & 34 Settings Modules"]
+    Migrate --> Validate["4. Validate<br/>Verify Parity, Auto-Fix Gaps &<br/>Publish Client Audit Repo"]
 ```
 
 ---
 
-## Exploring migration data in the offline dashboard
+## How this platform helps our migration contracts
 
-By default, the assessment dashboard (`@ghec/dashboard`) runs on `http://localhost:5173` completely in your browser without connecting to GitHub or sending data over the internet.
+By default, every migration run is designed to protect the client's existing work while giving our project managers, operators, and customer leads clear visibility from kickoff to final sign-off:
 
-To start the local dashboard server:
-
-```bash
-npm run dev
-```
-
-Once the server starts, open `http://localhost:5173` in your browser and upload a discovery JSON file (or try one of the sample files from [`fixtures/synthetic/`](fixtures/synthetic/)).
+- **100% read-only on the client's source organization:** During discovery, planning, and migration waves, the tool only reads from the client's existing GitHub organization. Nothing is deleted, altered, or locked until the client approves final cutover.
+- **Zero exposure of client secrets:** The tool never reads, exports, or logs raw password or secret values. Instead, it creates safe blank placeholders in the new organization so the client's security team can fill in their secrets using a clean checklist.
+- **Built for organizations of any size:** Whether a client has 10 repositories or 5,000, the tool automatically splits the work across parallel GitHub Actions runners and adjusts its transfer method for massive repositories (> 40 GiB), Git LFS files, and large release attachments (> 10 GiB).
+- **Automatic validation and client handoff:** At the end of every wave, the tool checks the new organization against the plan, fixes temporary rate-limit misses automatically, and creates a private **`migration-audit-results`** repository with an interactive Web UI dashboard and spreadsheet-ready post-care checklists.
 
 ---
 
-## Running migration commands from the command line
+## How the CLI tool works: Discover, Plan, Migrate, and Validate
 
-By default, `ghec-consultant-cli` reads your source and target GitHub tokens from the `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` environment variables and saves output files to the `./scans` folder.
+At the heart of the suite is **`ghec-consultant-cli`**, an automated command-line engine that operators run through the **GitHub Actions Web UI**, the **GitHub CLI (`gh`)**, or the **Migration Operations Web UI**. It guides every client contract through four clear stages:
 
-```text
-scans/
-├── discovery-bundle.json
-├── migration-plan.json
-├── verification-report.json
-└── remediation-plan.md
-```
+### 1. Discover (`discover` & `preflight`)
 
-To see all available commands and options:
+Before moving any data, the CLI scans the client's existing GitHub organizations in read-only mode.
 
-```bash
-npm run dev:cli -- --help
-```
+- **What it does:** Counts every repository, branch, team, user, ruleset, webhook, package, and GitHub App, and checks that access tokens have the right permissions.
+- **What you get:** A complete readiness report and an interactive **Web UI Dashboard** that highlights oversized repositories, Git LFS storage, and potential blockers weeks before cutover.
 
-To collect data from a single organization and save a discovery bundle for offline review:
+### 2. Plan (`generate-scope`, `validate-scope` & `plan`)
 
-```bash
-npm run dev:cli -- discover --organization "octocorp" --modules "all"
-```
+Next, the CLI defines which organizations and repositories belong in each migration wave and checks what needs to be created in the destination organization.
 
-To check that your tokens have the right permissions and your repositories fit within GitHub size limits before starting a migration:
+- **What it does:** Builds a migration wave scope (for all repositories, specific business units, or only `public`, `private`, or `internal` repositories) and runs a **Dry-Run Preview** (`dry_run: true`) against the target organization without making any live changes.
+- **What you get:** A step-by-step migration plan showing every repository, team, variable, secret placeholder, and security rule that will be created during the cutover window.
 
-```bash
-npm run dev:cli -- preflight --scope ./scopes/test-org-wave.json
-```
+### 3. Migrate (`migrate` & `cutover`)
 
-To preview a migration wave without making any changes to your target organization, add the `--dry-run` option:
+During the scheduled migration window (or a sandbox rehearsal), the CLI copies the client's repositories and organization settings into the new GHEC or GHEC-EMU organization.
 
-```bash
-npm run dev:cli -- migrate --scope ./scopes/test-org-wave.json --dry-run
-```
+- **What it does:** Runs **34 specialized migration modules** in the right order—moving Git history, pull requests, issues, discussions, releases, teams, custom roles, branch rulesets, environments, variables, and packages in parallel batches.
+- **What you get:** If a network drop or GitHub rate limit pauses a run, the CLI saves a checkpoint after every step so operators can resume right where it left off without creating duplicates.
 
-To run a live migration wave and then verify that the target organization matches your plan:
+### 4. Validate (`verify`, `agent-review` & `publish-results`)
 
-```bash
-npm run dev:cli -- migrate --scope ./scopes/test-org-wave.json
-npm run dev:cli -- verify --plan ./scans/migration-plan.json --scope ./scopes/test-org-wave.json
-```
+Immediately after the migration finishes, the CLI audits the new organization item-by-item to prove that everything in the plan succeeded.
 
-> [!WARNING]
-> Never pass your GitHub tokens directly in command flags or save them inside `scopes/*.json` files. Always set `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN` as environment variables or GitHub Actions secrets.
+- **What it does:** Compares the destination organization against the migration plan, runs up to 3 automatic self-healing passes to fix any missed items, and publishes the final audit package.
+- **What you get:** A private **`migration-audit-results`** repository in the client's new organization containing an Executive Scorecard, an interactive **Private GitHub Pages Dashboard**, CSV spreadsheets, and a plain-English **Post-Care Checklist** with 1-click links.
 
 ---
 
-## Running migrations with GitHub Actions
+## Platform capabilities overview
 
-If you are migrating dozens or hundreds of repositories, you can run every step in [`.github/workflows/`](.github/workflows/) so multiple GitHub Actions runners divide up the work automatically.
+By default, the CLI and GitHub Actions workflows automate **34 migration modules** (15 organization-level modules and 19 repository-level modules) along with specialized cutover and rehearsal tools:
 
-To generate and commit a new migration wave file (`scopes/<wave>.json`) using GitHub Actions:
-
-```bash
-gh workflow run generate-scope.yml \
-  -f wave_name="wave-1" \
-  -f source_org="source-enterprise-org" \
-  -f target_org="target-emu-org"
-```
-
-To preview a full migration wave in GitHub Actions without changing the target organization (`dry_run: true` is the default):
-
-```bash
-gh workflow run migration-execute-wave.yml \
-  -f scope="scopes/wave-1.json" \
-  -f dry_run="true"
-```
-
-To resume an interrupted migration run from its last saved checkpoint:
-
-```bash
-gh workflow run migration-resume.yml \
-  -f run_id="migration-20261004-123456"
-```
+| Capability Category                     | What the Tool Automates                                                                                                                                                                   | How It Helps Our Clients & Consultants                                                                        |
+| :-------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |
+| **Repositories & Git History**          | Copies all branches, tags, commit history, wikis, issues, comments, labels, milestones, and pull requests using GitHub Enterprise Importer (`gei-repo`).                                  | Preserves years of engineering history and code review audit trails without manual scripts.                   |
+| **Massive Repos, Git LFS & Releases**   | Automatically detects repositories over 40 GiB, releases over 10 GiB, and Git Large File Storage (`git-lfs`) objects, switching to streaming transfer modes (`modules: auto`).            | Prevents weekend cutover failures on large monorepos and multi-gigabyte binary files.                         |
+| **Teams, Roles & EMU Identities**       | Recreates nested parent/child teams, custom roles, repository permission levels, SCIM Identity Provider (IdP) group links, and EMU user mapping spreadsheets (`mannequins`).              | Saves days of rebuilding complex team trees and user permissions by hand in GHEC-EMU.                         |
+| **Security, Rulesets & Governance**     | Migrates organization and repository rulesets, classic branch protection rules, custom property schemas/values, `CODEOWNERS` checks, Dependabot, Secret Scanning, and Push Protection.    | Ensures the client's security and compliance controls are active on Day 1.                                    |
+| **GitHub Actions, Secrets & Variables** | Copies Actions policies, runner groups, larger hosted runners, deployment environments, plaintext variables (`vars.*`), and sealed blank placeholder secret names.                        | CI/CD pipelines and environments are ready immediately without ever exposing client secret values.            |
+| **Discussions, Projects & Packages**    | Rebuilds GitHub Discussions categories/threads/answers, Projects v2 boards and custom fields, and npm, Maven, NuGet, RubyGems, and Docker/OCI container packages.                         | Moves engineering collaboration boards and package registries alongside source code.                          |
+| **GitHub Apps, Webhooks & Autolinks**   | Exports app manifests, builds **1-click install/recreate links**, automatically binds selected repositories via API, copies autolinks, and creates webhooks in safe paused mode.          | Eliminates clicking 50+ repositories by hand when reinstalling GitHub Apps in the new org.                    |
+| **Multi-Org Public Consolidation**      | Consolidates `public` (or selected) repositories from several source organizations into one shared destination org while copying only associated teams, secrets, variables, and rulesets. | Solves GHEC-EMU's requirement to separate public repositories from managed EMU organizations.                 |
+| **Sandbox Rehearsal Mode**              | Copies live repositories and settings into a test organization while keeping all target Webhooks and GitHub Actions turned off (`sandbox_rehearsal: true`).                               | Lets consultants show the client their migrated repositories in a live sandbox with zero background activity. |
+| **Go-Live Cutover & Source Freeze**     | Detaches globally unique SSH deploy keys and GitHub Pages custom domains from old repositories, attaches them to the new repositories, and archives the old repositories.                 | Automates the final go-live switchover steps in a single workflow (`post-migration-cutover.yml`).             |
 
 ---
 
-## Apps & packages in this repository
+## Documentation directory by role
 
-| Tool / Package                                    | What It Does                                                                                                        |                  Documentation                   |
-| :------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------: |
-| **Consultant CLI** (`apps/cli`)                   | Command-line tool to collect data, check readiness, plan waves, migrate items, verify results, and fix gaps.        |         [CLI Guide](apps/cli/README.md)          |
-| **Offline Dashboard** (`apps/dashboard`)          | Local web app (`http://localhost:5173`) to explore discovery files, check repo sizes, and export PDF reports.       |   [Dashboard Guide](apps/dashboard/README.md)    |
-| **Migration Engine** (`packages/migration`)       | 34 migration modules (`discover` $\rightarrow$ `plan` $\rightarrow$ `apply` $\rightarrow$ `verify`) and GEI runner. | [Migration Guide](packages/migration/README.md)  |
-| **Discovery Engine** (`packages/discovery`)       | Collects organization and repository data via REST and GraphQL while hiding personal user names.                    | [Discovery Guide](packages/discovery/README.md)  |
-| **Readiness Analysis** (`packages/analysis`)      | Scores migration risks, flags oversized repos or LFS files, and maps dependencies between teams and repos.          |  [Analysis Guide](packages/analysis/README.md)   |
-| **Dual GitHub Client** (`packages/github-client`) | Keeps source (read-only) and target (write) connections and rate limits strictly separated.                         | [Client Guide](packages/github-client/README.md) |
-| **Data Contracts** (`packages/contracts`)         | Shared Zod schemas (`v1.0.0`) that validate every scope file, plan, checkpoint, and report.                         | [Contracts Guide](packages/contracts/README.md)  |
+We organize our documentation by role so project managers, migration operators, customers, and software developers can jump straight to what they need:
 
----
+### 1. For Project Managers, Leaders & Customers
 
-## User guides & documentation
+Plain-English guides for planning client engagements, preparing organizations, and reviewing post-migration results:
 
-- **Step-by-Step User Guides ([`docs/guides/`](docs/guides/README.md)):**
-  - [Consultant Operator's Manual: Running Migrations in GitHub Actions](docs/guides/consultant-operators-manual.md)
-  - [Customer Migration Handbook: Preparation & Post-Care](docs/guides/customer-migration-handbook.md)
-  - [Generating and Validating Migration Scopes](docs/guides/generating-migration-scopes.md)
-  - [Downloading Discovery Data & Running Offline Assessments](docs/guides/offline-discovery-and-assessment.md)
-  - [Running Migrations with GitHub Actions](docs/guides/github-actions-migration.md)
-  - [Setting Up a GHEC to GHEC-EMU Test Migration](docs/guides/ghec-to-emu-test-migration-setup.md)
-  - [Verifying Migrations & Fixing Missing Items](docs/guides/verification-and-remediation.md)
-  - [Creating Sample Data for a Demo (`seed-demo`)](docs/guides/seed-demo-content.md)
-- **Collaboration & Community:**
-  - [Collaborators & Team Roles](COLLABORATORS.md)
-  - [Contributing Guide](CONTRIBUTING.md)
-  - [Support & Troubleshooting](SUPPORT.md)
-  - [Security Policy](SECURITY.md)
-  - [Code of Conduct](CODE_OF_CONDUCT.md)
-- **Engineering Specs & Architecture ([`docs/`](docs/README.md)):**
-  - [Repository Charter (`AGENTS.md`)](AGENTS.md)
-  - [GitHub Copilot Instructions (`.github/copilot-instructions.md`)](.github/copilot-instructions.md)
-  - [Architectural Decisions (`DEC-001`–`DEC-020+`)](docs/architecture/decisions.md)
-  - [Specifications Index](docs/specs/README.md)
-  - [Data Contracts Reference](docs/data-contracts/README.md)
+- **[Project Manager & Engagement Lead Playbook](docs/guides/customers-and-pms/pm-engagement-playbook.md):** How to structure migration waves, track client prerequisites, estimate timelines, and review executive scorecards.
+- **[Customer Migration Handbook](docs/guides/customers-and-pms/customer-migration-handbook.md):** Shareable client guide covering how data stays safe, token and SSO setup checklists, what moves automatically vs. post-care, and Day-1 developer instructions.
+
+### 2. For Migration Operators (Delivery Consultants)
+
+Step-by-step operational guides for running migrations using **only the GitHub Web UI, the Dashboard Web UI, and the `gh` CLI** (no developer setup or `npm` commands needed):
+
+- **[Consultant Operator's Manual](docs/guides/operators/consultant-operators-manual.md):** Complete guide to installing the Release Kit and running same-day scopes, dry-runs, parallel migration waves, and cutovers via the GitHub Actions Web UI or `gh workflow run`.
+- **[Generating and Validating Migration Scopes](docs/guides/operators/generating-migration-scopes.md):** How to slice waves by visibility (`public`, `private`, `internal`), repository lists, or multi-organization consolidation.
+- **[Discovery Scans & Using the Assessment Web UI](docs/guides/operators/discovery-and-dashboard-webui.md):** How to run read-only discovery scans and explore readiness scores, dependency maps, and PDF/CSV reports in the Web UI.
+- **[Verifying Migrations & Fixing Missing Items](docs/guides/operators/verification-and-remediation.md):** How to review the `migration-audit-results` repository, run automatic self-healing workflows, and map EMU user history.
+- **[Setting Up a Sandbox Rehearsal or Live Demo](docs/guides/operators/sandbox-and-demo-setup.md):** How to populate a test organization with 34 realistic sample items and run a safe sandbox rehearsal.
+
+### 3. For Platform Developers & Software Engineers
+
+Technical guides for engineers building the TypeScript monorepo, testing CLI commands locally with `npm`, packaging the Release Kit, or adding new migration modules:
+
+- **[Local Development & Running the CLI with npm](docs/guides/developers/local-development-and-cli.md):** Setting up Node.js and `npm` workspaces, running `npm run dev:cli` and `npm run dev`, and executing the 800+ offline unit tests (`npm run check`).
+- **[Building and Publishing the Customer Release Kit](docs/guides/developers/building-the-release-kit.md):** How to bundle the zero-source `ghec-migration-kit` archive for client engagements.
+- **[Adding and Testing Migration Modules](docs/guides/developers/adding-migration-modules.md):** How to scaffold a new 4-stage module (`discover`, `plan`, `apply`, `verify`) and write offline tests.
+- **[Contributing Guide](CONTRIBUTING.md) & [Architecture & Specifications](docs/README.md):** Monorepo packages ([`apps/cli`](apps/cli/README.md), [`apps/dashboard`](apps/dashboard/README.md), [`packages/migration`](packages/migration/README.md), [`packages/discovery`](packages/discovery/README.md), [`packages/analysis`](packages/analysis/README.md), [`packages/github-client`](packages/github-client/README.md), [`packages/contracts`](packages/contracts/README.md)), [Architectural Decisions](docs/architecture/decisions.md), and [Engineering Specs](docs/specs/README.md).
+
+### 4. Support, Roles & Security
+
+- **[Support & Troubleshooting Guide](SUPPORT.md):** Quick fixes for common operator issues (SAML SSO authorization, token rules, resuming paused runs) and developer build tips.
+- **[Collaborators & Team Roles](COLLABORATORS.md):** Team permissions, reviewing migration wave Pull Requests, and using GitHub Copilot agents.
+- **[Security Policy](SECURITY.md) & [Code of Conduct](CODE_OF_CONDUCT.md):** Zero-exposure secret rules and team standards.

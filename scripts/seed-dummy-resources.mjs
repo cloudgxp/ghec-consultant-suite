@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Automated provisioning helper for dummy migration test resources on source organization.
- * Conforms to docs/guides/ghec-to-emu-test-migration-setup.md (Section 3).
+ * Conforms to docs/guides/operators/sandbox-and-demo-setup.md.
  */
 import { Buffer } from 'node:buffer';
 

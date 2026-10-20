@@ -79,6 +79,6 @@ jobs:
           ### Included in the Release Kit
           - `bin/ghec-consultant-cli.mjs` — Pre-compiled standalone CLI bundle (no `npm ci` or TypeScript source required)
           - `.github/workflows/` — Ready-to-run GitHub Actions workflows for Discovery, Scope Generation, Dry-Run, Live Wave Migration, Resumption, and Remediation
-          - `docs/guides/consultant-operators-manual.md` — End-to-end Consultant Operator's Manual & Argument Reference
-          - `docs/guides/customer-migration-handbook.md` — Plain-English Customer Migration Handbook
+          - `docs/guides/operators/` — End-to-end Consultant Operator Guides (GitHub Web UI, Dashboard Web UI & `gh` CLI)
+          - `docs/guides/customers-and-pms/` — Plain-English Customer Migration Handbook & PM Engagement Playbook
           EOF

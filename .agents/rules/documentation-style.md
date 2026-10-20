@@ -49,3 +49,9 @@ When writing or updating user-facing documentation (`docs/guides/**/*.md`, `READ
 - When a command reads or creates a folder structure, show a small ASCII folder tree (`├──`, `└──`) right above the command.
 - Keep the main steps clean. Put helpful tips, edge cases, or security reminders inside `> [!NOTE]` or `> [!WARNING]` boxes right below the code block.
 - Read `.agents/skills/consultant-style-docs/SKILL.md` for templates and examples whenever writing or editing documentation.
+
+## 7. Strict Audience Separation (Leaders/PMs, Operators, and Developers)
+
+- **Root `README.md` (High-Level Executive Overview):** Written for non-technical leaders, project managers, and first-time visitors. Focus on how the platform supports GHEC and GHEC-EMU migration contracts, the 4-stage lifecycle (**Discover $\rightarrow$ Plan $\rightarrow$ Migrate $\rightarrow$ Validate**), a high-level **Capabilities Table**, and role-based links. Never put `npm` build commands in the root `README.md`.
+- **Operator & Customer Guides (`docs/guides/operators/**`, `docs/guides/customers-and-pms/**`):** Strictly show **GitHub Web UI** (`Actions` tab, Settings, `migration-audit-results`), **Assessment & Operations Web UI**, and **GitHub CLI (`gh`)** instructions. **Never include `npm`, `npx`, `tsx`, or source-compilation commands in Operator or Customer guides.**
+- **Developer Guides (`docs/guides/developers/**`, `CONTRIBUTING.md`, `apps/*/README.md`, `packages/*/README.md`):** Use for `npm` workspace setup (`npm ci`, `npm run build`, `npm run check`, `npm run dev`, `npm run dev:cli`), Release Kit bundling (`npm run build:release-kit`), and module engineering details.

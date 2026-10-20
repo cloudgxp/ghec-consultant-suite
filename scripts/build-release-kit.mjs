@@ -127,15 +127,26 @@ export async function buildReleaseKit(options = {}) {
     }
   }
 
-  // Copy guides & manuals
+  // Copy Operator and Customer/PM guides (exclude developer guides)
   const guidesDir = join(rootDir, 'docs/guides');
   if (existsSync(guidesDir)) {
-    for (const entry of readdirSync(guidesDir, { withFileTypes: true })) {
-      if (entry.isFile() && entry.name.endsWith('.md')) {
-        copyFileSync(
-          join(guidesDir, entry.name),
-          join(outDir, 'docs/guides', entry.name),
-        );
+    const guidesReadme = join(guidesDir, 'README.md');
+    if (existsSync(guidesReadme)) {
+      copyFileSync(guidesReadme, join(outDir, 'docs/guides/README.md'));
+    }
+    for (const subDir of ['operators', 'customers-and-pms']) {
+      const srcSubDir = join(guidesDir, subDir);
+      const destSubDir = join(outDir, 'docs/guides', subDir);
+      if (existsSync(srcSubDir)) {
+        mkdirSync(destSubDir, { recursive: true });
+        for (const entry of readdirSync(srcSubDir, { withFileTypes: true })) {
+          if (entry.isFile() && entry.name.endsWith('.md')) {
+            copyFileSync(
+              join(srcSubDir, entry.name),
+              join(destSubDir, entry.name),
+            );
+          }
+        }
       }
     }
   }
@@ -175,13 +186,14 @@ export async function buildReleaseKit(options = {}) {
     join(outDir, 'README.md'),
     `# GHEC Migration Kit (v${version})
 
-This package contains the pre-compiled **GHEC Consultant CLI** (\`bin/ghec-consultant-cli.mjs\`), ready-to-run **GitHub Actions workflows** (\`.github/workflows/\`), and plain-English manuals for running end-to-end GitHub Enterprise Cloud (GHEC / GHEC-EMU) migrations without uploading source code.
+This package contains the pre-compiled **GHEC Consultant CLI** (\`bin/ghec-consultant-cli.mjs\`), the pre-built **Assessment & Operations Web UI** (\`apps/dashboard/dist/\`), ready-to-run **GitHub Actions workflows** (\`.github/workflows/\`), and plain-English manuals for running end-to-end GitHub Enterprise Cloud (GHEC / GHEC-EMU) migrations without uploading source code.
 
 ## Manuals Included in This Kit
 
-- **[Consultant Operator's Manual](docs/guides/consultant-operators-manual.md)**: Step-by-step instructions and complete input reference for running Discovery, Dry-Run, and Live Migration waves from the GitHub Actions UI or \`gh workflow run\`.
-- **[Generating and Validating Migration Scopes](docs/guides/generating-migration-scopes.md)**: Dedicated guide and complete CLI/workflow reference for generating scopes by visibility, repository list, or multi-organization consolidation (\`--org-items associated-only\`).
-- **[Customer Migration Handbook](docs/guides/customer-migration-handbook.md)**: Non-technical handbook for customer stakeholders explaining each migration phase, required tokens and settings, what moves automatically, and post-migration wrap-up tasks.
+- **[Consultant Operator's Manual](docs/guides/operators/consultant-operators-manual.md)**: Step-by-step instructions and complete input reference for running Discovery, Dry-Run, and Live Migration waves from the GitHub Actions Web UI or \`gh workflow run\`.
+- **[Generating and Validating Migration Scopes](docs/guides/operators/generating-migration-scopes.md)**: Dedicated guide for generating scopes by visibility, repository list, or multi-organization consolidation (\`org_items_mode: associated-only\`).
+- **[Project Manager & Engagement Lead Playbook](docs/guides/customers-and-pms/pm-engagement-playbook.md)**: Engagement phasing, client prerequisite tracker, and executive scorecard review guide.
+- **[Customer Migration Handbook](docs/guides/customers-and-pms/customer-migration-handbook.md)**: Non-technical handbook for customer stakeholders explaining each migration phase, required tokens and settings, what moves automatically, and post-migration wrap-up tasks.
 `,
     'utf8',
   );
