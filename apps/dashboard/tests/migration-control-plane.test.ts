@@ -9,7 +9,7 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
       const url = input.toString();
 
       if (
-        url.includes('/actions/workflows/migration-execute-wave.yml/dispatch')
+        url.includes('/actions/workflows/migration-e2e-autonomous.yml/dispatch')
       ) {
         dispatchedPayload = JSON.parse(init?.body as string);
         return new Response(JSON.stringify({ status: 'dispatched' }), {
@@ -17,7 +17,9 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
         });
       }
 
-      if (url.includes('/actions/workflows/migration-execute-wave.yml/runs')) {
+      if (
+        url.includes('/actions/workflows/migration-e2e-autonomous.yml/runs')
+      ) {
         return new Response(
           JSON.stringify({
             workflow_runs: [
@@ -40,7 +42,7 @@ describe('Task 032: Dashboard Migration Control Plane', () => {
 
     // Simulate dispatch
     const res = await mockFetch(
-      'http://localhost:3000/api/actions/workflows/migration-execute-wave.yml/dispatch',
+      'http://localhost:3000/api/actions/workflows/migration-e2e-autonomous.yml/dispatch',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -9,9 +9,9 @@ describe('User Story 2: Workflow Aggregation & Strict Final Exit Gates', () => {
     rootDir,
     '.github/workflows/migration-e2e-autonomous.yml',
   );
-  const executeWavePath = resolve(
+  const verifyWorkflowPath = resolve(
     rootDir,
-    '.github/workflows/migration-execute-wave.yml',
+    '.github/workflows/migration-verify.yml',
   );
   const applyRemediationPath = resolve(
     rootDir,
@@ -23,7 +23,7 @@ describe('User Story 2: Workflow Aggregation & Strict Final Exit Gates', () => {
 
     assert.match(content, /name:\s+Aggregate Cohort Execution Reports/);
     assert.match(content, /aggregated-cohort-failures\.json/);
-    assert.match(content, /--execution-reports \.\/downloaded-cohorts/);
+    assert.match(content, /--execution-reports "\$EXEC_REPORTS"/);
     assert.match(content, /round-\$\{ROUND\}-execution\.log/);
 
     const uploadIdx = content.indexOf('name: Upload Final Audit Artifacts');
@@ -38,27 +38,28 @@ describe('User Story 2: Workflow Aggregation & Strict Final Exit Gates', () => {
     assert.match(content, /::error::Strict Verification Gate Failed:/);
   });
 
-  it('migration-execute-wave.yml enables --verbose, passes --execution-reports, fixes jq queries, and enforces Strict Verification & Execution Gate after artifact upload', () => {
-    const content = readFileSync(executeWavePath, 'utf8');
+  it('migration-verify.yml executes verify, agent-review, and publish-results, and enforces Strict Verification & Execution Gate after artifact upload', () => {
+    const content = readFileSync(verifyWorkflowPath, 'utf8');
 
-    assert.match(content, /--execution-reports \.\/downloaded-cohorts/);
-    assert.match(content, /\.overallStatus \/\/ \.status/);
+    assert.match(content, /ghec-consultant-cli\.mjs verify/);
+    assert.match(content, /ghec-consultant-cli\.mjs agent-review/);
+    assert.match(content, /ghec-consultant-cli\.mjs publish-results/);
     assert.match(content, /\.summary\.discrepancyCount/);
     assert.match(content, /\.summary\.unverifiedModuleCount/);
 
     const uploadIdx = content.indexOf(
-      'name: Upload Final Consolidated Artifacts',
+      'name: Upload Verification & Audit Artifacts',
     );
     const gateIdx = content.indexOf(
       'name: Strict Verification & Execution Gate',
     );
     assert.ok(
       uploadIdx > 0,
-      'Upload Final Consolidated Artifacts step must exist',
+      'Upload Verification & Audit Artifacts step must exist',
     );
     assert.ok(
       gateIdx > uploadIdx,
-      'Strict Verification & Execution Gate must appear after Upload Final Consolidated Artifacts',
+      'Strict Verification & Execution Gate must appear after Upload Verification & Audit Artifacts',
     );
   });
 

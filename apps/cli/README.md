@@ -311,10 +311,10 @@ Once the dashboard opens in your browser, click **Import bundle**, select your J
 By default, you can run organization discovery scans and parallel migration waves directly in GitHub Actions:
 
 - **Discovery Scan Workflow** ([`../../.github/workflows/discovery-scan.yml`](../../.github/workflows/discovery-scan.yml)): Triggered manually with `workflow_dispatch`, runs `ghec-consultant-cli discover` against your source organization, and uploads `scans/*.json` as workflow artifacts.
-- **Parallel Matrix Migration Wave** ([`../../.github/workflows/migration-execute-wave.yml`](../../.github/workflows/migration-execute-wave.yml)) & **Autonomous Migration** ([`../../.github/workflows/migration-e2e-autonomous.yml`](../../.github/workflows/migration-e2e-autonomous.yml)): Slice repository cohorts across parallel runners, execute migration waves, verify target parity, and publish audit results.
+- **Autonomous Scale-Adaptive Migration** ([`../../.github/workflows/migration-e2e-autonomous.yml`](../../.github/workflows/migration-e2e-autonomous.yml)) & **Target Verification** ([`../../.github/workflows/migration-verify.yml`](../../.github/workflows/migration-verify.yml)): Slice repository cohorts across parallel runners, execute migration waves, run closed-loop self-healing remediation, verify target parity, and publish audit results.
 - **Composite Setup Action** ([`../../.github/actions/setup-suite/action.yml`](../../.github/actions/setup-suite/action.yml)): Prepares Node.js 22, GitHub CLI (`gh`), and the `gh-gei` extension on every runner.
 
-See the [Consultant Operator's Manual](../../docs/guides/consultant-operators-manual.md) and [Enterprise GitHub App Deployment Guide](../../docs/architecture/github-app-enterprise-deployment.md) for step-by-step setup instructions.
+See the [Consultant Operator's Manual](../../docs/guides/operators/consultant-operators-manual.md) and [Enterprise GitHub App Deployment Guide](../../docs/architecture/github-app-enterprise-deployment.md) for step-by-step setup instructions.
 
 ---
 

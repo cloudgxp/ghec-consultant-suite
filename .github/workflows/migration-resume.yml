@@ -73,10 +73,10 @@ jobs:
           # 1. If workflow_run_id is provided, download artifacts directly
           TARGET_RUN_ID="$INPUT_WORKFLOW_RUN_ID"
 
-          # 2. If workflow_run_id was not provided, look for the most recent run of migration-execute-wave.yml
+          # 2. If workflow_run_id was not provided, look for the most recent run of migration-e2e-autonomous.yml
           if [ -z "$TARGET_RUN_ID" ] && ! ls -d ./migrations/.checkpoint-* 1> /dev/null 2>&1; then
-            echo "Searching for latest migration-execute-wave workflow run to retrieve checkpoints..."
-            RECENT_RUN=$(gh run list --workflow migration-execute-wave.yml --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
+            echo "Searching for latest migration-e2e-autonomous.yml workflow run to retrieve checkpoints..."
+            RECENT_RUN=$(gh run list --workflow migration-e2e-autonomous.yml --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)
             if [ -n "$RECENT_RUN" ] && [ "$RECENT_RUN" != "null" ]; then
               echo "Detected latest execution run ID: $RECENT_RUN"
               TARGET_RUN_ID="$RECENT_RUN"

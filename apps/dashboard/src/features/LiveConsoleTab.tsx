@@ -51,7 +51,7 @@ export interface LiveConsoleTabProps {
 const SAMPLE_ACTIVE_RUN: WorkflowRunRecord = {
   id: 12849102,
   runNumber: 42,
-  workflowId: 'migration-execute-wave.yml',
+  workflowId: 'migration-e2e-autonomous.yml',
   name: 'Migration Wave Execution: Phoenix Wave 1',
   status: 'in_progress',
   conclusion: null,
@@ -142,7 +142,7 @@ const SAMPLE_HISTORY_RUNS: WorkflowRunRecord[] = [
   {
     id: 12848900,
     runNumber: 41,
-    workflowId: 'migration-execute-wave.yml',
+    workflowId: 'migration-e2e-autonomous.yml',
     name: 'Migration Wave Execution: Dry-Run Rehearsal',
     status: 'completed',
     conclusion: 'success',
@@ -155,7 +155,7 @@ const SAMPLE_HISTORY_RUNS: WorkflowRunRecord[] = [
   {
     id: 12847210,
     runNumber: 40,
-    workflowId: 'migration-execute-wave.yml',
+    workflowId: 'migration-e2e-autonomous.yml',
     name: 'Migration Wave Execution: Canary Wave',
     status: 'completed',
     conclusion: 'failure',

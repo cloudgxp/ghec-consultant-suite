@@ -119,6 +119,16 @@ on:
           - 'fast-snapshot'
           - 'full-history'
         default: 'fast-snapshot'
+      discovery_run_id:
+        description: 'Optional GitHub Actions Run ID from discovery-scan.yml (or "latest") to download discovery bundle artifact'
+        required: false
+        type: string
+        default: ''
+      cached_bundle:
+        description: 'Optional path to pre-collected discovery bundle JSON file'
+        required: false
+        type: string
+        default: ''
 
 env:
   GHEC_ALLOW_SAME_CREDENTIAL: ${{ inputs.allow_same_credential != false && 'true' || 'false' }}
@@ -163,9 +173,11 @@ jobs:
           INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
           INPUT_MIRROR_PUSH_MODE: ${{ inputs.mirror_push_mode || 'fast-snapshot' }}
           INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
+          INPUT_DISCOVERY_RUN_ID: ${{ inputs.discovery_run_id }}
+          INPUT_CACHED_BUNDLE: ${{ inputs.cached_bundle }}
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          mkdir -p ./scans ./downloaded-scope
+          mkdir -p ./scans ./downloaded-scope ./downloaded-discovery
           RESOLVED_SCOPE=""
 
           if [ -n "$INPUT_SOURCE_ORG" ] && [ -n "$INPUT_TARGET_ORG" ]; then
@@ -200,6 +212,11 @@ jobs:
               GEN_ARGS+=(--repos "$INPUT_REPOS")
             fi
             node ./apps/cli/bin/ghec-consultant-cli.mjs "${GEN_ARGS[@]}"
+            RESOLVED_SCOPE="./scans/resolved-scope.json"
+          fi
+
+          if [ -z "$RESOLVED_SCOPE" ] && [[ "$INPUT_SCOPE" == "{"* ]]; then
+            echo "$INPUT_SCOPE" > ./scans/resolved-scope.json
             RESOLVED_SCOPE="./scans/resolved-scope.json"
           fi
 
@@ -254,6 +271,24 @@ jobs:
             cp "$INPUT_SCOPE" ./scans/resolved-scope.json
           fi
 
+          if [ -n "$INPUT_CACHED_BUNDLE" ] && [ -f "$INPUT_CACHED_BUNDLE" ]; then
+            cp "$INPUT_CACHED_BUNDLE" ./scans/resolved-discovery-bundle.json
+          elif [ -n "$INPUT_DISCOVERY_RUN_ID" ]; then
+            TARGET_DISC_RUN="$INPUT_DISCOVERY_RUN_ID"
+            if [ "$TARGET_DISC_RUN" = "latest" ]; then
+              TARGET_DISC_RUN=$(gh run list -R "$GITHUB_REPO_SLUG" --workflow=discovery-scan.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+            fi
+            if [ -n "$TARGET_DISC_RUN" ] && [ "$TARGET_DISC_RUN" != "null" ]; then
+              echo "Downloading discovery bundle artifact from workflow run $TARGET_DISC_RUN..."
+              if gh run download "$TARGET_DISC_RUN" -R "$GITHUB_REPO_SLUG" --dir ./downloaded-discovery 2>/dev/null; then
+                FOUND_BUNDLE=$(find ./downloaded-discovery -name 'ghec-discovery-*.json' | sort | head -n 1 || true)
+                if [ -n "$FOUND_BUNDLE" ] && [ -f "$FOUND_BUNDLE" ]; then
+                  cp "$FOUND_BUNDLE" ./scans/resolved-discovery-bundle.json
+                fi
+              fi
+            fi
+          fi
+
           VAL_ARGS=(validate-scope --scope ./scans/resolved-scope.json)
           if [ -n "$INPUT_TARGET_TYPE" ]; then
             VAL_ARGS+=(--target-type "$INPUT_TARGET_TYPE")
@@ -281,9 +316,14 @@ jobs:
           SCOPE_FILE: ./scans/resolved-scope.json
         run: |
           mkdir -p ./scans
+          INPUT_ARG=()
+          if [ -f ./scans/resolved-discovery-bundle.json ]; then
+            INPUT_ARG=(--input ./scans/resolved-discovery-bundle.json)
+          fi
           echo "Running preflight readiness checks on Actions Runner..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs preflight \
             --scope "$SCOPE_FILE" \
+            "${INPUT_ARG[@]}" \
             --output ./scans/preflight-report.json \
             --verbose || true
 
@@ -473,6 +513,7 @@ jobs:
           name: slicer-matrix-${{ github.run_id }}
           path: |
             ./scans/resolved-scope.json
+            ./scans/resolved-discovery-bundle.json
             ./scans/preflight-report.json
             ./scans/pre-cohort-org-report.json
             ./scans/slicer-matrix.json
@@ -539,6 +580,9 @@ jobs:
           REPORT_OUTPUT="./scans/cohort-report-${MATRIX_COHORT_ID}.json"
 
           EXTRA_ARGS=(--modules "${INPUT_MODULES:-auto}")
+          if [ -f ./scans/resolved-discovery-bundle.json ]; then
+            EXTRA_ARGS+=(--input ./scans/resolved-discovery-bundle.json)
+          fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             EXTRA_ARGS+=(--dry-run)
           fi

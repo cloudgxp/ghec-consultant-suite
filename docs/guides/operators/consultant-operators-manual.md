@@ -14,12 +14,13 @@ flowchart LR
 
 ## Installing the Customer Release Kit in the customer's environment
 
-By default, the **Customer Migration Release Kit** (`ghec-migration-kit-vX.Y.Z.tar.gz`) contains only the pre-built CLI bundle (`bin/ghec-consultant-cli.mjs`), the GitHub Actions workflows (`.github/workflows/`), and these user guides. None of the TypeScript source code or test files are included.
+By default, the **Customer Migration Release Kit** (`ghec-migration-kit-vX.Y.Z.tar.gz`) contains only the pre-built CLI bundle (`bin/ghec-consultant-cli.mjs`), the pre-built Web UI dashboard (`apps/dashboard/dist/`), the GitHub Actions workflows (`.github/workflows/`), and these operator and customer guides. None of our internal TypeScript source code or developer test files are included.
 
 ```text
 ghec-migration-kit/
 ├── bin/
-│   └── ghec-consultant-cli.mjs       # Single pre-built CLI file
+│   └── ghec-consultant-cli.mjs       # Pre-built CLI engine used by GitHub Actions
+├── apps/dashboard/dist/              # Pre-built Assessment & Operations Web UI
 ├── .github/
 │   ├── actions/setup-suite/action.yml
 │   └── workflows/                    # Ready-to-run GitHub Actions workflows
@@ -28,16 +29,16 @@ ghec-migration-kit/
 └── package.json
 ```
 
-To build the release kit archive from the engineering repository (or download it from a GitHub Release):
+To download the latest Release Kit archive using the GitHub CLI (or download it from the **Releases** page in your browser):
 
 ```bash
-npm run build:release-kit
+gh release download --pattern "ghec-migration-kit-*.tar.gz"
 ```
 
 To unpack the release kit and push it to a private control repository inside the customer's GHEC environment:
 
 ```bash
-mkdir customer-migration-control && tar -xzf dist/ghec-migration-kit-v0.1.0.tar.gz -C customer-migration-control
+mkdir customer-migration-control && tar -xzf ghec-migration-kit-v0.1.0.tar.gz -C customer-migration-control
 git -C customer-migration-control init -b main
 git -C customer-migration-control add .
 git -C customer-migration-control commit -m "chore: install GHEC migration release kit"
@@ -45,7 +46,10 @@ git -C customer-migration-control remote add origin https://github.com/<customer
 git -C customer-migration-control push -u origin main
 ```
 
-To save the customer's source and target Classic Personal Access Tokens into the control repository's GitHub Actions secrets:
+Next, save the customer's source and target Classic Personal Access Tokens into the control repository's GitHub Actions secrets:
+
+- **In the GitHub Web UI:** Open your control repository on GitHub, click **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**, and click **New repository secret** to add `GHEC_SOURCE_TOKEN` and `GHEC_TARGET_TOKEN`.
+- **With the GitHub CLI (`gh`):**
 
 ```bash
 gh secret set GHEC_SOURCE_TOKEN --repo <customer-org>/migration-control
@@ -57,9 +61,21 @@ gh secret set GHEC_TARGET_TOKEN --repo <customer-org>/migration-control
 
 ---
 
+## Choosing a runner size for your migration
+
+For small test waves or organizations under 50 repositories, GitHub's standard `ubuntu-latest` runners work out of the box. For large weekend migrations with hundreds of repositories or multi-gigabyte Git LFS files, we recommend **self-hosted Linux runners** or **GitHub Larger Runners** so jobs do not hit GitHub's 6-hour time limit:
+
+| Migration Size            | Parallel Runners | CPU per Runner | RAM per Runner | Disk per Runner |
+| :------------------------ | :--------------: | :------------: | :------------: | :-------------: |
+| **Small (< 50 Repos)**    |       2–4        |     4 vCPU     |     16 GB      |   100 GB NVMe   |
+| **Medium (50–250 Repos)** |       4–8        |     8 vCPU     |     32 GB      |   250 GB NVMe   |
+| **Large (> 250 Repos)**   |       8–16       |    16 vCPU     |     64 GB      |   500 GB NVMe   |
+
+---
+
 ## Scoping and migrating on the same day (no discovery scan needed)
 
-By default, you **do not** need to run the multi-hour **GHEC Discovery Scan** (`discovery-scan.yml`) before generating a scope or running a migration. When you run a migration workflow, it lists your repositories in seconds and uses **`modules: auto`** to inspect and migrate each batch of repositories on the fly.
+By default, you **do not** need to run the multi-hour **GHEC Discovery Scan** (`discovery-scan.yml`) before generating a scope or running a migration. When you run a migration workflow from the **Actions** tab or with `gh workflow run`, it lists your repositories in seconds and uses **`modules: auto`** to inspect and migrate each batch of repositories on the fly.
 
 > [!NOTE]
 > **How `modules: auto` works automatically:**
@@ -72,12 +88,20 @@ By default, you **do not** need to run the multi-hour **GHEC Discovery Scan** (`
 
 ### Option 1: One-click same-day migration (auto-scopes on the fly)
 
-If you want to preview or migrate an entire organization—or all `public`, `private`, or `internal` repositories—in a single step without running `generate-scope.yml` first, pass `source_org` and `target_org` directly to **Parallel Matrix Migration Wave** (`migration-execute-wave.yml`) or **Autonomous Scale-Adaptive Migration** (`migration-e2e-autonomous.yml`).
+If you want to preview or migrate an entire organization—or all `public`, `private`, or `internal` repositories—in a single step without running `generate-scope.yml` first, run **Autonomous Scale-Adaptive Migration & Remediation** (`migration-e2e-autonomous.yml`) directly:
+
+- **In the GitHub Web UI:**
+  1. Open the **Actions** tab in your control repository and click **Autonomous Scale-Adaptive Migration & Remediation** on the left.
+  2. Click the **Run workflow** dropdown button on the right.
+  3. Enter your **Source organization** (`acme-source`), **Target organization** (`acme-emu`), **Target tenant type** (`emu`), and **EMU shortcode** (`acme`).
+  4. Check **Execute in dry-run mode** (`true`) to preview first, or leave it unchecked (`false`) for live cutover, then click the green **Run workflow** button.
+
+- **With the GitHub CLI (`gh`):**
 
 To preview migrating all repositories and organization settings in one click (`dry_run: true`):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f target_type="emu" \
@@ -89,7 +113,7 @@ gh workflow run migration-execute-wave.yml \
 To run the live cutover for all repositories and organization settings in one click (`dry_run: false`):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f target_type="emu" \
@@ -100,7 +124,7 @@ gh workflow run migration-execute-wave.yml \
 
 ### Option 2: Two-step artifact handoff (generate scope artifact first, then migrate)
 
-If you want to inspect the generated repository list before starting the migration wave, run **Generate Migration Scope** (`generate-scope.yml`) first. It finishes in ~5 seconds and uploads the scope as a GitHub Actions artifact (`migration-scopes`) without committing files to git.
+If you want to inspect the generated repository list before starting the migration wave, run **Generate Migration Scope** (`generate-scope.yml`) first from the **Actions** tab (or with `gh`). It finishes in ~5 seconds and uploads the scope as a GitHub Actions artifact (`migration-scopes`) without committing files to git.
 
 To generate a scope artifact for all repositories in your source organization:
 
@@ -116,28 +140,16 @@ gh workflow run generate-scope.yml \
 Once the scope artifact is ready, run your dry-run or live migration wave using `scope_run_id="latest"`:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f scope_run_id="latest" \
   -f dry_run="false"
 ```
 
 ### Option 3: Running a sandbox rehearsal into a dummy organization (`sandbox_rehearsal: true`)
 
-By default, a live migration (`dry_run="false"`) leaves your source repositories unlocked and untouched, and copies your code, issues, pull requests, teams, and settings into the target organization. If you are rehearsing into a dummy or sandbox organization to show your client the migrated repositories without anything running in the background, turn on **`sandbox_rehearsal="true"`** (or pass `--sandbox-rehearsal` on the CLI) so all target Webhooks and GitHub Actions stay turned off.
+By default, a live migration (`dry_run="false"`) leaves your source repositories unlocked and untouched, and copies your code, issues, pull requests, teams, and settings into the target organization. If you are rehearsing into a dummy or sandbox organization to show your client the migrated repositories without anything running in the background, check the **`sandbox_rehearsal`** box in the **Run workflow** menu (or pass `-f sandbox_rehearsal="true"`) so all target Webhooks and GitHub Actions stay turned off.
 
 To copy real repositories and organization settings into a dummy target organization while keeping all target Webhooks and GitHub Actions disabled:
-
-```bash
-gh workflow run migration-execute-wave.yml \
-  -f source_org="acme-source" \
-  -f target_org="acme-sandbox-emu" \
-  -f target_type="emu" \
-  -f emu_shortcode="acme" \
-  -f dry_run="false" \
-  -f sandbox_rehearsal="true"
-```
-
-To run the full autonomous migration and self-healing workflow in sandbox rehearsal mode:
 
 ```bash
 gh workflow run migration-e2e-autonomous.yml \
@@ -149,14 +161,6 @@ gh workflow run migration-e2e-autonomous.yml \
   -f sandbox_rehearsal="true"
 ```
 
-To run a sandbox rehearsal from the command line using `--sandbox-rehearsal`:
-
-```bash
-node ./bin/ghec-consultant-cli.mjs migrate \
-  --scope scopes/wave-1.json \
-  --sandbox-rehearsal
-```
-
 > [!NOTE]
 > **What `sandbox_rehearsal` turns off on the target organization:**
 >
@@ -166,7 +170,7 @@ node ./bin/ghec-consultant-cli.mjs migrate \
 > - **Repository GitHub Actions stay off (`enabled: false`):** Every migrated repository has GitHub Actions disabled right after import (and before any `mirror-push` code push) so workflows never run in the sandbox.
 
 > [!NOTE]
-> Need to generate scopes from the command line, filter by repository URL files, or look up every `generate-scope` and `validate-scope` flag? See the dedicated **[Generating and Validating Migration Scopes](generating-migration-scopes.md)** guide.
+> Need to filter by repository URL files or look up every `generate-scope.yml` option? See the dedicated **[Generating and Validating Migration Scopes](generating-migration-scopes.md)** guide.
 
 ---
 
@@ -181,7 +185,7 @@ Many customers prefer to move `public` or `internal` repositories in Wave 1 and 
 To migrate only **`public`** repositories in one click (and skip forked repositories):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f source_visibility="public" \
@@ -213,7 +217,7 @@ gh workflow run generate-scope.yml \
 To migrate a specific list of repositories right away without running `generate-scope.yml`:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="payments-api,web-portal,auth-service" \
@@ -225,7 +229,7 @@ gh workflow run migration-execute-wave.yml \
 To set up organization settings, teams, custom roles, and custom properties before moving any repositories:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="org_only" \
@@ -237,7 +241,7 @@ gh workflow run migration-execute-wave.yml \
 To update only branch rulesets, environments, and variables on two already-migrated repositories:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="payments-api,web-portal" \
@@ -290,7 +294,7 @@ gh workflow run generate-scope.yml \
 To migrate only `public` repositories from a **single** source organization while bringing over only the teams, secrets, variables, and rulesets linked to those public repositories:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-open-source" \
   -f source_visibility="public" \
@@ -324,7 +328,7 @@ To install your apps after a migration wave and automatically attach them to the
 3. Run the `apps-inventory` module on its own to automatically attach every remaining repository to the app:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="org_only" \
@@ -394,7 +398,7 @@ gh workflow run migration-e2e-autonomous.yml \
 
 ### Step 4: Detach unique SSH deploy keys and custom domains at cutover
 
-Once an organization wave passes verification and is ready to go live, run `post-migration-cutover.yml` to move globally unique SSH deploy keys and GitHub Pages custom domains from the source organization to the target organization and freeze the old repositories:
+Once an organization wave passes verification and is ready to go live, run `post-migration-cutover.yml` to move globally unique SSH deploy keys and GitHub Pages custom domains from the source organization to the target organization, optionally reclaim EMU mannequins, and freeze the old repositories:
 
 ```bash
 gh workflow run post-migration-cutover.yml \
@@ -402,6 +406,7 @@ gh workflow run post-migration-cutover.yml \
   -f target_org="acme-payments-emu" \
   -f include_deploy_keys="true" \
   -f include_pages_cname="true" \
+  -f reclaim_mannequins="true" \
   -f deactivate_source_webhooks="true" \
   -f disable_source_actions="true" \
   -f archive_source_repos="true" \
@@ -410,11 +415,21 @@ gh workflow run post-migration-cutover.yml \
 
 ---
 
-## Resuming a paused migration or fixing missing items
+## Watching progress, resuming a paused wave, or fixing missing items
 
-By default, every migration run saves checkpoints as it finishes each step and automatically runs up to 3 self-healing passes at the end of the workflow to fix any temporary rate-limit misses.
+By default, every migration run saves checkpoints as it finishes each step, posts a live summary table in the **Actions** tab, and automatically runs up to 3 self-healing passes at the end of the workflow to fix any temporary rate-limit misses.
 
-To resume an interrupted migration run from its checkpoint in GitHub Actions:
+- **In the GitHub Web UI:** Open the **Actions** tab and click the running workflow to watch each parallel batch job finish and view the **Step Summary** scorecard. Once the run completes, open the **`migration-audit-results`** repository in your target organization (or click the **Interactive Dashboard** link in its `README.md`) to explore the visual report in your browser.
+- **With the GitHub CLI (`gh`):**
+
+To watch the active workflow progress live in your terminal:
+
+```bash
+RUN_ID=$(gh run list --workflow=migration-e2e-autonomous.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+gh run watch "$RUN_ID"
+```
+
+To resume an interrupted migration run from its checkpoint in GitHub Actions (or select **Resume Migration** in the **Actions** tab):
 
 ```bash
 gh workflow run migration-resume.yml \
@@ -430,6 +445,15 @@ gh workflow run migration-apply-remediation.yml \
   -f workflow_run_id="latest" \
   -f scope_run_id="latest" \
   -f dry_run="false"
+```
+
+Once your repositories finish moving into an Enterprise Managed Users (EMU) organization, map the placeholder mannequin accounts to your real EMU users (`--skip-invitation` is required for EMU accounts):
+
+```bash
+gh gei reclaim-mannequin \
+  --github-target-org "acme-emu" \
+  --csv ./mannequin-mappings.csv \
+  --skip-invitation
 ```
 
 ---
@@ -486,7 +510,7 @@ By default, setting `modules` to `"auto"` selects the appropriate modules automa
 
 ## Reference: All GitHub Actions workflows and inputs
 
-Every workflow in `.github/workflows/` can be triggered from the **Actions** tab or via `gh workflow run <workflow-file> -f <input>=<value>`.
+Every workflow in `.github/workflows/` can be triggered from the **Actions** tab in the GitHub Web UI or via `gh workflow run <workflow-file> -f <input>=<value>`.
 
 ### 1. `generate-scope.yml` — Generate Migration Scope
 
@@ -512,34 +536,11 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `sandbox_rehearsal`     | `false`              |    No    | Sandbox rehearsal mode: keep all target Webhooks and GitHub Actions disabled (`true` or `false`).                                                                               |
 | `commit_to_branch`      | `false`              |    No    | Commit `scopes/<scope_name>.json` to the git branch. Keep `false` for pure artifact handoff.                                                                                    |
 
-### 2. `migration-execute-wave.yml` — Parallel Matrix Migration Wave
-
-| Input Name          | Default                  | Required | Description                                                                                                                  |
-| :------------------ | :----------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| `scope`             | `'scopes/wave-1.json'`   |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                           |
-| `scope_run_id`      | `''`                     |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                  |
-| `source_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.   |
-| `target_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Target organization login.                                                                          |
-| `repositories`      | `'all'`                  |    No    | **Inline 1-Click Mode:** `'all'`, `'public'`, `'private'`, `'internal'`, `'org_only'`, or comma-separated repository names.  |
-| `source_visibility` | `'all'`                  |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).    |
-| `exclude_forks`     | `false`                  |    No    | **Inline 1-Click Mode:** Skip forked repositories when discovering organization repositories (`true` or `false`).            |
-| `org_items_mode`    | `'auto'`                 |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                               |
-| `target_type`       | `'ghec'`                 |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                    |
-| `emu_shortcode`     | `''`                     |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                          |
-| `modules`           | `'auto'`                 |    No    | `'auto'` (strategy-aware selection across all 34 modules), `'all'`, or comma-separated module IDs.                           |
-| `runner_capacity`   | `5`                      |    No    | Available parallel runner capacity.                                                                                          |
-| `batch_size`        | `5`                      |    No    | Maximum number of repositories per parallel runner cohort.                                                                   |
-| `dry_run`           | `true`                   |    No    | Preview mode (`true` makes zero changes; `false` runs the live migration).                                                   |
-| `sandbox_rehearsal` | `false`                  |    No    | Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled (`true` or `false`). |
-| `runner_labels`     | `'ubuntu-latest'`        |    No    | Runner label (`'ubuntu-latest'` or `'self-hosted,linux'`).                                                                   |
-| `environment_gate`  | `'production-migration'` |    No    | GitHub Environment name for manual approval gates.                                                                           |
-| `discovery_run_id`  | `''`                     |    No    | Optional run ID from `discovery-scan.yml` (or `'latest'`) if using a pre-collected discovery bundle.                         |
-
-### 3. `migration-e2e-autonomous.yml` — Autonomous Scale-Adaptive Migration & Remediation
+### 2. `migration-e2e-autonomous.yml` — Autonomous Scale-Adaptive Migration & Remediation
 
 | Input Name                 | Default                | Required | Description                                                                                                                  |
 | :------------------------- | :--------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| `scope`                    | `'scopes/wave-1.json'` |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                           |
+| `scope`                    | `'scopes/wave-1.json'` |    No    | Path to scope file in git, inside the downloaded scope artifact, or inline JSON string.                                      |
 | `scope_run_id`             | `''`                   |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                  |
 | `source_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.   |
 | `target_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Target organization login.                                                                          |
@@ -558,35 +559,19 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `max_remediation_rounds`   | `3`                    |    No    | Maximum self-healing retry iterations.                                                                                       |
 | `default_runner_labels`    | `'ubuntu-latest'`      |    No    | Runner pool for standard repositories.                                                                                       |
 | `large_repo_runner_labels` | `'ubuntu-latest'`      |    No    | High-capacity runner pool for massive (>40 GiB) repositories.                                                                |
+| `discovery_run_id`         | `''`                   |    No    | Optional run ID from `discovery-scan.yml` (or `'latest'`) if using a pre-collected discovery bundle.                         |
+| `cached_bundle`            | `''`                   |    No    | Optional path to pre-collected discovery bundle JSON file.                                                                   |
 
-### 4. `discovery-scan.yml`, `migration-resume.yml`, `migration-apply-remediation.yml`, and `seed-demo-content.yml`
+### 3. Assessment, Verification, Remediation, Cutover, and Demo Workflows
 
-| Workflow File                     | Key Inputs                                                                                                                              | Purpose                                                                                 |
-| :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
-| `discovery-scan.yml`              | `organization`, `modules` (`all`), `redaction_profile` (`standard`), `runner_labels` (`ubuntu-latest`)                                  | Optional deep assessment scan for offline Dashboard analysis prior to migration.        |
-| `migration-resume.yml`            | `run_id`, `scope` (`scopes/wave-1.json`), `dry_run` (`false`), `checkpoint_dir`                                                         | Resume a paused or interrupted migration run from its saved checkpoint.                 |
-| `migration-apply-remediation.yml` | `workflow_run_id` (`latest`), `scope_run_id` (`latest`), `remediation_plan_path`, `dry_run`, `runner_labels`                            | Run targeted self-healing remediation scripts from a prior verification run.            |
-| `seed-demo-content.yml`           | `organization`, `repository`, `scope_level` (`both`/`organization`/`repository`), `content_type` (`all`), `dry_run`, `cleanup_existing` | Create or clean up sample teams, repos, rulesets, LFS files, and secrets in a test org. |
-
----
-
-## Reference: Standalone CLI commands and flags
-
-If you ever run `node ./bin/ghec-consultant-cli.mjs <command>` directly on a runner or jumphost, every command supports `--help` and the flags below:
-
-| Subcommand         | Supported Flags                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `discover`         | `-o, --organization <org>`, `-m, --modules <list>`, `--output-dir <dir>`, `--verbose`                                                                                                                                                                                                                                                                                                                                                             |
-| `generate-scope`   | `--source <org1,org2>`, `--target <org>`, `--name <wave>`, `--output <path>`, `--all`, `--source-visibility <all\|public\|private\|internal>`, `--exclude-forks`, `--include-archived`, `--org-items <all\|associated-only\|none>`, `--repos <csv>`, `--file <path>`, `--org-only`, `--include-org-resources <bool>`, `--org-modules <csv>`, `--repo-modules <csv>`, `--target-type <ghec\|emu>`, `--emu-shortcode <code>`, `--sandbox-rehearsal` |
-| `validate-scope`   | `--scope <path>`, `--target-type <ghec\|emu>`, `--emu-shortcode <code>`, `--mirror-push-mode <fast-snapshot\|full-history>`, `--org-items <all\|associated-only\|none>`, `--sandbox-rehearsal`                                                                                                                                                                                                                                                    |
-| `preflight`        | `--scope <path>`, `--modules <list>`, `--verbose`                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `plan`             | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--input <bundle>`, `--sandbox-rehearsal`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                                                                                       |
-| `migrate`          | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--dry-run`, `--sandbox-rehearsal`, `--resume <runId\|latest>`, `--checkpoint-dir <dir>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                                        |
-| `verify`           | `--scope <path>`, `--modules <list>`, `--exclude-modules <list>`, `--input <bundle>`, `--sandbox-rehearsal`, `--execution-report <path>`, `--execution-reports <dir>`, `--output <path>`, `--verbose`                                                                                                                                                                                                                                             |
-| `agent-review`     | `--report <path>`, `--scope <path>`, `--output <path>`, `--script-output <path>`, `--pr-comment <path>`, `--apply`, `--verbose`                                                                                                                                                                                                                                                                                                                   |
-| `publish-results`  | `--target-org <org>`, `--results-repo <name>`, `--verification-report <path>`, `--remediation-plan <path>`, `--scope <path>`, `--execution-reports <dir>`, `--discovery-dir <dir>`, `--run-id <id>`, `--create-issues`                                                                                                                                                                                                                            |
-| `seed-demo`        | `--org <org>`, `--repo <repo>`, `--scope <both\|organization\|repository>`, `--preset <all\|core-governance\|actions-and-security\|collaboration\|artifacts-and-code>`, `--dry-run`, `--cleanup`                                                                                                                                                                                                                                                  |
-| `cutover`          | `--scope <path>`, `--source-org <org>`, `--target-org <org>`, `--repos <list>`, `--include-deploy-keys`, `--include-pages-cname`, `--deactivate-source-webhooks`, `--disable-source-actions`, `--archive-source-repos`, `--dry-run`, `--output <path>`                                                                                                                                                                                            |
-| `console`          | `--port <number>`, `--host <address>`, `--no-open`                                                                                                                                                                                                                                                                                                                                                                                                |
-| `audit-gap-ledger` | `--format <json\|table\|markdown>`, `--output <path>`, `--category <category>`, `--status <status>`                                                                                                                                                                                                                                                                                                                                               |
-| `teardown-sandbox` | `--org <name>`, `--prefix <string>`, `--confirm`, `--dry-run`                                                                                                                                                                                                                                                                                                                                                                                     |
+| Workflow File                     | Key Inputs                                                                                                                                           | Purpose                                                                                                             |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| `discovery-scan.yml`              | `organization`, `modules` (`all`), `redaction_profile` (`standard`), `runner_labels` (`ubuntu-latest`)                                               | Optional deep assessment scan for offline Dashboard analysis prior to migration.                                    |
+| `deploy-dashboard-pages.yml`      | `discovery_run_id` (`latest`), `audit_run_id` (`latest`)                                                                                             | Deploy the Assessment & Operations Web UI and latest discovery/audit evidence to Private GitHub Pages.              |
+| `migration-plan-pr.yml`           | `scope`, `scope_run_id` (`latest`), `modules` (`auto`)                                                                                               | Generate a non-mutating migration execution plan on demand.                                                         |
+| `migration-verify.yml`            | `source_org`, `target_org`, `scope_run_id` (`latest`), `modules` (`auto`), `publish_audit_repo` (`true`)                                             | Re-verify target organization parity after customer post-care and refresh `migration-audit-results`.                |
+| `migration-resume.yml`            | `run_id` (`latest`), `scope` (`scopes/wave-1.json`), `dry_run` (`false`), `checkpoint_dir`                                                           | Resume a paused or interrupted migration run from its saved checkpoint.                                             |
+| `migration-apply-remediation.yml` | `workflow_run_id` (`latest`), `scope_run_id` (`latest`), `remediation_plan_path`, `dry_run`, `runner_labels`                                         | Run targeted self-healing remediation scripts from a prior verification run and refresh `migration-audit-results`.  |
+| `post-migration-cutover.yml`      | `source_org`, `target_org`, `include_deploy_keys`, `include_pages_cname`, `reclaim_mannequins`, `deactivate_source_webhooks`, `archive_source_repos` | Detach unique SSH deploy keys and Pages domains, reclaim EMU mannequins, and freeze source repositories at cutover. |
+| `seed-demo-content.yml`           | `organization`, `repository`, `scope_level` (`both`/`organization`/`repository`), `content_type` (`all`), `dry_run`, `cleanup_existing`              | Create or clean up sample teams, repos, rulesets, LFS files, and secrets in a test org.                             |
+| `teardown-target-sandbox.yml`     | `target_org`, `scope_file`, `repos`, `confirm_target_org`                                                                                            | Reset a sandbox target organization between rehearsal waves.                                                        |

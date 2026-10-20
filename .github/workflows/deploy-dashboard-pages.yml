@@ -1,0 +1,116 @@
+name: Deploy Assessment & Operations Web UI to GitHub Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      discovery_run_id:
+        description: 'Optional Run ID from discovery-scan.yml (or "latest") to pre-load discovery evidence in the hosted Web UI'
+        required: false
+        type: string
+        default: 'latest'
+      migration_run_id:
+        description: 'Optional Run ID from migration-e2e-autonomous.yml (or "latest") to pre-load migration & verification evidence in the hosted Web UI'
+        required: false
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages-dashboard-deploy'
+  cancel-in-progress: true
+
+jobs:
+  deploy-pages:
+    name: Bundle & Deploy Dashboard Web UI to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+        with:
+          build: 'false'
+
+      - name: Build Dashboard (if running from source monorepo)
+        shell: bash
+        run: |
+          if [ ! -f "./apps/dashboard/dist/index.html" ]; then
+            echo "Building @ghec/dashboard from source..."
+            npm run build -w @ghec/contracts
+            npm run build -w @ghec/analysis
+            npm run build -w @ghec/dashboard
+          else
+            echo "Using pre-built @ghec/dashboard in ./apps/dashboard/dist/."
+          fi
+
+      - name: Hydrate Latest Discovery & Migration Evidence into Static Bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISC_RUN_INPUT: ${{ inputs.discovery_run_id }}
+          MIG_RUN_INPUT: ${{ inputs.migration_run_id }}
+        run: |
+          mkdir -p ./downloaded-evidence ./apps/dashboard/dist/scans
+
+          DISC_RUN="$DISC_RUN_INPUT"
+          if [ "$DISC_RUN" = "latest" ]; then
+            DISC_RUN=$(gh run list --workflow=discovery-scan.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+          fi
+          if [ -n "$DISC_RUN" ] && [ "$DISC_RUN" != "null" ]; then
+            echo "Downloading discovery evidence from run $DISC_RUN..."
+            gh run download "$DISC_RUN" --dir ./downloaded-evidence/discovery 2>/dev/null || true
+          fi
+
+          MIG_RUN="$MIG_RUN_INPUT"
+          if [ "$MIG_RUN" = "latest" ]; then
+            MIG_RUN=$(gh run list --workflow=migration-e2e-autonomous.yml --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+          fi
+          if [ -n "$MIG_RUN" ] && [ "$MIG_RUN" != "null" ]; then
+            echo "Downloading migration audit evidence from run $MIG_RUN..."
+            gh run download "$MIG_RUN" --dir ./downloaded-evidence/migration 2>/dev/null || true
+          fi
+
+          DISC_BUNDLE=$(find ./downloaded-evidence ./scans -name 'ghec-discovery-*.json' 2>/dev/null | sort | tail -n 1 || true)
+          if [ -n "$DISC_BUNDLE" ] && [ -f "$DISC_BUNDLE" ]; then
+            cp "$DISC_BUNDLE" ./apps/dashboard/dist/scans/latest-discovery.json
+            echo "Bundled discovery report: $(basename "$DISC_BUNDLE")"
+          fi
+
+          VERIFY_REPORT=$(find ./downloaded-evidence ./scans -name 'verification-report.json' 2>/dev/null | sort | tail -n 1 || true)
+          if [ -n "$VERIFY_REPORT" ] && [ -f "$VERIFY_REPORT" ]; then
+            cp "$VERIFY_REPORT" ./apps/dashboard/dist/scans/verification-report.json
+            echo "Bundled verification report: $VERIFY_REPORT"
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Static Dashboard Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './apps/dashboard/dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Generate Deployment Summary
+        if: always()
+        shell: bash
+        run: |
+          cat << EOF >> "$GITHUB_STEP_SUMMARY"
+          ## 🌐 Assessment & Operations Web UI Deployed
+
+          - **Live Web UI URL:** ${{ steps.deployment.outputs.page_url || '(See repository Settings -> Pages)' }}
+          - **Discovery Run Bundled:** \`${{ inputs.discovery_run_id || 'none' }}\`
+          - **Migration Run Bundled:** \`${{ inputs.migration_run_id || 'none' }}\`
+          EOF

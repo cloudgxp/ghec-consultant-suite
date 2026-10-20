@@ -398,11 +398,8 @@ jobs:
           | **Include Sensitive Metadata** | `${{ inputs.include_sensitive_metadata }}` |
           | **Enterprise-Level Scan** | `${{ inputs.scan_enterprise_level }}` |
 
-          ### 📦 Offline Inspection & Wave Planning
-          1. Download the generated `discovery-org-*.json` bundle artifacts.
-          2. Launch the local consultant dashboard:
-             ```bash
-             npm run dev
-             ```
-          3. Inspect discovery inventory, assess migration complexity, and generate scope definitions via `generate-scope.yml`.
+          ### 📊 Inspection & Wave Planning
+          1. Download the generated `discovery-org-*.json` bundle artifact from this workflow run.
+          2. Open the **Assessment & Operations Web UI** (hosted on GitHub Pages or via the Release Kit Console) and load the `ghec-discovery-*.json` bundle.
+          3. Inspect repository readiness, review migration blockers, and generate wave scopes via `generate-scope.yml` or run `migration-e2e-autonomous.yml`.
           EOF

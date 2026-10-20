@@ -210,7 +210,7 @@ export const ScopeBuilderModal: React.FC<ScopeBuilderModalProps> = ({
         selectedModules: Array.from(selectedModules),
       });
 
-      const workflowId = 'migration-execute-wave.yml';
+      const workflowId = 'migration-e2e-autonomous.yml';
       const parsedBatch = Number.parseInt(batchSize, 10) || 5;
 
       const res = await fetchFn(
@@ -229,8 +229,7 @@ export const ScopeBuilderModal: React.FC<ScopeBuilderModalProps> = ({
               batch_size: String(parsedBatch),
               modules: Array.from(selectedModules).join(','),
               dry_run: String(isDryRun),
-              continue_on_error: 'true',
-              runner_labels: 'ubuntu-latest',
+              default_runner_labels: 'ubuntu-latest',
             },
           }),
         },

@@ -1,27 +1,29 @@
 # Support & Troubleshooting Guide
 
-This guide shows you where to find help with the **GHEC Consultant Suite** and how to fix the most common problems when running discovery scans, migration waves, or the offline dashboard.
+This guide shows you where to find help with the **GHEC Consultant Suite** and how to fix the most common issues when running migrations in GitHub Actions or developing inside the monorepo.
 
 ---
 
-## Finding the right guide
+## Finding the right guide by role
 
-Before opening an issue, check the task guide for what you are trying to do:
+Before opening an issue, check the guide for your role and task:
 
-| What You Want to Do                                         | Guide to Read                                                                             |
-| :---------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
-| Deploy the Release Kit and run migrations in GitHub Actions | [Consultant Operator's Manual](docs/guides/consultant-operators-manual.md)                |
-| Collect data from an organization and view it offline       | [Offline Discovery & Assessment Guide](docs/guides/offline-discovery-and-assessment.md)   |
-| Set up a test migration between GHEC and GHEC-EMU           | [GHEC to EMU Test Migration Setup Guide](docs/guides/ghec-to-emu-test-migration-setup.md) |
-| Run a parallel migration wave in GitHub Actions             | [GitHub Actions Migration Guide](docs/guides/github-actions-migration.md)                 |
-| Check migration results and fix differences automatically   | [Verification & Remediation Guide](docs/guides/verification-and-remediation.md)           |
-| Fill a test organization with 34 realistic demo items       | [Seeding Demo Content Guide](docs/guides/seed-demo-content.md)                            |
+| Role              | What You Want to Do                                                           | Guide to Read                                                                                      |
+| :---------------- | :---------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| **PM / Customer** | Plan migration waves, track client readiness, and review post-care scorecards | [PM & Engagement Lead Playbook](docs/guides/customers-and-pms/pm-engagement-playbook.md)           |
+| **PM / Customer** | Prepare tokens, SAML SSO, and Day-1 developer instructions                    | [Customer Migration Handbook](docs/guides/customers-and-pms/customer-migration-handbook.md)        |
+| **Operator**      | Deploy the Release Kit and run migrations in the GitHub Web UI or `gh` CLI    | [Consultant Operator's Manual](docs/guides/operators/consultant-operators-manual.md)               |
+| **Operator**      | Generate, filter, or consolidate migration scope files                        | [Generating and Validating Migration Scopes](docs/guides/operators/generating-migration-scopes.md) |
+| **Operator**      | Collect discovery data and explore it in the Assessment Web UI                | [Discovery Scans & Assessment Web UI](docs/guides/operators/discovery-and-dashboard-webui.md)      |
+| **Operator**      | Verify migration results, run self-healing fixes, and execute cutover         | [Verification & Remediation Guide](docs/guides/operators/verification-and-remediation.md)          |
+| **Operator**      | Seed 34 realistic demo items and run a safe sandbox rehearsal                 | [Sandbox Rehearsal & Demo Setup Guide](docs/guides/operators/sandbox-and-demo-setup.md)            |
+| **Developer**     | Build packages locally with `npm`, run `npm run dev:cli`, and run unit tests  | [Local Development & CLI Guide](docs/guides/developers/local-development-and-cli.md)               |
 
 ---
 
-## Fixing common migration problems
+## Fixing common migration issues (for Operators)
 
-By default, the CLI and GitHub Actions workflows print clear error messages (with tokens safely hidden) whenever a check fails. Here is how to fix the four most common issues.
+By default, the GitHub Actions workflows print clear error messages (with tokens safely hidden) whenever a check fails. Here is how to fix the three most common operator issues using the **GitHub Web UI** or the **`gh` CLI**.
 
 ### 1. Fixing `HTTP 403: Resource protected by organization SAML enforcement`
 
@@ -30,17 +32,20 @@ If your target or source organization uses SAML Single Sign-On (SSO), your Perso
 1. Open **GitHub Settings** $\rightarrow$ **Developer settings** $\rightarrow$ **Personal access tokens** $\rightarrow$ **Tokens (classic)**.
 2. Find your token, click **Configure SSO**, and click **Authorize** next to your organization.
 
-To test if your token is authorized and has the right permissions before starting a migration:
+To test that your tokens are authorized and ready by running a Dry-Run Preview in GitHub Actions:
 
 ```bash
-npm run dev:cli -- preflight --scope ./scopes/test-org-wave.json
+gh workflow run migration-execute-wave.yml \
+  -f source_org="acme-source" \
+  -f target_org="acme-emu" \
+  -f dry_run="true"
 ```
 
 ### 2. Fixing `Source and target tenants must not share the same credential`
 
-For safety, the tool requires two separate tokens so a bug or misconfiguration can never write to your source organization.
+For safety, the platform requires two separate tokens so a misconfiguration can never write to your source organization.
 
-To set two separate tokens in your repository's GitHub Actions secrets:
+To save two separate tokens in your repository's GitHub Actions secrets (or add them under **Settings $\rightarrow$ Secrets and variables $\rightarrow$ Actions** in the GitHub Web UI):
 
 ```bash
 gh secret set GHEC_SOURCE_TOKEN
@@ -49,30 +54,20 @@ gh secret set GHEC_TARGET_TOKEN
 
 ### 3. Resuming a migration that stopped halfway through
 
-If a network drop or GitHub API rate limit interrupts a migration wave, the tool saves your progress in `./migrations/.checkpoint-<runId>/`.
+If a network drop or GitHub API rate limit interrupts a migration wave, the workflow saves your progress in a checkpoint automatically.
 
-To resume the latest paused migration from the command line without repeating finished steps:
-
-```bash
-npm run dev:cli -- migrate --resume latest --output-dir ./scans
-```
-
-To resume a paused migration run in GitHub Actions using its run ID:
+To resume a paused migration run in the **Actions** tab (select **Resume Migration**) or using the `gh` CLI:
 
 ```bash
-gh workflow run migration-resume.yml -f run_id="migration-20261004-123456"
+gh workflow run migration-resume.yml \
+  -f run_id="migration-20261004-123456"
 ```
 
-### 4. Fixing build or type errors after pulling new code
+---
 
-If a CLI command or local dashboard fails to start after pulling updates from `main`, rebuild the workspace packages first.
+## Fixing local build or test issues (for Developers)
 
-To clean, rebuild, and verify all packages locally:
-
-```bash
-npm run build
-npm run check
-```
+If you are a software developer working in the TypeScript monorepo and a local build or test check fails after pulling updates from `main`, see the **[Local Development & CLI Guide](docs/guides/developers/local-development-and-cli.md)** to rebuild workspace packages and run the offline quality gate.
 
 ---
 

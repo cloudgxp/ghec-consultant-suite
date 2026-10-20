@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       scope_path:
-        description: 'Path to migration scope JSON file (or leave empty to plan all non-test scopes in scopes/)'
+        description: 'Path to migration scope JSON file (or leave empty to plan all non-test scopes in scopes/ or downloaded artifact)'
         required: false
-        default: 'scopes/test-org-wave.json'
+        default: ''
+        type: string
+      scope_run_id:
+        description: 'Optional GitHub Actions Run ID from generate-scope.yml (or "latest") to download migration-scopes artifact'
+        required: false
+        default: ''
         type: string
       pr_number:
         description: 'Optional pull request number to post the planning summary comment to'
@@ -16,11 +21,12 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pull-requests: write
   issues: write
 
 concurrency:
-  group: migration-plan-${{ github.ref }}-${{ inputs.scope_path }}
+  group: migration-plan-${{ github.ref }}-${{ inputs.scope_path }}-${{ inputs.scope_run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -38,14 +44,28 @@ jobs:
         id: find-scopes
         shell: bash
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_SCOPE_PATH: ${{ inputs.scope_path }}
+          INPUT_SCOPE_RUN_ID: ${{ inputs.scope_run_id }}
         run: |
+          mkdir -p ./downloaded-scope
+          if [ -n "$INPUT_SCOPE_RUN_ID" ]; then
+            SRUN="$INPUT_SCOPE_RUN_ID"
+            if [ "$SRUN" = "latest" ]; then
+              SRUN=$(gh run list --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+            fi
+            if [ -n "$SRUN" ]; then
+              gh run download "$SRUN" -n migration-scopes --dir ./downloaded-scope || true
+            fi
+          fi
           if [ -n "$INPUT_SCOPE_PATH" ]; then
             if [ ! -f "$INPUT_SCOPE_PATH" ]; then
               echo "::error::Specified scope file not found: $INPUT_SCOPE_PATH"
               exit 1
             fi
             TARGETS="$INPUT_SCOPE_PATH"
+          elif [ -d "./downloaded-scope" ] && [ -n "$(find ./downloaded-scope -name '*.json' 2>/dev/null)" ]; then
+            TARGETS=$(find ./downloaded-scope -name '*.json' | sort || true)
           else
             TARGETS=$(find scopes -maxdepth 2 -name '*.json' ! -name 'test-*' | sort || true)
           fi

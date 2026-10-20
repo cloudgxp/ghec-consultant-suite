@@ -1,7 +1,7 @@
 # Specification: Verification & Remediation Agent
 
 **Specification Status:** Authoritative Architectural Standard  
-**Target:** Automated Remediation Integration (`apps/cli` and `.github/workflows/migration-execute-wave.yml`)  
+**Target:** Automated Remediation Integration (`apps/cli` and `.github/workflows/migration-e2e-autonomous.yml`)  
 **Applicability:** All autonomous and interactive migration agents
 
 ---

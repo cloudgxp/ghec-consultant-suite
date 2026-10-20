@@ -108,4 +108,5 @@ For a complete before-and-after example written at an 8th-grade reading level, r
 - [ ] Does every code block have a short `"To <do X>:"` lead-in right above it?
 - [ ] Are examples ordered from simplest default $\rightarrow$ common flag $\rightarrow$ config file $\rightarrow$ advanced/next step?
 - [ ] Are tips and security warnings tucked into `> [!NOTE]` or `> [!WARNING]` boxes?
+- [ ] Are Operator and Customer guides (`docs/guides/operators/**`, `docs/guides/customers-and-pms/**`) and the root `README.md` completely free of `npm` commands (using only the GitHub Web UI, Dashboard Web UI, and `gh` CLI for operators)?
 - [ ] Does `npm run lint` pass cleanly?

@@ -1,25 +1,25 @@
 # Collaborators & Team Roles
 
-This guide explains who maintains the **GHEC Consultant Suite**, how team permissions work, and how collaborators work together on code changes and customer migrations.
+This guide explains who maintains the **GHEC Consultant Suite**, how team permissions work, and how project managers, operators, and developers work together on customer migrations and platform improvements.
 
 ---
 
 ## Understanding project roles
 
-By default, everyone working in this repository fits into one of four roles. Each role has specific permissions to keep customer migration tools safe and reliable.
+By default, everyone working in this repository fits into one of four roles. Each role has specific permissions to keep customer migration tools safe and reliable:
 
-| Role                      |  GitHub Permission   | What They Do                                                                                                        |
-| :------------------------ | :------------------: | :------------------------------------------------------------------------------------------------------------------ |
-| **Core Maintainers**      | `Admin` / `Maintain` | Approve pull requests, manage GitHub Actions secrets, approve production migration gates, and publish releases.     |
-| **Migration Consultants** |       `Write`        | Create wave scope files (`scopes/*.json`), run discovery scans, review verification reports, and improve modules.   |
-| **External Contributors** |  `Read` / `Triage`   | Report bugs, propose new collectors or migration modules via pull requests, and improve user guides.                |
-| **Automated Assistants**  |     Bot / Scoped     | Run automated code checks, assist with verification and security audits via GitHub Copilot, and verify test suites. |
+| Role                         |  GitHub Permission   | What They Do                                                                                                        |
+| :--------------------------- | :------------------: | :------------------------------------------------------------------------------------------------------------------ |
+| **Core Maintainers**         | `Admin` / `Maintain` | Approve pull requests, manage GitHub Actions secrets, approve production migration gates, and publish releases.     |
+| **Migration Operators**      |       `Write`        | Generate wave scopes, run discovery scans, execute dry-run and live waves in GitHub Actions, and review scorecards. |
+| **Platform Developers**      |       `Write`        | Maintain the 34 migration modules, discovery collectors, and Assessment Web UI, and build Release Kits.             |
+| **Project Managers / Leads** |  `Read` / `Triage`   | Track client readiness checklists, review wave timelines, and review `migration-audit-results` scorecards.          |
 
 ---
 
-## Working together on a migration wave
+## Collaborating on a migration wave (Operators & PMs)
 
-By default, migration consultants collaborate on customer cutovers by generating scope artifacts in GitHub Actions or committing scope files to the `scopes/` folder and reviewing the automated plan in a Pull Request before moving any data.
+By default, migration operators and project managers collaborate on customer cutovers by generating scope artifacts in GitHub Actions or committing scope files to the `scopes/` folder so the **Migration Plan PR** workflow (`migration-plan-pr.yml`) posts an automated dry-run plan table on a Pull Request before moving any data.
 
 ```text
 scopes/
@@ -28,13 +28,18 @@ scopes/
 └── test-all-wave.json
 ```
 
-To propose a new migration wave for your team to review, generate a plan from your scope file:
+To generate a new migration wave scope and commit it to the repository via GitHub Actions:
 
 ```bash
-npm run dev:cli -- plan --scope ./scopes/wave-1.json
+gh workflow run generate-scope.yml \
+  -f source_org="acme-source" \
+  -f target_org="acme-emu" \
+  -f scope_type="all_repositories" \
+  -f scope_name="wave-1" \
+  -f commit_to_branch="true"
 ```
 
-To open a Pull Request so another collaborator can review the planned changes before you run the migration:
+To open a Pull Request so another collaborator or project manager can review the automated dry-run plan comment in the GitHub Web UI before you run the migration:
 
 ```bash
 git checkout -b wave/acme-corp-cutover
@@ -44,7 +49,7 @@ git push -u origin wave/acme-corp-cutover
 gh pr create --fill
 ```
 
-To approve a colleague's migration scope Pull Request from the command line:
+To approve a colleague's migration scope Pull Request using the GitHub CLI (or click **Files changed $\rightarrow$ Review changes $\rightarrow$ Approve** in the GitHub Web UI):
 
 ```bash
 gh pr review --approve --body "Reviewed planned repository counts and ruleset settings."
@@ -57,7 +62,7 @@ gh pr review --approve --body "Reviewed planned repository counts and ruleset se
 
 ## Adding or reviewing repository collaborators
 
-By default, repository administrators manage access through GitHub teams or direct collaborator invitations.
+By default, repository administrators manage access through GitHub teams or direct collaborator invitations in **Settings $\rightarrow$ Collaborators and teams** or with the `gh` CLI.
 
 To list all current collaborators and their permission levels using the GitHub CLI:
 
@@ -84,7 +89,7 @@ gh api repos/{owner}/{repo}/collaborators/USERNAME/permission --jq '.permission'
 
 By default, this repository includes custom GitHub Copilot instructions (`.github/copilot-instructions.md`), path-scoped instructions (`.github/instructions/`), reusable skills (`.github/skills/`), and specialized custom agents (`.github/agents/`):
 
-- **`@migration-verifier`** (`.github/agents/migration-verifier.agent.md`): Reviews `verification-report.json` files and generates idempotent remediation plans (`remediation-plan.json` and `remediation.sh`).
+- **`@migration-verifier`** (`.github/agents/migration-verifier.agent.md`): Reviews `verification-report.json` files and generates remediation plans (`remediation-plan.json` and `remediation.sh`).
 - **`@security-auditor`** (`.github/agents/security-auditor.agent.md`): Audits code changes and logs to ensure zero plaintext secrets (`DEC-004`) or unsanitized tokens ever reach disk.
 
 To combine all passing Dependabot pull requests into a single maintenance branch:
