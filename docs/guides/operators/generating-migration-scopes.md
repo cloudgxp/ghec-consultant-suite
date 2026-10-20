@@ -67,13 +67,13 @@ gh workflow run generate-scope.yml \
 Once your scope artifact is ready, you can run a dry-run preview or live migration wave using `scope_run_id="latest"`:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f scope_run_id="latest" \
   -f dry_run="true"
 ```
 
 > [!NOTE]
-> If you are migrating all repositories—or all `public`, `private`, or `internal` repositories—right away, you can skip `generate-scope.yml` completely. Just pass `source_org` and `target_org` directly to **Parallel Matrix Migration Wave** (`migration-execute-wave.yml`) or **Autonomous Scale-Adaptive Migration** (`migration-e2e-autonomous.yml`) in the **Actions** tab or via `gh workflow run`, and the workflow will generate the scope on the fly.
+> If you are migrating all repositories—or all `public`, `private`, or `internal` repositories—right away, you can skip `generate-scope.yml` completely. Just pass `source_org` and `target_org` directly to **Autonomous Scale-Adaptive Migration** (`migration-e2e-autonomous.yml`) in the **Actions** tab or via `gh workflow run`, and the workflow will generate the scope on the fly.
 
 ---
 

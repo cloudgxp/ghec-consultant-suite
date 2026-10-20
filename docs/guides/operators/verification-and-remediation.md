@@ -1,6 +1,6 @@
 # Verifying Migrations, Fixing Missing Items, and Running Cutover
 
-By default, every migration workflow (`migration-execute-wave.yml` and `migration-e2e-autonomous.yml`) automatically verifies your target organization against your migration plan, runs up to 3 self-healing passes to fix temporary rate-limit misses, and publishes a private **`migration-audit-results`** repository to your target organization.
+By default, every migration wave (`migration-e2e-autonomous.yml`) automatically verifies your target organization against your migration plan, runs up to 3 self-healing passes to fix temporary rate-limit misses, and publishes a private **`migration-audit-results`** repository to your target organization. You can also re-run verification at any time using **Verify Target Organization & Refresh Audit Repo** (`migration-verify.yml`).
 
 ```text
 migration-audit-results/
@@ -35,7 +35,7 @@ When a dry-run or live migration wave finishes, you can check that every reposit
 To download the `migration-final-audit` workflow artifact to your computer and check the verification summary:
 
 ```bash
-RUN_ID=$(gh run list --workflow=migration-execute-wave.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+RUN_ID=$(gh run list --workflow=migration-e2e-autonomous.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 gh run download "$RUN_ID" --dir ./audit-downloads
 ```
 
@@ -50,13 +50,38 @@ jq '.summary' ./audit-downloads/migration-final-audit-"$RUN_ID"/verification-rep
 
 ---
 
-## Running an automatic self-healing pass for missing items
+## Re-verifying your target organization after customer post-care (`migration-verify.yml`)
 
-If a temporary GitHub API rate limit or network blip caused any item to be missed during a wave—or if an administrator fixed a token permission after the run—you can run **Apply Migration Remediation** (`migration-apply-remediation.yml`) without re-running the entire migration wave.
+After the customer populates secret values, installs GitHub Apps, or reclaims EMU mannequins, you can run **Verify Target Organization & Refresh Audit Repo** (`migration-verify.yml`) to check the target organization again and update `migration-audit-results` without running another migration wave.
 
 ### Option 1: Using the GitHub Actions Web UI
 
-1. Open the **Actions** tab in your control repository and click **Apply Migration Remediation** on the left.
+1. Open the **Actions** tab in your control repository and click **Verify Target Organization & Refresh Audit Repo** on the left.
+2. Click the **Run workflow** dropdown button.
+3. Enter your **Source organization** and **Target organization** (or set **Scope run ID** to `latest`), leave **Publish audit repo** checked (`true`), and click **Run workflow**.
+
+### Option 2: Using the GitHub CLI (`gh`)
+
+To verify the target organization and refresh `migration-audit-results` in one command:
+
+```bash
+gh workflow run migration-verify.yml \
+  -f source_org="acme-source" \
+  -f target_org="acme-emu" \
+  -f target_type="emu" \
+  -f emu_shortcode="acme" \
+  -f publish_audit_repo="true"
+```
+
+---
+
+## Running an automatic self-healing pass for missing items
+
+If a temporary GitHub API rate limit or network blip caused any item to be missed during a wave—or if an administrator fixed a token permission after the run—you can run **Dedicated Migration Self-Healing Remediation** (`migration-apply-remediation.yml`) without re-running the entire migration wave.
+
+### Option 1: Using the GitHub Actions Web UI
+
+1. Open the **Actions** tab in your control repository and click **Dedicated Migration Self-Healing Remediation** on the left.
 2. Click the **Run workflow** dropdown button.
 3. Leave **Workflow run ID** and **Scope run ID** set to `latest`, uncheck **Dry-run mode** (`false`) to apply fixes (or keep it `true` to preview), and click **Run workflow**.
 
@@ -71,7 +96,7 @@ gh workflow run migration-apply-remediation.yml \
   -f dry_run="true"
 ```
 
-To apply the remediation fixes to the target organization (`dry_run: false`):
+To apply the remediation fixes to the target organization and refresh `migration-audit-results` (`dry_run: false`):
 
 ```bash
 gh workflow run migration-apply-remediation.yml \
@@ -86,7 +111,7 @@ gh workflow run migration-apply-remediation.yml \
 
 When GitHub Enterprise Importer (GEI) moves pull requests and issues into an Enterprise Managed Users (EMU) organization, it attaches historical comments and reviews to placeholder accounts called **mannequins**.
 
-Because EMU accounts cannot accept external email invitations, you must use the `--skip-invitation` flag when mapping mannequins to real EMU usernames (`<user>_<shortcode>`).
+Because EMU accounts cannot accept external email invitations, you must use `--skip-invitation` when mapping mannequins to real EMU usernames (`<user>_<shortcode>`). You can run mannequin reclamation automatically inside **Post-Migration Source-Detach Cutover** (`post-migration-cutover.yml`) by setting `reclaim_mannequins="true"`, or run `gh gei reclaim-mannequin` directly.
 
 To map mannequins to your client's EMU users using the `mannequins-reclaim.csv` spreadsheet from `migration-audit-results`:
 
@@ -101,13 +126,13 @@ gh gei reclaim-mannequin \
 
 ## Running final go-live cutover (`post-migration-cutover.yml`)
 
-GitHub does not allow the same SSH deploy key or GitHub Pages custom domain (`CNAME`) to be attached to two repositories at the same time. Once your target organization passes verification and the client is ready to switch over, run **Post-Migration Cutover** (`post-migration-cutover.yml`) to detach unique keys and domains from the source organization, bind them to the target organization, and freeze the old source repositories.
+GitHub does not allow the same SSH deploy key or GitHub Pages custom domain (`CNAME`) to be attached to two repositories at the same time. Once your target organization passes verification and the client is ready to switch over, run **Post-Migration Source-Detach Cutover** (`post-migration-cutover.yml`) to detach unique keys and domains from the source organization, bind them to the target organization, optionally reclaim EMU mannequins, and freeze the old source repositories.
 
 ### Option 1: Using the GitHub Actions Web UI
 
-1. Open the **Actions** tab in your control repository and click **Post-Migration Cutover** on the left.
+1. Open the **Actions** tab in your control repository and click **Post-Migration Source-Detach Cutover** on the left.
 2. Click the **Run workflow** dropdown button.
-3. Enter your **Source organization** and **Target organization**, select which cutover actions to include (deploy keys, Pages custom domains, deactivating source webhooks, disabling source Actions, archiving source repos), and type `CUTOVER` in **Confirm cutover** to run live.
+3. Enter your **Source organization** and **Target organization**, select which cutover actions to include (deploy keys, Pages custom domains, EMU mannequin reclamation, deactivating source webhooks, disabling source Actions, archiving source repos), and type `CUTOVER` in **Confirm cutover** to run live.
 
 ### Option 2: Using the GitHub CLI (`gh`)
 
@@ -120,7 +145,7 @@ gh workflow run post-migration-cutover.yml \
   -f dry_run="true"
 ```
 
-To execute the live go-live cutover and freeze the old source repositories:
+To execute the live go-live cutover, reclaim EMU mannequins, and freeze the old source repositories:
 
 ```bash
 gh workflow run post-migration-cutover.yml \
@@ -128,6 +153,7 @@ gh workflow run post-migration-cutover.yml \
   -f target_org="acme-emu" \
   -f include_deploy_keys="true" \
   -f include_pages_cname="true" \
+  -f reclaim_mannequins="true" \
   -f deactivate_source_webhooks="true" \
   -f disable_source_actions="true" \
   -f archive_source_repos="true" \

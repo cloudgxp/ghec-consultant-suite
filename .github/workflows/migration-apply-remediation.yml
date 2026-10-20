@@ -54,6 +54,7 @@ jobs:
   apply-remediation:
     name: Execute Targeted Remediation
     runs-on: ${{ inputs.runner_labels || 'ubuntu-latest' }}
+    environment: ${{ inputs.target_environment }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -73,7 +74,7 @@ jobs:
           mkdir -p ./downloaded-audit
           RUN_ID="$RUN_ID_INPUT"
           if [ "$RUN_ID" = "latest" ]; then
-            RUN_ID=$(gh run list --workflow=migration-execute-wave.yml --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            RUN_ID=$(gh run list --workflow=migration-e2e-autonomous.yml --limit 1 --json databaseId --jq '.[0].databaseId // empty')
           fi
           if [ -z "$RUN_ID" ] && [ -n "$ARTIFACT_INPUT" ]; then
             RUN_ID="${ARTIFACT_INPUT##*-}"
@@ -170,11 +171,32 @@ jobs:
               SCOPE_PATH="$CANDIDATE"
             fi
           fi
+          echo "resolved_scope=$SCOPE_PATH" >> "$GITHUB_OUTPUT"
           echo "Re-running verification to confirm discrepancy resolution using scope $SCOPE_PATH..."
           node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
             --scope "$SCOPE_PATH" \
             --verbose \
             --output ./scans/post-remediation-verification.json || true
+
+      - name: Refresh Migration Audit Repository on Target Organization
+        if: always() && inputs.dry_run == false
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          SCOPE_PATH: ${{ steps.re-verify.outputs.resolved_scope }}
+        run: |
+          if [ -f ./scans/post-remediation-verification.json ] && [ -f "$SCOPE_PATH" ]; then
+            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+              --scope "$SCOPE_PATH" \
+              --report ./scans/post-remediation-verification.json \
+              --remediation-plan ./remediations/active-remediation-plan.json \
+              --evidence-dir ./scans,./remediations \
+              --repo-name migration-audit-results \
+              --output-dir ./scans/audit-results-repo \
+              --append-step-summary \
+              --verbose || true
+          fi
 
       - name: Generate Differential Audit Summary
         if: always()

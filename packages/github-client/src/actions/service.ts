@@ -96,7 +96,7 @@ export class GitHubActionsService {
   public async dispatchWave(
     options: WaveDispatchOptions,
   ): Promise<{ runId: number }> {
-    const workflowFile = 'migration-execute-wave.yml';
+    const workflowFile = 'migration-e2e-autonomous.yml';
     const dispatchTime = Date.now();
 
     const inputs: Record<string, string> = {

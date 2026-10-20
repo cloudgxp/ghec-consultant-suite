@@ -32,11 +32,12 @@ const OPERATIONAL_WORKFLOWS = [
   'discovery-scan.yml',
   'generate-scope.yml',
   'migration-plan-pr.yml',
-  'migration-execute-wave.yml',
   'migration-e2e-autonomous.yml',
+  'migration-verify.yml',
   'migration-resume.yml',
   'migration-apply-remediation.yml',
   'post-migration-cutover.yml',
+  'deploy-dashboard-pages.yml',
   'seed-demo-content.yml',
   'teardown-target-sandbox.yml',
 ];

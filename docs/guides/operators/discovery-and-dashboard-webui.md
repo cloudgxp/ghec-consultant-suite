@@ -55,15 +55,28 @@ gh run download "$RUN_ID" --dir ~/offline-assessment
 
 By default, the **Assessment & Operations Web UI** runs in your browser and lets you inspect oversized repositories, Git LFS usage, team permissions, dependency maps, and post-migration verification results without exposing any tokens.
 
-### Option 1: Opening the Private GitHub Pages Dashboard (after a migration wave)
+### Option 1: Deploying the Assessment Web UI to GitHub Pages (before or after a migration wave)
 
-When a migration wave finishes, the workflow automatically publishes the pre-built Web UI to Private GitHub Pages inside the target organization's **`migration-audit-results`** repository:
+You can publish the **Assessment & Operations Web UI**—optionally pre-loaded with your latest discovery scan and verification reports—directly to Private GitHub Pages in your control repository using **Deploy Assessment & Operations Web UI to GitHub Pages** (`deploy-dashboard-pages.yml`):
+
+1. In your control repository, open **Settings** $\rightarrow$ **Pages**, set **Source** to **GitHub Actions**, and set **GitHub Pages visibility** to **Private**.
+2. Open the **Actions** tab, click **Deploy Assessment & Operations Web UI to GitHub Pages**, and click **Run workflow** (with `discovery_run_id` set to `latest`), or run:
+
+```bash
+gh workflow run deploy-dashboard-pages.yml \
+  -f discovery_run_id="latest" \
+  -f audit_run_id="latest"
+```
+
+### Option 2: Opening the Private GitHub Pages Dashboard in `migration-audit-results` (after a migration wave)
+
+When a migration wave finishes, the workflow also publishes the pre-built Web UI to Private GitHub Pages inside the target organization's **`migration-audit-results`** repository:
 
 1. Open the **`migration-audit-results`** repository in the target organization.
 2. In `README.md`, click the **Open Interactive Dashboard** link (under **Visual Dashboard (Private GitHub Pages)**).
 3. Browse the **Overview**, **Repositories**, **Teams & Identities**, **Verification**, and **Post-Care Checklist** tabs directly in your browser.
 
-### Option 2: Uploading a discovery bundle in the Web UI
+### Option 3: Uploading a discovery bundle in the Web UI
 
 When you open the Assessment Web UI in your browser:
 

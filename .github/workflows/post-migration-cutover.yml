@@ -16,6 +16,11 @@ on:
         required: false
         type: string
         default: ''
+      scope_run_id:
+        description: 'Optional GitHub Actions Run ID from generate-scope.yml (or "latest") to download migration-scopes artifact'
+        required: false
+        type: string
+        default: ''
       repos:
         description: 'Optional comma-separated list of repository names to cut over'
         required: false
@@ -31,6 +36,16 @@ on:
         required: false
         type: boolean
         default: true
+      reclaim_mannequins:
+        description: 'Reclaim EMU mannequins in target organization using mannequin-mapping.csv (--skip-invitation)'
+        required: false
+        type: boolean
+        default: false
+      mannequin_csv_path:
+        description: 'Optional path to mannequin-mapping.csv (if blank, automatically downloads from migration-audit-results in target_org)'
+        required: false
+        type: string
+        default: ''
       deactivate_source_webhooks:
         description: 'Deactivate active webhooks on source repositories and organization to prevent duplicate deliveries'
         required: false
@@ -59,6 +74,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   cutover:
@@ -70,6 +86,8 @@ jobs:
 
       - name: Set up Suite Environment
         uses: ./.github/actions/setup-suite
+        with:
+          install-gei: ${{ inputs.reclaim_mannequins && 'true' || 'false' }}
 
       - name: Verify Cutover Safety Guardrails
         shell: bash
@@ -87,6 +105,22 @@ jobs:
           if [ "$DRY_RUN" != "true" ] && [ "$CONFIRM" != "CUTOVER" ]; then
             echo "::error::Live post-migration cutover requires confirm_cutover=CUTOVER (or set dry_run=true to preview)."
             exit 1
+          fi
+
+      - name: Resolve Optional Scope Artifact
+        if: ${{ inputs.scope_run_id != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCOPE_RUN_ID: ${{ inputs.scope_run_id }}
+        run: |
+          mkdir -p ./downloaded-scope
+          SRUN="$SCOPE_RUN_ID"
+          if [ "$SRUN" = "latest" ]; then
+            SRUN=$(gh run list --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+          fi
+          if [ -n "$SRUN" ]; then
+            gh run download "$SRUN" -n migration-scopes --dir ./downloaded-scope || true
           fi
 
       - name: Execute Post-Migration Cutover
@@ -107,6 +141,11 @@ jobs:
         run: |
           mkdir -p ./scans
 
+          EFFECTIVE_SCOPE="$SCOPE_FILE"
+          if [ -z "$EFFECTIVE_SCOPE" ] && [ -d "./downloaded-scope" ]; then
+            EFFECTIVE_SCOPE=$(find ./downloaded-scope -name '*.json' 2>/dev/null | sort | head -n 1 || true)
+          fi
+
           ARGS=(
             cutover
             --source-org "$SOURCE_ORG"
@@ -115,8 +154,8 @@ jobs:
             --append-step-summary
           )
 
-          if [ -n "$SCOPE_FILE" ]; then
-            ARGS+=(--scope "$SCOPE_FILE")
+          if [ -n "$EFFECTIVE_SCOPE" ] && [ -f "$EFFECTIVE_SCOPE" ]; then
+            ARGS+=(--scope "$EFFECTIVE_SCOPE")
           fi
 
           if [ -n "$REPOS" ]; then
@@ -153,10 +192,55 @@ jobs:
 
           node ./apps/cli/bin/ghec-consultant-cli.mjs "${ARGS[@]}"
 
+      - name: Reclaim EMU Mannequins (Optional)
+        if: ${{ inputs.reclaim_mannequins == true }}
+        shell: bash
+        env:
+          GH_PAT: ${{ secrets.GHEC_TARGET_TOKEN }}
+          GH_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          TARGET_ORG: ${{ inputs.target_org }}
+          CSV_PATH_INPUT: ${{ inputs.mannequin_csv_path }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p ./scans
+          CSV_FILE="$CSV_PATH_INPUT"
+          if [ -z "$CSV_FILE" ] || [ ! -f "$CSV_FILE" ]; then
+            echo "Fetching mannequin-mapping.csv from ${TARGET_ORG}/migration-audit-results..."
+            if gh api "repos/${TARGET_ORG}/migration-audit-results/contents/post-migration-care/mannequin-mapping.csv" -H "Accept: application/vnd.github.raw" > ./scans/mannequin-mapping.csv 2>/dev/null; then
+              CSV_FILE="./scans/mannequin-mapping.csv"
+            elif gh api "repos/${TARGET_ORG}/migration-audit-results/contents/mannequin-mapping.csv" -H "Accept: application/vnd.github.raw" > ./scans/mannequin-mapping.csv 2>/dev/null; then
+              CSV_FILE="./scans/mannequin-mapping.csv"
+            fi
+          fi
+
+          if [ -z "$CSV_FILE" ] || [ ! -f "$CSV_FILE" ]; then
+            echo "::warning::No mannequin-mapping.csv found at '$CSV_PATH_INPUT' or in ${TARGET_ORG}/migration-audit-results. Generating fresh mannequin CSV from target organization..."
+            gh gei generate-mannequin-csv --github-target-org "$TARGET_ORG" --output ./scans/mannequin-mapping.csv || true
+            CSV_FILE="./scans/mannequin-mapping.csv"
+          fi
+
+          if [ -f "$CSV_FILE" ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "### DRY-RUN MODE: Mannequin Mapping CSV Preview ($CSV_FILE)"
+              cat "$CSV_FILE"
+            else
+              echo "Reclaiming EMU mannequins in $TARGET_ORG using $CSV_FILE (--skip-invitation)..."
+              gh gei reclaim-mannequin \
+                --github-target-org "$TARGET_ORG" \
+                --csv "$CSV_FILE" \
+                --skip-invitation || {
+                  echo "::warning::One or more mannequin reclamations reported warnings."
+                }
+            fi
+          fi
+
       - name: Upload Cutover Execution Report Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: post-migration-cutover-report-${{ github.run_id }}
-          path: ./scans/cutover-report.json
+          path: |
+            ./scans/cutover-report.json
+            ./scans/mannequin-mapping.csv
           if-no-files-found: ignore

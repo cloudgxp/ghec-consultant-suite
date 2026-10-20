@@ -18,7 +18,7 @@ Evolving the read-only GHEC Consultant Suite assessment dashboard (`apps/dashboa
 The monorepo already provides the required core primitives:
 
 1. **Strict Data Contracts (`@ghec/contracts`):** Fully typed, schema-validated Zod definitions for `MigrationScope`, `MigrationPlan`, `VerificationReport`, and `DiscoveryBundle`.
-2. **Dynamic Parallel Matrix Workflows (`.github/workflows/`):** Battle-tested GitHub Actions orchestration workflows (`migration-execute-wave.yml`, `test-migration-dispatch.yml`, `generate-scope.yml`) capable of dynamic matrix slicing (`ScopeMatrixSlicer`) and parallel runner fan-out.
+2. **Dynamic Parallel Matrix Workflows (`.github/workflows/`):** Battle-tested GitHub Actions orchestration workflows (`migration-e2e-autonomous.yml`, `test-migration-dispatch.yml`, `generate-scope.yml`) capable of dynamic matrix slicing (`ScopeMatrixSlicer`) and parallel runner fan-out.
 3. **Proven Zero-Local-Secrets Security Boundary:** Full credential isolation where high-privilege migration credentials (`GHEC_SOURCE_TOKEN`, `GHEC_TARGET_TOKEN`) are locked in GitHub Actions repository secrets, while client tools interact solely with GitHub Actions dispatch and monitoring APIs.
 
 ### 1.2 Recommended Architecture: Hybrid Local Console (Option B) with Browser Fallback
@@ -69,7 +69,7 @@ graph TD
     subgraph GitHubControlPlane["GitHub Management Repository (acme-corp/ghec-consultant-suite)"]
         RepoAPI["GitHub REST API (api.github.com)"]
         RepoSecrets["Repo Secrets Vault<br/>(GHEC_SOURCE_TOKEN, GHEC_TARGET_TOKEN)"]
-        Workflow["Actions Workflow: migration-execute-wave.yml"]
+        Workflow["Actions Workflow: migration-e2e-autonomous.yml"]
         ScopedToken -->|1. Dispatch & Poll| RepoAPI
         RepoAPI -->|2. Trigger| Workflow
         RepoSecrets -.->|3. Injected ONLY into Runner| Workflow
@@ -213,8 +213,8 @@ sequenceDiagram
 
     %% Stage 2: Workflow Dispatch
     Note over Operator, GH: Stage 2: Workflow Dispatch
-    UI->>Server: POST /api/workflows/migration-execute-wave.yml/dispatch
-    Server->>GH: POST /actions/workflows/migration-execute-wave.yml/dispatches
+    UI->>Server: POST /api/workflows/migration-e2e-autonomous.yml/dispatch
+    Server->>GH: POST /actions/workflows/migration-e2e-autonomous.yml/dispatches
     GH-->>Server: 204 No Content
     Server->>GH: GET /actions/runs?event=workflow_dispatch&created=>={dispatchTime}
     GH-->>Server: 200 OK (run_id: 987654)
@@ -283,7 +283,7 @@ Currently, `RepositoriesTab` presents a read-only virtualized list of source rep
        - 🔴 **Blocked:** Fatal errors (e.g., target token lacks SAML authorization) with clear remediation steps before live apply is enabled.
    - **Contract Validation & Dispatch:**
      - Runs `MigrationScopeSchema.parse()` in the browser prior to submission, guaranteeing 100% compliance with `@ghec/contracts`.
-     - Commits scope file as `scopes/wave-<timestamp>.json` and dispatches `migration-execute-wave.yml`.
+     - Commits scope file as `scopes/wave-<timestamp>.json` and dispatches `migration-e2e-autonomous.yml`.
      - Auto-redirects to the **Live Execution Console**.
 
 ---
@@ -455,7 +455,7 @@ gantt
 - **Task 037 (`DASH-22`): GitHub Actions Client Service & Artifact Decompression**
   - **Objective:** Extend `@ghec/github-client` with a typed `GitHubActionsService` managing workflow orchestration and artifact handling.
   - **Key Capabilities:**
-    - Typed workflow dispatch wrappers for `migration-execute-wave.yml`, `test-migration-dispatch.yml`, `generate-scope.yml`, and `migration-resume.yml`.
+    - Typed workflow dispatch wrappers for `migration-e2e-autonomous.yml`, `test-migration-dispatch.yml`, `generate-scope.yml`, and `migration-resume.yml`.
     - Support parameter mapping for all 17 registered modules, including newly added `releases`, `deploy-keys`, `collaborators`, `lfs`, and `packages`.
     - Implement streaming in-memory ZIP decompression for downloaded run artifacts: extracting and parsing `preflight-report.json`, `migration-plan.json`, `verification-report.json`, and `cohort-report-*.json` without disk thrashing.
   - **Files:** `packages/github-client/src/actions/`.

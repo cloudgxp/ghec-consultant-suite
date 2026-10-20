@@ -2351,7 +2351,7 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('');
     lines.push('```bash');
     lines.push(
-      `gh workflow run migration-execute-wave.yml -f source_org=${sourceOrg} -f target_org=${targetOrg} -f repositories=org_only -f modules=apps-inventory -f dry_run=false`,
+      `gh workflow run migration-e2e-autonomous.yml -f source_org=${sourceOrg} -f target_org=${targetOrg} -f repositories=org_only -f modules=apps-inventory -f dry_run=false`,
     );
     lines.push('```');
     lines.push('');

@@ -88,20 +88,20 @@ By default, you **do not** need to run the multi-hour **GHEC Discovery Scan** (`
 
 ### Option 1: One-click same-day migration (auto-scopes on the fly)
 
-If you want to preview or migrate an entire organization—or all `public`, `private`, or `internal` repositories—in a single step without running `generate-scope.yml` first, run **Parallel Matrix Migration Wave** (`migration-execute-wave.yml`) or **Autonomous Scale-Adaptive Migration** (`migration-e2e-autonomous.yml`) directly:
+If you want to preview or migrate an entire organization—or all `public`, `private`, or `internal` repositories—in a single step without running `generate-scope.yml` first, run **Autonomous Scale-Adaptive Migration & Remediation** (`migration-e2e-autonomous.yml`) directly:
 
 - **In the GitHub Web UI:**
-  1. Open the **Actions** tab in your control repository and click **Parallel Matrix Migration Wave** on the left.
+  1. Open the **Actions** tab in your control repository and click **Autonomous Scale-Adaptive Migration & Remediation** on the left.
   2. Click the **Run workflow** dropdown button on the right.
   3. Enter your **Source organization** (`acme-source`), **Target organization** (`acme-emu`), **Target tenant type** (`emu`), and **EMU shortcode** (`acme`).
-  4. Keep **Dry-run preview mode** checked (`true`) to preview first, or uncheck it (`false`) for live cutover, then click the green **Run workflow** button.
+  4. Check **Execute in dry-run mode** (`true`) to preview first, or leave it unchecked (`false`) for live cutover, then click the green **Run workflow** button.
 
 - **With the GitHub CLI (`gh`):**
 
 To preview migrating all repositories and organization settings in one click (`dry_run: true`):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f target_type="emu" \
@@ -113,7 +113,7 @@ gh workflow run migration-execute-wave.yml \
 To run the live cutover for all repositories and organization settings in one click (`dry_run: false`):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f target_type="emu" \
@@ -140,7 +140,7 @@ gh workflow run generate-scope.yml \
 Once the scope artifact is ready, run your dry-run or live migration wave using `scope_run_id="latest"`:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f scope_run_id="latest" \
   -f dry_run="false"
 ```
@@ -150,18 +150,6 @@ gh workflow run migration-execute-wave.yml \
 By default, a live migration (`dry_run="false"`) leaves your source repositories unlocked and untouched, and copies your code, issues, pull requests, teams, and settings into the target organization. If you are rehearsing into a dummy or sandbox organization to show your client the migrated repositories without anything running in the background, check the **`sandbox_rehearsal`** box in the **Run workflow** menu (or pass `-f sandbox_rehearsal="true"`) so all target Webhooks and GitHub Actions stay turned off.
 
 To copy real repositories and organization settings into a dummy target organization while keeping all target Webhooks and GitHub Actions disabled:
-
-```bash
-gh workflow run migration-execute-wave.yml \
-  -f source_org="acme-source" \
-  -f target_org="acme-sandbox-emu" \
-  -f target_type="emu" \
-  -f emu_shortcode="acme" \
-  -f dry_run="false" \
-  -f sandbox_rehearsal="true"
-```
-
-To run the full autonomous migration and self-healing workflow in sandbox rehearsal mode:
 
 ```bash
 gh workflow run migration-e2e-autonomous.yml \
@@ -197,7 +185,7 @@ Many customers prefer to move `public` or `internal` repositories in Wave 1 and 
 To migrate only **`public`** repositories in one click (and skip forked repositories):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f source_visibility="public" \
@@ -229,7 +217,7 @@ gh workflow run generate-scope.yml \
 To migrate a specific list of repositories right away without running `generate-scope.yml`:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="payments-api,web-portal,auth-service" \
@@ -241,7 +229,7 @@ gh workflow run migration-execute-wave.yml \
 To set up organization settings, teams, custom roles, and custom properties before moving any repositories:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="org_only" \
@@ -253,7 +241,7 @@ gh workflow run migration-execute-wave.yml \
 To update only branch rulesets, environments, and variables on two already-migrated repositories:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="payments-api,web-portal" \
@@ -306,7 +294,7 @@ gh workflow run generate-scope.yml \
 To migrate only `public` repositories from a **single** source organization while bringing over only the teams, secrets, variables, and rulesets linked to those public repositories:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-open-source" \
   -f source_visibility="public" \
@@ -340,7 +328,7 @@ To install your apps after a migration wave and automatically attach them to the
 3. Run the `apps-inventory` module on its own to automatically attach every remaining repository to the app:
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-source" \
   -f target_org="acme-emu" \
   -f repositories="org_only" \
@@ -410,7 +398,7 @@ gh workflow run migration-e2e-autonomous.yml \
 
 ### Step 4: Detach unique SSH deploy keys and custom domains at cutover
 
-Once an organization wave passes verification and is ready to go live, run `post-migration-cutover.yml` to move globally unique SSH deploy keys and GitHub Pages custom domains from the source organization to the target organization and freeze the old repositories:
+Once an organization wave passes verification and is ready to go live, run `post-migration-cutover.yml` to move globally unique SSH deploy keys and GitHub Pages custom domains from the source organization to the target organization, optionally reclaim EMU mannequins, and freeze the old repositories:
 
 ```bash
 gh workflow run post-migration-cutover.yml \
@@ -418,6 +406,7 @@ gh workflow run post-migration-cutover.yml \
   -f target_org="acme-payments-emu" \
   -f include_deploy_keys="true" \
   -f include_pages_cname="true" \
+  -f reclaim_mannequins="true" \
   -f deactivate_source_webhooks="true" \
   -f disable_source_actions="true" \
   -f archive_source_repos="true" \
@@ -436,7 +425,7 @@ By default, every migration run saves checkpoints as it finishes each step, post
 To watch the active workflow progress live in your terminal:
 
 ```bash
-RUN_ID=$(gh run list --workflow=migration-execute-wave.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+RUN_ID=$(gh run list --workflow=migration-e2e-autonomous.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 gh run watch "$RUN_ID"
 ```
 
@@ -547,34 +536,11 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `sandbox_rehearsal`     | `false`              |    No    | Sandbox rehearsal mode: keep all target Webhooks and GitHub Actions disabled (`true` or `false`).                                                                               |
 | `commit_to_branch`      | `false`              |    No    | Commit `scopes/<scope_name>.json` to the git branch. Keep `false` for pure artifact handoff.                                                                                    |
 
-### 2. `migration-execute-wave.yml` — Parallel Matrix Migration Wave
-
-| Input Name          | Default                  | Required | Description                                                                                                                  |
-| :------------------ | :----------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| `scope`             | `'scopes/wave-1.json'`   |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                           |
-| `scope_run_id`      | `''`                     |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                  |
-| `source_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.   |
-| `target_org`        | `''`                     |    No    | **Inline 1-Click Mode:** Target organization login.                                                                          |
-| `repositories`      | `'all'`                  |    No    | **Inline 1-Click Mode:** `'all'`, `'public'`, `'private'`, `'internal'`, `'org_only'`, or comma-separated repository names.  |
-| `source_visibility` | `'all'`                  |    No    | **Inline 1-Click Mode:** Filter discovered source repositories by visibility (`all`, `public`, `private`, or `internal`).    |
-| `exclude_forks`     | `false`                  |    No    | **Inline 1-Click Mode:** Skip forked repositories when discovering organization repositories (`true` or `false`).            |
-| `org_items_mode`    | `'auto'`                 |    No    | Organization items mode (`'auto'`, `'associated-only'`, `'all'`, or `'none'`).                                               |
-| `target_type`       | `'ghec'`                 |    No    | Target tenant type (`'ghec'` or `'emu'`).                                                                                    |
-| `emu_shortcode`     | `''`                     |    No    | Enterprise Managed Users shortcode (when `target_type` is `'emu'`).                                                          |
-| `modules`           | `'auto'`                 |    No    | `'auto'` (strategy-aware selection across all 34 modules), `'all'`, or comma-separated module IDs.                           |
-| `runner_capacity`   | `5`                      |    No    | Available parallel runner capacity.                                                                                          |
-| `batch_size`        | `5`                      |    No    | Maximum number of repositories per parallel runner cohort.                                                                   |
-| `dry_run`           | `true`                   |    No    | Preview mode (`true` makes zero changes; `false` runs the live migration).                                                   |
-| `sandbox_rehearsal` | `false`                  |    No    | Sandbox rehearsal mode: migrate live data while keeping all target Webhooks and GitHub Actions disabled (`true` or `false`). |
-| `runner_labels`     | `'ubuntu-latest'`        |    No    | Runner label (`'ubuntu-latest'` or `'self-hosted,linux'`).                                                                   |
-| `environment_gate`  | `'production-migration'` |    No    | GitHub Environment name for manual approval gates.                                                                           |
-| `discovery_run_id`  | `''`                     |    No    | Optional run ID from `discovery-scan.yml` (or `'latest'`) if using a pre-collected discovery bundle.                         |
-
-### 3. `migration-e2e-autonomous.yml` — Autonomous Scale-Adaptive Migration & Remediation
+### 2. `migration-e2e-autonomous.yml` — Autonomous Scale-Adaptive Migration & Remediation
 
 | Input Name                 | Default                | Required | Description                                                                                                                  |
 | :------------------------- | :--------------------- | :------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| `scope`                    | `'scopes/wave-1.json'` |    No    | Path to scope file in git or inside the downloaded scope artifact.                                                           |
+| `scope`                    | `'scopes/wave-1.json'` |    No    | Path to scope file in git, inside the downloaded scope artifact, or inline JSON string.                                      |
 | `scope_run_id`             | `''`                   |    No    | Run ID from `generate-scope.yml` (or `'latest'`) to download the `migration-scopes` artifact automatically.                  |
 | `source_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Source organization login, or comma-separated logins (`org-a,org-b`) for multi-org consolidation.   |
 | `target_org`               | `''`                   |    No    | **Inline 1-Click Mode:** Target organization login.                                                                          |
@@ -593,12 +559,19 @@ Every workflow in `.github/workflows/` can be triggered from the **Actions** tab
 | `max_remediation_rounds`   | `3`                    |    No    | Maximum self-healing retry iterations.                                                                                       |
 | `default_runner_labels`    | `'ubuntu-latest'`      |    No    | Runner pool for standard repositories.                                                                                       |
 | `large_repo_runner_labels` | `'ubuntu-latest'`      |    No    | High-capacity runner pool for massive (>40 GiB) repositories.                                                                |
+| `discovery_run_id`         | `''`                   |    No    | Optional run ID from `discovery-scan.yml` (or `'latest'`) if using a pre-collected discovery bundle.                         |
+| `cached_bundle`            | `''`                   |    No    | Optional path to pre-collected discovery bundle JSON file.                                                                   |
 
-### 4. `discovery-scan.yml`, `migration-resume.yml`, `migration-apply-remediation.yml`, and `seed-demo-content.yml`
+### 3. Assessment, Verification, Remediation, Cutover, and Demo Workflows
 
-| Workflow File                     | Key Inputs                                                                                                                              | Purpose                                                                                 |
-| :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
-| `discovery-scan.yml`              | `organization`, `modules` (`all`), `redaction_profile` (`standard`), `runner_labels` (`ubuntu-latest`)                                  | Optional deep assessment scan for offline Dashboard analysis prior to migration.        |
-| `migration-resume.yml`            | `run_id`, `scope` (`scopes/wave-1.json`), `dry_run` (`false`), `checkpoint_dir`                                                         | Resume a paused or interrupted migration run from its saved checkpoint.                 |
-| `migration-apply-remediation.yml` | `workflow_run_id` (`latest`), `scope_run_id` (`latest`), `remediation_plan_path`, `dry_run`, `runner_labels`                            | Run targeted self-healing remediation scripts from a prior verification run.            |
-| `seed-demo-content.yml`           | `organization`, `repository`, `scope_level` (`both`/`organization`/`repository`), `content_type` (`all`), `dry_run`, `cleanup_existing` | Create or clean up sample teams, repos, rulesets, LFS files, and secrets in a test org. |
+| Workflow File                     | Key Inputs                                                                                                                                           | Purpose                                                                                                             |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
+| `discovery-scan.yml`              | `organization`, `modules` (`all`), `redaction_profile` (`standard`), `runner_labels` (`ubuntu-latest`)                                               | Optional deep assessment scan for offline Dashboard analysis prior to migration.                                    |
+| `deploy-dashboard-pages.yml`      | `discovery_run_id` (`latest`), `audit_run_id` (`latest`)                                                                                             | Deploy the Assessment & Operations Web UI and latest discovery/audit evidence to Private GitHub Pages.              |
+| `migration-plan-pr.yml`           | `scope`, `scope_run_id` (`latest`), `modules` (`auto`)                                                                                               | Generate a non-mutating migration execution plan on demand.                                                         |
+| `migration-verify.yml`            | `source_org`, `target_org`, `scope_run_id` (`latest`), `modules` (`auto`), `publish_audit_repo` (`true`)                                             | Re-verify target organization parity after customer post-care and refresh `migration-audit-results`.                |
+| `migration-resume.yml`            | `run_id` (`latest`), `scope` (`scopes/wave-1.json`), `dry_run` (`false`), `checkpoint_dir`                                                           | Resume a paused or interrupted migration run from its saved checkpoint.                                             |
+| `migration-apply-remediation.yml` | `workflow_run_id` (`latest`), `scope_run_id` (`latest`), `remediation_plan_path`, `dry_run`, `runner_labels`                                         | Run targeted self-healing remediation scripts from a prior verification run and refresh `migration-audit-results`.  |
+| `post-migration-cutover.yml`      | `source_org`, `target_org`, `include_deploy_keys`, `include_pages_cname`, `reclaim_mannequins`, `deactivate_source_webhooks`, `archive_source_repos` | Detach unique SSH deploy keys and Pages domains, reclaim EMU mannequins, and freeze source repositories at cutover. |
+| `seed-demo-content.yml`           | `organization`, `repository`, `scope_level` (`both`/`organization`/`repository`), `content_type` (`all`), `dry_run`, `cleanup_existing`              | Create or clean up sample teams, repos, rulesets, LFS files, and secrets in a test org.                             |
+| `teardown-target-sandbox.yml`     | `target_org`, `scope_file`, `repos`, `confirm_target_org`                                                                                            | Reset a sandbox target organization between rehearsal waves.                                                        |

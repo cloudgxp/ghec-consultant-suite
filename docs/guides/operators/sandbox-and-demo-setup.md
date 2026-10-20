@@ -106,18 +106,18 @@ By default, turning on **`sandbox_rehearsal: true`** copies real repositories, i
 
 ### Option 1: Using the GitHub Actions Web UI
 
-1. Open the **Actions** tab and click **Parallel Matrix Migration Wave** (or **Autonomous Scale-Adaptive Migration**).
+1. Open the **Actions** tab and click **Autonomous Scale-Adaptive Migration & Remediation**.
 2. Click **Run workflow**.
 3. Enter your **Source organization** (`acme-demo-source`) and **Target organization** (`acme-sandbox-emu`).
-4. To run a **Dry-Run Preview**, leave **Dry-run preview mode** checked (`true`).
-5. To run a live **Sandbox Rehearsal**, uncheck **Dry-run preview mode** (`false`) and check **Sandbox rehearsal mode** (`true`), then click **Run workflow**.
+4. To run a **Dry-Run Preview**, check **Execute in dry-run mode** (`true`).
+5. To run a live **Sandbox Rehearsal**, leave **Execute in dry-run mode** unchecked (`false`) and check **Sandbox rehearsal mode** (`true`), then click **Run workflow**.
 
 ### Option 2: Using the GitHub CLI (`gh`)
 
 To run a fast dry-run preview (`dry_run="true"`):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-demo-source" \
   -f target_org="acme-sandbox-emu" \
   -f target_type="emu" \
@@ -128,7 +128,7 @@ gh workflow run migration-execute-wave.yml \
 To run a live sandbox rehearsal into a dummy target organization (`dry_run="false"`, `sandbox_rehearsal="true"`):
 
 ```bash
-gh workflow run migration-execute-wave.yml \
+gh workflow run migration-e2e-autonomous.yml \
   -f source_org="acme-demo-source" \
   -f target_org="acme-sandbox-emu" \
   -f target_type="emu" \
@@ -140,7 +140,7 @@ gh workflow run migration-execute-wave.yml \
 To watch your rehearsal run live in your terminal:
 
 ```bash
-RUN_ID=$(gh run list --workflow=migration-execute-wave.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+RUN_ID=$(gh run list --workflow=migration-e2e-autonomous.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 gh run watch "$RUN_ID"
 ```
 

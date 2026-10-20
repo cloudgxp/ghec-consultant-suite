@@ -79,7 +79,7 @@ export const ModuleTriggerModal: React.FC<ModuleTriggerModalProps> = ({
         selectedModules: modules,
       });
 
-      const workflowId = 'migration-execute-wave.yml';
+      const workflowId = 'migration-e2e-autonomous.yml';
       const res = await fetchFn(
         `${apiBaseUrl}/api/actions/workflows/${encodeURIComponent(workflowId)}/dispatch`,
         {
@@ -91,11 +91,9 @@ export const ModuleTriggerModal: React.FC<ModuleTriggerModalProps> = ({
             ref: 'main',
             inputs: {
               scope: JSON.stringify(generatedScope),
-              batch_size: '5',
               modules: modules.join(','),
               dry_run: String(isDryRun),
-              continue_on_error: String(continueOnError),
-              runner_labels: 'ubuntu-latest',
+              default_runner_labels: 'ubuntu-latest',
             },
           }),
         },

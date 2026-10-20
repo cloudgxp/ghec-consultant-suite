@@ -1,0 +1,282 @@
+name: Verify Target Organization & Refresh Audit Repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Path to migration scope JSON file (or leave default when using scope_run_id / inline source_org & target_org)'
+        required: false
+        type: string
+        default: 'scopes/wave-1.json'
+      scope_run_id:
+        description: 'Optional GitHub Actions Run ID from generate-scope.yml (or "latest") to download migration-scopes artifact'
+        required: false
+        type: string
+        default: ''
+      source_org:
+        description: 'Optional inline source organization(s), e.g. "org-a" or "org-a,org-b"'
+        required: false
+        type: string
+        default: ''
+      target_org:
+        description: 'Optional inline target organization (used with source_org for inline scope resolution)'
+        required: false
+        type: string
+        default: ''
+      repositories:
+        description: 'Inline repository selection when using source_org & target_org ("all", "public", "private", "internal", "org_only", or comma-separated repo names)'
+        required: false
+        type: string
+        default: 'all'
+      target_type:
+        description: 'Target tenant type ("ghec" for standard GHEC, "emu" for Enterprise Managed Users)'
+        required: false
+        type: choice
+        options:
+          - 'ghec'
+          - 'emu'
+        default: 'ghec'
+      emu_shortcode:
+        description: 'Admin-defined EMU shortcode/suffix (e.g. "acme" or "_acme") — only used when target_type is "emu"'
+        required: false
+        type: string
+        default: ''
+      modules:
+        description: 'Modules to verify ("auto" for strategy-aware resolution across all 34 modules, or comma-separated list)'
+        required: false
+        type: string
+        default: 'auto'
+      exclude_modules:
+        description: 'Optional comma-separated module IDs to exclude from verification'
+        required: false
+        type: string
+        default: ''
+      sandbox_rehearsal:
+        description: 'Sandbox rehearsal mode: verify target with Webhooks and GitHub Actions intentionally disabled'
+        required: false
+        type: boolean
+        default: false
+      publish_audit_repo:
+        description: 'Refresh the private migration-audit-results repository in the target organization'
+        required: false
+        type: boolean
+        default: true
+      runner_labels:
+        description: 'GitHub Actions runner label (e.g. "ubuntu-latest" or "self-hosted")'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+
+env:
+  GHEC_ALLOW_SAME_CREDENTIAL: 'true'
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  verify-target:
+    name: Verify Target Parity & Refresh Audit Results
+    runs-on: ${{ inputs.runner_labels || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Suite Environment
+        uses: ./.github/actions/setup-suite
+
+      - name: Resolve & Validate Migration Scope Contract
+        id: resolve-scope
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GITHUB_REPO_SLUG: ${{ github.repository }}
+          INPUT_SCOPE: ${{ inputs.scope }}
+          INPUT_SCOPE_RUN_ID: ${{ inputs.scope_run_id }}
+          INPUT_SOURCE_ORG: ${{ inputs.source_org }}
+          INPUT_TARGET_ORG: ${{ inputs.target_org }}
+          INPUT_REPOS: ${{ inputs.repositories }}
+          INPUT_TARGET_TYPE: ${{ inputs.target_type || 'ghec' }}
+          INPUT_EMU_SHORTCODE: ${{ inputs.emu_shortcode || '' }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p ./scans ./downloaded-scope
+          RESOLVED_SCOPE=""
+
+          if [ -n "$INPUT_SOURCE_ORG" ] && [ -n "$INPUT_TARGET_ORG" ]; then
+            echo "Generating migration scope inline for $INPUT_SOURCE_ORG -> $INPUT_TARGET_ORG..."
+            GEN_ARGS=(
+              generate-scope
+              --source "$INPUT_SOURCE_ORG"
+              --target "$INPUT_TARGET_ORG"
+              --target-type "${INPUT_TARGET_TYPE:-ghec}"
+              --output ./scans/resolved-scope.json
+            )
+            if [ -n "$INPUT_EMU_SHORTCODE" ]; then
+              GEN_ARGS+=(--emu-shortcode "$INPUT_EMU_SHORTCODE")
+            fi
+            if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+              GEN_ARGS+=(--sandbox-rehearsal)
+            fi
+            if [ "$INPUT_REPOS" = "all" ] || [ -z "$INPUT_REPOS" ]; then
+              GEN_ARGS+=(--all)
+            elif [ "$INPUT_REPOS" = "public" ] || [ "$INPUT_REPOS" = "private" ] || [ "$INPUT_REPOS" = "internal" ]; then
+              GEN_ARGS+=(--all --source-visibility "$INPUT_REPOS")
+            elif [ "$INPUT_REPOS" = "org_only" ] || [ "$INPUT_REPOS" = "org_resources_only" ]; then
+              GEN_ARGS+=(--org-only)
+            else
+              GEN_ARGS+=(--repos "$INPUT_REPOS")
+            fi
+            node ./apps/cli/bin/ghec-consultant-cli.mjs "${GEN_ARGS[@]}"
+            RESOLVED_SCOPE="./scans/resolved-scope.json"
+          fi
+
+          if [ -z "$RESOLVED_SCOPE" ] && [[ "$INPUT_SCOPE" == "{"* ]]; then
+            echo "$INPUT_SCOPE" > ./scans/resolved-scope.json
+            RESOLVED_SCOPE="./scans/resolved-scope.json"
+          fi
+
+          if [ -z "$RESOLVED_SCOPE" ] && { [ -n "$INPUT_SCOPE_RUN_ID" ] || [ ! -f "$INPUT_SCOPE" ]; }; then
+            TARGET_SCOPE_RUN="$INPUT_SCOPE_RUN_ID"
+            if [ -z "$TARGET_SCOPE_RUN" ] || [ "$TARGET_SCOPE_RUN" = "latest" ]; then
+              for TOK in "$GH_TOKEN" "$GHEC_SOURCE_TOKEN"; do
+                [ -n "$TOK" ] || continue
+                TARGET_SCOPE_RUN=$(GH_TOKEN="$TOK" gh run list -R "$GITHUB_REPO_SLUG" --workflow=generate-scope.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+                if [ -n "$TARGET_SCOPE_RUN" ] && [ "$TARGET_SCOPE_RUN" != "null" ]; then
+                  break
+                fi
+              done
+            fi
+            if [ -n "$TARGET_SCOPE_RUN" ] && [ "$TARGET_SCOPE_RUN" != "null" ]; then
+              for TOK in "$GH_TOKEN" "$GHEC_SOURCE_TOKEN"; do
+                [ -n "$TOK" ] || continue
+                if GH_TOKEN="$TOK" gh run download "$TARGET_SCOPE_RUN" -R "$GITHUB_REPO_SLUG" -n migration-scopes --dir ./downloaded-scope 2>/dev/null; then
+                  break
+                fi
+              done
+              FOUND_SCOPE=$(find ./downloaded-scope/generated-scopes -name '*.json' 2>/dev/null | sort | head -n 1 || true)
+              if [ -z "$FOUND_SCOPE" ]; then
+                FOUND_SCOPE=$(find ./downloaded-scope -name '*.json' 2>/dev/null | sort | head -n 1 || true)
+              fi
+              if [ -n "$FOUND_SCOPE" ] && [ -f "$FOUND_SCOPE" ]; then
+                cp "$FOUND_SCOPE" ./scans/resolved-scope.json
+                RESOLVED_SCOPE="./scans/resolved-scope.json"
+              fi
+            fi
+          fi
+
+          if [ -z "$RESOLVED_SCOPE" ]; then
+            if [ ! -f "$INPUT_SCOPE" ]; then
+              echo "::error::Scope file '$INPUT_SCOPE' does not exist."
+              exit 1
+            fi
+            cp "$INPUT_SCOPE" ./scans/resolved-scope.json
+          fi
+
+          VAL_ARGS=(validate-scope --scope ./scans/resolved-scope.json)
+          if [ -n "$INPUT_TARGET_TYPE" ]; then
+            VAL_ARGS+=(--target-type "$INPUT_TARGET_TYPE")
+          fi
+          if [ -n "$INPUT_EMU_SHORTCODE" ]; then
+            VAL_ARGS+=(--emu-shortcode "$INPUT_EMU_SHORTCODE")
+          fi
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            VAL_ARGS+=(--sandbox-rehearsal)
+          fi
+          node ./apps/cli/bin/ghec-consultant-cli.mjs "${VAL_ARGS[@]}"
+
+      - name: Execute Full-Spectrum Target Verification
+        id: verify
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+          INPUT_MODULES: ${{ inputs.modules || 'auto' }}
+          INPUT_EXCLUDE_MODULES: ${{ inputs.exclude_modules || '' }}
+          INPUT_SANDBOX_REHEARSAL: ${{ inputs.sandbox_rehearsal }}
+        run: |
+          mkdir -p ./scans
+          VERIFY_ARGS=(--modules "${INPUT_MODULES:-auto}")
+          if [ -n "$INPUT_EXCLUDE_MODULES" ]; then
+            VERIFY_ARGS+=(--exclude-modules "$INPUT_EXCLUDE_MODULES")
+          fi
+          if [ "$INPUT_SANDBOX_REHEARSAL" = "true" ]; then
+            VERIFY_ARGS+=(--sandbox-rehearsal)
+          fi
+
+          node ./apps/cli/bin/ghec-consultant-cli.mjs verify \
+            --scope ./scans/resolved-scope.json \
+            "${VERIFY_ARGS[@]}" \
+            --output ./scans/verification-report.json \
+            --verbose || true
+
+      - name: Synthesize Agentic Remediation Plan
+        if: always()
+        shell: bash
+        run: |
+          if [ -f ./scans/verification-report.json ]; then
+            node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
+              --report ./scans/verification-report.json \
+              --output ./scans/remediation-plan.json \
+              --output-markdown ./scans/remediation-plan.md \
+              --append-step-summary \
+              --verbose || true
+          fi
+
+      - name: Refresh Migration Audit Repository on Target Organization
+        if: always() && inputs.publish_audit_repo == true
+        shell: bash
+        env:
+          GHEC_SOURCE_TOKEN: ${{ secrets.GHEC_SOURCE_TOKEN }}
+          GHEC_TARGET_TOKEN: ${{ secrets.GHEC_TARGET_TOKEN }}
+        run: |
+          if [ -f ./scans/verification-report.json ]; then
+            REMEDIATION_ARGS=()
+            if [ -f ./scans/remediation-plan.json ]; then
+              REMEDIATION_ARGS=(--remediation-plan ./scans/remediation-plan.json)
+            fi
+            node ./apps/cli/bin/ghec-consultant-cli.mjs publish-results \
+              --scope ./scans/resolved-scope.json \
+              --report ./scans/verification-report.json \
+              "${REMEDIATION_ARGS[@]}" \
+              --evidence-dir ./scans \
+              --repo-name migration-audit-results \
+              --output-dir ./scans/audit-results-repo \
+              --append-step-summary \
+              --verbose || true
+          fi
+
+      - name: Upload Verification & Audit Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-verification-audit-${{ github.run_id }}
+          path: |
+            ./scans/resolved-scope.json
+            ./scans/verification-report.json
+            ./scans/remediation-plan.*
+            ./scans/audit-results-repo
+          retention-days: 30
+
+      - name: Strict Verification & Execution Gate
+        id: strict-gate
+        if: always()
+        shell: bash
+        run: |
+          if [ ! -f ./scans/verification-report.json ]; then
+            echo "::error::Verification report (./scans/verification-report.json) was not generated."
+            exit 1
+          fi
+
+          DISCREPANCIES=$(jq '.summary.discrepancyCount // .summary.totalDiscrepancies // 0' ./scans/verification-report.json)
+          UNVERIFIED_MODULES=$(jq '.summary.unverifiedModuleCount // .summary.failedModules // 0' ./scans/verification-report.json)
+          if [ "$DISCREPANCIES" -gt 0 ] || [ "$UNVERIFIED_MODULES" -gt 0 ]; then
+            echo "::error::Strict Verification Gate Failed: $DISCREPANCIES discrepancy(ies) and $UNVERIFIED_MODULES unverified module(s) remain."
+            exit 1
+          fi
+
+          echo "Strict Verification & Execution Gate passed."

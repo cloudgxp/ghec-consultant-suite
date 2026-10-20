@@ -159,7 +159,7 @@ export const MigrationControlPlaneTab: React.FC<
     setSlicerStatus('in_progress');
     setAggregateStatus('pending');
 
-    const workflowId = 'migration-execute-wave.yml';
+    const workflowId = 'migration-e2e-autonomous.yml';
     const dispatchTime = nowMs();
 
     try {
@@ -183,6 +183,7 @@ export const MigrationControlPlaneTab: React.FC<
               modules: modules.trim(),
               dry_run: dryRun,
               continue_on_error: continueOnError,
+              default_runner_labels: runnerLabels.trim(),
               runner_labels: runnerLabels.trim(),
               environment_gate: environmentGate.trim(),
             },
@@ -290,7 +291,7 @@ export const MigrationControlPlaneTab: React.FC<
         setActiveRun({
           id: runData.id,
           runNumber: runData.run_number,
-          workflowId: 'migration-execute-wave.yml',
+          workflowId: 'migration-e2e-autonomous.yml',
           status: runData.status,
           conclusion: runData.conclusion,
           htmlUrl: runData.html_url,
@@ -326,7 +327,9 @@ export const MigrationControlPlaneTab: React.FC<
           const slicerJob = rawJobs.find(
             (j) =>
               j.name.toLowerCase().includes('partition') ||
-              j.name.toLowerCase().includes('slicer'),
+              j.name.toLowerCase().includes('slicer') ||
+              j.name.toLowerCase().includes('phase 1') ||
+              j.name.toLowerCase().includes('sizing'),
           );
           if (slicerJob) {
             const sStatus: 'pending' | 'in_progress' | 'completed' | 'failed' =
@@ -516,7 +519,7 @@ export const MigrationControlPlaneTab: React.FC<
           // Generate readable markdown summary
           const md = [
             `# Migration Wave Execution Report — Run #${runId}`,
-            `- **Workflow:** \`migration-execute-wave.yml\``,
+            `- **Workflow:** \`migration-e2e-autonomous.yml\``,
             `- **Status:** ${activeRun?.conclusion ?? 'completed'}`,
             `- **Scope File:** \`${scopePath}\``,
             `- **Runner Capacity:** ${runnerCapacity} runners`,

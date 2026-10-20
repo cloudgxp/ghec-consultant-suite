@@ -328,7 +328,7 @@ jobs:
           fi
           echo "" >> "$SUMMARY_FILE"
           echo "### 🚀 Next Step: Run Dry-Run or Live Migration Wave" >> "$SUMMARY_FILE"
-          echo "You can execute this scope immediately from the **Parallel Matrix Migration Wave** workflow using \`scope_run_id: latest\` (or \`${{ github.run_id }}\`):" >> "$SUMMARY_FILE"
+          echo "You can execute this scope immediately from the **Autonomous Scale-Adaptive Migration & Remediation** workflow using \`scope_run_id: latest\` (or \`${{ github.run_id }}\`):" >> "$SUMMARY_FILE"
           echo '```bash' >> "$SUMMARY_FILE"
-          echo "gh workflow run migration-execute-wave.yml -f scope_run_id=\"${{ github.run_id }}\" -f dry_run=\"true\"" >> "$SUMMARY_FILE"
+          echo "gh workflow run migration-e2e-autonomous.yml -f scope_run_id=\"${{ github.run_id }}\" -f dry_run=\"true\"" >> "$SUMMARY_FILE"
           echo '```' >> "$SUMMARY_FILE"

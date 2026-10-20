@@ -40,20 +40,24 @@ describe('Task 037: GitHub Actions Client Service Adapter', () => {
   });
 
   describe('Workflow Dispatches', () => {
-    it('dispatches migration-execute-wave.yml and resolves the run ID', async () => {
+    it('dispatches migration-e2e-autonomous.yml and resolves the run ID', async () => {
       let dispatchCalled = false;
       let capturedBody: Record<string, unknown> | null = null;
 
       const mockFetch: typeof fetch = async (url, init) => {
         const u = url.toString();
         if (
-          u.includes('/actions/workflows/migration-execute-wave.yml/dispatches')
+          u.includes(
+            '/actions/workflows/migration-e2e-autonomous.yml/dispatches',
+          )
         ) {
           dispatchCalled = true;
           capturedBody = JSON.parse(init?.body as string);
           return new Response(null, { status: 204 });
         }
-        if (u.includes('/actions/workflows/migration-execute-wave.yml/runs')) {
+        if (
+          u.includes('/actions/workflows/migration-e2e-autonomous.yml/runs')
+        ) {
           return new Response(
             JSON.stringify({
               workflow_runs: [
