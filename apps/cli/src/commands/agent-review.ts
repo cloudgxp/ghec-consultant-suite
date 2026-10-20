@@ -116,7 +116,7 @@ function collectExecutionReportFilesFromDir(dirPath: string): string[] {
       found.push(...collectExecutionReportFilesFromDir(fullPath));
     } else if (
       entry.isFile() &&
-      /^(cohort-report-.*\.json|migration-execution\.json|.*-execution\.json)$/i.test(
+      /^(cohort-report-.*\.json|migration-execution\.json|remediation-execution-.*\.json|.*-execution\.json)$/i.test(
         entry.name,
       )
     ) {
@@ -389,6 +389,9 @@ export function generateRemediationPlan(
       const failedOps = (modRes.results ?? []).filter(
         (op) =>
           op.status === 'failed' &&
+          !healedModuleTargets.has(
+            `${modRes.moduleId}::${op.targetIdentifier ?? modTarget ?? ''}`,
+          ) &&
           !(
             op.operationId &&
             healedOperationIds.has(
@@ -914,7 +917,13 @@ export function generateRemediationPlan(
     }
   }
 
-  const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -uo pipefail\nif ! command -v ghec-consultant-cli >/dev/null 2>&1; then\n  if [ -f "./bin/ghec-consultant-cli.mjs" ]; then\n    _ghec_cli_bin="./bin/ghec-consultant-cli.mjs"\n  elif [ -f "./apps/cli/bin/ghec-consultant-cli.mjs" ]; then\n    _ghec_cli_bin="./apps/cli/bin/ghec-consultant-cli.mjs"\n  fi\n  if [ -n "\${_ghec_cli_bin:-}" ]; then\n    _ghec_rem_seq=0\n    ghec-consultant-cli() {\n      if [ "\${1:-}" = "migrate" ] && [[ " $* " != *" --output "* ]]; then\n        _ghec_rem_seq=$((_ghec_rem_seq + 1))\n        mkdir -p ./scans\n        local _out="./scans/remediation-execution-\${_ghec_rem_seq}.json"\n        node "$_ghec_cli_bin" "$@" --output "$_out"\n        local _rc=$?\n        [ -f "$_out" ] && cp "$_out" ./scans/migration-execution.json\n        return $_rc\n      fi\n      node "$_ghec_cli_bin" "$@"\n    }\n  fi\nfi\nexport GH_TOKEN="\${GHEC_TARGET_TOKEN:-\${GH_TOKEN:-}}"\n\n`;
+  actions.sort((a, b) => {
+    const aIsGei = a.moduleId === 'gei-repo' ? 0 : 1;
+    const bIsGei = b.moduleId === 'gei-repo' ? 0 : 1;
+    return aIsGei - bIsGei;
+  });
+
+  const scriptHeader = `#!/usr/bin/env bash\n# Automated Migration Remediation Script\n# Target Enterprise: ${report.targetOrg}\n# Generated: ${new Date().toISOString()}\nset -uo pipefail\nif ! command -v ghec-consultant-cli >/dev/null 2>&1; then\n  if [ -f "./bin/ghec-consultant-cli.mjs" ]; then\n    _ghec_cli_bin="./bin/ghec-consultant-cli.mjs"\n  elif [ -f "./apps/cli/bin/ghec-consultant-cli.mjs" ]; then\n    _ghec_cli_bin="./apps/cli/bin/ghec-consultant-cli.mjs"\n  fi\n  if [ -n "\${_ghec_cli_bin:-}" ]; then\n    _ghec_rem_seq=$(ls -1 ./scans/remediation-execution-*.json 2>/dev/null | wc -l | tr -d ' ')\n    _ghec_rem_seq=\${_ghec_rem_seq:-0}\n    ghec-consultant-cli() {\n      if [ "\${1:-}" = "migrate" ] && [[ " $* " != *" --output "* ]]; then\n        _ghec_rem_seq=$((_ghec_rem_seq + 1))\n        mkdir -p ./scans\n        local _out="./scans/remediation-execution-\${_ghec_rem_seq}.json"\n        node "$_ghec_cli_bin" "$@" --output "$_out"\n        local _rc=$?\n        [ -f "$_out" ] && cp "$_out" ./scans/migration-execution.json\n        return $_rc\n      fi\n      node "$_ghec_cli_bin" "$@"\n    }\n  fi\nfi\nexport GH_TOKEN="\${GHEC_TARGET_TOKEN:-\${GH_TOKEN:-}}"\n\n`;
   const executedCommands = new Set<string>();
   const scriptBody = actions
     .map((a) => {

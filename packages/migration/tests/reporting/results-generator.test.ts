@@ -1799,3 +1799,105 @@ test('generates POST-CARE-CHECKLIST.md, exports/*.csv, and evidence/*.json with 
     'Expected root README.md to link to evidence/README.md',
   );
 });
+
+test('generateMigrationResults normalizes healed gei-repo-error-* operations and appends sandbox rehearsal note', () => {
+  const result = generateMigrationResults({
+    runId: 'run-sandbox-healed',
+    generatedAt: '2026-10-19T23:55:00Z',
+    sourceOrg: 'demogxp',
+    targetOrg: 'demogxp-mig9',
+    executionMode: 'live',
+    scope: {
+      version: '1.0.0',
+      name: 'demogxp-to-demogxp-mig9',
+      sandboxRehearsal: true,
+      repositories: [
+        {
+          sourceOrg: 'demogxp',
+          sourceRepo: 'runner',
+          targetOrg: 'demogxp-mig9',
+          targetRepo: 'runner',
+          useGei: true,
+          archived: true,
+          sandboxRehearsal: true,
+        },
+      ],
+    },
+    executionReport: {
+      schemaVersion: '1.0.0',
+      planId: 'plan-sandbox-healed',
+      executedAt: '2026-10-19T23:55:00Z',
+      status: 'complete',
+      exitCode: 0,
+      dryRun: false,
+      sandboxRehearsal: true,
+      results: [
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'gei-repo',
+          targetIdentifier: 'demogxp-mig9/runner',
+          scopeLevel: 'repository',
+          status: 'failed',
+          durationMs: 345397,
+          results: [
+            {
+              operationId: 'gei-repo-error-runner',
+              status: 'failed',
+              resourceType: 'repository',
+              resourceName: 'runner',
+              operationType: 'create',
+              error: 'GEI migrate-repo failed with exit code 1',
+              completedAt: '2026-10-19T23:16:11.535Z',
+              targetIdentifier: 'demogxp-mig9/runner',
+            },
+          ],
+        },
+        {
+          schemaVersion: '1.0.0',
+          moduleId: 'gei-repo',
+          targetIdentifier: 'demogxp-mig9/runner',
+          scopeLevel: 'repository',
+          status: 'complete',
+          durationMs: 1233,
+          results: [],
+        },
+      ],
+    },
+    verificationReport: {
+      schemaVersion: '1.0.0',
+      reportId: 'ver-sandbox-healed',
+      verifiedAt: '2026-10-19T23:56:00Z',
+      scopeName: 'demogxp-to-demogxp-mig9',
+      sourceOrg: 'demogxp',
+      targetOrg: 'demogxp-mig9',
+      modules: [
+        {
+          moduleId: 'gei-repo',
+          verified: true,
+          discrepancies: [],
+        },
+      ],
+      summary: {
+        verifiedModuleCount: 34,
+        unverifiedModuleCount: 0,
+        discrepancyCount: 0,
+      },
+    },
+  });
+
+  const runnerGeiMd = result.files['repositories/runner/gei-repo.md'] ?? '';
+  assert.ok(
+    runnerGeiMd.includes(
+      'Transferred repository "runner" via GitHub Enterprise Importer (GEI). GitHub Actions disabled on target repository (enabled: false) for sandbox rehearsal mode.',
+    ),
+    `Expected sandbox rehearsal note in repositories/runner/gei-repo.md:\n${runnerGeiMd}`,
+  );
+  const fullOpsCsv =
+    result.files['exports/migration-operations-full.csv'] ?? '';
+  assert.ok(
+    fullOpsCsv.includes(
+      'Transferred repository ""runner"" via GitHub Enterprise Importer (GEI). GitHub Actions disabled on target repository (enabled: false) for sandbox rehearsal mode.',
+    ),
+    `Expected sandbox rehearsal note in exports/migration-operations-full.csv:\n${fullOpsCsv}`,
+  );
+});

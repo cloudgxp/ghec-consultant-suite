@@ -849,7 +849,7 @@ jobs:
             # 1. Synthesize remediation plan from latest verification report & cohort execution reports
             node ./apps/cli/bin/ghec-consultant-cli.mjs agent-review \
               --report ./scans/verification-report.json \
-              --execution-reports ./downloaded-cohorts,./downloaded-slicer/scans/pre-cohort-org-report.json,./scans/post-cohort-reconcile-report.json \
+              --execution-reports ./downloaded-cohorts,./downloaded-slicer/scans/pre-cohort-org-report.json,./scans/post-cohort-reconcile-report.json,./scans \
               --output "./remediations/remediation-plan-round-${ROUND}.json" \
               --output-markdown "./remediations/remediation-plan-round-${ROUND}.md" \
               --verbose

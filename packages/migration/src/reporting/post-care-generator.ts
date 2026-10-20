@@ -2391,9 +2391,15 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push('');
     lines.push('## 3. Webhooks Requiring Signing Secret & Activation');
     lines.push('');
-    lines.push(
-      `Webhook HMAC signing secrets are write-only on source organizations. Any webhook that had a signing secret on \`${sourceOrg}\` is created in an **inactive** state (\`active: false\`) on \`${targetOrg}\` so unverified payloads are never sent before you supply the secret. **Important:** Entering a secret in the GitHub WebUI does **not** automatically re-enable an inactive webhook—you must both enter the **Secret** and check the **[x] Active** checkbox before clicking **Update webhook** (or run the \`gh api --method PATCH ... -F active=true\` CLI command).`,
-    );
+    if (sandboxRehearsal) {
+      lines.push(
+        `Because **Sandbox Rehearsal Mode** is enabled, **all** organization and repository webhooks on \`${targetOrg}\` were created in an **inactive** state (\`active: false\`)—including webhooks that had no signing secret on \`${sourceOrg}\`—so rehearsal runs never trigger external webhook endpoints. Webhook HMAC signing secrets are also write-only on source organizations. **Important:** Entering a secret in the GitHub WebUI does **not** automatically re-enable an inactive webhook—for production cutover, you must both enter the **Secret** (if required) and check the **[x] Active** checkbox before clicking **Update webhook** (or run the \`gh api --method PATCH ... -F active=true\` CLI command).`,
+      );
+    } else {
+      lines.push(
+        `Webhook HMAC signing secrets are write-only on source organizations. Any webhook that had a signing secret on \`${sourceOrg}\` is created in an **inactive** state (\`active: false\`) on \`${targetOrg}\` so unverified payloads are never sent before you supply the secret. **Important:** Entering a secret in the GitHub WebUI does **not** automatically re-enable an inactive webhook—you must both enter the **Secret** and check the **[x] Active** checkbox before clicking **Update webhook** (or run the \`gh api --method PATCH ... -F active=true\` CLI command).`,
+      );
+    }
     lines.push('');
     lines.push('> [!TIP]');
     lines.push('> **How Developers Should Populate Webhook HMAC Secrets:**');
@@ -2403,9 +2409,15 @@ export function formatPostCareChecklistMarkdown(params: {
     lines.push(
       '> - **Option 2 — Rotate to a new secret:** Generate a new random secret string (e.g., `openssl rand -hex 32`), update your receiving server’s configuration, paste the same string into the GitHub webhook **Secret** field, and check **[x] Active**.',
     );
-    lines.push(
-      '> - **Already-Active Webhooks (Listed Last):** Webhooks with status `active-no-secret` had no signing secret configured on the source organization and are already active on the destination. They are listed at the bottom for optional endpoint verification.',
-    );
+    if (sandboxRehearsal) {
+      lines.push(
+        `> - **Sandbox Rehearsal Safety:** All webhooks listed below have \`active: false\` on \`${targetOrg}\` so external services are never notified during rehearsal.`,
+      );
+    } else {
+      lines.push(
+        '> - **Already-Active Webhooks (Listed Last):** Webhooks with status `active-no-secret` had no signing secret configured on the source organization and are already active on the destination. They are listed at the bottom for optional endpoint verification.',
+      );
+    }
     lines.push('');
     lines.push(
       '| Scope | Target | Webhook URL / Identifier | Status | Direct Settings Link | CLI Command (`gh`) |',
