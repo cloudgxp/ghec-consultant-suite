@@ -600,4 +600,109 @@ describe('Task 035: Agentic Automation & Remediation Integration', () => {
       );
     assert.equal(uncommentedRejectedLines.length, 0);
   });
+
+  it('orders gei-repo remediation actions before repo-settings and suppresses apply failures healed in subsequent execution reports', () => {
+    const reportWithDriftAndGeiLog = {
+      ...sampleReport,
+      modules: [
+        {
+          moduleId: 'repo-settings',
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: 'corp-target-emu/runner (archived)',
+              expected: true,
+              actual: false,
+              message:
+                'Repository archived status mismatch: expected true, got false.',
+            },
+          ],
+        },
+        {
+          moduleId: 'gei-repo',
+          verified: false,
+          discrepancies: [
+            {
+              resourceName: 'runner:migration-log',
+              expected: 'clean migration log',
+              actual: 'errors in log',
+              message: 'GEI recorded errors in target Migration Log.',
+            },
+          ],
+        },
+      ],
+      summary: {
+        verifiedModuleCount: 0,
+        unverifiedModuleCount: 2,
+        discrepancyCount: 2,
+      },
+    };
+
+    const round1Plan = generateRemediationPlan(reportWithDriftAndGeiLog);
+    assert.equal(round1Plan.actions[0]?.moduleId, 'gei-repo');
+    assert.equal(round1Plan.actions[1]?.moduleId, 'repo-settings');
+
+    // Now test that if cohort 1 had a failed gei-repo op, and a subsequent remediation report had status: 'complete' for gei-repo on that target, no duplicate synthesized action is emitted
+    const cleanReport = {
+      ...sampleReport,
+      modules: [],
+      summary: {
+        verifiedModuleCount: 34,
+        unverifiedModuleCount: 0,
+        discrepancyCount: 0,
+      },
+    };
+    const healedPlan = generateRemediationPlan(cleanReport, undefined, [
+      {
+        schemaVersion: '1.0.0',
+        planId: 'cohort-standard-01',
+        executedAt: '2026-10-19T23:16:11.535Z',
+        status: 'failed',
+        exitCode: 1,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            status: 'failed',
+            durationMs: 1000,
+            targetIdentifier: 'corp-target-emu/runner',
+            scopeLevel: 'repository',
+            results: [
+              {
+                operationId: 'gei-repo-error-runner',
+                status: 'failed',
+                resourceType: 'repository',
+                resourceName: 'runner',
+                operationType: 'create',
+                error: 'GEI migrate-repo failed with exit code 1',
+                completedAt: '2026-10-19T23:16:11.535Z',
+                targetIdentifier: 'corp-target-emu/runner',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        schemaVersion: '1.0.0',
+        planId: 'remediation-round-1',
+        executedAt: '2026-10-19T23:45:00.000Z',
+        status: 'complete',
+        exitCode: 0,
+        dryRun: false,
+        results: [
+          {
+            schemaVersion: '1.0.0',
+            moduleId: 'gei-repo',
+            status: 'complete',
+            durationMs: 500,
+            targetIdentifier: 'corp-target-emu/runner',
+            scopeLevel: 'repository',
+            results: [],
+          },
+        ],
+      },
+    ]);
+    assert.equal(healedPlan.actionableCount, 0);
+  });
 });

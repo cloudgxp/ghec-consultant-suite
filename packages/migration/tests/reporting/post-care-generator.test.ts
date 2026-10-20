@@ -783,3 +783,66 @@ test('generatePostCareDeliverables exports skipped archived repositories CSV whe
     lines[1]?.includes('Excluded because include_archived was set to false'),
   );
 });
+
+test('generatePostCareDeliverables renders sandbox rehearsal operational phase and webhook safety prose when sandboxRehearsal is true', () => {
+  const deliverables = generatePostCareDeliverables({
+    sourceOrg: 'source-org',
+    targetOrg: 'target-org',
+    mode: 'live',
+    generatedAt: '2026-10-19T12:00:00Z',
+    scope: {
+      version: '1.0.0',
+      name: 'source-org-to-target-org',
+      sandboxRehearsal: true,
+      repositories: [],
+    },
+    orgModuleModels: new Map([
+      [
+        'org-webhooks',
+        {
+          moduleId: 'org-webhooks',
+          summary: {
+            status: 'complete',
+            totalOperations: 1,
+            succeededOperations: 1,
+            failedOperations: 0,
+            skippedOperations: 0,
+            discrepancyCount: 0,
+            durationMs: 100,
+          },
+          items: [
+            {
+              operationId: 'org-webhooks:create:https://httpbin.org/post',
+              resourceName: 'https://httpbin.org/post',
+              resourceType: 'webhook',
+              operationType: 'create',
+              status: 'succeeded',
+              verificationStatus: 'verified',
+              notes:
+                'Created webhook for `https://httpbin.org/post` (inactive in sandbox rehearsal mode)',
+              isSecret: true,
+              settingsUrl:
+                'https://github.com/organizations/target-org/settings/hooks',
+              settingsLinkLabel: 'Configure Webhooks ↗',
+            },
+          ],
+          discrepancies: [],
+        },
+      ],
+    ]),
+  });
+
+  assert.ok(
+    deliverables.checklistMarkdown.includes(
+      '🛡️ Sandbox Rehearsal (Live Data — Target Webhooks & Actions Disabled)',
+    ),
+  );
+  assert.ok(
+    deliverables.checklistMarkdown.includes(
+      'Because **Sandbox Rehearsal Mode** is enabled, **all** organization and repository webhooks',
+    ),
+  );
+  assert.ok(
+    deliverables.checklistMarkdown.includes('Sandbox Rehearsal Safety:'),
+  );
+});

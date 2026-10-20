@@ -1557,7 +1557,29 @@ export function generateMigrationResults(
             targetIdentifier: `${options.targetOrg}/${targetRepo}`,
           },
         ];
-      } else if (moduleId === 'gei-repo' && allOps.length > 0) {
+      }
+      const modDiscs = [
+        ...(repoModuleDiscrepancies.get(`${targetRepo}::${moduleId}`) ?? []),
+        ...(sourceRepo !== targetRepo
+          ? (repoModuleDiscrepancies.get(`${sourceRepo}::${moduleId}`) ?? [])
+          : []),
+      ];
+      const modWarns = [
+        ...(repoModuleWarnings.get(`${targetRepo}::${moduleId}`) ?? []),
+        ...(sourceRepo !== targetRepo
+          ? (repoModuleWarnings.get(`${sourceRepo}::${moduleId}`) ?? [])
+          : []),
+      ];
+      const isModVerifiedClean =
+        verifiedModulesSet.has(moduleId) && modDiscs.length === 0;
+      if (isModVerifiedClean) {
+        allOps = allOps.map((o) =>
+          o.status === 'failed'
+            ? { ...o, status: 'succeeded' as const, error: undefined }
+            : o,
+        );
+      }
+      if (moduleId === 'gei-repo' && allOps.length > 0) {
         const hadSkippedReleases = execList.some((m) =>
           m.failedMetadataCategories?.includes('releases'),
         );
@@ -1591,7 +1613,11 @@ export function generateMigrationResults(
               reason: `Transferred repository "${targetRepo}" via fallback Git mirror-push after GEI archive generation failure; metadata rehydrated via sidecar modules.`,
             };
           }
-          if (op.operationId.startsWith('gei-repo-migration-')) {
+          if (
+            op.operationId.startsWith('gei-repo-migration-') ||
+            (op.status === 'succeeded' &&
+              op.operationId.startsWith('gei-repo-error-'))
+          ) {
             return {
               ...op,
               resourceType: op.resourceType ?? 'repository',
@@ -1629,27 +1655,6 @@ export function generateMigrationResults(
           }
           return op;
         });
-      }
-      const modDiscs = [
-        ...(repoModuleDiscrepancies.get(`${targetRepo}::${moduleId}`) ?? []),
-        ...(sourceRepo !== targetRepo
-          ? (repoModuleDiscrepancies.get(`${sourceRepo}::${moduleId}`) ?? [])
-          : []),
-      ];
-      const modWarns = [
-        ...(repoModuleWarnings.get(`${targetRepo}::${moduleId}`) ?? []),
-        ...(sourceRepo !== targetRepo
-          ? (repoModuleWarnings.get(`${sourceRepo}::${moduleId}`) ?? [])
-          : []),
-      ];
-      const isModVerifiedClean =
-        verifiedModulesSet.has(moduleId) && modDiscs.length === 0;
-      if (isModVerifiedClean) {
-        allOps = allOps.map((o) =>
-          o.status === 'failed'
-            ? { ...o, status: 'succeeded' as const, error: undefined }
-            : o,
-        );
       }
 
       const total = allOps.length;

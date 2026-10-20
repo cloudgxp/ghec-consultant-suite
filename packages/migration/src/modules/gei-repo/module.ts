@@ -775,6 +775,8 @@ export class GeiRepoMigrationModule implements MigrationModule<GeiRepoDiscovered
       const isGeiArchiveFailure =
         msg.includes('Git repository data failed to be generated') ||
         msg.includes('exceeds GitHub platform limit of 40 GiB') ||
+        msg.includes('An unexpected error has caused the migration to fail') ||
+        msg.includes('Migration Failed. Migration ID:') ||
         msg.includes('spawn gh ENOENT') ||
         !this.geiRunner;
 
